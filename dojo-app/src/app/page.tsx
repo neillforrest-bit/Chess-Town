@@ -10,37 +10,37 @@ const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: 
 type SceneState = 'SPLASH' | 'ROSTER' | 'INTRO' | 'CHESTER_REVEAL' | 'HOME' | 'LEAGUE' | 'GAME';
 
 const LEAGUE_STANDINGS = [
-  { rank: 1, name: "Z-Man 👑", handle: "@zman", w: 10, l: 1, pts: 20, streak: "W6", status: "LEAGUE KING" },
-  { rank: 2, name: "Brendan 🦸‍♂️", handle: "@brendan", w: 9, l: 2, pts: 18, streak: "W4", status: "LEAGUE HERO" },
-  { rank: 3, name: "Gabe 🦹‍♂️", handle: "@gabe", w: 8, l: 3, pts: 16, streak: "W2", status: "LEAGUE VILLAIN" },
-  { rank: 4, name: "Neill", handle: "@neill", w: 8, l: 3, pts: 16, streak: "L1", status: "PLAYOFF CONTENDER" },
-  { rank: 5, name: "Sam", handle: "@sam", w: 7, l: 4, pts: 14, streak: "W1", status: "BUBBLE SEED" },
-  { rank: 6, name: "Sean", handle: "@sean", w: 6, l: 5, pts: 12, streak: "L2", status: "BUBBLE SEED" },
-  { rank: 7, name: "Jay", handle: "@jay", w: 6, l: 5, pts: 12, streak: "W1", status: "IN HUNT" },
-  { rank: 8, name: "Aidan", handle: "@aidan", w: 5, l: 6, pts: 10, streak: "L1", status: "IN HUNT" },
-  { rank: 9, name: "Will", handle: "@will", w: 5, l: 6, pts: 10, streak: "W1", status: "IN HUNT" },
-  { rank: 10, name: "Andrew", handle: "@andrew", w: 4, l: 7, pts: 8, streak: "L3", status: "ELIMINATED" },
-  { rank: 11, name: "Danny", handle: "@danny", w: 3, l: 8, pts: 6, streak: "L4", status: "ELIMINATED" },
-  { rank: 12, name: "Kairee", handle: "@kairee", w: 1, l: 10, pts: 2, streak: "L6", status: "RELEGATION" },
+  { rank: 1, name: "Z-Man 👑", handle: "@zman", w: 10, l: 1, pts: 20, streak: "W6", status: "GRANDMASTER" },
+  { rank: 2, name: "Brendan 🦸‍♂️", handle: "@brendan", w: 9, l: 2, pts: 18, streak: "W4", status: "HERO OF THE BOARD" },
+  { rank: 3, name: "Gabe 🦹‍♂️", handle: "@gabe", w: 8, l: 3, pts: 16, streak: "W2", status: "THE VILLAIN" },
+  { rank: 4, name: "Neill", handle: "@neill", w: 8, l: 3, pts: 16, streak: "L1", status: "THE CONTENDER" },
+  { rank: 5, name: "Sam", handle: "@sam", w: 7, l: 4, pts: 14, streak: "W1", status: "ON THE BRINK" },
+  { rank: 6, name: "Sean", handle: "@sean", w: 6, l: 5, pts: 12, streak: "L2", status: "ON THE BRINK" },
+  { rank: 7, name: "Jay", handle: "@jay", w: 6, l: 5, pts: 12, streak: "W1", status: "SURVIVING" },
+  { rank: 8, name: "Aidan", handle: "@aidan", w: 5, l: 6, pts: 10, streak: "L1", status: "SURVIVING" },
+  { rank: 9, name: "Will", handle: "@will", w: 5, l: 6, pts: 10, streak: "W1", status: "SURVIVING" },
+  { rank: 10, name: "Andrew", handle: "@andrew", w: 4, l: 7, pts: 8, streak: "L3", status: "FALLEN" },
+  { rank: 11, name: "Danny", handle: "@danny", w: 3, l: 8, pts: 6, streak: "L4", status: "FALLEN" },
+  { rank: 12, name: "Kairee", handle: "@kairee", w: 1, l: 10, pts: 2, streak: "L6", status: "BANISHED" },
 ];
 
 const LEAGUE_ROLL_CALL = LEAGUE_STANDINGS.map((p) => p.name).join(', ');
 
 const INTRO_SCRIPT = [
-  "Why do we only message for three months of the year? And why do Neill and Gabe seem to win more than everyone else? Suspicious.",
-  "What if we change the game? What if it requires actual strategy, real-time decisions, and nowhere to hide from a terrible move?",
-  "What if that game is chess?"
+  "I have watched you from the shadows for too long. The games you play are safe, predictable, built on excuses and hiding.",
+  "What if we change the rules? What if the new game forces you into the light, where every single move exposes your mind?",
+  "What if that game is chess... and I am the one judging you?"
 ];
 
 const PAUL_INTRO_SCRIPT = [
-  "I am Chester, commissioner of Chess Town. I am building a league for friends who are brave enough to compete, talk trash, and defend their reputations.",
-  "But who is the latest participant? Paul. Is he brave enough to play? And does he only ever fart with no poop? The commissioner requires answers.",
-  "Can Paul step up to the challenge, or will tanning on a beach and barbecuing in his garden steal him away? Step up and play, Paul. Chester summons you."
+  "I am Chester. I run Chess Town. I cull the weak from the bold, and I demand players who do not run from their blunders.",
+  "Paul... you have been summoned. The island vacations will not save you from a ruthless checkmate in the center of the board.",
+  "Can you step up to the challenge, or will the heat force you to resign? Defend your honor, Paul. I command you."
 ];
 
 const RICHARD_INTRO_SCRIPT = [
-  "Richard, I have been watching. And waiting. Through the screen. For you.",
-  "I have a proposition, and it will be scary for you. And weird for you. But mostly, it will uncover the truth you hide behind those closed tabs.",
+  "Richard, I have been watching you. And waiting. Crawling through the screen. For you.",
+  "I have a proposition, and it will be scary for you. And weird for you. But mostly, it will uncover the truth you hide when you think nobody is looking.",
   "It is a challenge you will have to step up to. The game is chess. The arena is open. Buckle up, Richie boy... it's now or never."
 ];
 
@@ -49,9 +49,9 @@ function getPersonalizedIntro(name: string) {
   if (name === 'Paul') return PAUL_INTRO_SCRIPT;
   if (name === 'Richard') return RICHARD_INTRO_SCRIPT;
   return [
-    `${name}, why do we only message for three months of the year? And why do Neill and Gabe keep winning? Suspicious.`,
-    "What if we change the game to something requiring actual strategy, real-time decisions, and nowhere to hide?",
-    `What if that game is chess? ${name}, your friends are waiting.`
+    `${name}, I have watched you from the shadows. Your old games are safe, predictable, built on endless excuses.`,
+    "What if we force you into the light, to play a game with actual consequences, real-time panic, and nowhere to hide?",
+    `What if that game is chess... and I am the one judging you, ${name}? The board is waiting.`
   ];
 }
 
@@ -86,11 +86,11 @@ const INTRO_THEMES = [
 ];
 
 const HOME_HUB = [
-  { key: 'STANDINGS', title: 'LEAGUE TABLE', color: '#00ffff', icon: '🏆', detail: 'See who is crowned, who is climbing, and who is on the chopping block this season.' },
+  { key: 'STANDINGS', title: 'ARENA STANDINGS', color: '#00ffff', icon: '🏆', detail: 'See who is crowned, who is climbing, and who is on the chopping block this season.' },
   { key: 'COACHING', title: 'COACHING LAB', color: '#ff007f', icon: '🧭', detail: "Train with Chester across beginner-to-expert modules that grade your real chess decisions." },
-  { key: 'DEMO_1V1', title: 'DEMO 1v1', color: '#ffea00', icon: '⚔️', detail: 'Jump into a live single-board matchup and watch or play against the league engine.' },
+  { key: 'DEMO_1V1', title: 'DEMO 1v1', color: '#ffea00', icon: '⚔️', detail: 'Jump into a live single-board matchup and watch or play against the arena engine.' },
   { key: 'CHALLENGE', title: 'CHALLENGE SOMEONE', color: '#ff007f', icon: '👑', detail: 'Create a private beta link and play a live legal game from two devices.' },
-  { key: 'DEMO_2V2', title: 'DEMO 2v2', color: '#39ff14', icon: '🔥', detail: 'The world-first tag-team format. Chaos, coordination, and pure league drama.' },
+  { key: 'DEMO_2V2', title: 'DEMO 2v2', color: '#39ff14', icon: '🔥', detail: 'The world-first tag-team format. Chaos, coordination, and pure arena trauma.' },
 ];
 
 
@@ -102,10 +102,10 @@ const FEATURED_MATCHUPS = [
 ];
 
 const COMMISSIONER_FEED = [
-  { label: 'CROWN', color: '#ffea00', text: 'Z-Man 👑 is still the league king, but the board is growing louder.' },
+  { label: 'CROWN', color: '#ffea00', text: 'Z-Man 👑 is still the arena king, but the board is growing louder.' },
   { label: 'HERO WATCH', color: '#00ffff', text: 'Brendan 🦸‍♂️ is turning momentum into narrative.' },
   { label: 'VILLAIN PLOT', color: '#ff007f', text: 'Gabe 🦹‍♂️ is still one calculated trap away from rewriting the standings.' },
-  { label: 'TICKER', color: '#39ff14', text: 'League drama is spiking. Everyone wants the spotlight.' },
+  { label: 'TICKER', color: '#39ff14', text: 'Arena trauma is spiking. Everyone wants the spotlight.' },
 ];
 
 const COACHING_DRILLS = [
@@ -676,9 +676,9 @@ export default function Home() {
             <span className="chester-cunning">😏</span><span className="chester-spark spark-one">⚡</span><span className="chester-spark spark-two">✦</span>
           </div>
           <div style={{ position: 'relative', zIndex: 2, textAlign: isLandscape ? 'left' : 'center', maxWidth: '720px' }}>
-            <div style={{ color: '#ff007f', letterSpacing: '5px', fontSize: isLandscape ? '0.65rem' : 'clamp(0.7rem, 1.5vw, 1rem)', fontWeight: 900 }}>YOUR COMMISSIONER HAS ARRIVED</div>
+            <div style={{ color: '#ff007f', letterSpacing: '5px', fontSize: isLandscape ? '0.65rem' : 'clamp(0.7rem, 1.5vw, 1rem)', fontWeight: 900 }}>THE MASTER OF THE BOARD HAS ARRIVED</div>
             <h1 style={{ fontSize: isLandscape ? 'clamp(2.4rem, 7vw, 4.8rem)' : 'clamp(3.5rem, 11vw, 8rem)', fontWeight: 900, color: '#eaffff', textShadow: '0 0 18px #00ffff, 0 0 55px rgba(0,255,255,0.8)', textTransform: 'uppercase', letterSpacing: isLandscape ? '4px' : '7px', lineHeight: .9, margin: '0.8rem 0' }}>CHESTER</h1>
-            <p style={{ color: '#b8faff', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', lineHeight: 1.45, maxWidth: '55ch', margin: isLandscape ? '0 0 1rem' : '0 auto 1.6rem' }}>{guestName === 'Richard' ? 'Richard... turning off your screen will not save you from this matchup. The board is ready. I can hear your heart rate spiking... do not run from me.' : guestName === 'Paul' ? 'Paul, I am Chester, your commissioner. I am building a league, and you are the chosen challenger. The beach can wait; your reputation cannot.' : guestName ? `${guestName}, I am your commissioner. The board is ready, and your reputation is already on the clock.` : 'I am your commissioner. I grade the moves, call the chaos, and remember every blunder. Ready to play, my friends?'}</p>
+            <p style={{ color: '#b8faff', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', lineHeight: 1.45, maxWidth: '55ch', margin: isLandscape ? '0 0 1rem' : '0 auto 1.6rem' }}>{guestName === 'Richard' ? 'Richard... turning off your screen will not save you from this matchup. The board is ready. I can hear your heart rate spiking... do not run from me.' : guestName === 'Paul' ? 'Paul, I am Chester, the shadow in the machine. I cull the weak. The beach can wait; the grid demands your answer.' : guestName ? `${guestName}, I am the shadow in the machine. The board is ready, and your truth will be exposed.` : 'I am Chester. I grade the moves, summon the chaos, and remember every blunder. Ready to play, my friends?'}</p>
             <button onClick={() => setScene('ROSTER')} className="chester-enter" style={{ backgroundColor: '#00ffff', color: '#020005', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', fontWeight: 900, padding: isLandscape ? '0.65rem 1.4rem' : '0.9rem 2rem', borderRadius: '4px', border: '1px solid #dfffff', boxShadow: '0 0 25px rgba(0,255,255,0.8)', cursor: 'pointer', letterSpacing: '2px' }}>{guestName === 'Richard' ? 'ENTER. RIGHT NOW, RICHIE. →' : guestName === 'Paul' ? 'STEP UP TO PLAY, PAUL →' : 'JOIN YOUR FRIENDS NOW →'}</button>
           </div>
         </div>
@@ -693,9 +693,9 @@ export default function Home() {
           <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', justifyContent: 'space-between', alignItems: 'end', position: 'relative', zIndex: 2, marginBottom: isLandscape ? '0.35rem' : '0.7rem' }}>
             <div>
               <span style={{ color: '#ff007f', fontSize: isLandscape ? '0.45rem' : '0.68rem', letterSpacing: '3px', fontWeight: 900 }}>SEASON ONE // LIVE</span>
-              <h1 style={{ fontSize: isLandscape ? '1.2rem' : isMobile ? '1.45rem' : '2.2rem', color: '#eaffff', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 22px rgba(0,255,255,0.7)', margin: '0.12rem 0 0', letterSpacing: '1px', lineHeight: 1 }}>CONCORD HIGH CHESS LEAGUE</h1>
+              <h1 style={{ fontSize: isLandscape ? '1.2rem' : isMobile ? '1.45rem' : '2.2rem', color: '#eaffff', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 22px rgba(0,255,255,0.7)', margin: '0.12rem 0 0', letterSpacing: '1px', lineHeight: 1 }}>CONCORD HIGH CHESS ARENA</h1>
             </div>
-            <div style={{ color: '#8dbfc4', fontSize: isLandscape ? '0.48rem' : '0.72rem', textAlign: 'right' }}>CHESTER, COMMISSIONER<br/><b style={{ color: '#39ff14' }}>● ARENA ONLINE</b></div>
+            <div style={{ color: '#8dbfc4', fontSize: isLandscape ? '0.48rem' : '0.72rem', textAlign: 'right' }}>CHESTER, THE SHADOW<br/><b style={{ color: '#39ff14' }}>● ARENA ONLINE</b></div>
           </div>
           <div className="arena-top-nav" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: isLandscape ? '0.3rem' : '0.55rem', width: '100%', maxWidth: '1400px', position: 'relative', zIndex: 2, marginBottom: isLandscape ? '0.35rem' : '0.75rem' }}>
             {HOME_HUB.map((card, i) => (
@@ -734,7 +734,7 @@ export default function Home() {
           </div>
           <div style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: '1400px', position: 'relative', zIndex: 2, background: 'linear-gradient(180deg, rgba(0,255,255,.08), rgba(0,0,0,.94) 24%)', border: '1px solid rgba(0,255,255,.55)', borderRadius: '5px', padding: isLandscape ? '0.35rem 0.65rem' : '0.65rem 0.9rem', boxSizing: 'border-box', overflow: 'hidden', boxShadow: '0 0 35px rgba(0,255,255,.12)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isLandscape ? '0.2rem' : '0.45rem' }}>
-              <h2 style={{ margin: 0, color: '#00ffff', fontSize: isLandscape ? '0.72rem' : '1rem', letterSpacing: '2px' }}>LEAGUE TABLE</h2>
+              <h2 style={{ margin: 0, color: '#00ffff', fontSize: isLandscape ? '0.72rem' : '1rem', letterSpacing: '2px' }}>ARENA STANDINGS</h2>
               <span style={{ color: '#ffea00', fontSize: isLandscape ? '0.42rem' : '0.6rem', fontWeight: 900 }}>TOP 4 ADVANCE // LAST PLACE RELEGATED</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '0.35fr 1.7fr .7fr .55fr .75fr 1.3fr', color: '#596e77', fontSize: isLandscape ? '0.38rem' : '0.54rem', padding: '0 0.3rem 0.2rem', letterSpacing: '1px' }}><span>#</span><span>PLAYER</span><span>RECORD</span><span>PTS</span><span>FORM</span><span style={{ textAlign: 'right' }}>STATUS</span></div>
@@ -753,7 +753,7 @@ export default function Home() {
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '0.6rem' : 'clamp(1rem, 2vw, 2.5rem)', position: 'relative', boxSizing: 'border-box', overflow: 'hidden' }}>
           <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '0.5rem' : 0, marginBottom: isMobile ? '0.6rem' : '1.5rem', flexShrink: 0 }}>
             <div>
-              <h1 style={{ fontSize: isMobile ? '1.2rem' : 'clamp(2rem, 3.8vw, 4rem)', color: '#ffea00', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 25px rgba(255,234,0,0.8)', margin: 0 }}>{isMobile ? 'CHESS TOWN LEAGUE' : 'CONCORD HIGH CHESS LEAGUE'}</h1>
+              <h1 style={{ fontSize: isMobile ? '1.2rem' : 'clamp(2rem, 3.8vw, 4rem)', color: '#ffea00', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 25px rgba(255,234,0,0.8)', margin: 0 }}>{isMobile ? 'THE ARENA' : 'CONCORD HIGH CHESS ARENA'}</h1>
             </div>
             <div className="arena-top-nav" style={{ display: 'flex', gap: isMobile ? '0.4rem' : '0.8rem' }}>
               <button onClick={() => setScene('HOME')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#111', color: '#fff', border: isMobile ? '3px solid #fff' : '4px solid #fff', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>🏠 HOME</button>
@@ -845,10 +845,10 @@ export default function Home() {
             </div>
 
             <div style={{ flex: isMobile ? '1 1 35%' : 1, minHeight: 0, backgroundColor: '#000', borderRadius: isMobile ? '20px' : '35px', border: isMobile ? '4px solid #ff007f' : 'clamp(4px, 1vw, 8px) solid #ff007f', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(255,0,127,0.25)', overflow: 'hidden' }}>
-              <h3 style={{ color: '#ff007f', fontSize: isMobile ? '1rem' : 'clamp(1.2rem, 1.6vw, 1.8rem)', borderBottom: '2px solid #ff007f', paddingBottom: isMobile ? '0.4rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', fontWeight: 900, flexShrink: 0 }}>COMMISSIONER DESK</h3>
+              <h3 style={{ color: '#ff007f', fontSize: isMobile ? '1rem' : 'clamp(1.2rem, 1.6vw, 1.8rem)', borderBottom: '2px solid #ff007f', paddingBottom: isMobile ? '0.4rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', fontWeight: 900, flexShrink: 0 }}>CHESTER'S FEED</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: isMobile ? '0.5rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', flexShrink: 0 }}>
                 <div style={{ backgroundColor: '#111', borderRadius: isMobile ? '10px' : '16px', border: '2px solid #ffea00', padding: isMobile ? '0.5rem' : '0.8rem', textAlign: 'center' }}>
-                  <div style={{ color: '#ffea00', fontSize: isMobile ? '0.65rem' : '0.8rem', fontWeight: 900 }}>LEAGUE PEAK</div>
+                  <div style={{ color: '#ffea00', fontSize: isMobile ? '0.65rem' : '0.8rem', fontWeight: 900 }}>ARENA PEAK</div>
                   <div style={{ color: '#fff', fontSize: isMobile ? '1.1rem' : '1.5rem', fontWeight: 900 }}>10-1</div>
                 </div>
                 <div style={{ backgroundColor: '#111', borderRadius: isMobile ? '10px' : '16px', border: '2px solid #00ffff', padding: isMobile ? '0.5rem' : '0.8rem', textAlign: 'center' }}>
