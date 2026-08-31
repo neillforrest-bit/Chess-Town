@@ -80,16 +80,16 @@ export default function DojoEngine({ mode = 'STANDBY' }: { mode?: string }) {
                     const container = scene.add.container(posX, posY); container.setSize(tileSize, tileSize);
 
                     const isSpotlight = (lastMoveTo === squareName);
-                    if (lastMoveTo !== null) container.setAlpha(isSpotlight ? 1.0 : 0.3);
+                    if (lastMoveTo !== null) container.setAlpha(isSpotlight ? 1.0 : 0.25);
                     if (isSpotlight) {
-                      const glow = scene.add.circle(0, 0, tileSize / 1.8, 0x39ff14, 0.6); 
-                      scene.tweens.add({ targets: glow, alpha: 0.1, scale: 1.2, yoyo: true, repeat: -1, duration: 600 });
-                      container.add(glow); 
+                      const glow = scene.add.circle(0, 0, tileSize / 1.6, isWhite ? 0x39ff14 : 0xff007f, 0.7);
+                      scene.tweens.add({ targets: glow, alpha: 0.15, scale: 1.25, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.easeInOut' });
+                      container.add(glow);
                     }
 
-                    const pieceColor = isWhite ? '#39ff14' : '#ff007f';
-                    const baseText = scene.add.text(0, 0, pieceMap[pieceChar], { fontFamily: 'Comic Sans MS, sans-serif', fontSize: '70px', color: pieceColor, shadow: { blur: 14, color: pieceColor, fill: true } }).setOrigin(0.5);
-                    const faceText = scene.add.text(0, symbol === 'p' ? -2 : -15, unifiedFaces[pieceChar], { fontSize: '40px' }).setOrigin(0.5);
+                    const pieceColor = isWhite ? '#39ff14' : '#ff5599';
+                    const baseText = scene.add.text(0, 0, pieceMap[pieceChar], { fontFamily: 'Comic Sans MS, sans-serif', fontSize: '82px', color: pieceColor, shadow: { blur: 20, offsetX: 2, offsetY: 2, color: isWhite ? '#006600' : '#880044', fill: true, stroke: true }, stroke: isWhite ? '#004400' : '#660033', strokeThickness: 4 }).setOrigin(0.5);
+                    const faceText = scene.add.text(0, symbol === 'p' ? -2 : -16, unifiedFaces[pieceChar], { fontSize: '44px', shadow: { blur: 8, offsetX: 1, offsetY: 1, color: '#000', fill: true } }).setOrigin(0.5);
                     container.add([baseText, faceText]);
                     activePieces[squareName] = container;
                   }
