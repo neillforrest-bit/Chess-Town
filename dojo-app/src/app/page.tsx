@@ -38,9 +38,16 @@ const PAUL_INTRO_SCRIPT = [
   "Can Paul step up to the challenge, or will tanning on a beach and barbecuing in his garden steal him away? Step up and play, Paul. Chester summons you."
 ];
 
+const RICHARD_INTRO_SCRIPT = [
+  "Hello Richard. I know about the tabs you have open. I know when you sleep. But mostly... I know about your horrendous chess rating.",
+  "Every time you blunder a queen, Richard, a cold draft enters your room. That's me. That's the commissioner's disappointment breathing down your neck.",
+  "Are you brave enough to play, or will you just close this tab and check over your shoulder? Enter the arena, Richard. We've been waiting for you."
+];
+
 function getPersonalizedIntro(name: string) {
   if (!name) return INTRO_SCRIPT;
   if (name === 'Paul') return PAUL_INTRO_SCRIPT;
+  if (name === 'Richard') return RICHARD_INTRO_SCRIPT;
   return [
     `${name}, why do we only message for three months of the year? And why do Neill and Gabe keep winning? Suspicious.`,
     "What if we change the game to something requiring actual strategy, real-time decisions, and nowhere to hide?",
@@ -671,8 +678,8 @@ export default function Home() {
           <div style={{ position: 'relative', zIndex: 2, textAlign: isLandscape ? 'left' : 'center', maxWidth: '720px' }}>
             <div style={{ color: '#ff007f', letterSpacing: '5px', fontSize: isLandscape ? '0.65rem' : 'clamp(0.7rem, 1.5vw, 1rem)', fontWeight: 900 }}>YOUR COMMISSIONER HAS ARRIVED</div>
             <h1 style={{ fontSize: isLandscape ? 'clamp(2.4rem, 7vw, 4.8rem)' : 'clamp(3.5rem, 11vw, 8rem)', fontWeight: 900, color: '#eaffff', textShadow: '0 0 18px #00ffff, 0 0 55px rgba(0,255,255,0.8)', textTransform: 'uppercase', letterSpacing: isLandscape ? '4px' : '7px', lineHeight: .9, margin: '0.8rem 0' }}>CHESTER</h1>
-            <p style={{ color: '#b8faff', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', lineHeight: 1.45, maxWidth: '55ch', margin: isLandscape ? '0 0 1rem' : '0 auto 1.6rem' }}>{guestName === 'Paul' ? 'Paul, I am Chester, your commissioner. I am building a league, and you are the chosen challenger. The beach can wait; your reputation cannot.' : guestName ? `${guestName}, I am your commissioner. The board is ready, and your reputation is already on the clock.` : 'I am your commissioner. I grade the moves, call the chaos, and remember every blunder. Ready to play, my friends?'}</p>
-            <button onClick={() => setScene('ROSTER')} className="chester-enter" style={{ backgroundColor: '#00ffff', color: '#020005', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', fontWeight: 900, padding: isLandscape ? '0.65rem 1.4rem' : '0.9rem 2rem', borderRadius: '4px', border: '1px solid #dfffff', boxShadow: '0 0 25px rgba(0,255,255,0.8)', cursor: 'pointer', letterSpacing: '2px' }}>{guestName === 'Paul' ? 'STEP UP TO PLAY, PAUL →' : 'JOIN YOUR FRIENDS NOW →'}</button>
+            <p style={{ color: '#b8faff', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', lineHeight: 1.45, maxWidth: '55ch', margin: isLandscape ? '0 0 1rem' : '0 auto 1.6rem' }}>{guestName === 'Richard' ? 'Richard... turning off your screen will not save you from this matchup. The board is ready.' : guestName === 'Paul' ? 'Paul, I am Chester, your commissioner. I am building a league, and you are the chosen challenger. The beach can wait; your reputation cannot.' : guestName ? `${guestName}, I am your commissioner. The board is ready, and your reputation is already on the clock.` : 'I am your commissioner. I grade the moves, call the chaos, and remember every blunder. Ready to play, my friends?'}</p>
+            <button onClick={() => setScene('ROSTER')} className="chester-enter" style={{ backgroundColor: '#00ffff', color: '#020005', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', fontWeight: 900, padding: isLandscape ? '0.65rem 1.4rem' : '0.9rem 2rem', borderRadius: '4px', border: '1px solid #dfffff', boxShadow: '0 0 25px rgba(0,255,255,0.8)', cursor: 'pointer', letterSpacing: '2px' }}>{guestName === 'Richard' ? 'DO NOT AVOID YOUR FATE, RICHARD →' : guestName === 'Paul' ? 'STEP UP TO PLAY, PAUL →' : 'JOIN YOUR FRIENDS NOW →'}</button>
           </div>
         </div>
       )}
