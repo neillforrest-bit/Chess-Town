@@ -7,7 +7,7 @@ import { askGrandmaster } from '@/app/actions';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
-type SceneState = 'SPLASH' | 'INTRO' | 'LEAGUE' | 'GAME';
+type SceneState = 'SPLASH' | 'INTRO' | 'LEAGUE' | 'GAME' | 'COACHING';
 
 const INTRO_SCRIPT = [
   "🎙️ COMMISSIONER CHESTER ONLINE! 🏆\n\nWelcome to the Concord High School Chess League — where fantasy football competition meets the 64-square grid!",
@@ -31,6 +31,318 @@ const LEAGUE_STANDINGS = [
   { rank: 12, name: "Kairee", handle: "@kairee", w: 1, l: 10, pts: 2, streak: "L6", status: "RELEGATION" },
 ];
 
+// ─── COACHING ARENA CHALLENGES ───────────────────────────────────────────────
+
+type ChallengeId = 'opening' | 'sacrifice' | 'endgame' | 'pawn';
+
+interface Challenge {
+  id: ChallengeId;
+  title: string;
+  emoji: string;
+  description: string;
+  prompt: string;
+  options: { label: string; value: string }[];
+  correct: string;
+  rubric: { A: string; B: string; C: string; D: string; F: string };
+  gradeByAnswer: (answer: string) => 'A' | 'B' | 'C' | 'D' | 'F';
+}
+
+const COACHING_CHALLENGES: Challenge[] = [
+  {
+    id: 'opening',
+    title: 'Opening 5 Moves Evaluation',
+    emoji: '♟️',
+    description:
+      'White played: 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nd4?! 4.Nxe5 Qg5?! 5.Nxf7??\n\nEvaluate White\'s opening play across these 5 moves.',
+    prompt: 'How would you grade White\'s first 5 moves overall?',
+    options: [
+      { label: 'Excellent – controlled center, developed pieces, king safety maintained', value: 'A' },
+      { label: 'Good – mostly principled, minor inaccuracies', value: 'B' },
+      { label: 'Average – some principles followed but key errors made', value: 'C' },
+      { label: 'Poor – several anti-positional moves, fell for a trap', value: 'D' },
+      { label: 'Terrible – blundered into a losing position by move 5', value: 'F' },
+    ],
+    correct: 'D',
+    rubric: {
+      A: '90–100: All 5 moves follow opening principles flawlessly',
+      B: '75–89: 4 strong moves with one inaccuracy',
+      C: '60–74: Mixed bag – some principles, some errors',
+      D: '45–59: Multiple mistakes, fell for the Blackburne Shilling trap',
+      F: '0–44: Walked into immediate material loss or checkmate threat',
+    },
+    gradeByAnswer: (ans) => {
+      const map: Record<string, 'A' | 'B' | 'C' | 'D' | 'F'> = { D: 'A', C: 'B', F: 'B', B: 'C' };
+      return map[ans] ?? 'F';
+    },
+  },
+  {
+    id: 'sacrifice',
+    title: 'Sacrifice Timing Challenge',
+    emoji: '⚔️',
+    description:
+      'Position (White to move):\nWhite has Rook on f1, Bishop on c4, Queen on d1.\nBlack\'s King is on g8, Rook on f8.\nWhite can play Rxf7 (Rook sacrifice) to open the f-file.\n\nIs this the right moment to sacrifice the Rook?',
+    prompt: 'When should White sacrifice the Rook on f7?',
+    options: [
+      { label: 'Yes – sacrifice immediately, the King is exposed and checkmate follows', value: 'immediate' },
+      { label: 'Yes – but only after Qh5 to add Queen pressure first', value: 'qh5_first' },
+      { label: 'No – the sacrifice doesn\'t lead to forced checkmate yet; develop another piece', value: 'develop' },
+      { label: 'No – trade Queens first to simplify', value: 'simplify' },
+    ],
+    correct: 'qh5_first',
+    rubric: {
+      A: '90–100: Identified Qh5 setup then Rxf7 for forced mate',
+      B: '75–89: Recognized sacrifice theme but timing slightly off',
+      C: '60–74: Understood sacrifice idea without precise sequence',
+      D: '45–59: Sacrificed without sufficient compensation',
+      F: '0–44: Missed the attacking idea entirely',
+    },
+    gradeByAnswer: (ans) => {
+      if (ans === 'qh5_first') return 'A';
+      if (ans === 'immediate') return 'C';
+      if (ans === 'develop') return 'D';
+      return 'F';
+    },
+  },
+  {
+    id: 'endgame',
+    title: 'Endgame King Activity',
+    emoji: '👑',
+    description:
+      'Endgame position: Both sides have only King and pawns.\nWhite King is on e1, Black King is on e8.\nWhite has pawns on d4 and f4.\nBlack has a pawn on d5.\n\nThe game principle: activate your King in the endgame!',
+    prompt: 'What is White\'s best first move in this King+Pawn endgame?',
+    options: [
+      { label: 'Ke2 – march the King toward the center immediately', value: 'ke2' },
+      { label: 'f5 – advance a pawn to create a passed pawn', value: 'f5' },
+      { label: 'd5 – capture Black\'s pawn immediately', value: 'dxd5' },
+      { label: 'Wait – don\'t rush, let Black move first', value: 'wait' },
+    ],
+    correct: 'ke2',
+    rubric: {
+      A: '90–100: King centralization – the golden endgame rule',
+      B: '75–89: Pawn advance idea is valid but King first is better',
+      C: '60–74: Pawn capture attempts but misses King activity principle',
+      D: '45–59: Passive play, doesn\'t understand King activity',
+      F: '0–44: Move makes the position worse',
+    },
+    gradeByAnswer: (ans) => {
+      if (ans === 'ke2') return 'A';
+      if (ans === 'f5') return 'B';
+      if (ans === 'dxd5') return 'C';
+      return 'D';
+    },
+  },
+  {
+    id: 'pawn',
+    title: 'Pawn Structure & Breaks',
+    emoji: '🔨',
+    description:
+      'Position: White has a pawn chain on c4-d4-e5.\nBlack has pawns on c5-d6-e6.\nWhite has all pieces developed. Black has just played ...d6.\n\nIdentify the correct pawn break for White.',
+    prompt: 'What is White\'s best pawn break to gain a strategic advantage?',
+    options: [
+      { label: 'f4-f5 – advance kingside pawns to open the f-file for attack', value: 'f4f5' },
+      { label: 'd4-d5 – close the center and grab space', value: 'd5' },
+      { label: 'c4xc5 – exchange pawns to open the c-file', value: 'cxc5' },
+      { label: 'e5xd6 – exchange pawns to relieve tension', value: 'exd6' },
+    ],
+    correct: 'f4f5',
+    rubric: {
+      A: '90–100: f4-f5 creates kingside attack and exploits space advantage',
+      B: '75–89: d5 grabs space but misses dynamic opportunity',
+      C: '60–74: Opening the c-file is reasonable but passive',
+      D: '45–59: Releasing tension voluntarily weakens White\'s position',
+      F: '0–44: Move worsens pawn structure',
+    },
+    gradeByAnswer: (ans) => {
+      if (ans === 'f4f5') return 'A';
+      if (ans === 'd5') return 'B';
+      if (ans === 'cxc5') return 'C';
+      return 'D';
+    },
+  },
+];
+
+const GRADE_COLORS: Record<string, string> = { A: '#39ff14', B: '#00ffff', C: '#ffea00', D: '#ff7700', F: '#ff007f' };
+const GRADE_LABELS: Record<string, string> = { A: 'EXCELLENT', B: 'GOOD', C: 'AVERAGE', D: 'POOR', F: 'FAILING' };
+
+function getLetterGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
+  if (score >= 90) return 'A';
+  if (score >= 75) return 'B';
+  if (score >= 60) return 'C';
+  if (score >= 45) return 'D';
+  return 'F';
+}
+
+// ─── COACHING ARENA COMPONENT ────────────────────────────────────────────────
+
+function CoachingArena({ onBack }: { onBack: () => void }) {
+  const [challengeIdx, setChallengeIdx] = useState<number | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [grade, setGrade] = useState<'A' | 'B' | 'C' | 'D' | 'F' | null>(null);
+  const [completedGrades, setCompletedGrades] = useState<Record<ChallengeId, 'A' | 'B' | 'C' | 'D' | 'F' | null>>({ opening: null, sacrifice: null, endgame: null, pawn: null });
+
+  const challenge = challengeIdx !== null ? COACHING_CHALLENGES[challengeIdx] : null;
+
+  const handleSubmit = () => {
+    if (!selectedAnswer || !challenge) return;
+    const result = challenge.gradeByAnswer(selectedAnswer);
+    setGrade(result);
+    setCompletedGrades(prev => ({ ...prev, [challenge.id]: result }));
+  };
+
+  const handleNext = () => {
+    if (challengeIdx !== null && challengeIdx < COACHING_CHALLENGES.length - 1) {
+      setChallengeIdx(challengeIdx + 1);
+    } else {
+      setChallengeIdx(null);
+    }
+    setSelectedAnswer(null);
+    setGrade(null);
+  };
+
+  const totalCompleted = Object.values(completedGrades).filter(Boolean).length;
+  const gradeScore = (g: 'A' | 'B' | 'C' | 'D' | 'F') => ({ A: 95, B: 82, C: 67, D: 52, F: 25 })[g] ?? 0;
+  const avgScore = totalCompleted > 0 ? Math.round(Object.values(completedGrades).filter(Boolean).reduce((sum, g) => sum + gradeScore(g as any), 0) / totalCompleted) : null;
+  const overallGrade = avgScore !== null ? getLetterGrade(avgScore) : null;
+
+  const s: React.CSSProperties = {
+    width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+    padding: 'clamp(1rem, 2vw, 2.5rem)', boxSizing: 'border-box', overflowY: 'auto',
+  };
+
+  // Challenge detail view
+  if (challenge) {
+    return (
+      <div style={s}>
+        <div style={{ width: '100%', maxWidth: '780px', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ color: '#00ffff', fontSize: 'clamp(1.4rem, 2.5vw, 2.2rem)', fontWeight: 900, margin: 0 }}>
+              {challenge.emoji} {challenge.title}
+            </h2>
+            <button onClick={() => { setChallengeIdx(null); setSelectedAnswer(null); setGrade(null); }}
+              style={{ color: '#aaa', backgroundColor: '#111', border: '2px solid #444', padding: '0.4rem 0.8rem', borderRadius: '10px', cursor: 'pointer', fontSize: '0.9rem', fontFamily: 'Comic Sans MS, sans-serif' }}>
+              ← Back
+            </button>
+          </div>
+
+          <div style={{ backgroundColor: '#0a001a', border: '3px solid #00ffff', borderRadius: '18px', padding: '1.2rem' }}>
+            <p style={{ color: '#ddd', fontSize: 'clamp(0.9rem, 1.4vw, 1.1rem)', whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.6 }}>{challenge.description}</p>
+          </div>
+
+          <p style={{ color: '#ffea00', fontWeight: 900, fontSize: 'clamp(1rem, 1.6vw, 1.3rem)', margin: 0 }}>{challenge.prompt}</p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {challenge.options.map(opt => {
+              const isSelected = selectedAnswer === opt.value;
+              const isCorrect = grade !== null && opt.value === challenge.correct;
+              const isWrong = grade !== null && isSelected && opt.value !== challenge.correct;
+              return (
+                <button key={opt.value} onClick={() => !grade && setSelectedAnswer(opt.value)}
+                  disabled={!!grade}
+                  style={{
+                    textAlign: 'left', padding: '0.8rem 1.2rem', borderRadius: '14px', cursor: grade ? 'default' : 'pointer',
+                    border: isCorrect ? '3px solid #39ff14' : (isWrong ? '3px solid #ff007f' : (isSelected ? '3px solid #ffea00' : '3px solid #333')),
+                    backgroundColor: isCorrect ? 'rgba(57,255,20,0.15)' : (isWrong ? 'rgba(255,0,127,0.15)' : (isSelected ? 'rgba(255,234,0,0.1)' : '#111')),
+                    color: isCorrect ? '#39ff14' : (isWrong ? '#ff007f' : (isSelected ? '#ffea00' : '#ddd')),
+                    fontFamily: 'Comic Sans MS, sans-serif', fontSize: 'clamp(0.85rem, 1.3vw, 1rem)', fontWeight: isSelected ? 900 : 600,
+                    transition: 'border 0.2s, background 0.2s',
+                  }}>
+                  {isCorrect ? '✅ ' : isWrong ? '❌ ' : ''}{opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {!grade && (
+            <button onClick={handleSubmit} disabled={!selectedAnswer}
+              style={{ width: '100%', backgroundColor: selectedAnswer ? '#39ff14' : '#333', color: '#000', fontSize: '1.1rem', fontWeight: 900, padding: '0.8rem', borderRadius: '18px', border: 'none', cursor: selectedAnswer ? 'pointer' : 'not-allowed', fontFamily: 'Comic Sans MS, sans-serif', opacity: selectedAnswer ? 1 : 0.5 }}>
+              SUBMIT ASSESSMENT
+            </button>
+          )}
+
+          {grade && (
+            <div style={{ backgroundColor: '#0a001a', border: `4px solid ${GRADE_COLORS[grade]}`, borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <span style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', fontWeight: 900, color: GRADE_COLORS[grade], textShadow: `0 0 20px ${GRADE_COLORS[grade]}` }}>{grade}</span>
+                <div>
+                  <div style={{ color: GRADE_COLORS[grade], fontWeight: 900, fontSize: 'clamp(1.2rem, 2vw, 1.6rem)' }}>{GRADE_LABELS[grade]}</div>
+                  <div style={{ color: '#aaa', fontSize: '0.9rem' }}>Score: ~{gradeScore(grade)}/100</div>
+                </div>
+              </div>
+              <div style={{ borderTop: '2px solid rgba(255,255,255,0.1)', paddingTop: '0.8rem' }}>
+                <p style={{ color: '#ddd', fontWeight: 900, margin: '0 0 0.5rem', fontSize: '0.9rem' }}>GRADING RUBRIC:</p>
+                {Object.entries(challenge.rubric).map(([g, text]) => (
+                  <p key={g} style={{ margin: '0.2rem 0', color: g === grade ? GRADE_COLORS[g] : '#666', fontSize: '0.85rem', fontWeight: g === grade ? 900 : 400 }}>
+                    <span style={{ fontWeight: 900 }}>{g}:</span> {text}
+                  </p>
+                ))}
+              </div>
+              <button onClick={handleNext}
+                style={{ width: '100%', backgroundColor: '#00ffff', color: '#000', fontSize: '1.1rem', fontWeight: 900, padding: '0.7rem', borderRadius: '14px', border: 'none', cursor: 'pointer', fontFamily: 'Comic Sans MS, sans-serif' }}>
+                {challengeIdx < COACHING_CHALLENGES.length - 1 ? '⏭ NEXT CHALLENGE' : '🏆 VIEW RESULTS'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Challenge list view
+  return (
+    <div style={s}>
+      <div style={{ width: '100%', maxWidth: '780px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{ color: '#ffea00', fontSize: 'clamp(1.6rem, 3vw, 2.8rem)', fontWeight: 900, margin: 0 }}>🎓 COACHING ARENA</h1>
+          <button onClick={onBack}
+            style={{ color: '#aaa', backgroundColor: '#111', border: '2px solid #444', padding: '0.4rem 0.8rem', borderRadius: '10px', cursor: 'pointer', fontSize: '0.9rem', fontFamily: 'Comic Sans MS, sans-serif' }}>
+            ← League
+          </button>
+        </div>
+
+        {overallGrade && (
+          <div style={{ backgroundColor: '#0a001a', border: `4px solid ${GRADE_COLORS[overallGrade]}`, borderRadius: '20px', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <span style={{ fontSize: '3rem', fontWeight: 900, color: GRADE_COLORS[overallGrade] }}>{overallGrade}</span>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 900, fontSize: '1.1rem' }}>Overall Grade: {GRADE_LABELS[overallGrade]}</div>
+              <div style={{ color: '#aaa', fontSize: '0.85rem' }}>{totalCompleted}/{COACHING_CHALLENGES.length} challenges completed · avg score {avgScore}/100</div>
+            </div>
+          </div>
+        )}
+
+        <p style={{ color: '#aaa', margin: 0, fontSize: '0.95rem' }}>Complete each challenge to earn your letter grade. Chester grades your chess understanding A–F.</p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+          {COACHING_CHALLENGES.map((ch, idx) => {
+            const earned = completedGrades[ch.id];
+            return (
+              <button key={ch.id} onClick={() => { setChallengeIdx(idx); setSelectedAnswer(null); setGrade(null); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'left',
+                  backgroundColor: '#111', border: `3px solid ${earned ? GRADE_COLORS[earned] : '#333'}`,
+                  borderRadius: '18px', padding: '1rem 1.2rem', cursor: 'pointer',
+                  fontFamily: 'Comic Sans MS, sans-serif', transition: 'border 0.2s',
+                }}>
+                <span style={{ fontSize: '2rem' }}>{ch.emoji}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#fff', fontWeight: 900, fontSize: 'clamp(0.9rem, 1.4vw, 1.1rem)' }}>{ch.title}</div>
+                  <div style={{ color: '#aaa', fontSize: '0.82rem', marginTop: '0.2rem' }}>{ch.description.split('\n')[0]}</div>
+                </div>
+                {earned ? (
+                  <span style={{ fontSize: '1.8rem', fontWeight: 900, color: GRADE_COLORS[earned] }}>{earned}</span>
+                ) : (
+                  <span style={{ color: '#555', fontSize: '0.85rem' }}>START →</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
+
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
@@ -49,6 +361,17 @@ export default function Home() {
   
   const [leagueView, setLeagueView] = useState<'STANDINGS' | 'MATCHUPS' | '2V2' | 'PLAYOFFS'>('STANDINGS');
   const [demoActiveUI, setDemoActiveUI] = useState(false); 
+
+  // Mobile: toggle between board and Chester panel
+  const [mobileView, setMobileView] = useState<'BOARD' | 'CHESTER'>('BOARD');
+  const [isWide, setIsWide] = useState(true);
+
+  useEffect(() => {
+    const check = () => setIsWide(window.innerWidth >= 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -73,13 +396,8 @@ export default function Home() {
   useEffect(() => {
     if (scene !== 'GAME') return;
     
-    const handleBanter = (e: any) => {
-      setHostBanter(e.detail);
-    };
-
-    const handleDemoComplete = () => {
-      setDemoActiveUI(false);
-    };
+    const handleBanter = (e: any) => { setHostBanter(e.detail); };
+    const handleDemoComplete = () => { setDemoActiveUI(false); };
 
     window.addEventListener('dojo-banter', handleBanter);
     window.addEventListener('demo-complete', handleDemoComplete);
@@ -95,6 +413,7 @@ export default function Home() {
     setActiveMatchup(matchTitle);
     setGameMode(mode);
     setScene('GAME');
+    setMobileView('BOARD');
     
     setTimeout(() => {
       setHostBanter(`⚡ ARENA LOCKED: ${matchTitle}\n\nClick the INITIATE button below to start the live simulation.`);
@@ -167,14 +486,15 @@ export default function Home() {
 
       {scene === 'LEAGUE' && (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'clamp(1rem, 2vw, 2.5rem)', position: 'relative', boxSizing: 'border-box' }}>
-          <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
+          <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0, flexWrap: 'wrap', gap: '0.6rem' }}>
             <div>
               <h1 style={{ fontSize: 'clamp(2rem, 3.8vw, 4rem)', color: '#ffea00', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 25px rgba(255,234,0,0.8)', margin: 0 }}>CONCORD HIGH CHESS LEAGUE</h1>
             </div>
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button onClick={() => setLeagueView('STANDINGS')} style={{ backgroundColor: leagueView === 'STANDINGS' ? '#00ffff' : '#111', color: leagueView === 'STANDINGS' ? '#000' : '#fff', border: '4px solid #00ffff', padding: '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>TABLE</button>
-              <button onClick={() => setLeagueView('MATCHUPS')} style={{ backgroundColor: leagueView === 'MATCHUPS' ? '#ffea00' : '#111', color: leagueView === 'MATCHUPS' ? '#000' : '#fff', border: '4px solid #ffea00', padding: '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>WEEK 11 DEMO</button>
-              <button onClick={() => setLeagueView('2V2')} style={{ backgroundColor: leagueView === '2V2' ? '#39ff14' : '#111', color: leagueView === '2V2' ? '#000' : '#fff', border: '4px solid #39ff14', padding: '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>2v2 TAG-TEAM</button>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button onClick={() => setLeagueView('STANDINGS')} style={{ backgroundColor: leagueView === 'STANDINGS' ? '#00ffff' : '#111', color: leagueView === 'STANDINGS' ? '#000' : '#fff', border: '4px solid #00ffff', padding: '0.5rem 1rem', borderRadius: '15px', fontWeight: 900, fontSize: 'clamp(0.75rem, 1.1vw, 1rem)', cursor: 'pointer' }}>TABLE</button>
+              <button onClick={() => setLeagueView('MATCHUPS')} style={{ backgroundColor: leagueView === 'MATCHUPS' ? '#ffea00' : '#111', color: leagueView === 'MATCHUPS' ? '#000' : '#fff', border: '4px solid #ffea00', padding: '0.5rem 1rem', borderRadius: '15px', fontWeight: 900, fontSize: 'clamp(0.75rem, 1.1vw, 1rem)', cursor: 'pointer' }}>WEEK 11 DEMO</button>
+              <button onClick={() => setLeagueView('2V2')} style={{ backgroundColor: leagueView === '2V2' ? '#39ff14' : '#111', color: leagueView === '2V2' ? '#000' : '#fff', border: '4px solid #39ff14', padding: '0.5rem 1rem', borderRadius: '15px', fontWeight: 900, fontSize: 'clamp(0.75rem, 1.1vw, 1rem)', cursor: 'pointer' }}>2v2 TAG-TEAM</button>
+              <button onClick={() => setScene('COACHING')} style={{ backgroundColor: '#ff007f', color: '#fff', border: '4px solid #ff007f', padding: '0.5rem 1rem', borderRadius: '15px', fontWeight: 900, fontSize: 'clamp(0.75rem, 1.1vw, 1rem)', cursor: 'pointer' }}>🎓 COACHING</button>
             </div>
           </div>
           
@@ -245,64 +565,119 @@ export default function Home() {
         </div>
       )}
 
+      {scene === 'COACHING' && (
+        <div style={{ width: '100%', height: '100%', overflow: 'auto', backgroundColor: '#0a0014' }}>
+          <CoachingArena onBack={() => setScene('LEAGUE')} />
+        </div>
+      )}
+
       {scene === 'GAME' && (
-        <div style={{ width: '100vw', height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(1rem, 2vw, 2rem)', gap: 'clamp(1rem, 2vw, 3rem)', backgroundColor: '#0a0014', boxSizing: 'border-box' }}>
+        <div style={{ width: '100vw', height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0014', boxSizing: 'border-box', position: 'relative' }}>
           
-          <div style={{ position: 'absolute', top: '1rem', left: '1rem', backgroundColor: '#000', border: '4px solid #00ffff', padding: '0.5rem 1rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 50 }}>
-             <span style={{ fontSize: 'clamp(0.8rem, 1.2vw, 1.2rem)', color: '#fff', fontWeight: 900 }}>MATCH:</span>
-             <span style={{ fontSize: 'clamp(0.9rem, 1.3vw, 1.4rem)', color: '#ffea00', fontWeight: 900 }}>{activeMatchup}</span>
+          {/* Match label */}
+          <div style={{ position: 'absolute', top: '0.6rem', left: '0.6rem', backgroundColor: '#000', border: '3px solid #00ffff', padding: '0.4rem 0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.6rem', zIndex: 50 }}>
+             <span style={{ fontSize: 'clamp(0.7rem, 1.1vw, 1rem)', color: '#fff', fontWeight: 900 }}>MATCH:</span>
+             <span style={{ fontSize: 'clamp(0.8rem, 1.2vw, 1.2rem)', color: '#ffea00', fontWeight: 900 }}>{activeMatchup}</span>
           </div>
 
-          <div style={{ width: drawerOpen ? '50%' : '100%', height: '100%', maxHeight: '95dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'width 0.3s', boxSizing: 'border-box' }}>
-             <div style={{ height: '100%', aspectRatio: '1/1', backgroundColor: '#1a0033', border: 'clamp(8px, 1.5vw, 20px) solid #00ffff', borderRadius: '40px', padding: '1rem', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 60px rgba(0,255,255,0.3)', boxSizing: 'border-box' }}>
-                <div id="phaser-game-container" style={{ width: '100%', height: '100%', borderRadius: '20px', overflow: 'hidden' }}>
-                   <DojoEngineNoSSR mode={gameMode} />
-                </div>
-             </div>
+          {/* Mobile toggle button */}
+          <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem', zIndex: 50, display: 'flex', gap: '0.4rem' }}>
+            <button onClick={() => setMobileView('BOARD')}
+              style={{ backgroundColor: mobileView === 'BOARD' ? '#00ffff' : '#111', color: mobileView === 'BOARD' ? '#000' : '#aaa', border: '2px solid #00ffff', padding: '0.35rem 0.7rem', borderRadius: '10px', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Comic Sans MS, sans-serif' }}>
+              ♟ BOARD
+            </button>
+            <button onClick={() => setMobileView('CHESTER')}
+              style={{ backgroundColor: mobileView === 'CHESTER' ? '#ffea00' : '#111', color: mobileView === 'CHESTER' ? '#000' : '#aaa', border: '2px solid #ffea00', padding: '0.35rem 0.7rem', borderRadius: '10px', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Comic Sans MS, sans-serif' }}>
+              🎙 CHESTER
+            </button>
           </div>
 
-          {drawerOpen && (
-            <div style={{ width: '50%', height: '100%', maxHeight: '95dvh', backgroundColor: '#000', border: 'clamp(8px, 1.5vw, 16px) solid #ffea00', borderRadius: '40px', padding: 'clamp(1.5rem, 3vw, 3rem)', display: 'flex', flexDirection: 'column', boxShadow: '0 0 80px rgba(255,234,0,0.3)', boxSizing: 'border-box' }}>
-              <div style={{ borderBottom: 'clamp(6px, 1vw, 12px) solid rgba(255,234,0,0.4)', paddingBottom: '1.2rem', marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <h2 style={{ color: '#ffea00', fontSize: 'clamp(1.8rem, 2.5vw, 3.5rem)', fontWeight: 900, lineHeight: 1, margin: 0 }}>CHESTER // LIVE COMMS</h2>
-                <button onClick={() => setScene('LEAGUE')} style={{ color: '#ffea00', fontSize: 'clamp(1.2rem, 1.8vw, 2.5rem)', fontWeight: 900, backgroundColor: '#000', border: 'clamp(3px, 0.4vw, 6px) solid #ffea00', padding: '0.4rem 0.8rem', borderRadius: '15px', cursor: 'pointer' }}>✖</button>
-              </div>
+          {/* Desktop: side-by-side. Mobile: toggled view */}
+          <div style={{ width: '100%', height: '100%', maxHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'clamp(0.5rem, 1.5vw, 2rem)', padding: 'clamp(0.8rem, 1.5vw, 1.5rem)', paddingTop: 'clamp(2.5rem, 5vw, 3.5rem)', boxSizing: 'border-box' }}>
 
-              <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', display: 'flex', flexDirection: 'column' }}>
-                <p style={{ color: '#00ffff', fontSize: 'clamp(1.3rem, 2.2vw, 3rem)', fontWeight: 900, lineHeight: 1.4, marginBottom: '1.5rem', textShadow: '0 0 10px rgba(0,255,255,0.5)', margin: 0, whiteSpace: 'pre-wrap' }}>
-                  {hostBanter}
-                </p>
-                {isThinking && (
-                  <p style={{ color: '#ffea00', fontSize: 'clamp(1rem, 1.6vw, 2rem)', fontWeight: 900, backgroundColor: '#111', padding: '1rem', border: '4px solid #ffea00', borderRadius: '15px', display: 'inline-block', width: 'max-content', marginTop: '0.8rem' }}>Chester analyzing tactics...</p>
-                )}
-              </div>
-
-              <div style={{ borderTop: 'clamp(6px, 1vw, 12px) solid rgba(255,234,0,0.4)', paddingTop: '1.2rem', marginTop: '1.2rem', flexShrink: 0 }}>
-                
-                {!demoActiveUI && (
-                  <button onClick={startAiDemo} style={{ width: '100%', backgroundColor: '#39ff14', color: '#000', fontSize: 'clamp(1.2rem, 1.8vw, 2.5rem)', fontWeight: 900, padding: 'clamp(1rem, 2vw, 2.5rem)', borderRadius: '25px', border: 'clamp(4px, 0.8vw, 8px) solid #000', cursor: 'pointer', textTransform: 'uppercase', marginBottom: '1rem', boxShadow: '0 0 30px rgba(57,255,20,0.5)' }}>
-                    🚀 INITIATE GEMINI AI MATCHUP
-                  </button>
-                )}
-
-                <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.8rem', marginBottom: '1.2rem' }}>
-                  <input 
-                    type="text" 
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder={demoActiveUI ? "Sit back and watch the AI run..." : "Talk trash to the League..."} 
-                    disabled={isThinking || demoActiveUI}
-                    style={{ flex: 1, backgroundColor: '#111', border: 'clamp(4px, 0.8vw, 8px) solid #ffea00', padding: 'clamp(0.8rem, 1.5vw, 1.8rem)', fontSize: 'clamp(1rem, 1.6vw, 2.2rem)', fontWeight: 900, color: '#ffea00', borderRadius: '25px', boxSizing: 'border-box' }}
-                  />
-                  <button type="submit" disabled={demoActiveUI} style={{ backgroundColor: '#ffea00', color: '#000', fontSize: 'clamp(1rem, 1.6vw, 2.2rem)', fontWeight: 900, padding: '0 clamp(1.2rem, 2.5vw, 3rem)', borderRadius: '25px', border: 'clamp(4px, 0.8vw, 8px) solid #000', cursor: 'pointer', opacity: demoActiveUI ? 0.5 : 1 }}>SEND</button>
-                </form>
-                
-                <button onClick={() => setScene('LEAGUE')} style={{ width: '100%', backgroundColor: '#00ffff', color: '#000', fontSize: 'clamp(1rem, 1.4vw, 2rem)', fontWeight: 900, padding: 'clamp(0.8rem, 1.2vw, 1.6rem)', borderRadius: '25px', border: 'clamp(4px, 0.8vw, 8px) solid #000', cursor: 'pointer', textTransform: 'uppercase', boxSizing: 'border-box' }}>
-                  ⬅️ FLEE THE ARENA
-                </button>
-              </div>
+            {/* Board panel */}
+            <div style={{
+              flex: drawerOpen ? '0 0 auto' : '1 1 auto',
+              width: drawerOpen ? 'min(50vw, 50dvh)' : 'min(90vw, 90dvh)',
+              height: drawerOpen ? 'min(50vw, 90dvh)' : 'min(90vw, 90dvh)',
+              aspectRatio: '1/1',
+              backgroundColor: '#1a0033',
+              border: 'clamp(6px, 1.2vw, 16px) solid #00ffff',
+              borderRadius: '30px',
+              padding: '0.6rem',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 60px rgba(0,255,255,0.3)',
+              boxSizing: 'border-box',
+              // On small screens: hide board (via opacity) when CHESTER view active; Phaser stays mounted
+              opacity: (!isWide && drawerOpen && mobileView === 'CHESTER') ? 0 : 1,
+              pointerEvents: (!isWide && drawerOpen && mobileView === 'CHESTER') ? 'none' : 'auto',
+            }}>
+               <div id="phaser-game-container" style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden' }}>
+                  <DojoEngineNoSSR mode={gameMode} />
+               </div>
             </div>
-          )}
+
+            {/* Chester panel */}
+            {drawerOpen && (
+              <div style={{
+                flex: '1 1 0',
+                minWidth: '260px',
+                maxWidth: '480px',
+                height: '100%',
+                maxHeight: '90dvh',
+                backgroundColor: '#000',
+                border: 'clamp(6px, 1.2vw, 14px) solid #ffea00',
+                borderRadius: '30px',
+                padding: 'clamp(1rem, 2vw, 2rem)',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 0 80px rgba(255,234,0,0.3)',
+                boxSizing: 'border-box',
+                // On small screens: hide Chester panel when BOARD is active
+                opacity: (!isWide && mobileView === 'BOARD') ? 0 : 1,
+                pointerEvents: (!isWide && mobileView === 'BOARD') ? 'none' : 'auto',
+              }}>
+                <div style={{ borderBottom: 'clamp(4px, 0.8vw, 10px) solid rgba(255,234,0,0.4)', paddingBottom: '0.8rem', marginBottom: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                  <h2 style={{ color: '#ffea00', fontSize: 'clamp(1.2rem, 2vw, 2.5rem)', fontWeight: 900, lineHeight: 1, margin: 0 }}>CHESTER // LIVE COMMS</h2>
+                  <button onClick={() => setScene('LEAGUE')} style={{ color: '#ffea00', fontSize: 'clamp(1rem, 1.4vw, 1.8rem)', fontWeight: 900, backgroundColor: '#000', border: 'clamp(2px, 0.4vw, 5px) solid #ffea00', padding: '0.3rem 0.6rem', borderRadius: '12px', cursor: 'pointer' }}>✖</button>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column' }}>
+                  <p style={{ color: '#00ffff', fontSize: 'clamp(0.9rem, 1.6vw, 2rem)', fontWeight: 900, lineHeight: 1.4, textShadow: '0 0 10px rgba(0,255,255,0.5)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {hostBanter}
+                  </p>
+                  {isThinking && (
+                    <p style={{ color: '#ffea00', fontSize: 'clamp(0.85rem, 1.3vw, 1.6rem)', fontWeight: 900, backgroundColor: '#111', padding: '0.8rem', border: '3px solid #ffea00', borderRadius: '12px', display: 'inline-block', width: 'max-content', marginTop: '0.8rem' }}>Chester analyzing...</p>
+                  )}
+                </div>
+
+                <div style={{ borderTop: 'clamp(4px, 0.8vw, 10px) solid rgba(255,234,0,0.4)', paddingTop: '0.8rem', marginTop: '0.8rem', flexShrink: 0 }}>
+                  
+                  {!demoActiveUI && (
+                    <button onClick={startAiDemo} style={{ width: '100%', backgroundColor: '#39ff14', color: '#000', fontSize: 'clamp(0.9rem, 1.4vw, 1.8rem)', fontWeight: 900, padding: 'clamp(0.7rem, 1.5vw, 1.8rem)', borderRadius: '20px', border: 'clamp(3px, 0.6vw, 6px) solid #000', cursor: 'pointer', textTransform: 'uppercase', marginBottom: '0.8rem', boxShadow: '0 0 30px rgba(57,255,20,0.5)' }}>
+                      🚀 INITIATE GEMINI AI MATCHUP
+                    </button>
+                  )}
+
+                  <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                    <input 
+                      type="text" 
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder={demoActiveUI ? "AI running..." : "Talk trash to the League..."} 
+                      disabled={isThinking || demoActiveUI}
+                      style={{ flex: 1, backgroundColor: '#111', border: 'clamp(3px, 0.6vw, 6px) solid #ffea00', padding: 'clamp(0.5rem, 1vw, 1.2rem)', fontSize: 'clamp(0.8rem, 1.2vw, 1.6rem)', fontWeight: 900, color: '#ffea00', borderRadius: '18px', boxSizing: 'border-box' }}
+                    />
+                    <button type="submit" disabled={demoActiveUI} style={{ backgroundColor: '#ffea00', color: '#000', fontSize: 'clamp(0.8rem, 1.2vw, 1.6rem)', fontWeight: 900, padding: '0 clamp(0.8rem, 1.8vw, 2rem)', borderRadius: '18px', border: 'clamp(3px, 0.6vw, 6px) solid #000', cursor: 'pointer', opacity: demoActiveUI ? 0.5 : 1 }}>SEND</button>
+                  </form>
+                  
+                  <button onClick={() => setScene('LEAGUE')} style={{ width: '100%', backgroundColor: '#00ffff', color: '#000', fontSize: 'clamp(0.8rem, 1.1vw, 1.5rem)', fontWeight: 900, padding: 'clamp(0.5rem, 1vw, 1.2rem)', borderRadius: '18px', border: 'clamp(3px, 0.6vw, 6px) solid #000', cursor: 'pointer', textTransform: 'uppercase', boxSizing: 'border-box' }}>
+                    ⬅️ FLEE THE ARENA
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
