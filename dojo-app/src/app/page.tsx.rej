@@ -1,0 +1,12 @@
+--- src/app/page.tsx
++++ src/app/page.tsx
+@@ -829,7 +829,7 @@
+           </div>
+ 
+           {/* Board section */}
+           <div style={{ 
+-            width: arenaView === 'SPLIT' ? '58%' : '100%', 
+-            height: isPhonePortrait ? 'auto' : '100%', 
++            width: isLandscape ? '65%' : arenaView === 'SPLIT' ? '58%' : '100%', 
++            height: isPhonePortrait || isLandscape ? 'auto' : '100%', 
+             flex: isPhonePortrait ? '0 0 auto' : arenaView === 'SPLIT' ? '0 1 58%' : '1 1 100%',
