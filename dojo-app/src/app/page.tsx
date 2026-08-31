@@ -123,6 +123,55 @@ const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   b: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
 };
 
+const playShockSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.4, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+    
+    // ZAP oscillator (harsh drop in frequency)
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3);
+    
+    // Shock envelope
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0, ctx.currentTime);
+    oscGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.02);
+    oscGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(oscGain);
+    oscGain.connect(masterGain);
+    
+    // Static NOISE
+    const bufferSize = ctx.sampleRate * 0.3; 
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0, ctx.currentTime);
+    noiseGain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 0.02);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    noise.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    
+    osc.start();
+    noise.start();
+    osc.stop(ctx.currentTime + 0.3);
+    noise.stop(ctx.currentTime + 0.3);
+  } catch (e) {
+    console.error('Audio play failed', e);
+  }
+};
+
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   const [guestName, setGuestName] = useState('');
@@ -161,6 +210,7 @@ export default function Home() {
   const [isThinking, setIsThinking] = useState(false);
   const [hostBanter, setHostBanter] = useState("🎙️ CHESTER: Arena locked. This is where bad decisions meet their final judgment.");
   const [commentaryHistory, setCommentaryHistory] = useState<string[]>([]);
+  const [currentGameState, setCurrentGameState] = useState<any>(null);
   const [banterUpdated, setBanterUpdated] = useState(false);
   
   const [leagueView, setLeagueView] = useState<'STANDINGS' | 'MATCHUPS' | '2V2' | 'COACHING' | 'PLAYOFFS'>('COACHING');
@@ -258,6 +308,7 @@ export default function Home() {
   };
 
   const createRemoteChallenge = async () => {
+    playShockSound();
     peerRef.current?.destroy?.();
     const room = Math.random().toString(36).slice(2, 10);
     const { default: Peer } = await import('peerjs');
@@ -316,6 +367,8 @@ export default function Home() {
       const payload = typeof detail === 'string'
         ? { message: detail, context: `Matchup: ${activeMatchup || 'League demo'}`, ply: 0 }
         : detail || { message: 'Chester is live.', context: `Matchup: ${activeMatchup || 'League demo'}`, ply: 0 };
+        
+      setCurrentGameState((prev: any) => ({ ...prev, ...payload }));
 
       if (payload?.type === 'move') {
         if (payload.openingName) setOpeningName(payload.openingName);
@@ -530,6 +583,7 @@ export default function Home() {
     setIsThinking(true);
     try {
       const reply = await askGrandmaster(JSON.stringify({
+        ...currentGameState,
         message,
         type: 'chat',
         mode: gameMode,
@@ -861,7 +915,7 @@ export default function Home() {
             flex: isPhonePortrait ? '0 0 auto' : arenaView === 'SPLIT' ? '0 1 58%' : '1 1 100%',
             minHeight: 0,
             maxHeight: '100dvh', 
-            display: arenaView === 'CHESTER' ? 'none' : 'flex', 
+            display: 'flex', 
             alignItems: 'center', 
             justifyContent: isPhonePortrait ? 'flex-start' : 'center', 
             flexDirection: isPhonePortrait ? 'column' : 'row',
@@ -957,31 +1011,32 @@ export default function Home() {
           {/* Chester commentary panel */}
           {drawerOpen && arenaView !== 'BOARD' && (
             <div style={{ 
-              position: 'static',
-              width: arenaView === 'CHESTER' ? 'min(100%, 1100px)' : 'clamp(340px, 40vw, 540px)', 
+              position: (isMobile && arenaView === 'CHESTER') ? 'absolute' : 'static',
+              top: 0, left: 0, right: 0, bottom: 0,
+              width: (isMobile && arenaView === 'CHESTER') ? '100%' : (arenaView === 'CHESTER' ? 'min(100%, 1100px)' : 'clamp(340px, 40vw, 540px)'), 
               height: '100%', 
               flex: arenaView === 'CHESTER' ? '0 1 1100px' : '0 0 auto',
               minHeight: 0,
-              maxHeight: isMobile ? '100%' : '100dvh',
-              background: 'linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(255,234,0,0.03) 100%)',
+              maxHeight: '100dvh',
+              background: (isMobile && arenaView === 'CHESTER') ? 'rgba(5, 0, 10, 0.96)' : 'linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(255,234,0,0.03) 100%)',
               backdropFilter: 'blur(12px)',
-              border: isLandscape ? '2px solid #ffea00' : isMobile ? '6px solid #ffea00' : 'clamp(8px, 1.5vw, 16px) solid #ffea00', 
-              borderTop: isMobile ? '6px solid rgba(255,234,0,0.5)' : undefined,
+              border: isLandscape ? '2px solid #ffea00' : isMobile ? '4px solid #ffea00' : 'clamp(8px, 1.5vw, 16px) solid #ffea00', 
+              borderTop: isMobile ? '4px solid rgba(255,234,0,0.5)' : undefined,
               borderLeft: isMobile ? undefined : 'clamp(8px, 1.5vw, 16px) solid rgba(255,234,0,0.5)',
-              borderRadius: isLandscape ? '6px' : isMobile ? '24px' : '32px',
-              padding: isLandscape ? '0.55rem' : isPhonePortrait ? '1rem 1rem calc(5rem + env(safe-area-inset-bottom))' : isMobile ? '1rem' : 'clamp(1.5rem, 3vw, 3rem)', 
+              borderRadius: isLandscape ? '6px' : isMobile ? '12px' : '32px',
+              padding: isLandscape ? '0.55rem' : isPhonePortrait ? '1.5rem 1.2rem calc(5rem + env(safe-area-inset-bottom))' : isMobile ? '1rem' : 'clamp(1.5rem, 3vw, 3rem)', 
               display: 'flex', 
               flexDirection: 'column', 
               boxShadow: 'inset 0 0 60px rgba(255,234,0,0.15), 0 0 100px rgba(255,234,0,0.25)',
               boxSizing: 'border-box',
               overflowY: isPhonePortrait ? 'auto' : 'hidden',
-              zIndex: 20
+              zIndex: 100
             }}>
               {/* Header */}
               <div style={{ 
-                borderBottom: isMobile ? '4px solid rgba(255,234,0,0.3)' : 'clamp(6px, 1vw, 12px) solid rgba(255,234,0,0.3)', 
-                paddingBottom: isMobile ? '0.6rem' : '1.5rem', 
-                marginBottom: isMobile ? '0.6rem' : '1.5rem', 
+                borderBottom: isMobile ? '3px solid rgba(255,234,0,0.3)' : 'clamp(6px, 1vw, 12px) solid rgba(255,234,0,0.3)', 
+                paddingBottom: isMobile ? '0.8rem' : '1.5rem', 
+                marginBottom: isMobile ? '0.8rem' : '1.5rem', 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
@@ -989,7 +1044,7 @@ export default function Home() {
               }}>
                 <h2 style={{ 
                   color: '#ffea00', 
-                  fontSize: isLandscape ? '0.9rem' : isMobile ? '1.4rem' : 'clamp(1.4rem, 2vw, 2rem)', 
+                  fontSize: isLandscape ? '1.1rem' : isMobile ? '1.8rem' : 'clamp(1.4rem, 2vw, 2rem)', 
                   fontWeight: 900, 
                   lineHeight: 1, 
                   margin: 0, 
@@ -1002,10 +1057,10 @@ export default function Home() {
                   CHESTER
                 </h2>
                 <button 
-                  onClick={() => setScene('LEAGUE')} 
+                  onClick={() => isMobile ? setArenaView('BOARD') : setScene('LEAGUE')} 
                   style={{ 
                     color: '#ffea00', 
-                    fontSize: isMobile ? '1.2rem' : 'clamp(1.4rem, 2vw, 3rem)', 
+                    fontSize: isMobile ? '1.8rem' : 'clamp(1.4rem, 2vw, 3rem)', 
                     fontWeight: 900, 
                     backgroundColor: 'transparent', 
                     border: 'none',
@@ -1015,7 +1070,7 @@ export default function Home() {
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.15)')}
                   onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                >                  ✖
+                >                  {isMobile ? '🔽' : '✖'}
                 </button>
               </div>
 
@@ -1083,24 +1138,24 @@ export default function Home() {
                 paddingRight: '0.5rem', 
                 display: 'flex', 
                 flexDirection: 'column',
-                paddingBottom: isMobile ? '0.6rem' : '1.5rem'
+                paddingBottom: isMobile ? '0.8rem' : '1.5rem'
               }}>
                 {commentaryHistory.map((commentary, index) => {
                   const isLatest = index === commentaryHistory.length - 1;
-                  return <p key={`${index}-${commentary.slice(0, 20)}`} style={{ color: isLatest && banterUpdated ? '#00ffff' : '#fff', fontSize: isLandscape ? '0.58rem' : isMobile ? '0.82rem' : arenaView === 'CHESTER' ? 'clamp(1rem, 1.5vw, 1.3rem)' : 'clamp(0.78rem, 0.9vw, 1rem)', fontWeight: isLatest ? 900 : 600, lineHeight: 1.45, margin: '0 0 0.8rem', padding: isLatest ? '0.7rem' : '0.45rem 0.7rem', background: isLatest ? 'rgba(0,255,255,.07)' : 'rgba(255,255,255,.03)', borderLeft: `3px solid ${isLatest ? '#00ffff' : '#554466'}`, whiteSpace: 'pre-wrap', transition: 'all 0.4s ease' }}>{commentary}</p>;
+                  return <p key={`${index}-${commentary.slice(0, 20)}`} style={{ color: isLatest && banterUpdated ? '#00ffff' : '#fff', fontSize: isLandscape ? '0.75rem' : isMobile ? '1.1rem' : arenaView === 'CHESTER' ? 'clamp(1.1rem, 1.5vw, 1.4rem)' : 'clamp(0.85rem, 1vw, 1.1rem)', fontWeight: isLatest ? 900 : 600, lineHeight: 1.5, margin: '0 0 1rem', padding: isLatest ? '0.8rem' : '0.6rem 0.8rem', background: isLatest ? 'rgba(0,255,255,.07)' : 'rgba(255,255,255,.03)', borderLeft: `4px solid ${isLatest ? '#00ffff' : '#554466'}`, whiteSpace: 'pre-wrap', transition: 'all 0.4s ease' }}>{commentary}</p>;
                 })}
                 {isThinking && (
                   <div style={{ 
                     color: '#ffea00', 
-                    fontSize: isLandscape ? '0.55rem' : isMobile ? '0.75rem' : '0.9rem', 
+                    fontSize: isLandscape ? '0.7rem' : isMobile ? '1rem' : '1rem', 
                     fontWeight: 900, 
                     backgroundColor: 'rgba(255,234,0,0.1)', 
                     border: '3px solid #ffea00', 
-                    padding: isMobile ? '0.5rem 0.8rem' : '1.2rem 1.5rem', 
+                    padding: isMobile ? '0.8rem 1.2rem' : '1.2rem 1.5rem', 
                     borderRadius: '20px', 
                     display: 'inline-block', 
                     width: 'max-content', 
-                    marginTop: '0.8rem', 
+                    marginTop: '1rem', 
                     animation: 'pulse 1s infinite',
                     textShadow: '0 0 10px rgba(255,234,0,0.6)',
                     backdropFilter: 'blur(4px)'
@@ -1122,13 +1177,13 @@ export default function Home() {
               }}>
 
                 {gameMode === 'PVP_REMOTE' && (
-                  <div style={{ border: '1px solid #b8a2ff', padding: isLandscape ? '0.35rem' : '0.6rem', color: '#ddd', fontSize: isLandscape ? '0.52rem' : '0.72rem', background: 'rgba(184,162,255,.08)' }}>
-                    <b style={{ color: remoteRole === 'w' ? '#39ff14' : '#b8a2ff' }}>{remoteRole === 'w' ? 'YOU ARE GREEN (WHITE SIDE)' : 'YOU ARE BLACK'}</b><br/>{remoteStatus}
+                  <div style={{ border: '1px solid #b8a2ff', padding: isLandscape ? '0.35rem' : isMobile ? '1rem' : '0.6rem', color: '#ddd', fontSize: isLandscape ? '0.52rem' : isMobile ? '1rem' : '0.72rem', background: 'rgba(184,162,255,.08)' }}>
+                    <b style={{ color: remoteRole === 'w' ? '#39ff14' : '#b8a2ff', display: 'block', fontSize: isMobile ? '1.1rem' : 'inherit', marginBottom: '0.4rem' }}>{remoteRole === 'w' ? 'YOU ARE GREEN (WHITE SIDE)' : 'YOU ARE BLACK'}</b>{remoteStatus}
                     {remoteRole === 'w' && <>
-                      <input readOnly value={challengeUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Challenge URL" style={{ width: '100%', marginTop: '0.35rem', padding: '0.35rem', boxSizing: 'border-box', background: '#08050f', border: '1px solid #b8a2ff', color: '#fff', fontSize: 'inherit' }} />
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem', marginTop: '0.3rem' }}>
-                        <button onClick={copyChallengeLink} style={{ padding: '0.35rem', border: 0, background: '#b8a2ff', color: '#050008', fontWeight: 900, cursor: 'pointer' }}>COPY URL</button>
-                        <button onClick={shareChallengeLink} style={{ padding: '0.35rem', border: '1px solid #39ff14', background: '#081108', color: '#39ff14', fontWeight: 900, cursor: 'pointer' }}>SHARE LINK</button>
+                      <input readOnly value={challengeUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Challenge URL" style={{ width: '100%', marginTop: '0.75rem', padding: '0.6rem', boxSizing: 'border-box', background: '#08050f', border: '1px solid #b8a2ff', color: '#39ff14', fontSize: isMobile ? '1rem' : 'inherit', fontWeight: 900 }} />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button onClick={copyChallengeLink} style={{ padding: '0.6rem', border: 0, background: '#b8a2ff', color: '#050008', fontWeight: 900, cursor: 'pointer', fontSize: isMobile ? '1rem' : 'inherit' }}>COPY URL</button>
+                        <button onClick={shareChallengeLink} style={{ padding: '0.6rem', border: '1px solid #39ff14', background: '#081108', color: '#39ff14', fontWeight: 900, cursor: 'pointer', fontSize: isMobile ? '1rem' : 'inherit' }}>SHARE LINK</button>
                       </div>
                     </>}
                   </div>
@@ -1184,23 +1239,23 @@ export default function Home() {
                   </button>
                 )}
 
-                <section aria-label="Chat with Chester" style={{ border: '2px solid rgba(255,234,0,.5)', borderRadius: '6px', background: 'rgba(255,234,0,.04)', padding: isPhonePortrait ? '0.65rem' : '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#ffea00', fontSize: isPhonePortrait ? '0.78rem' : '0.62rem', fontWeight: 900, letterSpacing: '1px', marginBottom: '0.45rem' }}>
+                <section aria-label="Chat with Chester" style={{ border: '2px solid rgba(255,234,0,.5)', borderRadius: '6px', background: 'rgba(255,234,0,.04)', padding: isPhonePortrait ? '1rem' : '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#ffea00', fontSize: isPhonePortrait ? '0.9rem' : '0.62rem', fontWeight: 900, letterSpacing: '1px', marginBottom: '0.6rem' }}>
                     <span>ASK CHESTER</span>
-                    <span style={{ color: isThinking ? '#ffea00' : '#39ff14', fontSize: '.85em' }}>{isThinking ? 'ANALYZING...' : 'AI ONLINE'}</span>
+                    <span style={{ color: isThinking ? '#ffea00' : '#39ff14', fontSize: '.95em' }}>{isThinking ? 'ANALYZING...' : 'AI ONLINE'}</span>
                   </div>
                   {chatMessages.length > 0 && (
-                    <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', maxHeight: isPhonePortrait ? '34dvh' : '180px', overflowY: 'auto', padding: '0.25rem 0', marginBottom: '0.5rem' }}>
+                    <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: isPhonePortrait ? '30dvh' : '180px', overflowY: 'auto', padding: '0.25rem 0', marginBottom: '0.8rem' }}>
                       {chatMessages.map((message, index) => (
-                        <div key={`${message.role}-${index}`} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '0.55rem 0.65rem', borderRadius: '6px', background: message.role === 'user' ? '#0b5360' : '#211d00', border: `1px solid ${message.role === 'user' ? '#00ffff' : '#ffea00'}`, color: '#fff', fontSize: isPhonePortrait ? '0.9rem' : '0.72rem', lineHeight: 1.45 }}>
-                          <b style={{ display: 'block', color: message.role === 'user' ? '#8effff' : '#ffea00', fontSize: '.75em', marginBottom: '0.18rem' }}>{message.role === 'user' ? 'YOU' : 'CHESTER'}</b>
+                        <div key={`${message.role}-${index}`} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '0.8rem 1rem', borderRadius: '8px', background: message.role === 'user' ? '#0b5360' : '#211d00', border: `1px solid ${message.role === 'user' ? '#00ffff' : '#ffea00'}`, color: '#fff', fontSize: isPhonePortrait ? '1.05rem' : '0.72rem', lineHeight: 1.5 }}>
+                          <b style={{ display: 'block', color: message.role === 'user' ? '#8effff' : '#ffea00', fontSize: '.85em', marginBottom: '0.25rem' }}>{message.role === 'user' ? 'YOU' : 'CHESTER'}</b>
                           {message.text}
                         </div>
                       ))}
                     </div>
                   )}
-                  {chatError && <div role="alert" style={{ color: '#ff9acb', fontSize: '0.72rem', marginBottom: '0.4rem' }}>{chatError}</div>}
-                  <form onSubmit={handleSendMessage} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.45rem', alignItems: 'stretch' }}>
+                  {chatError && <div role="alert" style={{ color: '#ff9acb', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{chatError}</div>}
+                  <form onSubmit={handleSendMessage} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'stretch' }}>
                     <textarea
                       value={chatInput}
                       onChange={(event) => setChatInput(event.target.value.slice(0, 500))}
@@ -1213,14 +1268,38 @@ export default function Home() {
                       placeholder="Ask about this position, your plan, or your last move..."
                       aria-label="Message Chester"
                       disabled={isThinking}
-                      rows={isPhonePortrait ? 3 : 2}
-                      style={{ minWidth: 0, resize: 'none', backgroundColor: '#070509', border: '2px solid #ffea00', padding: isPhonePortrait ? '0.7rem' : '0.5rem', fontSize: isPhonePortrait ? '1rem' : '0.78rem', lineHeight: 1.35, color: '#fff', borderRadius: '5px', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                      rows={isPhonePortrait ? 4 : 2}
+                      style={{ minWidth: 0, resize: 'none', backgroundColor: '#070509', border: '2px solid #ffea00', padding: isPhonePortrait ? '0.9rem' : '0.5rem', fontSize: isPhonePortrait ? '1.1rem' : '0.78rem', lineHeight: 1.35, color: '#fff', borderRadius: '5px', boxSizing: 'border-box', fontFamily: 'inherit' }}
                     />
-                    <button type="submit" title="Send message" aria-label="Send message to Chester" disabled={isThinking || !chatInput.trim()} style={{ minWidth: isPhonePortrait ? '54px' : '48px', backgroundColor: '#ffea00', color: '#000', fontSize: isPhonePortrait ? '1.35rem' : '1rem', fontWeight: 900, borderRadius: '5px', border: '2px solid #000', cursor: isThinking || !chatInput.trim() ? 'not-allowed' : 'pointer', opacity: isThinking || !chatInput.trim() ? 0.45 : 1 }}>↑</button>
+                    <button type="submit" title="Send message" aria-label="Send message to Chester" disabled={isThinking || !chatInput.trim()} style={{ minWidth: isPhonePortrait ? '64px' : '48px', backgroundColor: '#ffea00', color: '#000', fontSize: isPhonePortrait ? '1.6rem' : '1rem', fontWeight: 900, borderRadius: '5px', border: '2px solid #000', cursor: isThinking || !chatInput.trim() ? 'not-allowed' : 'pointer', opacity: isThinking || !chatInput.trim() ? 0.45 : 1 }}>↑</button>
                   </form>
-                  <div style={{ color: '#8b969a', fontSize: isPhonePortrait ? '0.62rem' : '0.52rem', marginTop: '0.35rem' }}>Enter to send · Shift+Enter for a new line · {chatInput.length}/500</div>
+                  <div style={{ color: '#8b969a', fontSize: isPhonePortrait ? '0.75rem' : '0.52rem', marginTop: '0.45rem' }}>Enter to send · Shift+Enter for a new line · {chatInput.length}/500</div>
                 </section>
                 
+                {isMobile && (
+                  <button 
+                    onClick={() => setArenaView('BOARD')} 
+                    style={{ 
+                      width: '100%', 
+                      backgroundColor: 'rgba(255,234,0,0.15)', 
+                      color: '#ffea00', 
+                      fontSize: '1rem', 
+                      fontWeight: 900, 
+                      padding: '0.8rem', 
+                      borderRadius: '8px', 
+                      border: '2px solid #ffea00', 
+                      cursor: 'pointer', 
+                      textTransform: 'uppercase', 
+                      boxSizing: 'border-box',
+                      marginBottom: '0.5rem',
+                      backdropFilter: 'blur(4px)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    ♟ BACK TO BOARD
+                  </button>
+                )}
+
                 <button 
                   onClick={() => setScene('LEAGUE')} 
                   style={{ 
