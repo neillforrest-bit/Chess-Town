@@ -70,7 +70,10 @@ const COACHING_CHALLENGES: Challenge[] = [
       D: '45–59: Multiple mistakes, fell for the Blackburne Shilling trap',
       F: '0–44: Walked into immediate material loss or checkmate threat',
     },
-    gradeByAnswer: (ans) => ans === 'D' ? 'A' : (ans === 'C' ? 'B' : (ans === 'F' ? 'B' : (ans === 'B' ? 'C' : 'F'))),
+    gradeByAnswer: (ans) => {
+      const map: Record<string, 'A' | 'B' | 'C' | 'D' | 'F'> = { D: 'A', C: 'B', F: 'B', B: 'C' };
+      return map[ans] ?? 'F';
+    },
   },
   {
     id: 'sacrifice',
@@ -361,6 +364,14 @@ export default function Home() {
 
   // Mobile: toggle between board and Chester panel
   const [mobileView, setMobileView] = useState<'BOARD' | 'CHESTER'>('BOARD');
+  const [isWide, setIsWide] = useState(true);
+
+  useEffect(() => {
+    const check = () => setIsWide(window.innerWidth >= 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -597,9 +608,9 @@ export default function Home() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 0 60px rgba(0,255,255,0.3)',
               boxSizing: 'border-box',
-              // On small screens: hide board when CHESTER view active
-              visibility: (mobileView === 'CHESTER' && drawerOpen) ? 'hidden' : 'visible',
-              position: (mobileView === 'CHESTER' && drawerOpen) ? 'absolute' : 'relative',
+              // On small screens: hide board (via opacity) when CHESTER view active; Phaser stays mounted
+              opacity: (!isWide && drawerOpen && mobileView === 'CHESTER') ? 0 : 1,
+              pointerEvents: (!isWide && drawerOpen && mobileView === 'CHESTER') ? 'none' : 'auto',
             }}>
                <div id="phaser-game-container" style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden' }}>
                   <DojoEngineNoSSR mode={gameMode} />
@@ -618,13 +629,13 @@ export default function Home() {
                 border: 'clamp(6px, 1.2vw, 14px) solid #ffea00',
                 borderRadius: '30px',
                 padding: 'clamp(1rem, 2vw, 2rem)',
-                display: mobileView === 'CHESTER' ? 'flex' : 'flex',
+                display: 'flex',
                 flexDirection: 'column',
                 boxShadow: '0 0 80px rgba(255,234,0,0.3)',
                 boxSizing: 'border-box',
-                // On small screens: only show when CHESTER toggled
-                opacity: mobileView === 'CHESTER' || window.innerWidth >= 640 ? 1 : 0,
-                pointerEvents: mobileView === 'CHESTER' || window.innerWidth >= 640 ? 'auto' : 'none',
+                // On small screens: hide Chester panel when BOARD is active
+                opacity: (!isWide && mobileView === 'BOARD') ? 0 : 1,
+                pointerEvents: (!isWide && mobileView === 'BOARD') ? 'none' : 'auto',
               }}>
                 <div style={{ borderBottom: 'clamp(4px, 0.8vw, 10px) solid rgba(255,234,0,0.4)', paddingBottom: '0.8rem', marginBottom: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                   <h2 style={{ color: '#ffea00', fontSize: 'clamp(1.2rem, 2vw, 2.5rem)', fontWeight: 900, lineHeight: 1, margin: 0 }}>CHESTER // LIVE COMMS</h2>
