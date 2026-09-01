@@ -1014,18 +1014,49 @@ export default function Home() {
                     isMobile={isMobile}
                  />
 
-                 <aside aria-label="Captured pieces" style={{ width: '100%', flex: 1, minHeight: isPhonePortrait ? '70px' : '110px', overflowY: 'auto', background: 'rgba(0,0,0,.9)', border: '2px solid #00ffff', borderRadius: '6px', padding: isPhonePortrait ? '0.4rem' : isLandscape ? '0.4rem' : '0.45rem', boxShadow: '0 0 24px rgba(0,255,255,.3)', boxSizing: 'border-box' }}>
-                   <div style={{ color: '#00ffff', fontSize: isPhonePortrait ? '0.6rem' : isLandscape ? '0.45rem' : '0.5rem', fontWeight: 900, letterSpacing: '.5px', textAlign: 'center', marginBottom: '0.35rem' }}>TAKEN PIECES</div>
-                   {capturedPieces.length === 0 ? (
-                     <div style={{ color: '#77858a', fontSize: '0.5rem', lineHeight: 1.25, textAlign: 'center' }}>NONE</div>
-                   ) : (
-                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(32px, 1fr))', gap: '0.2rem', justifyItems: 'center' }}>
-                       {capturedPieces.map((piece, index) => (
-                         <span key={`${piece.color}-${piece.type}-${index}`} title={`${piece.color === 'w' ? 'White' : 'Black'} piece captured`} style={{ color: piece.color === 'w' ? '#dfffda' : '#ff4eb1', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.5rem' : isLandscape ? '1.35rem' : '1.35rem', lineHeight: 1, textShadow: `0 0 10px ${piece.color === 'w' ? '#39ff14' : '#ff007f'}` }}>{PIECE_GLYPHS[piece.color][piece.type]}</span>
-                       ))}
-                     </div>
-                   )}
-                 </aside>
+                 <div style={{ width: '100%', flex: 1, minHeight: isPhonePortrait ? '90px' : '120px', display: 'flex', gap: '0.4rem' }}>
+                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #39ff14', borderRadius: '6px', padding: '0.35rem', overflowY: 'auto' }}>
+                       {(() => {
+                         const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+                         const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
+                         const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
+                         const isWinning = bLost - wLost > 0;
+                       return (
+                         <div style={{ color: '#39ff14', fontSize: isPhonePortrait ? '0.6rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.3rem' }}>
+                           GREEN JAIL {isWinning ? `(+${bLost - wLost})` : ''}
+                         </div>
+                       );
+                       })()}
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(28px, 1fr))', gap: '0.2rem', justifyItems: 'center' }}>
+                         {capturedPieces.map((piece, index) => {
+                           if (piece.color !== 'b') return null;
+                           const isNew = index === capturedPieces.length - 1;
+                           return <span key={`jail-b-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#ff4eb1', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.5rem' : '1.35rem', textShadow: '0 0 10px #ff007f' }}>{PIECE_GLYPHS['b'][piece.type]}</span>
+                         })}
+                       </div>
+                    </div>
+                    
+                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #ff007f', borderRadius: '6px', padding: '0.35rem', overflowY: 'auto' }}>
+                       {(() => {
+                         const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+                         const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
+                         const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
+                         const isWinning = wLost - bLost > 0;
+                       return (
+                         <div style={{ color: '#ff007f', fontSize: isPhonePortrait ? '0.6rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.3rem' }}>
+                           PINK JAIL {isWinning ? `(+${wLost - bLost})` : ''}
+                         </div>
+                       );
+                       })()}
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(28px, 1fr))', gap: '0.2rem', justifyItems: 'center' }}>
+                         {capturedPieces.map((piece, index) => {
+                           if (piece.color !== 'w') return null;
+                           const isNew = index === capturedPieces.length - 1;
+                           return <span key={`jail-w-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#dfffda', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.5rem' : '1.35rem', textShadow: '0 0 10px #39ff14' }}>{PIECE_GLYPHS['w'][piece.type]}</span>
+                         })}
+                       </div>
+                    </div>
+                 </div>
                </div>
              )}
           </div>
