@@ -88,7 +88,7 @@ const INTRO_THEMES = [
 
 const HOME_HUB = [
   { key: 'QUICK_PLAY', title: 'PLAY CHESTER', color: '#39ff14', icon: '♞', detail: 'Start a live game immediately. Every move is graded and answered in real time.' },
-  { key: 'COACHING', title: 'COACHING LAB', color: '#ff007f', icon: '🧭', detail: "Train with Chester across beginner-to-expert modules that grade your real chess decisions." },
+  { key: 'COACHING', title: 'MINI GAMES', color: '#ff007f', icon: '🧭', detail: "Train with Chester across beginner-to-expert challenges that grade your real chess decisions." },
   { key: 'DEMO_1V1', title: 'DEMO 1v1', color: '#ffea00', icon: '⚔️', detail: 'Jump into a live single-board matchup and watch or play against the arena engine.' },
   { key: 'CHALLENGE', title: 'CHALLENGE SOMEONE', color: '#ff007f', icon: '👑', detail: 'Create a private beta link and play a live legal game from two devices.' },
   { key: 'DEMO_2V2', title: 'DEMO 2v2', color: '#39ff14', icon: '🔥', detail: 'The world-first tag-team format. Chaos, coordination, and pure arena trauma.' },
@@ -213,7 +213,7 @@ export default function Home() {
   
   const [activeMatchup, setActiveMatchup] = useState('');
   const [gameMode, setGameMode] = useState('STANDBY');
-  const [coachingDifficulty, setCoachingDifficulty] = useState<'BEGINNER' | 'CASUAL' | 'PRO'>('CASUAL');
+  const [coachingDifficulty, setCoachingDifficulty] = useState<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'>('INTERMEDIATE');
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [arenaView, setArenaView] = useState<'BOARD' | 'CHESTER' | 'SPLIT'>('BOARD');
@@ -440,6 +440,12 @@ export default function Home() {
             ply: Number(payload?.ply ?? 0),
             quality: payload?.quality || null,
             centipawnLoss: payload?.centipawnLoss ?? null,
+            engineTelemetry: payload?.engineTelemetry || null,
+            evaluationBefore: payload?.evaluationBefore ?? null,
+            evaluationAfter: payload?.evaluationAfter ?? null,
+            evalDelta: payload?.evalDelta ?? null,
+            principalVariation: payload?.principalVariation || [],
+            alternateWinningLines: payload?.alternateWinningLines || [],
             checklist: payload?.checklist || null,
             openingAssessment: payload?.openingAssessment || null,
             openingName: payload?.openingName || null,
@@ -622,6 +628,17 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    const destination = new URLSearchParams(window.location.search).get('view');
+    if (!destination) return;
+    if (destination === 'play') {
+      loadArena('COACH_OPENING', 'You vs. Chester');
+      return;
+    }
+    setScene(destination === 'leagues' ? 'TOWN' : 'LEAGUE');
+    setLeagueView(destination === 'mini-games' ? 'COACHING' : 'MATCHUPS');
+  }, []);
+
   if (!isMounted) return null;
 
   return (
@@ -714,7 +731,7 @@ export default function Home() {
                 <p>A live board, instant move grades, tactical replies, and commentary that remembers the damage.</p>
                 <div className="command-actions">
                   <button className="command-play" onClick={() => loadArena('COACH_OPENING', 'You vs. Chester')}><span>♞</span> START GAME</button>
-                  <button className="command-secondary" onClick={() => { setLeagueView('COACHING'); setScene('LEAGUE'); }}>CHOOSE A DRILL</button>
+                  <button className="command-secondary" onClick={() => { setLeagueView('COACHING'); setScene('LEAGUE'); }}>EXPLORE MINI GAMES</button>
                 </div>
               </div>
               <div className="command-knight" aria-hidden="true"><span>♞</span><i /></div>
@@ -764,7 +781,7 @@ export default function Home() {
               <button onClick={() => loadArena('COACH_OPENING', 'You vs. Chester')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#39ff14', color: '#020502', border: isMobile ? '3px solid #39ff14' : '4px solid #39ff14', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '4px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>PLAY NOW</button>
               <button onClick={() => setLeagueView('MATCHUPS')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'MATCHUPS' ? '#ffea00' : '#111', color: leagueView === 'MATCHUPS' ? '#000' : '#fff', border: isMobile ? '3px solid #ffea00' : '4px solid #ffea00', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>1v1</button>
               <button onClick={() => setLeagueView('2V2')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === '2V2' ? '#39ff14' : '#111', color: leagueView === '2V2' ? '#000' : '#fff', border: isMobile ? '3px solid #39ff14' : '4px solid #39ff14', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>2v2</button>
-              <button onClick={() => setLeagueView('COACHING')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'COACHING' ? '#ff007f' : '#111', color: '#fff', border: isMobile ? '3px solid #ff007f' : '4px solid #ff007f', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>COACH</button>
+              <button onClick={() => setLeagueView('COACHING')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'COACHING' ? '#ff007f' : '#111', color: '#fff', border: isMobile ? '3px solid #ff007f' : '4px solid #ff007f', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>MINI GAMES</button>
               <button onClick={createRemoteChallenge} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#111', color: '#fff', border: isMobile ? '3px solid #b8a2ff' : '4px solid #b8a2ff', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>CHALLENGE</button>
             </div>
           </div>
@@ -812,25 +829,22 @@ export default function Home() {
               )}
 
               {leagueView === 'COACHING' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div>
-                    <h3 style={{ color: '#ff007f', fontSize: 'clamp(1.2rem, 1.8vw, 1.8rem)', margin: 0, fontWeight: 900 }}>CHESTER'S COACHING LAB</h3>
-                    <p style={{ color: '#ddd', margin: '0.4rem 0 0.8rem', lineHeight: 1.4 }}>Pick your next lesson, move the pieces yourself, and Chester will react to every decision in real time.</p>
+                <div className="player-map">
+                  <div className="player-map__heading">
+                    <div><span>YOUR CHESS TOWN JOURNEY</span><h3>PLAYER MAP</h3><p>Choose your next Mini Game. Each win lights a path from your first moves to pro-level pressure.</p></div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 900 }}>DIFFICULTY:</span>
-                      {(['BEGINNER', 'CASUAL', 'PRO'] as const).map((diff) => (
+                      {(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'] as const).map((diff) => (
                         <button key={diff} onClick={() => setCoachingDifficulty(diff)} style={{ backgroundColor: coachingDifficulty === diff ? '#00ffff' : '#111', color: coachingDifficulty === diff ? '#000' : '#00ffff', border: '1px solid #00ffff', borderRadius: '4px', padding: '0.3rem 0.6rem', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer' }}>{diff}</button>
                       ))}
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
-                    {COACHING_DRILLS.map((drill) => (
-                      <div key={drill.mode} style={{ background: `linear-gradient(145deg, ${drill.color}1f, #08000f)`, border: `3px solid ${drill.color}`, borderRadius: '20px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', minHeight: '230px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}><span style={{ alignSelf: 'flex-start', color: '#000', backgroundColor: drill.color, padding: '0.3rem 0.55rem', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 900 }}>{drill.badge}</span><span style={{ color: drill.color, fontWeight: 900, fontSize: '0.7rem' }}>{drill.level}</span></div>
-                        <h4 style={{ margin: 0, color: '#fff', fontSize: '1.35rem', lineHeight: 1.05 }}>{drill.title}</h4>
-                        <p style={{ margin: 0, color: '#ddd', lineHeight: 1.45, fontSize: '0.9rem' }}>{drill.detail}</p>
-                        <button onClick={() => loadArena(drill.mode, drill.title)} style={{ marginTop: 'auto', backgroundColor: drill.color, border: '3px solid #000', borderRadius: '12px', padding: '0.7rem', color: '#000', cursor: 'pointer', fontWeight: 900, fontSize: '0.9rem' }}>ENTER COACHING BOARD</button>
-                      </div>
+                  <div className="player-map__route">
+                    {COACHING_DRILLS.map((drill, index) => (
+                      <button className="player-map__node" key={drill.mode} onClick={() => loadArena(drill.mode, drill.title)} style={{ '--node-color': drill.color } as React.CSSProperties}>
+                        <span>{index + 1}</span><b>{drill.level}</b><strong>{drill.title}</strong><small>{drill.badge}</small>
+                        {index < COACHING_DRILLS.length - 1 && <i aria-hidden="true" />}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -893,7 +907,7 @@ export default function Home() {
             {[
               ['LOBBY', () => setScene('HOME')],
               ['NEW GAME', () => loadArena('COACH_OPENING', 'You vs. Chester')],
-              ['MISSIONS', () => { setLeagueView('COACHING'); setScene('LEAGUE'); }],
+              ['MINI GAMES', () => { setLeagueView('COACHING'); setScene('LEAGUE'); }],
               ['INVITE', createRemoteChallenge],
             ].map(([label, action]) => (
               <button key={label as string} onClick={action as () => void} style={{ background: 'rgba(4,0,10,.9)', border: '1px solid rgba(184,162,255,.7)', color: '#dfeaff', padding: isLandscape ? '0.18rem 0.32rem' : '0.3rem 0.5rem', fontSize: isLandscape ? '0.42rem' : '0.58rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '.5px' }}>{label as string}</button>

@@ -4,6 +4,7 @@
 import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
+import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
@@ -18,15 +19,15 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 const AI_TAGS: Record<string, { player: string; rival: string; title: string }> = {
   SIMULATION: { player: 'Neill', rival: 'Brendan 🦸‍♂️', title: 'Neill vs. Brendan 🦸‍♂️' },
   '2V2': { player: 'Neill + Brendan', rival: 'Gabe + Z-Man', title: 'Heroes vs. Villains Tag Match' },
-  COACH_OPENING: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Own the Center' },
+  COACH_OPENING: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: Own the Center' },
   COACH_PRACTICE_OPENING: { player: 'You', rival: 'Chester', title: 'Chester Assessment: Practice Your Opening' },
   COACH_DAILY: { player: 'You', rival: 'Chester', title: 'Daily Challenge: Find the Breakthrough' },
-  COACH_DEVELOPMENT: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Activate the Backline' },
-  COACH_PRESSURE: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Tactical Pressure' },
-  COACH_KING_SAFETY: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Castle Before Chaos' },
-  COACH_ENDGAME: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Convert the Advantage' },
-  COACH_KNIGHTMARE: { player: 'You', rival: 'Chester', title: 'Chester Coaching: The Knightmare' },
-  COACH_INVISIBLE: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Phantom Threat' },
+  COACH_DEVELOPMENT: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: Activate the Backline' },
+  COACH_PRESSURE: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: Tactical Pressure' },
+  COACH_KING_SAFETY: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: Castle Before Chaos' },
+  COACH_ENDGAME: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: Convert the Advantage' },
+  COACH_KNIGHTMARE: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: The Knightmare' },
+  COACH_INVISIBLE: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: Phantom Threat' },
   PVP_LOCAL: { player: 'Challenger', rival: 'Defender', title: 'Local Challenge: Face to Face' },
   PVP_REMOTE: { player: 'White Challenger', rival: 'Black Challenger', title: 'Live Challenge: White vs. Black' },
 };
@@ -285,7 +286,15 @@ function getOpeningAssessment(chess: any) {
   };
 }
 
-export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'CASUAL' }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'CASUAL' | 'PRO' }) {
+function getChesterDifficulty(difficulty: string) {
+  if (difficulty === 'BEGINNER') return 'BEGINNER' as const;
+  if (difficulty === 'ADVANCED') return 'ADVANCED' as const;
+  if (difficulty === 'EXPERT') return 'EXPERT' as const;
+  if (difficulty === 'PRO') return 'EXPERT' as const;
+  return 'INTERMEDIATE' as const;
+}
+
+export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE' }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO' }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserRef = useRef<Phaser.Game | null>(null);
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -416,19 +425,44 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => renderBoard());
           };
 
-          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null) => {
+          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null) => {
             window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
                 type: 'move', ply: gameRef.current.ply, player, move: move.san,
                 from: move.from, to: move.to, piece: move.piece, captured: move.captured || null,
-                fen: gameRef.current.chess.fen(), matchup: AI_TAGS[mode]?.title, context: `${mode} matchup`,
+                fen: engineTelemetry?.fenAfter || gameRef.current.chess.fen(), matchup: AI_TAGS[mode]?.title, context: `${mode} matchup`,
                 quality: quality?.label || null, centipawnLoss: quality?.centipawnLoss ?? null,
                 checklist: mode === 'COACH_OPENING' || mode === 'COACH_PRACTICE_OPENING' ? getOpeningChecklist(gameRef.current.chess) : null,
                 openingAssessment: gameRef.current.openingAssessment,
                 openingName: getOpeningName(gameRef.current.chess),
                 principleStreak: gameRef.current.principleStreak,
+                engineTelemetry,
+                evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
+                evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
+                evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null,
+                principalVariation: engineTelemetry?.principalVariation ?? [],
+                alternateWinningLines: engineTelemetry?.alternateWinningLines ?? [],
               },
             }));
+          };
+
+          const evaluateAndPublishMove = (move: any, player: string, fenBeforeMove: string, localQuality: { label: string; centipawnLoss: number } | null) => {
+            const fenAfterMove = gameRef.current.chess.fen();
+            const uci = `${move.from}${move.to}${move.promotion || ''}`;
+            void getStockfishClient().evaluateMove({
+              fenBefore: fenBeforeMove,
+              fenAfter: fenAfterMove,
+              san: move.san,
+              uci,
+              playerColor: move.color,
+              difficulty: getChesterDifficulty(difficulty),
+            }).then((telemetry) => {
+              const quality = { label: telemetry.classification === 'BRILLIANT' ? 'BEST' : telemetry.classification, centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
+              window.dispatchEvent(new CustomEvent('dojo-engine-telemetry', { detail: telemetry }));
+              publishMove(move, player, quality, telemetry);
+            }).catch(() => {
+              publishMove(move, player, localQuality);
+            });
           };
 
           const finishGame = (message: string) => {
@@ -442,14 +476,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             
             if (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
             window.dispatchEvent(new CustomEvent('prediction-open'));
-            setTimeout(() => {
+            setTimeout(async () => {
 
               if (gameRef.current.isGameOver) return;
               const moves = gameRef.current.chess.moves({ verbose: true });
               if (!moves.length) return;
               const fenBeforeMove = gameRef.current.chess.fen();
               const searchD = difficulty === 'PRO' ? 2 : 1;
-              const aiMove = pickBestMove(gameRef.current.chess, searchD);
+              const engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty)).catch(() => null);
+              const aiMove = engineMove
+                ? { from: engineMove.slice(0, 2), to: engineMove.slice(2, 4), promotion: engineMove.slice(4, 5) || undefined }
+                : pickBestMove(gameRef.current.chess, searchD);
               const result = gameRef.current.chess.move({ from: aiMove.from, to: aiMove.to, promotion: 'q' });
               const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, AI_SEARCH_DEPTH);
               emitCapture(result);
@@ -458,7 +495,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: result.san });
               const predictionCategory = result.captured ? 'CAPTURE' : result.san.includes('+') ? 'CHECK' : ['n', 'b'].includes(result.piece) ? 'DEVELOP' : 'MANEUVER';
               window.dispatchEvent(new CustomEvent('prediction-result', { detail: { category: predictionCategory, move: result.san } }));
-              publishMove(result, AI_TAGS[mode]?.rival || 'Brendan', quality);
+              evaluateAndPublishMove(result, AI_TAGS[mode]?.rival || 'Brendan', fenBeforeMove, quality);
 
               if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {
                 const status = gameRef.current.chess.isCheckmate() ? 'CHECKMATE — The AI closes the book!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — Equilibrium achieved.' : 'DRAW — Respect all around.';
@@ -497,7 +534,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   window.dispatchEvent(new CustomEvent('opening-assessment', { detail: gameRef.current.openingAssessment }));
                 }
               }
-              publishMove(moveResult, playerName, quality);
+              evaluateAndPublishMove(moveResult, playerName, fenBeforeMove, quality);
             });
 
             if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {
@@ -818,7 +855,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 gameRef.current.lastMove = { from: moveResult.from, to: moveResult.to };
                 gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: moveResult.san });
                 const playerName = step % 2 === 0 ? AI_TAGS[mode]?.player : AI_TAGS[mode]?.rival;
-                publishMove(moveResult, playerName, quality);
+                evaluateAndPublishMove(moveResult, playerName, fenBeforeMove, quality);
                 renderAfterCapture(moveResult);
               }
 
@@ -875,6 +912,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     phaserRef.current = new Phaser.Game(config);
 
     return () => {
+      disposeStockfishClient();
       if (phaserRef.current) {
         phaserRef.current.destroy(true);
         phaserRef.current = null;

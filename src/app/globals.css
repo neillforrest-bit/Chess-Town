@@ -17,6 +17,30 @@
   animation: moonwalk 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) backwards;
 }
 
+.chester-choice-intro { min-height: 100%; display: grid; grid-template-columns: minmax(160px, .55fr) minmax(320px, 1.15fr); align-items: center; justify-content: center; gap: clamp(1rem, 5vw, 5rem); padding: clamp(1.5rem, 6vw, 6rem); background: radial-gradient(circle at 18% 50%, rgba(0,229,229,.18), transparent 28%), linear-gradient(135deg, #050708, #180612); color: var(--arena-paper); box-sizing: border-box; }
+.chester-choice-avatar { width: min(28vw, 320px); aspect-ratio: 1; display: grid; place-items: center; border: 2px solid var(--arena-cyan); border-radius: 50%; color: var(--arena-paper); font: 900 min(21vw, 230px)/1 Georgia, serif; text-shadow: 12px 10px 0 rgba(255,43,136,.5); box-shadow: 0 0 70px rgba(0,229,229,.3), inset 0 0 50px rgba(0,229,229,.1); animation: knightBreath 3.2s ease-in-out infinite; }
+.chester-choice-bubble { max-width: 780px; padding: clamp(1.25rem, 3vw, 3rem); border: 1px solid rgba(255,43,136,.55); border-radius: 8px; background: rgba(5,7,8,.82); box-shadow: 18px 18px 0 rgba(255,43,136,.16); }
+.chester-choice-bubble > span, .player-map__heading span { color: var(--arena-pink); font-size: .72rem; font-weight: 900; letter-spacing: 2px; }
+.chester-choice-bubble h1 { margin: .5rem 0; font-size: clamp(2rem, 5vw, 4.5rem); letter-spacing: 0; }
+.chester-choice-bubble p { max-width: 56ch; margin: 0; color: #c7d5da; font-size: clamp(.95rem, 1.4vw, 1.15rem); line-height: 1.55; }
+.chester-choice-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; margin-top: 1.5rem; }
+.chester-choice-actions button { min-height: 76px; border: 1px solid var(--arena-cyan); border-radius: 5px; background: rgba(0,229,229,.07); color: var(--arena-paper); font: 900 1rem/1.1 Georgia, serif; cursor: pointer; text-align: left; padding: .85rem 1rem; }
+.chester-choice-actions button:nth-child(even) { border-color: var(--arena-pink); background: rgba(255,43,136,.07); }
+.chester-choice-actions small { display: block; margin-top: .4rem; color: #9eb1b5; font: 700 .7rem/1.2 sans-serif; }
+.player-map { display: grid; gap: 1.4rem; }
+.player-map__heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
+.player-map__heading h3 { margin: .25rem 0; color: var(--arena-paper); font-size: clamp(1.8rem, 3vw, 3rem); }
+.player-map__heading p { margin: 0; color: #b9c9cc; max-width: 58ch; line-height: 1.45; }
+.player-map__route { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; padding: 1rem 0; }
+.player-map__node { --node-color: var(--arena-cyan); position: relative; min-height: 148px; border: 2px solid var(--node-color); border-radius: 6px; background: linear-gradient(135deg, color-mix(in srgb, var(--node-color) 14%, #07090a), #07090a); color: var(--arena-paper); padding: .85rem; text-align: left; cursor: pointer; box-shadow: 0 0 22px color-mix(in srgb, var(--node-color) 20%, transparent); }
+.player-map__node > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--node-color); color: #050708; font-weight: 900; }
+.player-map__node b, .player-map__node strong, .player-map__node small { display: block; }
+.player-map__node b { margin-top: .7rem; color: var(--node-color); font-size: .66rem; letter-spacing: 1px; }
+.player-map__node strong { margin-top: .25rem; font: 900 1rem/1.05 Georgia, serif; }
+.player-map__node small { margin-top: .45rem; color: #9eb1b5; font-size: .62rem; }
+.player-map__node i { position: absolute; right: -1rem; top: 50%; z-index: 2; width: 1rem; border-top: 2px dashed var(--node-color); }
+@media (max-width: 860px) { .chester-choice-intro { grid-template-columns: 1fr; padding: 1.25rem; overflow-y: auto; } .chester-choice-avatar { width: min(40vw, 170px); } .chester-choice-actions, .player-map__route { grid-template-columns: 1fr; } .player-map__heading { align-items: start; flex-direction: column; } .player-map__node { min-height: 110px; } .player-map__node i { display: none; } }
+
 @media (min-width: 861px) {
   .live-game-layout {
     display: grid !important;

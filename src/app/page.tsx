@@ -89,7 +89,7 @@ const INTRO_THEMES = [
 
 const HOME_HUB = [
   { key: 'QUICK_PLAY', title: 'PLAY CHESTER', color: '#39ff14', icon: '♞', detail: 'Start a live game immediately. Every move is graded and answered in real time.' },
-  { key: 'COACHING', title: 'COACHING LAB', color: '#ff007f', icon: '🧭', detail: "Train with Chester across beginner-to-expert modules that grade your real chess decisions." },
+  { key: 'COACHING', title: 'MINI GAMES', color: '#ff007f', icon: '🧭', detail: "Train with Chester across beginner-to-expert challenges that grade your real chess decisions." },
   { key: 'DEMO_1V1', title: 'DEMO 1v1', color: '#ffea00', icon: '⚔️', detail: 'Jump into a live single-board matchup and watch or play against the arena engine.' },
   { key: 'CHALLENGE', title: 'CHALLENGE SOMEONE', color: '#ff007f', icon: '👑', detail: 'Create a private beta link and play a live legal game from two devices.' },
   { key: 'DEMO_2V2', title: 'DEMO 2v2', color: '#39ff14', icon: '🔥', detail: 'The world-first tag-team format. Chaos, coordination, and pure arena trauma.' },
@@ -442,6 +442,12 @@ export default function Home() {
             ply: Number(payload?.ply ?? 0),
             quality: payload?.quality || null,
             centipawnLoss: payload?.centipawnLoss ?? null,
+            engineTelemetry: payload?.engineTelemetry || null,
+            evaluationBefore: payload?.evaluationBefore ?? null,
+            evaluationAfter: payload?.evaluationAfter ?? null,
+            evalDelta: payload?.evalDelta ?? null,
+            principalVariation: payload?.principalVariation || [],
+            alternateWinningLines: payload?.alternateWinningLines || [],
             checklist: payload?.checklist || null,
             openingAssessment: payload?.openingAssessment || null,
             openingName: payload?.openingName || null,
@@ -657,28 +663,22 @@ export default function Home() {
         </div>
       )}
 
-      {scene === 'INTRO' && (() => {
-        const theme = INTRO_THEMES[pageIndex] || INTRO_THEMES[0];
-        const activeScript = getPersonalizedIntro(guestName);
-        return (
-        <div key={pageIndex} className="chester-intro-page intro-rpg-stage" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isLandscape ? '1rem 2rem' : '2rem', position: 'relative', backgroundColor: '#020005', overflow: 'hidden', boxSizing: 'border-box' }}>
-          <div className="absolute inset-0" style={{ background: `radial-gradient(circle at center, ${theme.accent}15 0%, transparent 70%)`, opacity: 0.8, animation: 'pulseOminous 4s infinite' }}></div>
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_2px,transparent_2px)] bg-[size:40px_40px]"></div>
-          <div style={{ maxWidth: '1000px', width: '90%', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <p className="intro-story-text" style={{ fontSize: isLandscape ? 'clamp(1.1rem, 3.8vw, 2.2rem)' : 'clamp(1.3rem, 3.5vw, 3.5rem)', color: '#fff', fontWeight: 900, lineHeight: isLandscape ? 1.35 : 1.55, textShadow: `0 0 15px ${theme.accent}`, margin: 0, textAlign: 'center', transition: 'text-shadow 0.5s', minHeight: isLandscape ? '78px' : '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-              {displayedIntro}<span className="inline-block w-[1.5vw] h-[3vw] ml-2 align-middle" style={{ backgroundColor: theme.accent, animation: 'rpgCursor 1s infinite' }}></span>
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: isLandscape ? '1rem' : '2rem' }}>
-              {pageIndex < activeScript.length - 1 ? (
-                <button onClick={() => setPageIndex(p => p + 1)} style={{ background: 'transparent', color: theme.accent, fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ CLICK TO CONTINUE ▼</button>
-              ) : (
-                <button onClick={() => router.push('/arena')} style={{ background: 'transparent', color: '#39ff14', fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ ENTER THE ARENA ▼</button>
-              )}
+      {scene === 'INTRO' && (
+        <div className="chester-choice-intro">
+          <div className="chester-choice-avatar" aria-hidden="true">♞</div>
+          <section className="chester-choice-bubble">
+            <span>CHESTER IS ONLINE</span>
+            <h1>Welcome to Chess Town!</h1>
+            <p>I&apos;m Chester. Master the basics, dominate league tables, or drop a cheeky Bongcloud on a friend. I&apos;ve got your back. Where are we heading first?</p>
+            <div className="chester-choice-actions">
+              <button onClick={() => router.push('/arena?view=mini-games')}>Explore the Player Map <small>Mini Games & Learning</small></button>
+              <button onClick={() => router.push('/arena?view=play')}>Challenge Me <small>Beginner to Expert</small></button>
+              <button onClick={() => router.push('/arena?view=matchups')}>Enter the Arena <small>Community PvP & Matchmaking</small></button>
+              <button onClick={() => router.push('/arena?view=leagues')}>Town Hall <small>Leagues & Social</small></button>
             </div>
-          </div>
+          </section>
         </div>
-        );
-      })()}
+      )}
 
       {scene === 'CHESTER_REVEAL' && (
         <div className="chester-intro-page chester-reveal" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: isLandscape ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020005', padding: isLandscape ? '1rem 4rem' : '2rem', position: 'relative', overflow: 'hidden', gap: isLandscape ? '4rem' : '0' }}>
@@ -716,7 +716,7 @@ export default function Home() {
                 <p>A live board, instant move grades, tactical replies, and commentary that remembers the damage.</p>
                 <div className="command-actions">
                   <button className="command-play" onClick={() => loadArena('COACH_OPENING', 'You vs. Chester')}><span>♞</span> START GAME</button>
-                  <button className="command-secondary" onClick={() => { setLeagueView('COACHING'); setScene('LEAGUE'); }}>CHOOSE A DRILL</button>
+                  <button className="command-secondary" onClick={() => { setLeagueView('COACHING'); setScene('LEAGUE'); }}>EXPLORE MINI GAMES</button>
                 </div>
               </div>
               <div className="command-knight" aria-hidden="true"><span>♞</span><i /></div>
@@ -895,7 +895,7 @@ export default function Home() {
             {[
               ['LOBBY', () => setScene('HOME')],
               ['NEW GAME', () => loadArena('COACH_OPENING', 'You vs. Chester')],
-              ['MISSIONS', () => { setLeagueView('COACHING'); setScene('LEAGUE'); }],
+              ['MINI GAMES', () => { setLeagueView('COACHING'); setScene('LEAGUE'); }],
               ['INVITE', createRemoteChallenge],
             ].map(([label, action]) => (
               <button key={label as string} onClick={action as () => void} style={{ background: 'rgba(4,0,10,.9)', border: '1px solid rgba(184,162,255,.7)', color: '#dfeaff', padding: isLandscape ? '0.18rem 0.32rem' : '0.3rem 0.5rem', fontSize: isLandscape ? '0.42rem' : '0.58rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '.5px' }}>{label as string}</button>
