@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import GlobalNav from "@/components/GlobalNav";
 
 export const metadata: Metadata = {
   title: "Chess Town",
@@ -13,7 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body style={{ padding: 0, margin: 0, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <GlobalNav />
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: '80px', position: 'relative' }}>
+          {children}
+        </main>
+      </body>
     </html>
   );
 }

@@ -1,24 +1,66 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
 
-export function ChesterAvatar({ isThinking }: { isThinking: boolean }) {
+export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: boolean, size?: 'small' | 'default' | 'large' }) {
+  const sizeMap = {
+    small: { w: '30px', h: '30px', font: '1rem' },
+    default: { w: '40px', h: '40px', font: '1.4rem' },
+    large: { w: '80px', h: '80px', font: '3rem' }
+  };
+  
   return (
     <div style={{
-      width: '40px',
-      height: '40px',
+      width: sizeMap[size].w,
+      height: sizeMap[size].h,
       borderRadius: '50%',
-      border: `2px solid ${isThinking ? '#ff007f' : '#00ffff'}`,
-      boxShadow: `0 0 10px ${isThinking ? '#ff007f' : '#00ffff'}`,
+      border: `2px solid ${isThinking ? 'var(--arena-pink)' : 'var(--arena-cyan)'}`,
+      boxShadow: `0 0 ${isThinking ? '20px' : '10px'} ${isThinking ? 'var(--arena-pink)' : 'var(--arena-cyan)'}`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'rgba(0,0,0,0.7)',
-      animation: isThinking ? 'pulse 1.2s infinite' : 'none',
-      flexShrink: 0
+      background: 'rgba(5,7,8,0.85)',
+      animation: isThinking ? 'chester-glitch 0.4s infinite' : 'chester-float 4s ease-in-out infinite',
+      flexShrink: 0,
+      position: 'relative',
+      overflow: 'hidden'
     }}>
-      <span style={{ fontSize: '1.4rem', color: isThinking ? '#ff007f' : '#00ffff', textShadow: `0 0 5px ${isThinking ? '#ff007f' : '#00ffff'}` }}>
-        ♞
-      </span>
+      {isThinking && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(180deg, transparent, rgba(255,43,136,0.4), transparent)',
+          animation: 'chester-scan 1s linear infinite'
+        }} />
+      )}
+      
+        
+      {/* Cartoon Horse Jester Mask */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', zIndex: 10 }}>
+        {/* Horse Head */}
+        <span style={{ 
+          fontSize: size === 'large' ? '4rem' : size === 'small' ? '1.5rem' : '2.5rem', 
+          lineHeight: 1, 
+          position: 'absolute', 
+          bottom: size === 'large' ? '-5px' : '0',
+          animation: isThinking ? 'jester-talk 0.3s infinite ease-in-out' : 'jester-bounce 3s infinite ease-in-out',
+          filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))'
+        }}>
+          🐴
+        </span>
+        {/* Jester Hat attached to head */}
+        <span style={{ 
+          fontSize: size === 'large' ? '2.5rem' : size === 'small' ? '1rem' : '1.5rem', 
+          position: 'absolute', 
+          top: size === 'large' ? '-10px' : '-5px',
+          left: size === 'large' ? '12px' : '5px',
+          transform: 'rotate(-15deg)',
+          animation: isThinking ? 'jester-bell 0.2s infinite' : 'jester-bell 2s infinite ease-in-out',
+          filter: 'drop-shadow(0 0 8px var(--arena-pink))'
+        }}>
+          🃏
+        </span>
+      </div>
+
+
     </div>
   );
 }
@@ -29,7 +71,7 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
       width: '100%',
       background: 'rgba(10, 5, 20, 0.65)',
       backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(0, 255, 255, 0.3)',
+      border: '1px solid rgba(0, 229, 229, 0.3)',
       borderRadius: '12px',
       padding: isMobile ? '0.75rem' : '1rem',
       display: 'flex',
@@ -50,7 +92,7 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
         maxHeight: '150px',
         overflowY: 'auto'
       }}>
-        {isThinking ? <span style={{ color: '#ffea00', fontStyle: 'italic' }}>Chester is calculating...</span> : text.replace(/^🎙️ CHESTER:\s*/, '')}
+        {isThinking ? <span style={{ color: 'var(--arena-pink)', fontStyle: 'italic' }}>Chester is calculating...</span> : text.replace(/^🎙️ CHESTER:\s*/, '')}
       </div>
     </div>
   );
@@ -88,7 +130,7 @@ export function ChesterChatOverlay({
       flex: expanded ? 1 : 'none',
       background: 'rgba(0, 0, 0, 0.75)',
       backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(255, 234, 0, 0.3)',
+      border: '1px solid rgba(255, 43, 136, 0.3)',
       borderRadius: '12px',
       display: 'flex',
       flexDirection: 'column',
@@ -106,13 +148,13 @@ export function ChesterChatOverlay({
           alignItems: 'center',
           justifyContent: 'space-between',
           cursor: 'pointer',
-          background: 'rgba(255, 234, 0, 0.1)',
-          borderBottom: expanded ? '1px solid rgba(255, 234, 0, 0.2)' : 'none'
+          background: 'rgba(255, 43, 136, 0.1)',
+          borderBottom: expanded ? '1px solid rgba(255, 43, 136, 0.2)' : 'none'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <ChesterAvatar isThinking={isThinking} />
-          <span style={{ fontWeight: 'bold', letterSpacing: '1px', color: '#ffea00' }}>CHESTER CHAT</span>
+          <span style={{ fontWeight: 'bold', letterSpacing: '1px', color: 'var(--arena-pink)' }}>CHESTER CHAT</span>
         </div>
         <span style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>▲</span>
       </div>
@@ -129,12 +171,12 @@ export function ChesterChatOverlay({
                 maxWidth: '85%',
                 padding: '0.6rem 0.8rem',
                 borderRadius: '8px',
-                background: msg.role === 'user' ? 'rgba(0, 255, 255, 0.15)' : 'rgba(255, 234, 0, 0.15)',
-                border: `1px solid ${msg.role === 'user' ? 'rgba(0, 255, 255, 0.3)' : 'rgba(255, 234, 0, 0.3)'}`,
+                background: msg.role === 'user' ? 'rgba(0, 229, 229, 0.15)' : 'rgba(255, 43, 136, 0.15)',
+                border: `1px solid ${msg.role === 'user' ? 'rgba(0, 229, 229, 0.3)' : 'rgba(255, 43, 136, 0.3)'}`,
                 lineHeight: 1.4,
                 fontSize: '0.9rem'
               }}>
-                <b style={{ display: 'block', fontSize: '0.7rem', color: msg.role === 'user' ? '#00ffff' : '#ffea00', marginBottom: '0.2rem' }}>
+                <b style={{ display: 'block', fontSize: '0.7rem', color: msg.role === 'user' ? 'var(--arena-cyan)' : 'var(--arena-pink)', marginBottom: '0.2rem' }}>
                   {msg.role === 'user' ? 'YOU' : 'CHESTER'}
                 </b>
                 {msg.text}
@@ -164,7 +206,7 @@ export function ChesterChatOverlay({
                 type="submit" 
                 disabled={isThinking || !chatInput.trim()}
                 style={{
-                  background: '#ffea00',
+                  background: 'var(--arena-pink)',
                   color: '#000',
                   border: 'none',
                   borderRadius: '4px',

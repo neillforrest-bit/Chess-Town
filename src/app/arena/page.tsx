@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { askGrandmaster } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
@@ -29,9 +28,9 @@ const LEAGUE_STANDINGS = [
 const LEAGUE_ROLL_CALL = LEAGUE_STANDINGS.map((p) => p.name).join(', ');
 
 const INTRO_SCRIPT = [
-  "Hi, I am Chester, your guide to Chess Town - the chess club that actually talks back.",
-  "Learn with coaching resources, test yourself in mini-game challenges, or play me from beginner through expert difficulty.",
-  "Then bring your people: find a PvP rival, send a social challenge, and build a league table with your friends. Chess Town is a community, not a lonely ladder."
+  "🐴💬 \"Your move now.\" 🏰",
+  "Feeling competitive? Or just here to blunder another piece in the opening?",
+  "Welcome to Chess Town."
 ];
 
 const PAUL_INTRO_SCRIPT = [
@@ -185,7 +184,6 @@ const playShockSound = () => {
 };
 
 export default function Home() {
-  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [guestName, setGuestName] = useState('');
   useEffect(() => {
@@ -209,7 +207,7 @@ export default function Home() {
   }, []);
   const isPhonePortrait = isMobile && !isLandscape;
 
-  const [scene, setScene] = useState<SceneState>('INTRO');
+  const [scene, setScene] = useState<SceneState>('HOME');
   const [pageIndex, setPageIndex] = useState(0);
   const [displayedIntro, setDisplayedIntro] = useState('');
   
@@ -653,7 +651,7 @@ export default function Home() {
              ))}
            </div>
            <div style={{ color: '#596e77', textAlign: 'center', fontSize: isLandscape ? '0.45rem' : '0.7rem', margin: isLandscape ? '0.5rem 0' : '1rem 0' }}>{LEAGUE_ROLL_CALL}</div>
-           <button onClick={() => router.push('/meet-chester')} style={{ marginTop: isLandscape ? '0.35rem' : '0.8rem', background: 'var(--arena-pink)', color: '#020502', border: '1px solid #ff2b88', boxShadow: '0 0 32px rgba(255,43,136,.75)', letterSpacing: '2px', cursor: 'pointer', fontWeight: 900, padding: isLandscape ? '0.45rem 1.2rem' : '0.8rem 2rem', fontSize: isLandscape ? '0.65rem' : '1rem' }}>MEET CHESTER →</button>
+           <button onClick={() => setScene('HOME')} style={{ marginTop: isLandscape ? '0.35rem' : '0.8rem', background: '#39ff14', color: '#020502', border: '1px solid #dfffff', boxShadow: '0 0 32px rgba(57,255,20,.75)', letterSpacing: '2px', cursor: 'pointer', fontWeight: 900, padding: isLandscape ? '0.45rem 1.2rem' : '0.8rem 2rem', fontSize: isLandscape ? '0.65rem' : '1rem' }}>ENTER THE ARENA →</button>
         </div>
       )}
 
@@ -672,7 +670,7 @@ export default function Home() {
               {pageIndex < activeScript.length - 1 ? (
                 <button onClick={() => setPageIndex(p => p + 1)} style={{ background: 'transparent', color: theme.accent, fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ CLICK TO CONTINUE ▼</button>
               ) : (
-                <button onClick={() => router.push('/arena')} style={{ background: 'transparent', color: '#39ff14', fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ ENTER THE ARENA ▼</button>
+                <button onClick={() => setScene('ROSTER')} style={{ background: 'transparent', color: '#39ff14', fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ MEET THE CONTENDERS ▼</button>
               )}
             </div>
           </div>
@@ -691,8 +689,8 @@ export default function Home() {
           <div style={{ position: 'relative', zIndex: 2, textAlign: isLandscape ? 'left' : 'center', maxWidth: '720px' }}>
             <div style={{ color: '#ff007f', letterSpacing: '5px', fontSize: isLandscape ? '0.65rem' : 'clamp(0.7rem, 1.5vw, 1rem)', fontWeight: 900 }}>THE MASTER OF THE BOARD HAS ARRIVED</div>
             <h1 style={{ fontSize: isLandscape ? 'clamp(2.4rem, 7vw, 4.8rem)' : 'clamp(3.5rem, 11vw, 8rem)', fontWeight: 900, color: '#eaffff', textShadow: '0 0 18px #00ffff, 0 0 55px rgba(0,255,255,0.8)', textTransform: 'uppercase', letterSpacing: isLandscape ? '4px' : '7px', lineHeight: .9, margin: '0.8rem 0' }}>CHESTER</h1>
-            <p style={{ color: '#b8faff', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', lineHeight: 1.45, maxWidth: '55ch', margin: isLandscape ? '0 0 1rem' : '0 auto 1.6rem' }}>I am Chester. I will help you learn, set you mini-game challenges, meet you at your chosen difficulty, and keep the whole town talking. Build a league, invite friends, and make every match matter.</p>
-            <button onClick={() => router.push('/arena')} className="chester-enter"  style={{ backgroundColor: '#00ffff', color: '#020005', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', fontWeight: 900, padding: isLandscape ? '0.65rem 1.4rem' : '0.9rem 2rem', borderRadius: '4px', border: '1px solid #dfffff', boxShadow: '0 0 25px rgba(0,255,255,0.8)', cursor: 'pointer', letterSpacing: '2px' }}>ENTER ARENA →</button>
+            <p style={{ color: '#b8faff', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', lineHeight: 1.45, maxWidth: '55ch', margin: isLandscape ? '0 0 1rem' : '0 auto 1.6rem' }}>{guestName === 'Richard' ? 'Richard... turning off your screen will not save you from this matchup. The board is ready. I can hear your heart rate spiking... do not run from me.' : guestName === 'Paul' ? 'Paul, I am Chester, the shadow in the machine. I cull the weak. The beach can wait; the grid demands your answer.' : guestName ? `${guestName}, I am the shadow in the machine. The board is ready, and your truth will be exposed.` : 'I am Chester. I grade the moves, summon the chaos, and remember every blunder. Ready to play, my friends?'}</p>
+            <button onClick={() => setScene('ROSTER')} className="chester-enter" style={{ backgroundColor: '#00ffff', color: '#020005', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', fontWeight: 900, padding: isLandscape ? '0.65rem 1.4rem' : '0.9rem 2rem', borderRadius: '4px', border: '1px solid #dfffff', boxShadow: '0 0 25px rgba(0,255,255,0.8)', cursor: 'pointer', letterSpacing: '2px' }}>{guestName === 'Richard' ? 'ENTER. RIGHT NOW, RICHIE. →' : guestName === 'Paul' ? 'STEP UP TO PLAY, PAUL →' : 'JOIN YOUR FRIENDS NOW →'}</button>
           </div>
         </div>
       )}

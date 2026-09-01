@@ -17,6 +17,36 @@
   animation: moonwalk 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) backwards;
 }
 
+@media (min-width: 861px) {
+  .live-game-layout {
+    display: grid !important;
+    grid-template-columns: minmax(440px, 1.25fr) minmax(300px, 0.75fr) !important;
+    align-items: center !important;
+    gap: clamp(1rem, 2vw, 2.5rem) !important;
+    padding: clamp(4.5rem, 7vh, 6rem) clamp(1rem, 2vw, 2rem) 1.25rem !important;
+  }
+
+  .live-game-board {
+    width: 100% !important;
+    height: min(78vh, 900px) !important;
+    max-height: none !important;
+  }
+
+  .live-game-panels {
+    width: 100% !important;
+    height: min(78vh, 900px) !important;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1100px) {
+  .live-game-layout {
+    grid-template-columns: minmax(380px, 1.1fr) minmax(270px, 0.9fr) !important;
+    gap: 1rem !important;
+    padding-inline: 1rem !important;
+  }
+}
+
 :root {
   --arena-ink: #050708;
   --arena-paper: #eefcff;
@@ -29,8 +59,8 @@
 .command-center {
   position: relative;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  
   box-sizing: border-box;
   padding: clamp(1rem, 2.2vw, 2rem);
   display: grid;
@@ -110,14 +140,14 @@
 .command-layout {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(300px, .72fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(.75rem, 1.5vw, 1.4rem);
 }
 
 .command-primary {
   position: relative;
   min-height: 0;
-  overflow: hidden;
+  
   border: 1px solid rgba(0,229,229,.7);
   border-radius: 6px;
   background: linear-gradient(135deg, rgba(0,229,229,.1), rgba(5,7,8,.96) 48%, rgba(255,43,136,.09));
@@ -188,7 +218,7 @@
   display: grid;
   place-items: center;
   min-width: 0;
-  height: 100%;
+  min-height: 100%;
   color: var(--arena-paper);
 }
 
@@ -277,7 +307,7 @@
 
 .command-footer > *:last-child { border-right: 0; }
 .command-footer b { display: block; color: var(--arena-gold); font-size: .62rem; letter-spacing: 1px; }
-.command-footer span { display: block; margin-top: .25rem; overflow: hidden; color: #829599; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+.command-footer span { display: block; margin-top: .25rem;  color: #829599; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 860px) {
   .command-center { padding: .75rem; grid-template-rows: auto minmax(0, 1fr); }
@@ -311,10 +341,10 @@
 
 .social-shell {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
+  
   background:
     linear-gradient(115deg, rgba(0,229,229,.08), transparent 34%),
     linear-gradient(315deg, rgba(255,43,136,.08), transparent 42%),
@@ -563,7 +593,7 @@
 .chester-desk {
   position: relative;
   min-height: 260px;
-  overflow: hidden;
+  
   border: 1px solid var(--arena-cyan);
   padding: 1.1rem;
   background: linear-gradient(140deg, rgba(0,229,229,.12), #050708 56%, rgba(255,43,136,.1));
@@ -586,7 +616,7 @@
 .live-room h3 { margin: .45rem 0 .25rem; font-size: 1rem; }
 .live-room p { margin: 0 0 .5rem; color: #8ca0a4; font-size: .65rem; }
 .live-room__meter { height: 4px; margin-bottom: .65rem; background: #271018; }
-.live-room__meter span { display: block; width: 62%; height: 100%; background: var(--arena-pink); box-shadow: 0 0 10px var(--arena-pink); }
+.live-room__meter span { display: block; width: 62%; min-height: 100%; background: var(--arena-pink); box-shadow: 0 0 10px var(--arena-pink); }
 .live-room button { width: 100%; border-color: var(--arena-pink); color: var(--arena-pink); }
 .town-trending > span, .season-awards > span, .fantasy-card > span, .chester-verdict > span { color: var(--arena-gold); font-size: .55rem; font-weight: 900; letter-spacing: 1px; }
 .town-trending ol { margin: .65rem 0 0; padding: 0; list-style: none; }
@@ -652,7 +682,7 @@
 .ranking-list strong { display: block; font-size: .75rem; }
 .ranking-list article span { color: #708589; font-size: .55rem; }
 .ranking-rating { height: 4px; background: #161b1c; }
-.ranking-rating i { display: block; height: 100%; background: var(--rank-accent); }
+.ranking-rating i { display: block; min-height: 100%; background: var(--rank-accent); }
 .ranking-list article > b:not(.ranking-number) { color: var(--arena-paper); font-size: .65rem; }
 .ranking-list article em { color: var(--rank-accent); font-size: .55rem; font-style: normal; font-weight: 900; text-align: right; }
 
@@ -675,12 +705,12 @@
 }
 
 .season-sidebar section { border: 1px solid rgba(238,252,255,.18); border-radius: 5px; padding: 1rem; background: rgba(238,252,255,.025); }
-.chester-verdict { position: relative; min-height: 240px; overflow: hidden; border-color: var(--arena-cyan) !important; }
+.chester-verdict { position: relative; min-height: 240px;  border-color: var(--arena-cyan) !important; }
 .chester-verdict div { position: absolute; right: -.1em; bottom: -.22em; color: rgba(0,229,229,.12); font-size: 11rem; }
 .chester-verdict blockquote { position: relative; margin: 1.1rem 0 0; max-width: 20ch; color: var(--arena-paper); font-size: 1.05rem; line-height: 1.5; font-weight: 900; }
 .fantasy-card b { display: block; margin: .5rem 0; color: var(--arena-acid); font-size: 2rem; }
 .fantasy-card > div { height: 5px; background: #152112; }
-.fantasy-card > div i { display: block; height: 100%; background: var(--arena-acid); }
+.fantasy-card > div i { display: block; min-height: 100%; background: var(--arena-acid); }
 .fantasy-card p { color: #82979b; font-size: .65rem; }
 .fantasy-card button { width: 100%; border-color: var(--arena-acid); color: var(--arena-acid); }
 .season-awards p { margin: .7rem 0 0; color: #8ea2a6; font-size: .65rem; }
@@ -723,4 +753,78 @@
   .fixture-list { grid-template-columns: 1fr; }
   .season-sidebar { display: block; }
   .season-sidebar section { margin-bottom: .7rem; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes chester-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes chester-glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px) scale(1.02); filter: hue-rotate(90deg); }
+  40% { transform: translate(-1px, -1px); }
+  60% { transform: translate(2px, 1px) scale(0.98); filter: hue-rotate(-90deg); }
+  80% { transform: translate(1px, -1px); }
+  100% { transform: translate(0); }
+}
+@keyframes chester-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+@keyframes float-piece {
+  0% { transform: translateY(110vh) rotate(0deg) scale(0.8); opacity: 0; }
+  10% { opacity: 0.15; }
+  90% { opacity: 0.15; }
+  100% { transform: translateY(-20vh) rotate(360deg) scale(1.2); opacity: 0; }
+}
+.floating-chess-piece {
+  position: absolute;
+  color: var(--arena-cyan);
+  font-size: 4rem;
+  z-index: 0;
+  pointer-events: none;
+  animation: float-piece 15s linear infinite;
+  text-shadow: 0 0 15px var(--arena-cyan);
+}
+.floating-chess-piece:nth-child(even) {
+  color: var(--arena-pink);
+  text-shadow: 0 0 15px var(--arena-pink);
+  animation-duration: 20s;
+  font-size: 3rem;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--arena-ink);
+  color: var(--arena-paper);
+}
+
+@keyframes jester-bounce {
+  0% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-8px) rotate(-5deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(-8px) rotate(5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes jester-talk {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1) translateY(-2px); filter: brightness(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes jester-bell {
+  0% { transform: rotate(0deg); }
+  33% { transform: rotate(-15deg); }
+  66% { transform: rotate(15deg); }
+  100% { transform: rotate(0deg); }
 }
