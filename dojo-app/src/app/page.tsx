@@ -4,6 +4,7 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { askGrandmaster } from '@/app/actions';
+import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -438,6 +439,8 @@ export default function Home() {
             openingAssessment: payload?.openingAssessment || null,
             openingName: payload?.openingName || null,
             principleStreak: payload?.principleStreak || 0,
+            pgn: payload?.pgn || null,
+            isSpicyOpening: payload?.openingName && ['Trompowsky Attack', 'Halloween Gambit', 'Bongcloud Attack'].some(spicy => payload.openingName.includes(spicy)) ? true : false,
             
             // Game context
             type: payload?.type,
@@ -456,8 +459,10 @@ export default function Home() {
             
             // Instructions for Chester
             instruction: payload?.type === 'summary' 
-              ? 'Generate a final commentary on this game state'
-              : 'Generate witty, strategic chess commentary on this move, grounded in the engine move-quality grade provided',
+              ? 'Generate a quick, 2-sentence summary of the game based on the PGN that highlights the defining blunder or brilliant move in a fun, conversational tone as Chester.'
+              : (payload?.openingName && ['Trompowsky Attack', 'Halloween Gambit', 'Bongcloud Attack', 'Bongcloud'].some(spicy => payload.openingName.includes(spicy)))
+                ? `You detected the '${payload.openingName}'. Drop a witty, context-aware comment about this spicy/unconventional opening.`
+                : 'Generate witty, strategic chess commentary on this move as Chester, grounded in the engine move-quality grade provided',
           });
           
           const aiResponse = await askGrandmaster(richPayload);
@@ -987,17 +992,8 @@ export default function Home() {
 
              {arenaView === 'BOARD' && (
                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: isLandscape ? '100%' : 'auto', flex: isLandscape ? '1' : 'none', position: isLandscape || isPhonePortrait ? 'static' : 'absolute', top: isMobile ? undefined : '5.2rem', right: isMobile ? undefined : '0.7rem', width: isPhonePortrait ? '100%' : isLandscape ? 'min(40%, 280px)' : 'clamp(240px, 22vw, 320px)', flexShrink: 0 }}>
-                 <button
-                   onClick={() => setArenaView('CHESTER')}
-                   aria-label="Open Chester commentary and chat"
-                   style={{ width: '100%', minHeight: isPhonePortrait ? '114px' : undefined, flexShrink: 0, overflow: 'hidden', textAlign: 'left', background: 'linear-gradient(145deg, rgba(5,0,10,.96), rgba(42,18,0,.96))', color: '#fff', border: '3px solid #ffea00', borderRadius: '6px', padding: isPhonePortrait ? '0.8rem 1rem' : isLandscape ? '0.5rem' : '0.7rem', boxShadow: '0 0 32px rgba(255,234,0,.42)', cursor: 'pointer', fontFamily: 'inherit' }}
-                 >
-                   <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', color: '#ffea00', fontSize: isPhonePortrait ? '0.9rem' : isLandscape ? '0.55rem' : '0.65rem', fontWeight: 900, letterSpacing: '1px' }}>
-                     <span><span style={{ display: 'inline-block', width: isPhonePortrait ? '10px' : '7px', height: isPhonePortrait ? '10px' : '7px', marginRight: '0.35rem', borderRadius: '50%', background: isThinking ? '#ff007f' : '#39ff14', boxShadow: `0 0 10px ${isThinking ? '#ff007f' : '#39ff14'}`, animation: 'pulse 1.2s infinite' }} />CHESTER LIVE</span>
-                     <span>OPEN →</span>
-                   </span>
-                   <span style={{ display: '-webkit-box', WebkitLineClamp: isPhonePortrait ? 3 : isLandscape ? 3 : 4, WebkitBoxOrient: 'vertical', overflow: 'hidden', color: '#f4f0df', fontSize: isPhonePortrait ? '1rem' : isLandscape ? '0.66rem' : '0.76rem', lineHeight: 1.45, marginTop: '0.45rem', fontWeight: 700 }}>{isThinking ? 'Chester is analyzing the position...' : hostBanter.replace(/^🎙️ CHESTER:\s*/, '')}</span>
-                 </button>
+                 {/* ChesterTeleprompter will handle banter overlay */}
+
 
                  <aside aria-label="Captured pieces" style={{ width: '100%', flex: 1, minHeight: isPhonePortrait ? '70px' : '110px', overflowY: 'auto', background: 'rgba(0,0,0,.9)', border: '2px solid #00ffff', borderRadius: '6px', padding: isPhonePortrait ? '0.4rem' : isLandscape ? '0.4rem' : '0.45rem', boxShadow: '0 0 24px rgba(0,255,255,.3)', boxSizing: 'border-box' }}>
                    <div style={{ color: '#00ffff', fontSize: isPhonePortrait ? '0.6rem' : isLandscape ? '0.45rem' : '0.5rem', fontWeight: 900, letterSpacing: '.5px', textAlign: 'center', marginBottom: '0.35rem' }}>TAKEN PIECES</div>
@@ -1246,42 +1242,8 @@ export default function Home() {
                   </button>
                 )}
 
-                <section aria-label="Chat with Chester" style={{ border: '2px solid rgba(255,234,0,.5)', borderRadius: '6px', background: 'rgba(255,234,0,.04)', padding: isPhonePortrait ? '1rem' : '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#ffea00', fontSize: isPhonePortrait ? '0.9rem' : '0.62rem', fontWeight: 900, letterSpacing: '1px', marginBottom: '0.6rem' }}>
-                    <span>ASK CHESTER</span>
-                    <span style={{ color: isThinking ? '#ffea00' : '#39ff14', fontSize: '.95em' }}>{isThinking ? 'ANALYZING...' : 'AI ONLINE'}</span>
-                  </div>
-                  {chatMessages.length > 0 && (
-                    <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: isPhonePortrait ? '30dvh' : '180px', overflowY: 'auto', padding: '0.25rem 0', marginBottom: '0.8rem' }}>
-                      {chatMessages.map((message, index) => (
-                        <div key={`${message.role}-${index}`} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '0.8rem 1rem', borderRadius: '8px', background: message.role === 'user' ? '#0b5360' : '#211d00', border: `1px solid ${message.role === 'user' ? '#00ffff' : '#ffea00'}`, color: '#fff', fontSize: isPhonePortrait ? '1.05rem' : '0.72rem', lineHeight: 1.5 }}>
-                          <b style={{ display: 'block', color: message.role === 'user' ? '#8effff' : '#ffea00', fontSize: '.85em', marginBottom: '0.25rem' }}>{message.role === 'user' ? 'YOU' : 'CHESTER'}</b>
-                          {message.text}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {chatError && <div role="alert" style={{ color: '#ff9acb', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{chatError}</div>}
-                  <form onSubmit={handleSendMessage} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'stretch' }}>
-                    <textarea
-                      value={chatInput}
-                      onChange={(event) => setChatInput(event.target.value.slice(0, 500))}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault();
-                          event.currentTarget.form?.requestSubmit();
-                        }
-                      }}
-                      placeholder="Ask about this position, your plan, or your last move..."
-                      aria-label="Message Chester"
-                      disabled={isThinking}
-                      rows={isPhonePortrait ? 4 : 2}
-                      style={{ minWidth: 0, resize: 'none', backgroundColor: '#070509', border: '2px solid #ffea00', padding: isPhonePortrait ? '0.9rem' : '0.5rem', fontSize: isPhonePortrait ? '1.1rem' : '0.78rem', lineHeight: 1.35, color: '#fff', borderRadius: '5px', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                    />
-                    <button type="submit" title="Send message" aria-label="Send message to Chester" disabled={isThinking || !chatInput.trim()} style={{ minWidth: isPhonePortrait ? '64px' : '48px', backgroundColor: '#ffea00', color: '#000', fontSize: isPhonePortrait ? '1.6rem' : '1rem', fontWeight: 900, borderRadius: '5px', border: '2px solid #000', cursor: isThinking || !chatInput.trim() ? 'not-allowed' : 'pointer', opacity: isThinking || !chatInput.trim() ? 0.45 : 1 }}>↑</button>
-                  </form>
-                  <div style={{ color: '#8b969a', fontSize: isPhonePortrait ? '0.75rem' : '0.52rem', marginTop: '0.45rem' }}>Enter to send · Shift+Enter for a new line · {chatInput.length}/500</div>
-                </section>
+                {/* Chat with Chester section moved to overlay */}
+
                 
                 {isMobile && (
                   <button 
@@ -1338,6 +1300,17 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          <ChesterTeleprompter text={hostBanter} isThinking={isThinking} />
+          
+          <ChesterChatOverlay 
+            chatMessages={chatMessages}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            onSendMessage={handleSendMessage}
+            isThinking={isThinking}
+            chatError={chatError || ''}
+          />
         </div>
       )}
 

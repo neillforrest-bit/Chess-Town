@@ -84,6 +84,9 @@ const OPENING_LINES = [
   { name: "Queen's Gambit", moves: ['d4', 'd5', 'c4'] },
   { name: "King's Indian Defense", moves: ['d4', 'Nf6', 'c4', 'g6'] },
   { name: 'English Opening', moves: ['c4'] },
+  { name: 'Trompowsky Attack', moves: ['d4', 'Nf6', 'Bg5'] },
+  { name: 'Halloween Gambit', moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Nc3', 'Nf6', 'Nxe5'] },
+  { name: 'King\'s Pawn Game: Bongcloud Attack', moves: ['e4', 'e5', 'Ke2'] },
 ];
 
 function getOpeningName(chess: any) {
@@ -347,7 +350,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null }: { m
           const finishGame = (message: string) => {
             gameRef.current.isGameOver = true;
             window.dispatchEvent(new CustomEvent('game-report', { detail: getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities) }));
-            window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message } }));
+            window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn: gameRef.current.chess.pgn() } }));
             window.dispatchEvent(new CustomEvent('match-complete'));
           };
 
