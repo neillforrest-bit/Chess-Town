@@ -1000,7 +1000,7 @@ export default function Home() {
              )}
 
              {arenaView === 'BOARD' && (
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: isLandscape ? '100%' : 'auto', flex: isLandscape ? '1' : 'none', position: isLandscape || isPhonePortrait ? 'static' : 'absolute', top: isMobile ? undefined : '5.2rem', right: isMobile ? undefined : '0.7rem', width: isPhonePortrait ? '100%' : isLandscape ? 'min(40%, 280px)' : 'clamp(240px, 22vw, 320px)', flexShrink: 0 }}>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', height: isLandscape ? '100%' : 'auto', flex: isLandscape ? '1' : 'none', position: isLandscape || isPhonePortrait ? 'static' : 'absolute', top: isMobile ? undefined : '5.2rem', right: isMobile ? undefined : '0.7rem', width: isPhonePortrait ? '100%' : isLandscape ? 'min(45%, 320px)' : 'clamp(320px, 28vw, 440px)', flexShrink: 0 }}>
                  
                  <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
                  

@@ -61,7 +61,7 @@ const COACHING_POSITIONS: Record<string, { fen: string; briefing: string }> = {
     briefing: 'Training objective: convert the endgame. Activate your king, create a passed pawn, and calculate before every pawn push.',
   },
   COACH_KNIGHTMARE: {
-    fen: 'r1n1n1kr/pp1p1p1p/2p1p1p1/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    fen: 'nnbnkbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
     briefing: 'Training objective: Survive the Knightmare. Chester has no Queen, but he has an overwhelming swarm of four aggressive Knights. Defend your king and do not let him fork your pieces!',
   },
   COACH_INVISIBLE: {
