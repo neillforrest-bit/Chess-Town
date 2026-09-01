@@ -765,17 +765,9 @@ export default function Home() {
 
       {scene === 'LEAGUE' && (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '0.6rem' : 'clamp(1rem, 2vw, 2.5rem)', position: 'relative', boxSizing: 'border-box', overflow: 'hidden' }}>
-          <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '0.5rem' : 0, marginBottom: isMobile ? '0.6rem' : '1.5rem', flexShrink: 0 }}>
+          <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', marginBottom: isMobile ? '0.6rem' : '1.5rem', flexShrink: 0 }}>
             <div>
               <h1 style={{ fontSize: isMobile ? '1.2rem' : 'clamp(2rem, 3.8vw, 4rem)', color: '#ffea00', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 25px rgba(255,234,0,0.8)', margin: 0 }}>CHOOSE YOUR GAME</h1>
-            </div>
-            <div className="arena-top-nav" style={{ display: 'flex', gap: isMobile ? '0.4rem' : '0.8rem' }}>
-              <button onClick={() => setScene('HOME')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#111', color: '#fff', border: isMobile ? '3px solid #fff' : '4px solid #fff', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>🏠 HOME</button>
-              <button onClick={() => loadArena('COACH_OPENING', 'You vs. Chester')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#39ff14', color: '#020502', border: isMobile ? '3px solid #39ff14' : '4px solid #39ff14', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '4px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>PLAY NOW</button>
-              <button onClick={() => setLeagueView('MATCHUPS')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'MATCHUPS' ? '#ffea00' : '#111', color: leagueView === 'MATCHUPS' ? '#000' : '#fff', border: isMobile ? '3px solid #ffea00' : '4px solid #ffea00', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>1v1</button>
-              <button onClick={() => setLeagueView('2V2')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === '2V2' ? '#39ff14' : '#111', color: leagueView === '2V2' ? '#000' : '#fff', border: isMobile ? '3px solid #39ff14' : '4px solid #39ff14', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>2v2</button>
-              <button onClick={() => setLeagueView('COACHING')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'COACHING' ? '#ff007f' : '#111', color: '#fff', border: isMobile ? '3px solid #ff007f' : '4px solid #ff007f', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>MINI GAMES</button>
-              <button onClick={createRemoteChallenge} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#111', color: '#fff', border: isMobile ? '3px solid #b8a2ff' : '4px solid #b8a2ff', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>CHALLENGE</button>
             </div>
           </div>
           
@@ -896,21 +888,6 @@ export default function Home() {
              </span>
              <span style={{ fontSize: isMobile ? '0.8rem' : 'clamp(1rem, 1.4vw, 1.5rem)', color: '#ffea00', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeMatchup}</span>
           </div>
-          <div className="arena-top-nav" style={{ position: 'absolute', top: isLandscape ? '0.35rem' : '0.7rem', right: isLandscape ? '0.5rem' : '1rem', zIndex: 60, display: 'flex', gap: isLandscape ? '0.2rem' : '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: isLandscape ? '62%' : '70%' }}>
-            {[
-              ['LOBBY', () => setScene('HOME')],
-              ['NEW GAME', () => loadArena('COACH_OPENING', 'You vs. Chester')],
-              ['MINI GAMES', () => { setLeagueView('COACHING'); setScene('LEAGUE'); }],
-              ['INVITE', createRemoteChallenge],
-            ].map(([label, action]) => (
-              <button key={label as string} onClick={action as () => void} style={{ background: 'rgba(4,0,10,.9)', border: '1px solid rgba(184,162,255,.7)', color: '#dfeaff', padding: isLandscape ? '0.18rem 0.32rem' : '0.3rem 0.5rem', fontSize: isLandscape ? '0.42rem' : '0.58rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '.5px' }}>{label as string}</button>
-            ))}
-          </div>
-
-          <div aria-label="Game page" style={{ position: 'absolute', left: '50%', bottom: isLandscape ? '0.35rem' : '0.75rem', transform: 'translateX(-50%)', zIndex: 70, display: 'flex', padding: '0.25rem', gap: '0.2rem', background: 'rgba(0,0,0,.92)', border: '2px solid #00ffff', borderRadius: '6px', boxShadow: '0 0 28px rgba(0,255,255,.35)' }}>
-            {(['PLAY', 'CHESTER'] as const).map((view) => <button key={view} onClick={() => setArenaView(view)} aria-pressed={arenaView === view} style={{ border: 0, borderRadius: '4px', padding: isLandscape ? '0.3rem 0.5rem' : '0.5rem 0.8rem', background: arenaView === view ? (view === 'CHESTER' ? '#ffea00' : '#00ffff') : 'transparent', color: arenaView === view ? '#050008' : '#fff', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '1px' }}>{view === 'PLAY' ? 'LIVE PLAY' : 'CHESTER COACHING CORNER'}</button>)}
-          </div>
-
           {/* Board section */}
           <div className="live-game-board" style={{ 
             width: isPhonePortrait ? '100%' : '52%', 

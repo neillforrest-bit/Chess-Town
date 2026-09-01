@@ -30,7 +30,7 @@ export default function GlobalNav() {
       <div className="global-nav__links">
         {[
           { path: '/', label: 'HOME' },
-          { path: '/chester-challenge', label: 'DAILY LEADERBOARD' },
+          { path: '/daily-leaderboard', label: 'DAILY LEADERBOARD' },
           { path: '/chester-challenge', label: 'DAILY CHESTER CHALLENGE' },
           { path: '/arena?view=mini-games', label: 'TRAINING' },
           { path: '/arena?view=play', label: 'CORE GAMEPLAY' },
