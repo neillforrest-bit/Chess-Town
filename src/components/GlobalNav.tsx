@@ -30,10 +30,10 @@ export default function GlobalNav() {
         {[
           { path: '/', label: 'HOME' },
           { path: '/daily-leaderboard', label: 'LEADERBOARD' },
-          { path: '/chester-challenge', label: 'DAILY' },
-          { path: '/arena?view=mini-games', label: 'TRAINING' },
-          { path: '/arena?view=play', label: 'GAMEPLAY' },
-          { path: '/arena?view=leagues', label: 'LEAGUE' },
+          { path: '/daily-challenge', label: 'DAILY' },
+          { path: '/training', label: 'TRAINING' },
+          { path: '/gameplay', label: 'GAMEPLAY' },
+          { path: '/league', label: 'LEAGUE' },
           { path: '/profile', label: 'PROFILE' }
         ].map((link) => {
           const isActive = pathname === link.path.split('?')[0];
