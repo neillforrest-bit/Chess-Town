@@ -28,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setThinking(false);
     }
   };
-  return <div className="app-shell h-screen w-screen overflow-hidden flex flex-col">
+  return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">
     <GlobalNav />
     <main className="app-main flex-1 overflow-hidden">{children}</main>
     <button className="chester-fab" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="chester-drawer" aria-label="Open Chester chat"><ChesterAvatar isThinking={thinking} /></button>
