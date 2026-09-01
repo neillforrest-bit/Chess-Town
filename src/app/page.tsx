@@ -27,21 +27,21 @@ const LEAGUE_STANDINGS = [
 const LEAGUE_ROLL_CALL = LEAGUE_STANDINGS.map((p) => p.name).join(', ');
 
 const INTRO_SCRIPT = [
-  "I have watched you from the shadows for too long. The games you play are safe, predictable, built on excuses and hiding.",
-  "What if we change the rules? What if the new game forces you into the light, where every single move exposes your mind?",
-  "What if that game is chess... and I am the one judging you?"
+  "🐴💬 \"Your move now.\" 🏰",
+  "Feeling competitive? Or just here to blunder another piece in the opening?",
+  "Welcome to Chess Town."
 ];
 
 const PAUL_INTRO_SCRIPT = [
-  "I am Chester. I run Chess Town. I cull the weak from the bold, and I demand players who do not run from their blunders.",
-  "Paul... you have been summoned. The island vacations will not save you from a ruthless checkmate in the center of the board.",
-  "Can you step up to the challenge, or will the heat force you to resign? Defend your honor, Paul. I command you."
+  "🐴💬 \"Your move now, Paul.\" 🏰",
+  "Feeling competitive? Or just here to build another excuse?",
+  "Welcome to Chess Town."
 ];
 
 const RICHARD_INTRO_SCRIPT = [
-  "Richard, I have been watching you. And waiting. Crawling through the screen. For you.",
-  "I have a proposition, and it will be scary for you. And weird for you. But mostly, it will uncover the truth you hide when you think nobody is looking.",
-  "It is a challenge you will have to step up to. The game is chess. The arena is open. Buckle up, Richie boy... it's now or never."
+  "🐴💬 \"Your move now, Richie.\" 🏰",
+  "Feeling competitive? We both know the truth behind the screen.",
+  "Welcome to Chess Town."
 ];
 
 function getPersonalizedIntro(name: string) {
@@ -49,9 +49,9 @@ function getPersonalizedIntro(name: string) {
   if (name === 'Paul') return PAUL_INTRO_SCRIPT;
   if (name === 'Richard') return RICHARD_INTRO_SCRIPT;
   return [
-    `${name}, I have watched you from the shadows. Your old games are safe, predictable, built on endless excuses.`,
-    "What if we force you into the light, to play a game with actual consequences, real-time panic, and nowhere to hide?",
-    `What if that game is chess... and I am the one judging you, ${name}? The board is waiting.`
+    `🐴💬 \"Your move now, ${name}.\" 🏰`,
+    "Feeling competitive? Let's see if your actual play backs up the confidence.",
+    "Welcome to Chess Town."
   ];
 }
 
@@ -204,7 +204,7 @@ export default function Home() {
   }, []);
   const isPhonePortrait = isMobile && !isLandscape;
 
-  const [scene, setScene] = useState<SceneState>('SPLASH');
+  const [scene, setScene] = useState<SceneState>('INTRO');
   const [pageIndex, setPageIndex] = useState(0);
   const [displayedIntro, setDisplayedIntro] = useState('');
   
