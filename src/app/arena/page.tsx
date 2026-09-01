@@ -130,6 +130,28 @@ const DAILY_LEADERS = [
   { name: 'Gabe', score: 84 },
 ];
 
+const LEAGUE_TIERS = [
+  { title: 'THE MASTERS', subtitle: 'PRO TIER', accent: '#ffea00', className: 'league-tier--masters', players: [{ name: 'Charlie', rating: '2,184', momentum: '+3 ▲', direction: 'up' }, { name: 'Wolf', rating: '2,091', momentum: '+1 ▲', direction: 'up' }, { name: 'Brendan', rating: '2,024', momentum: '-2 ▼', direction: 'down' }] },
+  { title: 'THE GRINDERS', subtitle: 'GOOD NOT GREAT', accent: '#00e5e5', className: 'league-tier--grinders', players: [{ name: 'James', rating: '1,842', momentum: '+5 ▲', direction: 'up' }, { name: 'Kyle', rating: '1,790', momentum: '-1 ▼', direction: 'down' }] },
+  { title: 'THE ROOKIES', subtitle: 'BEGINNER TIER', accent: '#7cff45', className: 'league-tier--rookies', players: [{ name: 'Marley', rating: '1,416', momentum: '+4 ▲', direction: 'up' }, { name: 'Dilly', rating: '1,372', momentum: '-3 ▼', direction: 'down' }] },
+];
+
+function LeagueLeaderboard() {
+  return <section className="league-dashboard" aria-labelledby="league-title">
+    <header className="league-dashboard__header"><div><span>CHESS TOWN / SEASON ONE</span><h1 id="league-title">LEAGUE PLAY</h1></div><p><i /> LIVE LADDER</p></header>
+    <div className="league-dashboard__tiers grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {LEAGUE_TIERS.map((tier) => <article key={tier.title} className={`league-tier ${tier.className}`} style={{ '--tier-accent': tier.accent } as React.CSSProperties}>
+        <header><div><span>{tier.subtitle}</span><h2>{tier.title}</h2></div><b>{tier.players.length} ACTIVE</b></header>
+        <div className="league-tier__table" role="table" aria-label={`${tier.title} standings`}>
+          <div className="league-tier__row league-tier__head" role="row"><span>RK</span><span>PLAYER</span><span>ELO</span><span>FORM</span></div>
+          {tier.players.map((player, index) => <div key={player.name} className="league-tier__row" role="row"><span className="league-tier__rank">{index === 0 ? <b title="Tier leader">♛</b> : `#${index + 1}`}</span><strong>{player.name}</strong><span>{player.rating}</span><span className={`league-tier__momentum league-tier__momentum--${player.direction}`}>{player.momentum}</span></div>)}
+        </div>
+        <footer><span>TOP PROMOTES</span><b>{tier.title === 'THE MASTERS' ? 'CROWN DEFENSE' : 'NEXT TIER UP'}</b></footer>
+      </article>)}
+    </div>
+  </section>;
+}
+
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
   b: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
@@ -567,7 +589,6 @@ export default function Home() {
     setActiveMatchup(matchTitle);
     setGameMode(mode);
     setScene('GAME');
-    setScene('GAME');
     
     setTimeout(() => {
       setHostBanter(drill
@@ -628,8 +649,8 @@ export default function Home() {
       loadArena('COACH_OPENING', 'You vs. Chester');
       return;
     }
-    setScene(destination === 'leagues' ? 'TOWN' : 'LEAGUE');
-    setLeagueView(destination === 'mini-games' ? 'COACHING' : 'MATCHUPS');
+    setScene('LEAGUE');
+    setLeagueView(destination === 'mini-games' ? 'COACHING' : 'STANDINGS');
   }, []);
 
   if (!isMounted) return null;
@@ -763,7 +784,9 @@ export default function Home() {
         />
       )}
 
-      {scene === 'LEAGUE' && (
+      {scene === 'LEAGUE' && leagueView === 'STANDINGS' && <LeagueLeaderboard />}
+
+      {scene === 'LEAGUE' && leagueView !== 'STANDINGS' && (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '0.6rem' : 'clamp(1rem, 2vw, 2.5rem)', position: 'relative', boxSizing: 'border-box', overflow: 'hidden' }}>
           <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', marginBottom: isMobile ? '0.6rem' : '1.5rem', flexShrink: 0 }}>
             <div>

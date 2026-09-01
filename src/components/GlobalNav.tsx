@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChesterAvatar } from './ChesterUI';
-import { useState, useEffect } from 'react';
 
 export default function GlobalNav() {
   const pathname = usePathname();
@@ -30,11 +29,12 @@ export default function GlobalNav() {
       <div className="global-nav__links">
         {[
           { path: '/', label: 'HOME' },
-          { path: '/daily-leaderboard', label: 'DAILY LEADERBOARD' },
-          { path: '/chester-challenge', label: 'DAILY CHESTER CHALLENGE' },
+          { path: '/daily-leaderboard', label: 'LEADERBOARD' },
+          { path: '/chester-challenge', label: 'DAILY' },
           { path: '/arena?view=mini-games', label: 'TRAINING' },
-          { path: '/arena?view=play', label: 'CORE GAMEPLAY' },
-          { path: '/arena?view=leagues', label: 'LEAGUE PLAY' }
+          { path: '/arena?view=play', label: 'GAMEPLAY' },
+          { path: '/arena?view=leagues', label: 'LEAGUE' },
+          { path: '/profile', label: 'PROFILE' }
         ].map((link) => {
           const isActive = pathname === link.path.split('?')[0];
           return (

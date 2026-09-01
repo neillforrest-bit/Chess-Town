@@ -28,13 +28,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setThinking(false);
     }
   };
-  return <>
+  return <div className="app-shell h-screen w-screen overflow-hidden flex flex-col">
     <GlobalNav />
-    <main className="app-main">{children}</main>
+    <main className="app-main flex-1 overflow-hidden">{children}</main>
     <button className="chester-fab" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="chester-drawer" aria-label="Open Chester chat"><ChesterAvatar isThinking={thinking} /></button>
     <aside id="chester-drawer" className={`chester-drawer ${open ? 'is-open' : ''}`} aria-hidden={!open}>
       <header><b>CHESTER CHAT</b><button onClick={() => setOpen(false)} aria-label="Close Chester chat">×</button></header>
       <ChesterChatOverlay chatMessages={messages} chatInput={input} setChatInput={setInput} onSendMessage={send} isThinking={thinking} chatError={error} />
     </aside>
-  </>;
+  </div>;
 }

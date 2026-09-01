@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '../chester-challenge/page';
+export { default } from '../daily-challenge/page';
