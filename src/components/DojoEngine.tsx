@@ -351,6 +351,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             fontStyle: 'bold',
             color: '#ffb6dc',
           }).setOrigin(0.5).setDepth(21);
+          const greenJailX = 84;
+          scene.add.rectangle(greenJailX, jailY, 136, 24, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
+          scene.add.text(greenJailX, jailY, 'GREEN JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#dfffda' }).setOrigin(0.5).setDepth(21);
 
           // Draw board coordinates (static background)
           for (let col = 0; col < 8; col++) {
@@ -395,21 +398,27 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const attackingPiece = pieceContainers[move.from];
             if (attackingPiece) attackingPiece.setAlpha(0);
             capturedPiece.setDepth(30).setInteractive(false);
+            const capturedIsWhite = move.color === 'b';
+            const targetX = capturedIsWhite ? greenJailX : jailX;
+            const targetColor = capturedIsWhite ? 0x39ff14 : 0xff007f;
+            const targetY = jailY + 28;
+            const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0.45).setDepth(29);
+            scene.tweens.add({ targets: impact, scale: 1.8, alpha: 0, duration: 420, ease: 'Quad.Out', onComplete: () => impact.destroy() });
 
             const moonwalk = scene.tweens.add({
               targets: capturedPiece,
-              x: jailX,
-              y: jailY + 24,
-              angle: { from: -9, to: 9 },
-              scaleX: 0.56,
-              scaleY: 0.56,
-              duration: 780,
+              x: targetX,
+              y: targetY,
+              angle: { from: -14, to: 14 },
+              scaleX: { from: 1, to: 0.52 },
+              scaleY: { from: 1, to: 0.52 },
+              duration: 1250,
               ease: 'Sine.InOut',
               onUpdate: (_tween, target) => {
-                target.y += Math.sin(_tween.totalProgress * Math.PI * 8) * 1.6;
+                target.y += Math.sin(_tween.totalProgress * Math.PI * 6) * 2.4;
               },
               onComplete: () => {
-                const lock = scene.add.text(jailX, jailY + 24, '🔒', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
+                const lock = scene.add.text(targetX, targetY, '🔒', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
                 scene.tweens.add({
                   targets: lock,
                   alpha: 0,
@@ -645,14 +654,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   }
 
                   const isWhite = piece.color === 'w';
+                  const isMovedPiece = !isLastMoveInvisible && gameRef.current.lastMove?.to === squareName;
                   const glowColor = isWhite ? '#39ff14' : '#ff007f';
                   const pieceGlyph = scene.add.text(0, 0, PIECE_GLYPHS[piece.color][piece.type], {
                     fontFamily: 'Georgia, Times New Roman, serif',
                     fontSize: '88px',
                     fontStyle: 'bold',
                     color: isWhite ? '#dfffda' : '#ff4eb1',
-                    stroke: glowColor,
-                    strokeThickness: 4,
+                    stroke: '#050008',
+                    strokeThickness: 7,
                     shadow: { blur: 34, color: glowColor, fill: true, offsetX: 0, offsetY: 0 },
                   });
                   pieceGlyph.setOrigin(0.5);
@@ -662,21 +672,25 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   
                   if (!isInvisible) {
                     container.add([glow, pieceGlyph]);
+                    if (gameRef.current.lastMove && !isMovedPiece) container.setAlpha(0.42);
                   }
 
-                  if (!isInvisible && gameRef.current.lastMove?.to === squareName) {
-                    container.setScale(0.35).setAlpha(0.2);
+                  if (!isInvisible && isMovedPiece) {
+                    const spotlight = scene.add.circle(0, 0, tileSize * 0.52, 0xffea00, 0.28);
+                    container.addAt(spotlight, 0);
+                    container.setScale(0.35).setAlpha(1);
                     scene.tweens.add({
                       targets: container,
-                      scaleX: 1.16,
-                      scaleY: 1.16,
+                      scaleX: 1.22,
+                      scaleY: 1.22,
                       alpha: 1,
-                      duration: 170,
+                      duration: 220,
                       ease: 'Back.Out',
                       yoyo: true,
-                      hold: 80,
+                      hold: 120,
                       onComplete: () => container.setScale(1),
                     });
+                    scene.tweens.add({ targets: spotlight, alpha: 0.05, scale: 1.35, duration: 720, yoyo: true, repeat: 1 });
                   }
                   container.setInteractive(
                     new Phaser.Geom.Rectangle(-tileSize / 2, -tileSize / 2, tileSize, tileSize),
