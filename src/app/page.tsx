@@ -930,9 +930,9 @@ export default function Home() {
 
           {/* Board section */}
           <div style={{ 
-            width: arenaView === 'SPLIT' ? '58%' : isPhonePortrait ? '100%' : '60%', 
+            width: arenaView === 'SPLIT' ? '50%' : isPhonePortrait ? '100%' : '52%', 
             height: isPhonePortrait ? 'auto' : '100%', 
-            flex: isPhonePortrait ? '0 0 auto' : arenaView === 'SPLIT' ? '0 1 58%' : '1 1 60%',
+            flex: isPhonePortrait ? '0 0 auto' : arenaView === 'SPLIT' ? '0 1 50%' : '1 1 52%',
             minHeight: 0,
             maxHeight: '100dvh', 
             display: 'flex', 
@@ -1000,7 +1000,7 @@ export default function Home() {
              )}
 
              {arenaView === 'BOARD' && (
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', height: isPhonePortrait ? 'auto' : '100%', flex: isPhonePortrait ? 'none' : '1', width: isPhonePortrait ? '100%' : '40%', flexShrink: 0, justifyContent: 'center' }}>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', height: isPhonePortrait ? 'auto' : '100%', flex: isPhonePortrait ? 'none' : '1', width: isPhonePortrait ? '100%' : '48%', flexShrink: 0, justifyContent: 'center' }}>
                  
                  <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
                  
@@ -1014,45 +1014,45 @@ export default function Home() {
                     isMobile={isMobile}
                  />
 
-                 <div style={{ width: '100%', flex: 1, minHeight: isPhonePortrait ? '90px' : '120px', display: 'flex', gap: '0.4rem' }}>
-                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #39ff14', borderRadius: '6px', padding: '0.35rem', overflowY: 'auto' }}>
+                 <div style={{ width: '100%', flex: 'none', height: isPhonePortrait ? '65px' : '90px', display: 'flex', gap: '0.4rem' }}>
+                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #39ff14', borderRadius: '6px', padding: '0.2rem', overflowY: 'auto' }}>
                        {(() => {
                          const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
                          const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
                          const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
                          const isWinning = bLost - wLost > 0;
                        return (
-                         <div style={{ color: '#39ff14', fontSize: isPhonePortrait ? '0.6rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.3rem' }}>
+                         <div style={{ color: '#39ff14', fontSize: isPhonePortrait ? '0.5rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.1rem' }}>
                            GREEN JAIL {isWinning ? `(+${bLost - wLost})` : ''}
                          </div>
                        );
                        })()}
-                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(28px, 1fr))', gap: '0.2rem', justifyItems: 'center' }}>
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', gap: '0.1rem', justifyItems: 'center' }}>
                          {capturedPieces.map((piece, index) => {
                            if (piece.color !== 'b') return null;
                            const isNew = index === capturedPieces.length - 1;
-                           return <span key={`jail-b-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#ff4eb1', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.5rem' : '1.35rem', textShadow: '0 0 10px #ff007f' }}>{PIECE_GLYPHS['b'][piece.type]}</span>
+                           return <span key={`jail-b-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#ff4eb1', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.2rem' : '1.1rem', lineHeight: 1, textShadow: '0 0 10px #ff007f' }}>{PIECE_GLYPHS['b'][piece.type]}</span>
                          })}
                        </div>
                     </div>
                     
-                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #ff007f', borderRadius: '6px', padding: '0.35rem', overflowY: 'auto' }}>
+                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #ff007f', borderRadius: '6px', padding: '0.2rem', overflowY: 'auto' }}>
                        {(() => {
                          const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
                          const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
                          const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
                          const isWinning = wLost - bLost > 0;
                        return (
-                         <div style={{ color: '#ff007f', fontSize: isPhonePortrait ? '0.6rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.3rem' }}>
+                         <div style={{ color: '#ff007f', fontSize: isPhonePortrait ? '0.5rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.1rem' }}>
                            PINK JAIL {isWinning ? `(+${wLost - bLost})` : ''}
                          </div>
                        );
                        })()}
-                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(28px, 1fr))', gap: '0.2rem', justifyItems: 'center' }}>
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', gap: '0.1rem', justifyItems: 'center' }}>
                          {capturedPieces.map((piece, index) => {
                            if (piece.color !== 'w') return null;
                            const isNew = index === capturedPieces.length - 1;
-                           return <span key={`jail-w-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#dfffda', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.5rem' : '1.35rem', textShadow: '0 0 10px #39ff14' }}>{PIECE_GLYPHS['w'][piece.type]}</span>
+                           return <span key={`jail-w-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#dfffda', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.2rem' : '1.1rem', lineHeight: 1, textShadow: '0 0 10px #39ff14' }}>{PIECE_GLYPHS['w'][piece.type]}</span>
                          })}
                        </div>
                     </div>
