@@ -1,5 +1,6 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
+import { CHESTER_EMOTIONS, getChesterEmotion } from '@/lib/chester-emotions';
 
 export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: boolean, size?: 'small' | 'default' | 'large' }) {
   const sizeMap = {
@@ -66,6 +67,8 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
 }
 
 export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: string, isThinking: boolean, isMobile?: boolean }) {
+  const message = text.replace(/^🎙️ CHESTER:\s*/, '');
+  const emotion = isThinking ? 'thinking' : getChesterEmotion(message);
   return (
     <div style={{
       width: '100%',
@@ -92,7 +95,8 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
         maxHeight: '150px',
         overflowY: 'auto'
       }}>
-        {isThinking ? <span style={{ color: 'var(--arena-pink)', fontStyle: 'italic' }}>Chester is calculating...</span> : text.replace(/^🎙️ CHESTER:\s*/, '')}
+        <span aria-label={emotion}>{CHESTER_EMOTIONS[emotion].emoji}</span>{' '}
+        {isThinking ? <span style={{ color: 'var(--arena-pink)', fontStyle: 'italic' }}>Chester is calculating...</span> : message}
       </div>
     </div>
   );

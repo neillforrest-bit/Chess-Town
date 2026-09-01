@@ -7,10 +7,7 @@ import PortalDashboard from '@/components/PortalDashboard';
 import { CHESTER_LANDING_COPY } from '@/lib/chester-landing';
 
 export default function ChessTownLanding() {
-  const [hasEntered, setHasEntered] = useState(false);
   const [dialogue, setDialogue] = useState(CHESTER_LANDING_COPY.dailyLeaderboard);
-
-  if (!hasEntered) return <ChesterIntro onEnter={() => setHasEntered(true)} />;
 
   return <main className="portal-shell">
     <PortalDashboard onHover={setDialogue} />
