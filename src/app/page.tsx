@@ -210,6 +210,7 @@ export default function Home() {
   
   const [activeMatchup, setActiveMatchup] = useState('');
   const [gameMode, setGameMode] = useState('STANDBY');
+  const [coachingDifficulty, setCoachingDifficulty] = useState<'BEGINNER' | 'CASUAL' | 'PRO'>('CASUAL');
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [arenaView, setArenaView] = useState<'BOARD' | 'CHESTER' | 'SPLIT'>('BOARD');
@@ -460,10 +461,10 @@ export default function Home() {
             
             // Instructions for Chester
             instruction: payload?.type === 'summary' 
-              ? 'Generate a quick, 2-sentence summary of the game based on the PGN that highlights the defining blunder or brilliant move in a fun, conversational tone as Chester.'
+              ? 'Generate a quick, 2-sentence summary of the game based on the PGN highlighting the defining blunder or brilliant move. Use a punchy, witty, dry British sense of humour.'
               : (payload?.openingName && ['Trompowsky Attack', 'Halloween Gambit', 'Bongcloud Attack', 'Bongcloud'].some(spicy => payload.openingName.includes(spicy)))
-                ? `You detected the '${payload.openingName}'. Drop a witty, context-aware comment about this spicy/unconventional opening.`
-                : 'Generate witty, strategic chess commentary on this move as Chester, grounded in the engine move-quality grade provided',
+                ? `You detected the '${payload.openingName}'. Drop a punchy, witty, dry British comment about this chaotic opening.`
+                : 'Generate punchy, witty, strategic chess commentary on this move with a dry British sense of humour, grounded in the engine move-quality grade provided',
           });
           
           const aiResponse = await askGrandmaster(richPayload);
@@ -834,7 +835,13 @@ export default function Home() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div>
                     <h3 style={{ color: '#ff007f', fontSize: 'clamp(1.2rem, 1.8vw, 1.8rem)', margin: 0, fontWeight: 900 }}>CHESTER'S COACHING LAB</h3>
-                    <p style={{ color: '#ddd', margin: '0.4rem 0 0', lineHeight: 1.4 }}>Pick your next lesson, move the pieces yourself, and Chester will react to every decision in real time.</p>
+                    <p style={{ color: '#ddd', margin: '0.4rem 0 0.8rem', lineHeight: 1.4 }}>Pick your next lesson, move the pieces yourself, and Chester will react to every decision in real time.</p>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 900 }}>DIFFICULTY:</span>
+                      {(['BEGINNER', 'CASUAL', 'PRO'] as const).map((diff) => (
+                        <button key={diff} onClick={() => setCoachingDifficulty(diff)} style={{ backgroundColor: coachingDifficulty === diff ? '#00ffff' : '#111', color: coachingDifficulty === diff ? '#000' : '#00ffff', border: '1px solid #00ffff', borderRadius: '4px', padding: '0.3rem 0.6rem', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer' }}>{diff}</button>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
                     {COACHING_DRILLS.map((drill) => (
@@ -979,6 +986,7 @@ export default function Home() {
                    <DojoEngineNoSSR
                      mode={gameMode}
                      playerColor={gameMode === 'PVP_REMOTE' && !remoteConnected ? null : remoteRole}
+                     difficulty={coachingDifficulty}
                    />
                 </div>
              </div>

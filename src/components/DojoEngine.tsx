@@ -174,14 +174,14 @@ function minimax(chess: any, depth: number, alpha: number, beta: number, maximiz
 }
 
 // Picks the strongest available move for whichever color is currently on the move.
-function pickBestMove(chess: any): any {
+function pickBestMove(chess: any, searchDepth: number): any {
   const aiIsWhite = chess.turn() === 'w';
   const moves = chess.moves({ verbose: true });
 
   const scored = moves.map((m: any) => {
     chess.move({ from: m.from, to: m.to, promotion: m.promotion });
     // Small random jitter keeps play from feeling robotic when several moves are near-equal.
-    const score = minimax(chess, AI_SEARCH_DEPTH, -Infinity, Infinity, !aiIsWhite) + (Math.random() * 8 - 4);
+    const score = minimax(chess, searchDepth, -Infinity, Infinity, !aiIsWhite) + (Math.random() * 8 - 4);
     chess.undo();
     return { move: m, score };
   });
@@ -193,7 +193,7 @@ function pickBestMove(chess: any): any {
 // Grades a played move against every legal alternative from the same position, Stockfish-style
 // centipawn-loss grading (approximated with our own alpha-beta search since the app runs
 // entirely client-side without a bundled engine binary).
-function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: string; promotion?: string }) {
+function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: string; promotion?: string }, searchDepth: number) {
   const board = new Chess(fenBeforeMove);
   const moverIsWhite = board.turn() === 'w';
   const moves = board.moves({ verbose: true });
@@ -203,7 +203,7 @@ function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: str
   let playedScore = -Infinity;
   for (const m of moves) {
     board.move({ from: m.from, to: m.to, promotion: m.promotion });
-    const raw = minimax(board, AI_SEARCH_DEPTH, -Infinity, Infinity, !moverIsWhite);
+    const raw = minimax(board, searchDepth, -Infinity, Infinity, !moverIsWhite);
     board.undo();
     const normalized = moverIsWhite ? raw : -raw;
     if (normalized > bestScore) bestScore = normalized;
@@ -284,7 +284,7 @@ function getOpeningAssessment(chess: any) {
   };
 }
 
-export default function DojoEngine({ mode = 'STANDBY', playerColor = null }: { mode?: string; playerColor?: 'w' | 'b' | null }) {
+export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'CASUAL' }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'CASUAL' | 'PRO' }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserRef = useRef<Phaser.Game | null>(null);
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -390,9 +390,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null }: { m
               const moves = gameRef.current.chess.moves({ verbose: true });
               if (!moves.length) return;
               const fenBeforeMove = gameRef.current.chess.fen();
-              const aiMove = pickBestMove(gameRef.current.chess);
+              const searchD = difficulty === 'PRO' ? 3 : difficulty === 'CASUAL' ? 2 : 1;
+              const aiMove = pickBestMove(gameRef.current.chess, searchD);
               const result = gameRef.current.chess.move({ from: aiMove.from, to: aiMove.to, promotion: 'q' });
-              const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion });
+              const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, searchD);
               emitCapture(result);
               gameRef.current.ply++;
               gameRef.current.lastMove = { from: result.from, to: result.to };
@@ -413,7 +414,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null }: { m
             const fenBeforeMove = gameRef.current.chess.fen();
             const moveResult = gameRef.current.chess.move({ from, to, promotion: 'q' });
             if (!moveResult) return;
-            const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion });
+            const searchD = difficulty === 'PRO' ? 3 : difficulty === 'CASUAL' ? 2 : 1;
+            const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion }, searchD);
             emitCapture(moveResult);
             gameRef.current.ply++;
             gameRef.current.lastMove = { from, to };
