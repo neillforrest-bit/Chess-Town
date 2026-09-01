@@ -85,6 +85,7 @@ export function ChesterChatOverlay({
   return (
     <div style={{
       width: '100%',
+      flex: expanded ? 1 : 'none',
       background: 'rgba(0, 0, 0, 0.75)',
       backdropFilter: 'blur(12px)',
       border: '1px solid rgba(255, 234, 0, 0.3)',
@@ -118,7 +119,7 @@ export function ChesterChatOverlay({
 
       {expanded && (
         <>
-          <div ref={scrollRef} style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '35vh', overflowY: 'auto' }}>
+          <div ref={scrollRef} style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', overflowY: 'auto' }}>
             {chatMessages.length === 0 && (
               <div style={{ color: '#aaa', fontStyle: 'italic', textAlign: 'center' }}>No messages yet...</div>
             )}

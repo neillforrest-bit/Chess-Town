@@ -930,9 +930,9 @@ export default function Home() {
 
           {/* Board section */}
           <div style={{ 
-            width: arenaView === 'SPLIT' ? '58%' : '100%', 
+            width: arenaView === 'SPLIT' ? '58%' : isPhonePortrait ? '100%' : '60%', 
             height: isPhonePortrait ? 'auto' : '100%', 
-            flex: isPhonePortrait ? '0 0 auto' : arenaView === 'SPLIT' ? '0 1 58%' : '1 1 100%',
+            flex: isPhonePortrait ? '0 0 auto' : arenaView === 'SPLIT' ? '0 1 58%' : '1 1 60%',
             minHeight: 0,
             maxHeight: '100dvh', 
             display: 'flex', 
@@ -1000,7 +1000,7 @@ export default function Home() {
              )}
 
              {arenaView === 'BOARD' && (
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', height: isLandscape ? '100%' : 'auto', flex: isLandscape ? '1' : 'none', position: isLandscape || isPhonePortrait ? 'static' : 'absolute', top: isMobile ? undefined : '5.2rem', right: isMobile ? undefined : '0.7rem', width: isPhonePortrait ? '100%' : isLandscape ? 'min(45%, 320px)' : 'clamp(320px, 28vw, 440px)', flexShrink: 0 }}>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', height: isPhonePortrait ? 'auto' : '100%', flex: isPhonePortrait ? 'none' : '1', width: isPhonePortrait ? '100%' : '40%', flexShrink: 0, justifyContent: 'center' }}>
                  
                  <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
                  
