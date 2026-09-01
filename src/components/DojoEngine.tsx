@@ -25,6 +25,7 @@ const AI_TAGS: Record<string, { player: string; rival: string; title: string }> 
   COACH_PRESSURE: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Tactical Pressure' },
   COACH_KING_SAFETY: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Castle Before Chaos' },
   COACH_ENDGAME: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Convert the Advantage' },
+  COACH_KNIGHTMARE: { player: 'You', rival: 'Chester', title: 'Chester Coaching: The Knightmare' },
   COACH_INVISIBLE: { player: 'You', rival: 'Chester', title: 'Chester Coaching: Phantom Threat' },
   PVP_LOCAL: { player: 'Challenger', rival: 'Defender', title: 'Local Challenge: Face to Face' },
   PVP_REMOTE: { player: 'White Challenger', rival: 'Black Challenger', title: 'Live Challenge: White vs. Black' },
@@ -58,6 +59,10 @@ const COACHING_POSITIONS: Record<string, { fen: string; briefing: string }> = {
   COACH_ENDGAME: {
     fen: '8/5pk1/3p2p1/3Pp3/2P1P3/1P3K2/6PP/8 w - - 0 35',
     briefing: 'Training objective: convert the endgame. Activate your king, create a passed pawn, and calculate before every pawn push.',
+  },
+  COACH_KNIGHTMARE: {
+    fen: 'r1n1n1kr/pp1p1p1p/2p1p1p1/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    briefing: 'Training objective: Survive the Knightmare. Chester has no Queen, but he has an overwhelming swarm of four aggressive Knights. Defend your king and do not let him fork your pieces!',
   },
   COACH_INVISIBLE: {
     fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
@@ -324,6 +329,27 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null }: { m
           let squareZones: Phaser.GameObjects.Zone[] = [];
           let legalTargetMarkers: Phaser.GameObjects.Arc[] = [];
           let renderBoard: () => void;
+
+          // Draw board coordinates (static background)
+          for (let col = 0; col < 8; col++) {
+            // File letters (a-h)
+            scene.add.text(boardOffset + col * tileSize + tileSize / 2, boardOffset + 8 * tileSize + 8, files[col], {
+              fontFamily: 'sans-serif',
+              fontSize: '16px',
+              fontStyle: 'bold',
+              color: '#ffffff',
+            }).setOrigin(0.5, 0);
+          }
+          
+          for (let row = 0; row < 8; row++) {
+            // Rank numbers (1-8)
+            scene.add.text(boardOffset - 12, boardOffset + row * tileSize + tileSize / 2, ranks[row], {
+              fontFamily: 'sans-serif',
+              fontSize: '16px',
+              fontStyle: 'bold',
+              color: '#ffffff',
+            }).setOrigin(1, 0.5);
+          }
 
           const emitCapture = (move: any) => {
             if (!move.captured) return;

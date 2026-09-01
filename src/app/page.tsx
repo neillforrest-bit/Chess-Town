@@ -116,6 +116,7 @@ const COACHING_DRILLS = [
   { mode: 'COACH_KING_SAFETY', level: 'INTERMEDIATE', badge: 'KING SAFETY', color: '#ffea00', title: 'Castle Before Chaos', detail: 'Get your king castled before Chester creates a central threat. Every wasted tempo raises the pressure.' },
   { mode: 'COACH_PRESSURE', level: 'INTERMEDIATE', badge: 'TACTICAL PRESSURE', color: '#ff007f', title: 'Build the Squeeze', detail: 'Create a concrete threat, improve your least active piece, and win material without forcing a reckless attack.' },
   { mode: 'COACH_ENDGAME', level: 'EXPERT', badge: 'ENDGAME CALCULATION', color: '#b8a2ff', title: 'Convert the Advantage', detail: 'Activate your king, create a passed pawn, and convert the position without allowing counterplay.' },
+  { mode: 'COACH_KNIGHTMARE', level: 'CHAOS', badge: 'CHESTER’S CHEATS', color: '#ffea00', title: 'The Knightmare', detail: 'Survive the chaos. Chester has given up his Queen and Rooks in exchange for 4 hyper-aggressive Knights. Defend your pawns and beware the royal fork!' },
   { mode: 'COACH_INVISIBLE', level: 'MYSTERY', badge: 'CHESTER’S CHEATS', color: '#ff007f', title: 'Phantom Threat', detail: 'Play from the opening against Chester, but 5 of his most important pieces (Queen, Rooks, Knights) are completely invisible. Can you survive?' },
 ];
 
@@ -992,8 +993,18 @@ export default function Home() {
 
              {arenaView === 'BOARD' && (
                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: isLandscape ? '100%' : 'auto', flex: isLandscape ? '1' : 'none', position: isLandscape || isPhonePortrait ? 'static' : 'absolute', top: isMobile ? undefined : '5.2rem', right: isMobile ? undefined : '0.7rem', width: isPhonePortrait ? '100%' : isLandscape ? 'min(40%, 280px)' : 'clamp(240px, 22vw, 320px)', flexShrink: 0 }}>
-                 {/* ChesterTeleprompter will handle banter overlay */}
-
+                 
+                 <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
+                 
+                 <ChesterChatOverlay 
+                    chatMessages={chatMessages}
+                    chatInput={chatInput}
+                    setChatInput={setChatInput}
+                    onSendMessage={handleSendMessage}
+                    isThinking={isThinking}
+                    chatError={chatError || ''}
+                    isMobile={isMobile}
+                 />
 
                  <aside aria-label="Captured pieces" style={{ width: '100%', flex: 1, minHeight: isPhonePortrait ? '70px' : '110px', overflowY: 'auto', background: 'rgba(0,0,0,.9)', border: '2px solid #00ffff', borderRadius: '6px', padding: isPhonePortrait ? '0.4rem' : isLandscape ? '0.4rem' : '0.45rem', boxShadow: '0 0 24px rgba(0,255,255,.3)', boxSizing: 'border-box' }}>
                    <div style={{ color: '#00ffff', fontSize: isPhonePortrait ? '0.6rem' : isLandscape ? '0.45rem' : '0.5rem', fontWeight: 900, letterSpacing: '.5px', textAlign: 'center', marginBottom: '0.35rem' }}>TAKEN PIECES</div>
@@ -1300,17 +1311,6 @@ export default function Home() {
               </div>
             </div>
           )}
-
-          <ChesterTeleprompter text={hostBanter} isThinking={isThinking} />
-          
-          <ChesterChatOverlay 
-            chatMessages={chatMessages}
-            chatInput={chatInput}
-            setChatInput={setChatInput}
-            onSendMessage={handleSendMessage}
-            isThinking={isThinking}
-            chatError={chatError || ''}
-          />
         </div>
       )}
 

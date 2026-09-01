@@ -23,35 +23,32 @@ export function ChesterAvatar({ isThinking }: { isThinking: boolean }) {
   );
 }
 
-export function ChesterTeleprompter({ text, isThinking }: { text: string, isThinking: boolean }) {
+export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: string, isThinking: boolean, isMobile?: boolean }) {
   return (
     <div style={{
-      position: 'absolute',
-      top: '1rem',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: 'clamp(300px, 50vw, 700px)',
+      width: '100%',
       background: 'rgba(10, 5, 20, 0.65)',
       backdropFilter: 'blur(10px)',
       border: '1px solid rgba(0, 255, 255, 0.3)',
       borderRadius: '12px',
-      padding: '1rem',
+      padding: isMobile ? '0.75rem' : '1rem',
       display: 'flex',
-      gap: '1rem',
+      gap: isMobile ? '0.75rem' : '1rem',
       alignItems: 'center',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-      zIndex: 100,
-      pointerEvents: 'none'
+      boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+      boxSizing: 'border-box'
     }}>
       <ChesterAvatar isThinking={isThinking} />
       <div style={{ 
         flex: 1,
         fontFamily: 'sans-serif',
-        fontSize: 'clamp(1rem, 1.5vw, 1.2rem)',
-        letterSpacing: '0.05em',
+        fontSize: '0.9rem',
+        letterSpacing: '0.03em',
         color: '#ffffff',
         textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-        lineHeight: 1.4
+        lineHeight: 1.4,
+        maxHeight: '150px',
+        overflowY: 'auto'
       }}>
         {isThinking ? <span style={{ color: '#ffea00', fontStyle: 'italic' }}>Chester is calculating...</span> : text.replace(/^🎙️ CHESTER:\s*/, '')}
       </div>
@@ -65,7 +62,8 @@ export function ChesterChatOverlay({
   setChatInput,
   onSendMessage,
   isThinking,
-  chatError
+  chatError,
+  isMobile
 }: {
   chatMessages: { role: 'user' | 'chester'; text: string }[];
   chatInput: string;
@@ -73,8 +71,9 @@ export function ChesterChatOverlay({
   onSendMessage: (e: React.FormEvent) => void;
   isThinking: boolean;
   chatError: string;
+  isMobile?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(!isMobile);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,10 +84,7 @@ export function ChesterChatOverlay({
 
   return (
     <div style={{
-      position: 'absolute',
-      bottom: '1rem',
-      right: '1rem',
-      width: expanded ? 'clamp(300px, 30vw, 400px)' : 'auto',
+      width: '100%',
       background: 'rgba(0, 0, 0, 0.75)',
       backdropFilter: 'blur(12px)',
       border: '1px solid rgba(255, 234, 0, 0.3)',
@@ -97,7 +93,7 @@ export function ChesterChatOverlay({
       flexDirection: 'column',
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       zIndex: 100,
-      transition: 'width 0.3s ease',
+      transition: 'height 0.3s ease',
       color: '#fff',
       overflow: 'hidden'
     }}>
