@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { askGrandmaster } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
+import ChessTownLanding from '@/components/ChessTownLanding';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -185,6 +186,10 @@ const playShockSound = () => {
 };
 
 export default function Home() {
+  return <ChessTownLanding />;
+}
+
+function LegacyHome() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [guestName, setGuestName] = useState('');
@@ -671,10 +676,12 @@ export default function Home() {
             <h1>Welcome to Chess Town!</h1>
             <p>I&apos;m Chester. Master the basics, dominate league tables, or drop a cheeky Bongcloud on a friend. I&apos;ve got your back. Where are we heading first?</p>
             <div className="chester-choice-actions">
-              <button onClick={() => router.push('/arena?view=mini-games')}>Explore the Player Map <small>Mini Games & Learning</small></button>
-              <button onClick={() => router.push('/arena?view=play')}>Challenge Me <small>Beginner to Expert</small></button>
-              <button onClick={() => router.push('/arena?view=matchups')}>Enter the Arena <small>Community PvP & Matchmaking</small></button>
-              <button onClick={() => router.push('/arena?view=leagues')}>Town Hall <small>Leagues & Social</small></button>
+              <button onClick={() => router.push('/chester-challenge')}>Chester Challenge <small>1 Puzzle. 24 Hours. Global Glory.</small></button>
+              <button onClick={() => router.push('/arena?view=mini-games')}>Player Map <small>Mini Games and learning progress.</small></button>
+              <button onClick={() => router.push('/arena?view=play')}>Play Chester <small>Choose Beginner through Expert.</small></button>
+              <button onClick={() => router.push('/arena?view=matchups')}>Enter the Arena <small>Community PvP and matchmaking.</small></button>
+              <button onClick={() => router.push('/arena?view=leagues')}>Town Hall <small>Leagues, challenges, and social play.</small></button>
+              <button onClick={() => router.push('/profile')}>My Profile <small>Points, wins, rank, and progress.</small></button>
             </div>
           </section>
         </div>

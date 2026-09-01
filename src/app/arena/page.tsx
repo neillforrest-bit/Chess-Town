@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { askGrandmaster } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
+import { recordGame, recordMiniGame } from '@/lib/profile';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -216,7 +217,7 @@ export default function Home() {
   const [coachingDifficulty, setCoachingDifficulty] = useState<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'>('INTERMEDIATE');
   
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [arenaView, setArenaView] = useState<'BOARD' | 'CHESTER' | 'SPLIT'>('BOARD');
+  const [arenaView, setArenaView] = useState<'PLAY' | 'CHESTER'>('PLAY');
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string }[]>([]);
   const [chatError, setChatError] = useState('');
@@ -239,7 +240,6 @@ export default function Home() {
   const [dailyScore, setDailyScore] = useState<number | null>(null);
   const [postGameReport, setPostGameReport] = useState<{ grade: string; score: number; accuracy: number; development: number; kingSafety: number; tactics: number; openingName: string; moves: number; turningPoint: string } | null>(null);
   const [replay, setReplay] = useState({ index: 0, total: 1, move: 'Start' });
-  const [prediction, setPrediction] = useState<{ open: boolean; choice: string; result: string; points: number }>({ open: false, choice: '', result: '', points: 0 });
   const [remoteRole, setRemoteRole] = useState<'w' | 'b' | null>(null);
   const [remoteConnected, setRemoteConnected] = useState(false);
   const [remoteStatus, setRemoteStatus] = useState('');
@@ -247,6 +247,7 @@ export default function Home() {
   const peerRef = useRef<any>(null);
   const connectionRef = useRef<any>(null);
   const commentaryRequestRef = useRef(0);
+  const gameStartedAtRef = useRef(0);
 
   useEffect(() => {
     if (scene !== 'GAME' || !hostBanter) return;
@@ -513,19 +514,15 @@ export default function Home() {
     const handleGameReport = (e: Event) => {
       const report = (e as CustomEvent).detail;
       setPostGameReport(report);
+      const isMiniGame = gameMode.startsWith('COACH_');
+      if (isMiniGame && report.score >= 65) {
+        const tier = gameMode === 'COACH_ENDGAME' ? 'EXPERT' : gameMode === 'COACH_PRESSURE' || gameMode === 'COACH_KING_SAFETY' ? 'INTERMEDIATE' : 'BEGINNER';
+        recordMiniGame({ id: gameMode, tier, mistakes: report.accuracy === 100 ? 0 : 1, elapsedMs: Math.round(performance.now() - gameStartedAtRef.current), targetMs: 180000 });
+      }
+      recordGame(isMiniGame ? 'chester' : 'pvp', report.grade === 'A' || report.grade === 'B');
       setReplay({ index: report.moves, total: report.moves + 1, move: 'Final position' });
       unlockAchievement('Game Finisher');
       setArenaView('CHESTER');
-    };
-    const handlePredictionOpen = () => setPrediction((current) => ({ ...current, open: true, choice: '', result: '' }));
-    const handlePredictionResult = (e: Event) => {
-      const result = (e as CustomEvent).detail;
-      setPrediction((current) => ({
-        ...current,
-        open: false,
-        result: current.choice ? `${result.move}: ${result.category}${current.choice === result.category ? ' · CORRECT +10' : ''}` : `${result.move}: ${result.category}`,
-        points: current.points + (current.choice === result.category ? 10 : 0),
-      }));
     };
     const handleReplayStatus = (e: Event) => setReplay((current) => ({ ...current, ...(e as CustomEvent).detail }));
 
@@ -535,8 +532,6 @@ export default function Home() {
     window.addEventListener('piece-captured', handleCapture);
     window.addEventListener('opening-assessment', handleOpeningAssessment);
     window.addEventListener('game-report', handleGameReport);
-    window.addEventListener('prediction-open', handlePredictionOpen);
-    window.addEventListener('prediction-result', handlePredictionResult);
     window.addEventListener('replay-status', handleReplayStatus);
     
     return () => {
@@ -546,13 +541,12 @@ export default function Home() {
       window.removeEventListener('piece-captured', handleCapture);
       window.removeEventListener('opening-assessment', handleOpeningAssessment);
       window.removeEventListener('game-report', handleGameReport);
-      window.removeEventListener('prediction-open', handlePredictionOpen);
-      window.removeEventListener('prediction-result', handlePredictionResult);
       window.removeEventListener('replay-status', handleReplayStatus);
     };
   }, [scene, activeMatchup, gameMode]);
 
   const loadArena = (mode: string, matchTitle: string) => {
+    gameStartedAtRef.current = performance.now();
     setDemoActiveUI(false);
     setIsThinking(false);
     setMatchOver(false);
@@ -564,11 +558,10 @@ export default function Home() {
     setDailyScore(null);
     setPostGameReport(null);
     setReplay({ index: 0, total: 1, move: 'Start' });
-    setPrediction({ open: false, choice: '', result: '', points: 0 });
     setCommentaryHistory([]);
     setChatMessages([]);
     setChatError('');
-    setArenaView('BOARD');
+    setArenaView('PLAY');
     const drill = COACHING_DRILLS.find((item) => item.mode === mode);
     setActiveChallenge(drill ? { title: drill.title, objective: drill.detail, level: drill.level } : null);
     setActiveMatchup(matchTitle);
@@ -914,17 +907,15 @@ export default function Home() {
             ))}
           </div>
 
-          <div aria-label="Arena view" style={{ position: 'absolute', left: '50%', bottom: isLandscape ? '0.35rem' : '0.75rem', transform: 'translateX(-50%)', zIndex: 70, display: 'flex', padding: '0.25rem', gap: '0.2rem', background: 'rgba(0,0,0,.92)', border: '2px solid #00ffff', borderRadius: '6px', boxShadow: '0 0 28px rgba(0,255,255,.35)' }}>
-            {(['BOARD', 'CHESTER', ...(!isMobile && !isLandscape ? ['SPLIT'] : [])] as const).map((view) => (
-              <button key={view} onClick={() => setArenaView(view as 'BOARD'|'CHESTER'|'SPLIT')} aria-pressed={arenaView === view} style={{ border: 0, borderRadius: '4px', padding: isLandscape ? '0.3rem 0.5rem' : '0.5rem 0.8rem', background: arenaView === view ? (view === 'CHESTER' ? '#ffea00' : '#00ffff') : 'transparent', color: arenaView === view ? '#050008' : '#fff', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '1px' }}>{view === 'BOARD' ? '♟ PLAY' : view === 'CHESTER' ? '◉ COACH' : '▥ DUAL'}</button>
-            ))}
+          <div aria-label="Game page" style={{ position: 'absolute', left: '50%', bottom: isLandscape ? '0.35rem' : '0.75rem', transform: 'translateX(-50%)', zIndex: 70, display: 'flex', padding: '0.25rem', gap: '0.2rem', background: 'rgba(0,0,0,.92)', border: '2px solid #00ffff', borderRadius: '6px', boxShadow: '0 0 28px rgba(0,255,255,.35)' }}>
+            {(['PLAY', 'CHESTER'] as const).map((view) => <button key={view} onClick={() => setArenaView(view)} aria-pressed={arenaView === view} style={{ border: 0, borderRadius: '4px', padding: isLandscape ? '0.3rem 0.5rem' : '0.5rem 0.8rem', background: arenaView === view ? (view === 'CHESTER' ? '#ffea00' : '#00ffff') : 'transparent', color: arenaView === view ? '#050008' : '#fff', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '1px' }}>{view === 'PLAY' ? 'LIVE PLAY' : 'CHESTER COACHING CORNER'}</button>)}
           </div>
 
           {/* Board section */}
           <div className="live-game-board" style={{ 
-            width: arenaView === 'SPLIT' ? '50%' : isPhonePortrait ? '100%' : '52%', 
+            width: isPhonePortrait ? '100%' : '52%', 
             height: isPhonePortrait ? 'auto' : '100%', 
-            flex: isPhonePortrait ? '0 0 auto' : arenaView === 'SPLIT' ? '0 1 50%' : '1 1 52%',
+            flex: isPhonePortrait ? '0 0 auto' : '1 1 52%',
             minHeight: 0,
             maxHeight: '100dvh', 
             display: 'flex', 
@@ -966,14 +957,6 @@ export default function Home() {
                     <span style={{ background: principleStreak >= 3 ? '#39ff14' : 'rgba(0,0,0,.88)', border: '2px solid #39ff14', color: principleStreak >= 3 ? '#050008' : '#39ff14', padding: '0.35rem 0.55rem', borderRadius: '4px', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, boxShadow: principleStreak >= 3 ? '0 0 24px rgba(57,255,20,.75)' : 'none' }}>STREAK ×{principleStreak}</span>
                   </div>
                 )}
-                {!isPhonePortrait && prediction.open && (
-                  <div style={{ position: 'absolute', left: '50%', bottom: isLandscape ? '2.4rem' : '4.2rem', transform: 'translateX(-50%)', zIndex: 40, width: 'min(92%, 520px)', background: 'rgba(0,0,0,.94)', border: '3px solid #ff007f', borderRadius: '6px', padding: '0.65rem', textAlign: 'center', boxShadow: '0 0 35px rgba(255,0,127,.5)' }}>
-                    <div style={{ color: '#fff', fontSize: isLandscape ? '0.55rem' : '0.78rem', fontWeight: 900, marginBottom: '0.45rem' }}>PREDICT CHESTER’S REPLY · {prediction.points} PTS</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.3rem' }}>
-                      {['CAPTURE', 'CHECK', 'DEVELOP', 'MANEUVER'].map((choice) => <button key={choice} onClick={() => setPrediction((current) => ({ ...current, choice }))} style={{ border: `2px solid ${prediction.choice === choice ? '#ffea00' : '#ff007f'}`, background: prediction.choice === choice ? '#ffea00' : '#15000c', color: prediction.choice === choice ? '#050008' : '#fff', padding: '0.45rem 0.2rem', fontSize: isLandscape ? '0.42rem' : '0.58rem', fontWeight: 900, cursor: 'pointer' }}>{choice}</button>)}
-                    </div>
-                  </div>
-                )}
                 <div id="phaser-game-container" style={{ width: '100%', height: '100%', borderRadius: isPhonePortrait ? '4px' : isMobile ? '18px' : '32px', overflow: 'hidden' }}>
                    <DojoEngineNoSSR
                      mode={gameMode}
@@ -982,16 +965,7 @@ export default function Home() {
                    />
                 </div>
              </div>
-             {isPhonePortrait && prediction.open && (
-               <div style={{ width: '100%', background: 'rgba(0,0,0,.94)', border: '2px solid #ff007f', borderRadius: '4px', padding: '0.5rem', textAlign: 'center', marginTop: '0.5rem' }}>
-                 <div style={{ color: '#fff', fontSize: '0.7rem', fontWeight: 900, marginBottom: '0.35rem' }}>PREDICT CHESTER’S REPLY · {prediction.points} PTS</div>
-                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.2rem' }}>
-                   {['CAPTURE', 'CHECK', 'DEVELOP', 'MANEUVER'].map((choice) => <button key={choice} onClick={() => setPrediction((current) => ({ ...current, choice }))} style={{ border: `2px solid ${prediction.choice === choice ? '#ffea00' : '#ff007f'}`, background: prediction.choice === choice ? '#ffea00' : '#15000c', color: prediction.choice === choice ? '#050008' : '#fff', padding: '0.35rem 0.15rem', fontSize: '0.5rem', fontWeight: 900, cursor: 'pointer' }}>{choice}</button>)}
-                 </div>
-               </div>
-             )}
-
-             {arenaView === 'BOARD' && (
+             {arenaView === 'PLAY' && (
                <div className="live-game-panels" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', height: isPhonePortrait ? 'auto' : '100%', flex: isPhonePortrait ? 'none' : '1', width: isPhonePortrait ? '100%' : '48%', flexShrink: 0, justifyContent: 'center' }}>
                  
                  <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
@@ -1054,7 +1028,7 @@ export default function Home() {
           </div>
 
           {/* Chester commentary panel */}
-          {drawerOpen && arenaView !== 'BOARD' && (
+          {drawerOpen && arenaView === 'CHESTER' && (
             <div style={{ 
               position: (isMobile && arenaView === 'CHESTER') ? 'absolute' : 'static',
               top: 0, left: 0, right: 0, bottom: 0,
@@ -1102,7 +1076,7 @@ export default function Home() {
                   CHESTER
                 </h2>
                 <button 
-                  onClick={() => isMobile ? setArenaView('BOARD') : setScene('LEAGUE')} 
+                  onClick={() => isMobile ? setArenaView('PLAY') : setScene('LEAGUE')} 
                   style={{ 
                     color: '#ffea00', 
                     fontSize: isMobile ? '1.8rem' : 'clamp(1.4rem, 2vw, 3rem)', 
@@ -1129,7 +1103,7 @@ export default function Home() {
 
               <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.5rem', border: '1px solid #39ff14', background: 'rgba(57,255,20,.07)', padding: isLandscape ? '0.35rem' : '0.55rem', marginBottom: isLandscape ? '0.35rem' : '0.7rem', color: '#dfffd8', fontSize: isLandscape ? '0.48rem' : '0.66rem' }}>
                 <span><b style={{ color: '#39ff14' }}>MISSION</b> {missionProgress}</span>
-                <span>{prediction.points} prediction pts</span>
+                <span>{gameMode.startsWith('PVP_') ? 'Live challenge' : 'Chester analysis'}</span>
               </div>
 
               {openingAssessment && (
@@ -1208,6 +1182,18 @@ export default function Home() {
                     ⚡ Analyzing the board...
                   </div>
                 )}
+              </div>
+
+              <div className="coaching-corner-chat">
+                <ChesterChatOverlay
+                  chatMessages={chatMessages}
+                  chatInput={chatInput}
+                  setChatInput={setChatInput}
+                  onSendMessage={handleSendMessage}
+                  isThinking={isThinking}
+                  chatError={chatError || ''}
+                  isMobile={isMobile}
+                />
               </div>
 
               {/* Action buttons */}
@@ -1289,7 +1275,7 @@ export default function Home() {
                 
                 {isMobile && (
                   <button 
-                    onClick={() => setArenaView('BOARD')} 
+                    onClick={() => setArenaView('PLAY')} 
                     style={{ 
                       width: '100%', 
                       backgroundColor: 'rgba(255,234,0,0.15)', 

@@ -475,7 +475,6 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const playAiTurn = (responseDelay = AI_RESPONSE_DELAY_MS) => {
             
             if (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
-            window.dispatchEvent(new CustomEvent('prediction-open'));
             setTimeout(async () => {
 
               if (gameRef.current.isGameOver) return;
@@ -493,8 +492,6 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               gameRef.current.ply++;
               gameRef.current.lastMove = { from: result.from, to: result.to };
               gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: result.san });
-              const predictionCategory = result.captured ? 'CAPTURE' : result.san.includes('+') ? 'CHECK' : ['n', 'b'].includes(result.piece) ? 'DEVELOP' : 'MANEUVER';
-              window.dispatchEvent(new CustomEvent('prediction-result', { detail: { category: predictionCategory, move: result.san } }));
               evaluateAndPublishMove(result, AI_TAGS[mode]?.rival || 'Brendan', fenBeforeMove, quality);
 
               if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {

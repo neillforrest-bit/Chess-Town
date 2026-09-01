@@ -52,7 +52,8 @@ export default function GlobalNav() {
       <div style={{ display: 'flex', gap: '1.5rem' }}>
         {[
           { path: '/', label: 'MEET CHESTER' },
-          { path: '/arena', label: 'THE ARENA' }
+          { path: '/arena', label: 'THE ARENA' },
+          { path: '/profile', label: 'MY PROFILE' }
         ].map((link) => {
           const isActive = pathname === link.path;
           return (
