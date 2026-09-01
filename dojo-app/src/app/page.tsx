@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client'; 
 
 import dynamic from 'next/dynamic'; 
@@ -133,9 +132,9 @@ const PIECE_GLYPHS: Record<string, Record<string, string>> = {
 
 const playShockSound = () => {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
     
     const masterGain = ctx.createGain();
     masterGain.gain.setValueAtTime(0.4, ctx.currentTime);
@@ -186,7 +185,8 @@ export default function Home() {
   useEffect(() => {
     const rawGuest = new URLSearchParams(window.location.search).get('guest')?.trim() || '';
     const safeGuest = rawGuest.replace(/[^a-zA-Z '-]/g, '').replace(/\s+/g, ' ').slice(0, 30);
-    setGuestName(safeGuest ? safeGuest.replace(/\b\w/g, (letter) => letter.toUpperCase()) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setTimeout(() => setGuestName(safeGuest ? safeGuest.replace(/\b\w/g, (letter) => letter.toUpperCase()) : ''), 0);
     setIsMounted(true);
   }, []);
 
@@ -604,7 +604,7 @@ export default function Home() {
         conversationHistory,
         instruction: 'Answer the latest player message directly as Chester. Use the conversation history, be strategically useful, and give a clear next action.',
       }));
-      setChatMessages((current) => [...current, { role: 'chester', text: reply }].slice(-10));
+      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply }].slice(-10));
       setHostBanter(`🎙️ CHESTER: ${reply}`);
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);
@@ -916,7 +916,7 @@ export default function Home() {
 
           <div aria-label="Arena view" style={{ position: 'absolute', left: '50%', bottom: isLandscape ? '0.35rem' : '0.75rem', transform: 'translateX(-50%)', zIndex: 70, display: 'flex', padding: '0.25rem', gap: '0.2rem', background: 'rgba(0,0,0,.92)', border: '2px solid #00ffff', borderRadius: '6px', boxShadow: '0 0 28px rgba(0,255,255,.35)' }}>
             {(['BOARD', 'CHESTER', ...(!isMobile && !isLandscape ? ['SPLIT'] : [])] as const).map((view) => (
-              <button key={view} onClick={() => setArenaView(view)} aria-pressed={arenaView === view} style={{ border: 0, borderRadius: '4px', padding: isLandscape ? '0.3rem 0.5rem' : '0.5rem 0.8rem', background: arenaView === view ? (view === 'CHESTER' ? '#ffea00' : '#00ffff') : 'transparent', color: arenaView === view ? '#050008' : '#fff', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '1px' }}>{view === 'BOARD' ? '♟ BOARD' : view === 'CHESTER' ? '◉ CHESTER' : '▥ SPLIT'}</button>
+              <button key={view} onClick={() => setArenaView(view as 'BOARD'|'CHESTER'|'SPLIT')} aria-pressed={arenaView === view} style={{ border: 0, borderRadius: '4px', padding: isLandscape ? '0.3rem 0.5rem' : '0.5rem 0.8rem', background: arenaView === view ? (view === 'CHESTER' ? '#ffea00' : '#00ffff') : 'transparent', color: arenaView === view ? '#050008' : '#fff', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '1px' }}>{view === 'BOARD' ? '♟ BOARD' : view === 'CHESTER' ? '◉ CHESTER' : '▥ SPLIT'}</button>
             ))}
           </div>
 
