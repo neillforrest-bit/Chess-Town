@@ -3,7 +3,7 @@
 import { Chess, type Square } from 'chess.js';
 import { useState } from 'react';
 
-const drills = ['Opening Fundamentals', 'Center Control', 'Castle Before Chaos', 'Endgame Conversion'];
+const drills = ['Daily Breakthrough', 'Practice Your Opening', 'Own the Center', 'Bring Out the Squad', 'Castle Before Chaos', 'Build the Squeeze', 'Convert the Advantage', 'The Knightmare', 'Phantom Threat'];
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const pieceGlyphs: Record<string, string> = { p: '♟', r: '♜', n: '♞', b: '♝', q: '♛', k: '♚' };
 

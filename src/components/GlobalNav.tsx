@@ -1,11 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { ChesterAvatar } from './ChesterUI';
 
 export default function GlobalNav() {
-  const pathname = usePathname();
   return (
     <nav className="global-nav">
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -26,28 +24,7 @@ export default function GlobalNav() {
         </Link>
       </div>
 
-      <div className="global-nav__links">
-        {[
-          { path: '/', label: 'HOME' },
-          { path: '/daily-leaderboard', label: 'LEADERBOARD' },
-          { path: '/daily-challenge', label: 'DAILY' },
-          { path: '/training', label: 'TRAINING' },
-          { path: '/gameplay', label: 'GAMEPLAY' },
-          { path: '/league', label: 'LEAGUE' },
-          { path: '/profile', label: 'PROFILE' }
-        ].map((link) => {
-          const isActive = pathname === link.path.split('?')[0];
-          return (
-            <Link 
-              key={link.path}
-              href={link.path} 
-              className={isActive ? 'is-active' : ''}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-      </div>
+      <Link href="/" className="global-nav__return">RETURN TO ARENA</Link>
     </nav>
   );
 }
