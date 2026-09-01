@@ -16,3 +16,711 @@
   display: inline-block;
   animation: moonwalk 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) backwards;
 }
+
+:root {
+  --arena-ink: #050708;
+  --arena-paper: #eefcff;
+  --arena-cyan: #00e5e5;
+  --arena-pink: #ff2b88;
+  --arena-acid: #7cff45;
+  --arena-gold: #ffd84d;
+}
+
+.command-center {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: clamp(1rem, 2.2vw, 2rem);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(.75rem, 1.4vw, 1.25rem);
+  background:
+    linear-gradient(118deg, rgba(0,229,229,.11), transparent 35%),
+    linear-gradient(300deg, rgba(255,43,136,.12), transparent 42%),
+    #050708;
+  color: var(--arena-paper);
+}
+
+.command-center__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .2;
+  background-image: linear-gradient(rgba(238,252,255,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(238,252,255,.14) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 80%);
+}
+
+.command-header,
+.command-layout,
+.command-footer {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1440px);
+  margin-inline: auto;
+}
+
+.command-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(238,252,255,.25);
+  padding-bottom: .8rem;
+}
+
+.command-kicker,
+.command-label {
+  color: var(--arena-pink);
+  font: 900 .68rem/1 Georgia, serif;
+  letter-spacing: 3px;
+}
+
+.command-header h1 {
+  margin: .35rem 0 0;
+  max-width: 18ch;
+  font-size: clamp(1.6rem, 3.8vw, 4.25rem);
+  line-height: .95;
+  letter-spacing: 0;
+  color: var(--arena-paper);
+}
+
+.command-status {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--arena-acid);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.command-status span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--arena-acid);
+  box-shadow: 0 0 16px var(--arena-acid);
+  animation: pulse 1.4s infinite;
+}
+
+.command-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, .72fr);
+  gap: clamp(.75rem, 1.5vw, 1.4rem);
+}
+
+.command-primary {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(0,229,229,.7);
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(0,229,229,.1), rgba(5,7,8,.96) 48%, rgba(255,43,136,.09));
+  padding: clamp(1.25rem, 3.5vw, 3.5rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .7fr);
+  align-items: center;
+  box-shadow: inset 0 0 60px rgba(0,229,229,.05), 0 22px 70px rgba(0,0,0,.35);
+}
+
+.command-primary__copy {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+}
+
+.command-primary h2 {
+  margin: .35rem 0 .75rem;
+  font-size: clamp(2.8rem, 7vw, 7.5rem);
+  line-height: .82;
+  letter-spacing: 0;
+  color: var(--arena-paper);
+  text-shadow: 0 0 32px rgba(0,229,229,.35);
+}
+
+.command-primary p {
+  max-width: 48ch;
+  margin: 0;
+  color: #b9c9cc;
+  font-size: clamp(.85rem, 1.2vw, 1.05rem);
+  line-height: 1.55;
+}
+
+.command-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin-top: 1.35rem;
+}
+
+.command-actions button,
+.command-footer button {
+  border-radius: 4px;
+  font-family: Georgia, serif;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.command-play {
+  border: 1px solid #dffff4;
+  padding: .85rem 1.15rem;
+  background: var(--arena-acid);
+  color: #061003;
+  box-shadow: 0 0 28px rgba(124,255,69,.35);
+}
+
+.command-play span { margin-right: .45rem; }
+
+.command-secondary {
+  border: 1px solid var(--arena-cyan);
+  padding: .85rem 1.15rem;
+  background: rgba(0,229,229,.07);
+  color: var(--arena-cyan);
+}
+
+.command-knight {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: 100%;
+  color: var(--arena-paper);
+}
+
+.command-knight span {
+  position: relative;
+  z-index: 1;
+  font-size: min(26vw, 19rem);
+  line-height: .8;
+  -webkit-text-stroke: 2px var(--arena-cyan);
+  filter: drop-shadow(18px 12px 0 rgba(255,43,136,.28)) drop-shadow(0 0 34px rgba(0,229,229,.4));
+  animation: knightBreath 3.2s ease-in-out infinite;
+}
+
+.command-knight i {
+  position: absolute;
+  width: 75%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255,216,77,.45);
+  border-radius: 50%;
+  box-shadow: 0 0 70px rgba(255,216,77,.12);
+}
+
+.command-metrics {
+  position: absolute;
+  left: clamp(1.25rem, 3.5vw, 3.5rem);
+  right: clamp(1.25rem, 3.5vw, 3.5rem);
+  bottom: clamp(.8rem, 1.5vw, 1.35rem);
+  display: flex;
+  gap: 1.4rem;
+  border-top: 1px solid rgba(238,252,255,.16);
+  padding-top: .65rem;
+}
+
+.command-metrics div { display: flex; gap: .45rem; align-items: baseline; }
+.command-metrics b { color: var(--arena-gold); font-size: .72rem; }
+.command-metrics span { color: #71878b; font-size: .62rem; }
+
+.command-rail {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  gap: .55rem;
+}
+
+.command-mode {
+  --mode-accent: var(--arena-cyan);
+  opacity: 0;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--mode-accent) 62%, transparent);
+  border-radius: 5px;
+  background: linear-gradient(105deg, color-mix(in srgb, var(--mode-accent) 11%, #07090a), #07090a 58%);
+  color: var(--arena-paper);
+  padding: clamp(.65rem, 1.2vw, 1rem);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .85rem;
+  text-align: left;
+  cursor: pointer;
+  animation: fadeInUp .45s ease forwards;
+  transition: transform .18s ease, background .18s ease;
+}
+
+.command-mode:hover { transform: translateX(-6px); background: color-mix(in srgb, var(--mode-accent) 16%, #07090a); }
+.command-mode__icon { font-size: clamp(1.3rem, 2vw, 1.8rem); }
+.command-mode b { display: block; color: var(--mode-accent); font-size: .76rem; letter-spacing: .5px; }
+.command-mode small { display: block; margin-top: .2rem; color: #869a9e; font-size: .62rem; line-height: 1.3; }
+.command-mode__arrow { color: var(--mode-accent); font-size: 1.2rem; }
+
+.command-footer {
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  border-top: 1px solid rgba(238,252,255,.2);
+}
+
+.command-footer > * {
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid rgba(238,252,255,.16);
+  background: transparent;
+  color: var(--arena-paper);
+  padding: .7rem 1rem;
+  text-align: left;
+}
+
+.command-footer > *:last-child { border-right: 0; }
+.command-footer b { display: block; color: var(--arena-gold); font-size: .62rem; letter-spacing: 1px; }
+.command-footer span { display: block; margin-top: .25rem; overflow: hidden; color: #829599; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .command-center { padding: .75rem; grid-template-rows: auto minmax(0, 1fr); }
+  .command-header h1 { font-size: clamp(1.45rem, 8vw, 2.4rem); }
+  .command-kicker { font-size: .52rem; letter-spacing: 2px; }
+  .command-layout { grid-template-columns: 1fr; grid-template-rows: minmax(250px, 1.15fr) minmax(220px, .85fr); overflow-y: auto; }
+  .command-primary { grid-template-columns: 1fr 120px; padding: 1.1rem; align-items: start; }
+  .command-primary h2 { font-size: clamp(2.4rem, 14vw, 4.3rem); }
+  .command-knight span { font-size: min(34vw, 9rem); }
+  .command-metrics { left: 1.1rem; right: 1.1rem; }
+  .command-rail { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, minmax(82px, 1fr)); }
+  .command-mode { padding: .7rem; grid-template-columns: auto minmax(0, 1fr); }
+  .command-mode__arrow { display: none; }
+  .command-footer { display: none; }
+}
+
+@media (max-width: 480px) {
+  .command-status { font-size: .55rem; }
+  .command-primary { grid-template-columns: 1fr; padding-bottom: 4.2rem; }
+  .command-primary__copy { max-width: 80%; }
+  .command-primary p { font-size: .72rem; }
+  .command-knight { position: absolute; right: -1rem; top: 1.4rem; height: auto; opacity: .7; }
+  .command-actions { margin-top: .8rem; }
+  .command-actions button { padding: .65rem .7rem; font-size: .65rem; }
+  .command-metrics { gap: .65rem; }
+  .command-metrics div { display: block; }
+  .command-metrics span { display: block; margin-top: .15rem; }
+  .command-mode small { display: none; }
+  .command-mode { min-height: 68px; }
+}
+
+.social-shell {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, rgba(0,229,229,.08), transparent 34%),
+    linear-gradient(315deg, rgba(255,43,136,.08), transparent 42%),
+    #050708;
+  color: var(--arena-paper);
+}
+
+.social-nav {
+  position: relative;
+  z-index: 20;
+  min-height: 66px;
+  padding: .7rem clamp(.8rem, 2.5vw, 2.2rem);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+  border-bottom: 1px solid rgba(238,252,255,.2);
+  background: rgba(5,7,8,.92);
+  box-sizing: border-box;
+}
+
+.social-brand {
+  border: 0;
+  background: transparent;
+  color: var(--arena-paper);
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  cursor: pointer;
+}
+
+.social-brand span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--arena-cyan);
+  border-radius: 50%;
+  color: var(--arena-cyan);
+  font-weight: 900;
+  box-shadow: 0 0 18px rgba(0,229,229,.25);
+}
+
+.social-brand b { font-size: .8rem; letter-spacing: 2px; }
+.social-nav nav { justify-self: center; display: flex; gap: .2rem; }
+
+.social-nav nav button,
+.social-nav__actions button {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #87999d;
+  padding: .55rem .75rem;
+  font: 900 .66rem/1 Georgia, serif;
+  letter-spacing: .6px;
+  cursor: pointer;
+}
+
+.social-nav nav button.is-active {
+  background: rgba(0,229,229,.1);
+  color: var(--arena-cyan);
+}
+
+.social-nav__actions { display: flex; gap: .35rem; }
+.social-nav__actions button { border: 1px solid rgba(238,252,255,.25); color: var(--arena-paper); }
+.social-nav__actions .social-play { border-color: var(--arena-acid); background: var(--arena-acid); color: #061003; }
+
+.town-layout {
+  min-height: 0;
+  width: min(100%, 1500px);
+  margin-inline: auto;
+  padding: clamp(.75rem, 2vw, 1.6rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, .65fr);
+  gap: clamp(.75rem, 1.7vw, 1.5rem);
+  box-sizing: border-box;
+}
+
+.town-feed {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: .75rem;
+}
+
+.social-title-row,
+.season-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+}
+
+.social-title-row span,
+.season-section-title span,
+.season-kicker {
+  color: var(--arena-pink);
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.social-title-row h1 {
+  margin: .15rem 0 0;
+  font-size: clamp(2rem, 4.8vw, 4.8rem);
+  line-height: .88;
+  letter-spacing: 0;
+}
+
+.town-presence {
+  color: var(--arena-acid);
+  font-size: .65rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.town-presence i,
+.live-room__label i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: .35rem;
+  border-radius: 50%;
+  background: var(--arena-acid);
+  box-shadow: 0 0 12px var(--arena-acid);
+}
+
+.town-topics {
+  display: flex;
+  gap: .25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(238,252,255,.16);
+}
+
+.town-topics button {
+  flex: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #76898d;
+  padding: .5rem .65rem;
+  font: 900 .62rem/1 Georgia, serif;
+  cursor: pointer;
+}
+
+.town-topics button.is-active { border-color: var(--arena-cyan); color: var(--arena-cyan); }
+
+.town-composer {
+  min-height: 70px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+  padding: .65rem;
+  border: 1px solid rgba(0,229,229,.42);
+  border-radius: 5px;
+  background: rgba(0,229,229,.04);
+}
+
+.town-avatar,
+.town-post__avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--arena-acid);
+  border-radius: 50%;
+  color: var(--arena-acid);
+  background: #091008;
+  font-weight: 900;
+}
+
+.town-composer textarea {
+  width: 100%;
+  min-height: 46px;
+  max-height: 90px;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--arena-paper);
+  font: 600 .82rem/1.4 Georgia, serif;
+}
+
+.town-composer button,
+.chester-desk button,
+.live-room button,
+.town-post__actions button,
+.season-section-title button,
+.fixture-list button,
+.fantasy-card button {
+  border: 1px solid var(--arena-cyan);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--arena-cyan);
+  padding: .55rem .7rem;
+  font: 900 .58rem/1 Georgia, serif;
+  cursor: pointer;
+}
+
+.town-composer button:disabled { opacity: .35; cursor: default; }
+
+.town-posts {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: .3rem;
+}
+
+.town-post {
+  --post-accent: var(--arena-cyan);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: .75rem;
+  padding: .85rem .7rem;
+  border-bottom: 1px solid rgba(238,252,255,.13);
+}
+
+.town-post--official {
+  border: 1px solid color-mix(in srgb, var(--post-accent) 58%, transparent);
+  border-radius: 5px;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--post-accent) 9%, transparent), transparent);
+}
+
+.town-post__avatar { border-color: var(--post-accent); color: var(--post-accent); }
+.town-post__meta { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; }
+.town-post__meta b { color: var(--arena-paper); font-size: .78rem; }
+.town-post__meta span, .town-post__meta time { color: #6f8387; font-size: .6rem; }
+.town-post__meta em { color: var(--post-accent); font-size: .52rem; font-style: normal; font-weight: 900; letter-spacing: .7px; }
+.town-post__meta time { margin-left: auto; }
+.town-post p { margin: .35rem 0 .55rem; color: #c5d1d3; font-size: .8rem; line-height: 1.45; }
+.town-post__actions { display: flex; align-items: center; gap: .45rem; }
+.town-post__actions button { border-color: rgba(238,252,255,.18); color: #91a4a8; padding: .35rem .45rem; }
+.town-post__actions button:last-child { margin-left: auto; border-color: var(--arena-pink); color: var(--arena-pink); }
+.town-post__actions span { color: var(--post-accent); font-size: .5rem; font-weight: 900; }
+
+.town-sidebar {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+
+.town-sidebar section { border-radius: 5px; }
+
+.chester-desk {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--arena-cyan);
+  padding: 1.1rem;
+  background: linear-gradient(140deg, rgba(0,229,229,.12), #050708 56%, rgba(255,43,136,.1));
+}
+
+.chester-desk__eyebrow { color: var(--arena-pink); font-size: .55rem; font-weight: 900; letter-spacing: 1.5px; }
+.chester-desk__mark { position: absolute; right: -.1em; bottom: -.25em; color: rgba(238,252,255,.1); font-size: 12rem; line-height: 1; }
+.chester-desk h2 { position: relative; margin: .8rem 0 .55rem; max-width: 8ch; color: var(--arena-paper); font-size: clamp(1.8rem, 3vw, 3.2rem); line-height: .88; }
+.chester-desk p { position: relative; max-width: 31ch; color: #9bb0b3; font-size: .72rem; line-height: 1.45; }
+.chester-desk button { position: relative; margin-top: .6rem; background: var(--arena-cyan); color: #031011; }
+
+.live-room,
+.town-trending {
+  border: 1px solid rgba(238,252,255,.18);
+  padding: .9rem;
+  background: rgba(238,252,255,.025);
+}
+
+.live-room__label { color: var(--arena-acid); font-size: .55rem; font-weight: 900; }
+.live-room h3 { margin: .45rem 0 .25rem; font-size: 1rem; }
+.live-room p { margin: 0 0 .5rem; color: #8ca0a4; font-size: .65rem; }
+.live-room__meter { height: 4px; margin-bottom: .65rem; background: #271018; }
+.live-room__meter span { display: block; width: 62%; height: 100%; background: var(--arena-pink); box-shadow: 0 0 10px var(--arena-pink); }
+.live-room button { width: 100%; border-color: var(--arena-pink); color: var(--arena-pink); }
+.town-trending > span, .season-awards > span, .fantasy-card > span, .chester-verdict > span { color: var(--arena-gold); font-size: .55rem; font-weight: 900; letter-spacing: 1px; }
+.town-trending ol { margin: .65rem 0 0; padding: 0; list-style: none; }
+.town-trending li { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; color: #c1ced0; font-size: .68rem; }
+.town-trending small { color: #667a7e; }
+
+.season-layout {
+  min-height: 0;
+  width: min(100%, 1500px);
+  margin-inline: auto;
+  padding: clamp(.75rem, 2vw, 1.6rem);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: .8rem 1rem;
+  box-sizing: border-box;
+}
+
+.season-hero {
+  min-height: 190px;
+  border: 1px solid var(--arena-cyan);
+  border-radius: 6px;
+  padding: clamp(1rem, 2.5vw, 2rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: linear-gradient(110deg, rgba(0,229,229,.12), transparent 48%, rgba(255,43,136,.1));
+}
+
+.season-hero h1 { margin: .4rem 0 .65rem; max-width: 14ch; font-size: clamp(2rem, 4.5vw, 4.8rem); line-height: .86; }
+.season-hero p { max-width: 60ch; margin: 0; color: #92a6aa; font-size: .75rem; line-height: 1.45; }
+.season-countdown { flex: none; min-width: 170px; border-left: 1px solid rgba(238,252,255,.2); padding-left: 1.2rem; }
+.season-countdown span, .season-countdown small { display: block; color: #74898d; font-size: .55rem; font-weight: 900; }
+.season-countdown b { display: block; margin: .3rem 0; color: var(--arena-gold); font-size: clamp(1.35rem, 2.5vw, 2.2rem); }
+
+.season-rankings,
+.season-fixtures {
+  border: 1px solid rgba(238,252,255,.17);
+  border-radius: 6px;
+  padding: .9rem;
+  background: rgba(238,252,255,.02);
+}
+
+.season-section-title { margin-bottom: .65rem; }
+.season-section-title h2 { margin: .15rem 0 0; font-size: 1.1rem; }
+.ranking-list { display: grid; gap: .25rem; }
+.ranking-list article {
+  --rank-accent: var(--arena-cyan);
+  min-height: 43px;
+  display: grid;
+  grid-template-columns: 28px minmax(100px, .7fr) minmax(80px, 1fr) 35px 40px;
+  align-items: center;
+  gap: .6rem;
+  border-left: 2px solid var(--rank-accent);
+  padding: .35rem .5rem;
+  background: rgba(255,255,255,.025);
+}
+
+.ranking-number { color: var(--rank-accent); }
+.ranking-list strong { display: block; font-size: .75rem; }
+.ranking-list article span { color: #708589; font-size: .55rem; }
+.ranking-rating { height: 4px; background: #161b1c; }
+.ranking-rating i { display: block; height: 100%; background: var(--rank-accent); }
+.ranking-list article > b:not(.ranking-number) { color: var(--arena-paper); font-size: .65rem; }
+.ranking-list article em { color: var(--rank-accent); font-size: .55rem; font-style: normal; font-weight: 900; text-align: right; }
+
+.fixture-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+.fixture-list article { min-width: 0; border-top: 2px solid var(--arena-pink); padding: .65rem; background: #090b0c; }
+.fixture-time { color: var(--arena-acid); font-size: .52rem; font-weight: 900; }
+.fixture-list article > span { display: block; margin-top: .55rem; color: #6f8387; font-size: .52rem; }
+.fixture-list h3 { margin: .2rem 0 .55rem; overflow-wrap: anywhere; font-size: .86rem; }
+.fixture-list h3 i { color: var(--arena-pink); font-size: .58rem; font-style: normal; }
+.fixture-heat { display: flex; justify-content: space-between; color: #65797d; font-size: .5rem; }
+.fixture-heat b { color: var(--arena-gold); }
+.fixture-list button { width: 100%; margin-top: .55rem; border-color: var(--arena-pink); color: var(--arena-pink); }
+
+.season-sidebar {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+
+.season-sidebar section { border: 1px solid rgba(238,252,255,.18); border-radius: 5px; padding: 1rem; background: rgba(238,252,255,.025); }
+.chester-verdict { position: relative; min-height: 240px; overflow: hidden; border-color: var(--arena-cyan) !important; }
+.chester-verdict div { position: absolute; right: -.1em; bottom: -.22em; color: rgba(0,229,229,.12); font-size: 11rem; }
+.chester-verdict blockquote { position: relative; margin: 1.1rem 0 0; max-width: 20ch; color: var(--arena-paper); font-size: 1.05rem; line-height: 1.5; font-weight: 900; }
+.fantasy-card b { display: block; margin: .5rem 0; color: var(--arena-acid); font-size: 2rem; }
+.fantasy-card > div { height: 5px; background: #152112; }
+.fantasy-card > div i { display: block; height: 100%; background: var(--arena-acid); }
+.fantasy-card p { color: #82979b; font-size: .65rem; }
+.fantasy-card button { width: 100%; border-color: var(--arena-acid); color: var(--arena-acid); }
+.season-awards p { margin: .7rem 0 0; color: #8ea2a6; font-size: .65rem; }
+.season-awards p b { display: block; margin-bottom: .15rem; color: var(--arena-paper); font-size: .55rem; }
+
+@media (max-width: 860px) {
+  .social-nav { grid-template-columns: auto 1fr; gap: .5rem; padding: .55rem .7rem; }
+  .social-nav nav { justify-self: end; }
+  .social-nav nav button { padding: .45rem .5rem; font-size: .55rem; }
+  .social-nav__actions { display: none; }
+  .social-brand b { display: none; }
+  .town-layout { display: block; overflow-y: auto; }
+  .town-feed { display: block; }
+  .town-feed > * { margin-bottom: .65rem; }
+  .town-posts { overflow: visible; }
+  .town-sidebar { overflow: visible; }
+  .chester-desk { min-height: 230px; }
+  .season-layout { display: block; }
+  .season-layout > * { margin-bottom: .7rem; }
+  .season-sidebar { display: grid; grid-template-columns: 1fr 1fr; }
+  .chester-verdict { grid-row: span 2; }
+}
+
+@media (max-width: 560px) {
+  .social-nav { min-height: 58px; }
+  .social-brand span { width: 30px; height: 30px; font-size: .7rem; }
+  .social-nav nav { gap: 0; }
+  .social-nav nav button { padding-inline: .35rem; font-size: .48rem; }
+  .town-layout, .season-layout { padding: .65rem; }
+  .town-composer { grid-template-columns: auto minmax(0, 1fr); }
+  .town-composer button { grid-column: 2; justify-self: end; }
+  .town-post { padding-inline: .3rem; }
+  .town-post__meta em { width: 100%; }
+  .town-post__actions { flex-wrap: wrap; }
+  .town-post__actions button:last-child { margin-left: 0; }
+  .season-hero { display: block; }
+  .season-countdown { margin-top: 1rem; border-left: 0; border-top: 1px solid rgba(238,252,255,.2); padding: .8rem 0 0; }
+  .ranking-list article { grid-template-columns: 22px minmax(80px, 1fr) 30px 34px; }
+  .ranking-rating { display: none; }
+  .fixture-list { grid-template-columns: 1fr; }
+  .season-sidebar { display: block; }
+  .season-sidebar section { margin-bottom: .7rem; }
+}

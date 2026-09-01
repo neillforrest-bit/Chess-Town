@@ -4,10 +4,11 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef } from 'react';
 import { askGrandmaster } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
+import { SeasonHub, TownSquare } from '@/components/SocialHub';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
-type SceneState = 'SPLASH' | 'ROSTER' | 'INTRO' | 'CHESTER_REVEAL' | 'HOME' | 'LEAGUE' | 'GAME';
+type SceneState = 'SPLASH' | 'ROSTER' | 'INTRO' | 'CHESTER_REVEAL' | 'HOME' | 'TOWN' | 'SEASON' | 'LEAGUE' | 'GAME';
 
 const LEAGUE_STANDINGS = [
   { rank: 1, name: "Z-Man 👑", handle: "@zman", w: 10, l: 1, pts: 20, streak: "W6", status: "GRANDMASTER" },
@@ -86,11 +87,13 @@ const INTRO_THEMES = [
 ];
 
 const HOME_HUB = [
-  { key: 'STANDINGS', title: 'ARENA STANDINGS', color: '#00ffff', icon: '🏆', detail: 'See who is crowned, who is climbing, and who is on the chopping block this season.' },
+  { key: 'QUICK_PLAY', title: 'PLAY CHESTER', color: '#39ff14', icon: '♞', detail: 'Start a live game immediately. Every move is graded and answered in real time.' },
   { key: 'COACHING', title: 'COACHING LAB', color: '#ff007f', icon: '🧭', detail: "Train with Chester across beginner-to-expert modules that grade your real chess decisions." },
   { key: 'DEMO_1V1', title: 'DEMO 1v1', color: '#ffea00', icon: '⚔️', detail: 'Jump into a live single-board matchup and watch or play against the arena engine.' },
   { key: 'CHALLENGE', title: 'CHALLENGE SOMEONE', color: '#ff007f', icon: '👑', detail: 'Create a private beta link and play a live legal game from two devices.' },
   { key: 'DEMO_2V2', title: 'DEMO 2v2', color: '#39ff14', icon: '🔥', detail: 'The world-first tag-team format. Chaos, coordination, and pure arena trauma.' },
+  { key: 'TOWN', title: 'TOWN SQUARE', color: '#00ffff', icon: '♜', detail: 'Join the live conversation, react to rivalries, and call your next opponent out.' },
+  { key: 'SEASON', title: 'SEASON HUB', color: '#ffea00', icon: '🏆', detail: 'Follow fixtures, fantasy form, power rankings, and Chester’s weekly verdict.' },
 ];
 
 
@@ -692,79 +695,92 @@ export default function Home() {
       )}
 
       {scene === 'HOME' && (
-        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isLandscape ? '0.45rem 1rem' : isMobile ? '0.75rem' : '1.25rem 2rem', position: 'relative', overflow: 'hidden', boxSizing: 'border-box' }}>
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.08)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none"></div>
-          {['♛','♜','♞','♝'].map((glyph, i) => (
-            <span key={i} className="home-float-piece" style={{ position: 'absolute', fontSize: isMobile ? '2.5rem' : '5rem', color: 'rgba(0,255,255,0.12)', top: `${10 + i * 20}%`, left: i % 2 === 0 ? '4%' : '90%', animationDelay: `${i * 0.7}s` }}>{glyph}</span>
-          ))}
-          <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', justifyContent: 'space-between', alignItems: 'end', position: 'relative', zIndex: 2, marginBottom: isLandscape ? '0.35rem' : '0.7rem' }}>
+        <div className="command-center">
+          <div className="command-center__grid" aria-hidden="true" />
+          <header className="command-header">
             <div>
-              <span style={{ color: '#ff007f', fontSize: isLandscape ? '0.45rem' : '0.68rem', letterSpacing: '3px', fontWeight: 900 }}>SEASON ONE // LIVE</span>
-              <h1 style={{ fontSize: isLandscape ? '1.2rem' : isMobile ? '1.45rem' : '2.2rem', color: '#eaffff', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 22px rgba(0,255,255,0.7)', margin: '0.12rem 0 0', letterSpacing: '1px', lineHeight: 1 }}>CONCORD HIGH CHESS ARENA</h1>
+              <span className="command-kicker">CHESS TOWN / LIVE ARENA</span>
+              <h1>YOUR MOVE, {guestName ? guestName.toUpperCase() : 'CHALLENGER'}.</h1>
             </div>
-            <div style={{ color: '#8dbfc4', fontSize: isLandscape ? '0.48rem' : '0.72rem', textAlign: 'right' }}>CHESTER, THE SHADOW<br/><b style={{ color: '#39ff14' }}>● ARENA ONLINE</b></div>
-          </div>
-          <div className="arena-top-nav" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: isLandscape ? '0.3rem' : '0.55rem', width: '100%', maxWidth: '1400px', position: 'relative', zIndex: 2, marginBottom: isLandscape ? '0.35rem' : '0.75rem' }}>
-            {HOME_HUB.map((card, i) => (
-              <button
-                key={card.key}
-                className="home-hub-card"
-                style={{
-                  animationDelay: `${i * 0.12}s`,
-                  background: `linear-gradient(145deg, ${card.color}22, #08000f)`,
-                  border: `1px solid ${card.color}`,
-                  borderRadius: '4px',
-                  padding: isLandscape ? '0.3rem 0.35rem' : isMobile ? '0.48rem' : '0.65rem',
-                  display: 'grid',
-                  gridTemplateColumns: 'auto 1fr',
-                  gap: isLandscape ? '0.2rem' : '0.4rem',
-                  alignItems: 'center',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  color: '#fff',
-                  minHeight: isLandscape ? '43px' : isMobile ? '58px' : '72px',
-                  boxShadow: `0 0 30px ${card.color}33`,
-                }}
-                onClick={() => {
-                  if (card.key === 'STANDINGS') { setLeagueView('STANDINGS'); setScene('LEAGUE'); }
-                  else if (card.key === 'COACHING') { setLeagueView('COACHING'); setScene('LEAGUE'); }
-                  else if (card.key === 'DEMO_1V1') { loadArena('SIMULATION', 'Neill vs. Brendan 🦸‍♂️'); }
-                  else if (card.key === 'CHALLENGE') { createRemoteChallenge(); }
-                  else if (card.key === 'DEMO_2V2') { loadArena('2V2', 'Heroes vs. Villains Tag Match'); }
-                }}
-              >
-                <span style={{ fontSize: isLandscape ? '0.85rem' : isMobile ? '1.15rem' : '1.5rem', gridRow: '1 / span 2' }}>{card.icon}</span>
-                <span style={{ fontWeight: 900, fontSize: isLandscape ? '0.48rem' : isMobile ? '0.58rem' : '0.72rem', color: card.color, letterSpacing: '0.5px' }}>{card.title}</span>
-                <span style={{ fontSize: isLandscape ? '0.38rem' : isMobile ? '0.46rem' : '0.58rem', color: '#9fa4b5', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.detail}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: '1400px', position: 'relative', zIndex: 2, background: 'linear-gradient(180deg, rgba(0,255,255,.08), rgba(0,0,0,.94) 24%)', border: '1px solid rgba(0,255,255,.55)', borderRadius: '5px', padding: isLandscape ? '0.35rem 0.65rem' : '0.65rem 0.9rem', boxSizing: 'border-box', overflow: 'hidden', boxShadow: '0 0 35px rgba(0,255,255,.12)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isLandscape ? '0.2rem' : '0.45rem' }}>
-              <h2 style={{ margin: 0, color: '#00ffff', fontSize: isLandscape ? '0.72rem' : '1rem', letterSpacing: '2px' }}>ARENA STANDINGS</h2>
-              <span style={{ color: '#ffea00', fontSize: isLandscape ? '0.42rem' : '0.6rem', fontWeight: 900 }}>TOP 4 ADVANCE // LAST PLACE RELEGATED</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '0.35fr 1.7fr .7fr .55fr .75fr 1.3fr', color: '#596e77', fontSize: isLandscape ? '0.38rem' : '0.54rem', padding: '0 0.3rem 0.2rem', letterSpacing: '1px' }}><span>#</span><span>PLAYER</span><span>RECORD</span><span>PTS</span><span>FORM</span><span style={{ textAlign: 'right' }}>STATUS</span></div>
-            <div style={{ display: 'grid', gridTemplateRows: `repeat(${LEAGUE_STANDINGS.length}, minmax(0, 1fr))`, height: 'calc(100% - 2.1rem)', gap: '1px' }}>
-              {LEAGUE_STANDINGS.map((team) => (
-                <div key={team.rank} style={{ display: 'grid', gridTemplateColumns: '0.35fr 1.7fr .7fr .55fr .75fr 1.3fr', alignItems: 'center', padding: isLandscape ? '0 0.3rem' : '0.08rem 0.35rem', backgroundColor: team.rank <= 4 ? 'rgba(0,255,255,.07)' : team.rank === 12 ? 'rgba(255,0,127,.08)' : 'rgba(255,255,255,.018)', borderLeft: `2px solid ${team.rank <= 4 ? '#00ffff' : team.rank === 12 ? '#ff007f' : 'transparent'}`, fontSize: isLandscape ? '0.48rem' : isMobile ? '0.58rem' : '0.72rem' }}>
-                  <span style={{ color: team.rank <= 4 ? '#00ffff' : '#66737d', fontWeight: 900 }}>{team.rank}</span><span style={{ color: team.rank === 1 ? '#ffea00' : '#fff', fontWeight: 900 }}>{team.name}</span><span>{team.w}-{team.l}</span><span style={{ color: '#ffea00' }}>{team.pts}</span><span style={{ color: team.streak.startsWith('W') ? '#39ff14' : '#ff007f' }}>{team.streak}</span><span style={{ textAlign: 'right', color: team.rank <= 3 ? ['#ffea00','#00ffff','#ff007f'][team.rank - 1] : '#78838e', fontSize: '.85em' }}>{team.status}</span>
+            <div className="command-status"><span /> CHESTER ONLINE</div>
+          </header>
+
+          <main className="command-layout">
+            <section className="command-primary">
+              <div className="command-primary__copy">
+                <span className="command-label">RECOMMENDED MATCH</span>
+                <h2>PLAY CHESTER</h2>
+                <p>A live board, instant move grades, tactical replies, and commentary that remembers the damage.</p>
+                <div className="command-actions">
+                  <button className="command-play" onClick={() => loadArena('COACH_OPENING', 'You vs. Chester')}><span>♞</span> START GAME</button>
+                  <button className="command-secondary" onClick={() => { setLeagueView('COACHING'); setScene('LEAGUE'); }}>CHOOSE A DRILL</button>
                 </div>
+              </div>
+              <div className="command-knight" aria-hidden="true"><span>♞</span><i /></div>
+              <div className="command-metrics">
+                <div><b>REAL TIME</b><span>Engine response</span></div>
+                <div><b>9</b><span>Training missions</span></div>
+                <div><b>LIVE</b><span>Move grading</span></div>
+              </div>
+            </section>
+
+            <aside className="command-rail" aria-label="Game modes">
+              {HOME_HUB.slice(1).map((card, index) => (
+                <button
+                  key={card.key}
+                  className="command-mode"
+                  style={{ '--mode-accent': card.color, animationDelay: `${index * 80}ms` } as React.CSSProperties}
+                  onClick={() => {
+                    if (card.key === 'COACHING') { setLeagueView('COACHING'); setScene('LEAGUE'); }
+                    else if (card.key === 'DEMO_1V1') { loadArena('SIMULATION', 'Neill vs. Brendan 🦸‍♂️'); }
+                    else if (card.key === 'CHALLENGE') { createRemoteChallenge(); }
+                    else if (card.key === 'DEMO_2V2') { loadArena('2V2', 'Heroes vs. Villains Tag Match'); }
+                    else if (card.key === 'TOWN') { setScene('TOWN'); }
+                    else if (card.key === 'SEASON') { setScene('SEASON'); }
+                  }}
+                >
+                  <span className="command-mode__icon">{card.icon}</span>
+                  <span><b>{card.title}</b><small>{card.detail}</small></span>
+                  <span className="command-mode__arrow">→</span>
+                </button>
               ))}
-            </div>
-          </div>
+            </aside>
+          </main>
+
+          <footer className="command-footer">
+            <button onClick={() => loadArena('COACH_DAILY', 'Daily Breakthrough')}><b>DAILY POSITION</b><span>One shared puzzle. One score.</span></button>
+            <button onClick={() => setScene('TOWN')}><b>TOWN SQUARE</b><span>Talk chess, call rivals out, follow Chester.</span></button>
+            <button onClick={() => setScene('SEASON')}><b>SEASON HUB</b><span>Fixtures, power rankings, fantasy form.</span></button>
+          </footer>
         </div>
+      )}
+
+      {scene === 'TOWN' && (
+        <TownSquare
+          guestName={guestName}
+          onNavigate={(destination) => setScene(destination)}
+          onPlay={loadArena}
+          onChallenge={createRemoteChallenge}
+        />
+      )}
+      {scene === 'SEASON' && (
+        <SeasonHub
+          guestName={guestName}
+          onNavigate={(destination) => setScene(destination)}
+          onPlay={loadArena}
+          onChallenge={createRemoteChallenge}
+        />
       )}
 
       {scene === 'LEAGUE' && (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '0.6rem' : 'clamp(1rem, 2vw, 2.5rem)', position: 'relative', boxSizing: 'border-box', overflow: 'hidden' }}>
           <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '0.5rem' : 0, marginBottom: isMobile ? '0.6rem' : '1.5rem', flexShrink: 0 }}>
             <div>
-              <h1 style={{ fontSize: isMobile ? '1.2rem' : 'clamp(2rem, 3.8vw, 4rem)', color: '#ffea00', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 25px rgba(255,234,0,0.8)', margin: 0 }}>{isMobile ? 'THE ARENA' : 'CONCORD HIGH CHESS ARENA'}</h1>
+              <h1 style={{ fontSize: isMobile ? '1.2rem' : 'clamp(2rem, 3.8vw, 4rem)', color: '#ffea00', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 25px rgba(255,234,0,0.8)', margin: 0 }}>CHOOSE YOUR GAME</h1>
             </div>
             <div className="arena-top-nav" style={{ display: 'flex', gap: isMobile ? '0.4rem' : '0.8rem' }}>
               <button onClick={() => setScene('HOME')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#111', color: '#fff', border: isMobile ? '3px solid #fff' : '4px solid #fff', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>🏠 HOME</button>
-              <button onClick={() => setLeagueView('STANDINGS')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'STANDINGS' ? '#00ffff' : '#111', color: leagueView === 'STANDINGS' ? '#000' : '#fff', border: isMobile ? '3px solid #00ffff' : '4px solid #00ffff', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>TABLE</button>
+              <button onClick={() => loadArena('COACH_OPENING', 'You vs. Chester')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: '#39ff14', color: '#020502', border: isMobile ? '3px solid #39ff14' : '4px solid #39ff14', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '4px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>PLAY NOW</button>
               <button onClick={() => setLeagueView('MATCHUPS')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'MATCHUPS' ? '#ffea00' : '#111', color: leagueView === 'MATCHUPS' ? '#000' : '#fff', border: isMobile ? '3px solid #ffea00' : '4px solid #ffea00', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>1v1</button>
               <button onClick={() => setLeagueView('2V2')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === '2V2' ? '#39ff14' : '#111', color: leagueView === '2V2' ? '#000' : '#fff', border: isMobile ? '3px solid #39ff14' : '4px solid #39ff14', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>2v2</button>
               <button onClick={() => setLeagueView('COACHING')} style={{ flex: isMobile ? 1 : 'none', backgroundColor: leagueView === 'COACHING' ? '#ff007f' : '#111', color: '#fff', border: isMobile ? '3px solid #ff007f' : '4px solid #ff007f', padding: isMobile ? '0.4rem 0.3rem' : '0.6rem 1.2rem', borderRadius: '15px', fontWeight: 900, fontSize: isMobile ? '0.65rem' : 'clamp(0.8rem, 1.2vw, 1.1rem)', cursor: 'pointer' }}>COACH</button>
@@ -773,24 +789,7 @@ export default function Home() {
           </div>
           
           <div style={{ flex: 1, width: '100%', maxWidth: '1400px', minHeight: 0, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '0.6rem' : '2rem', position: 'relative', alignItems: 'stretch', overflow: 'hidden' }}>
-            <div style={{ flex: isMobile ? '1 1 60%' : 2, minHeight: 0, backgroundColor: '#000', borderRadius: isMobile ? '20px' : '35px', border: isMobile ? '4px solid #00ffff' : 'clamp(4px, 1vw, 8px) solid #00ffff', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,255,255,0.2)', overflowY: 'auto' }}>
-              
-              {leagueView === 'STANDINGS' && (
-                <div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.8rem' }}>
-                    {LEAGUE_STANDINGS.map((team) => (
-                      <div key={team.rank} style={{ display: 'grid', gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1.5fr', alignItems: 'center', padding: '0.6rem 0.4rem', backgroundColor: team.rank <= 4 ? 'rgba(0,255,255,0.08)' : 'transparent', borderRadius: '10px', fontSize: 'clamp(0.8rem, 1.2vw, 1.2rem)', fontWeight: 700 }}>
-                          <span style={{ color: team.rank <= 4 ? '#00ffff' : '#aaa', fontWeight: 900 }}>{team.rank}</span>
-                          <span style={{ color: team.name.includes("Z-Man") ? '#ffea00' : (team.name.includes("Brendan") ? '#00ffff' : (team.name.includes("Gabe") ? '#ff007f' : '#fff')), fontWeight: 900 }}>{team.name}</span>
-                          <span>{team.w}-{team.l}</span>
-                          <span style={{ color: '#ffea00', fontWeight: 900 }}>{team.pts}</span>
-                          <span style={{ color: team.streak.startsWith('W') ? '#39ff14' : '#ff007f' }}>{team.streak}</span>
-                          <span style={{ textAlign: 'right', color: team.rank === 1 ? '#ffea00' : (team.rank === 2 ? '#00ffff' : (team.rank === 3 ? '#ff007f' : '#aaa')), fontSize: '0.85em', fontWeight: 900 }}>{team.status}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div style={{ flex: isMobile ? '1 1 60%' : 2, minHeight: 0, backgroundColor: '#000', borderRadius: '6px', border: '2px solid #00ffff', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,255,255,0.2)', overflowY: 'auto' }}>
 
               {leagueView === 'MATCHUPS' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -857,7 +856,7 @@ export default function Home() {
               )}
             </div>
 
-            <div style={{ flex: isMobile ? '1 1 35%' : 1, minHeight: 0, backgroundColor: '#000', borderRadius: isMobile ? '20px' : '35px', border: isMobile ? '4px solid #ff007f' : 'clamp(4px, 1vw, 8px) solid #ff007f', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(255,0,127,0.25)', overflow: 'hidden' }}>
+            <div style={{ flex: isMobile ? '1 1 35%' : 1, minHeight: 0, backgroundColor: '#000', borderRadius: '6px', border: '2px solid #ff007f', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(255,0,127,0.25)', overflow: 'hidden' }}>
               <h3 style={{ color: '#ff007f', fontSize: isMobile ? '1rem' : 'clamp(1.2rem, 1.6vw, 1.8rem)', borderBottom: '2px solid #ff007f', paddingBottom: isMobile ? '0.4rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', fontWeight: 900, flexShrink: 0 }}>CHESTER'S FEED</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: isMobile ? '0.5rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', flexShrink: 0 }}>
                 <div style={{ backgroundColor: '#111', borderRadius: isMobile ? '10px' : '16px', border: '2px solid #ffea00', padding: isMobile ? '0.5rem' : '0.8rem', textAlign: 'center' }}>
@@ -887,7 +886,7 @@ export default function Home() {
           left: 0, 
           width: '100vw', 
           height: '100dvh', 
-          background: 'linear-gradient(135deg, #1a0033 0%, #2d0052 50%, #0a001a 100%)',
+          background: 'linear-gradient(135deg, #031012 0%, #15000c 52%, #080a0b 100%)',
           backgroundAttachment: 'fixed',
           display: 'flex', 
           flexDirection: isLandscape ? 'row' : isMobile ? 'column' : 'row',
@@ -911,12 +910,10 @@ export default function Home() {
           </div>
           <div className="arena-top-nav" style={{ position: 'absolute', top: isLandscape ? '0.35rem' : '0.7rem', right: isLandscape ? '0.5rem' : '1rem', zIndex: 60, display: 'flex', gap: isLandscape ? '0.2rem' : '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: isLandscape ? '62%' : '70%' }}>
             {[
-              ['HOME', () => setScene('HOME')],
-              ['TABLE', () => { setLeagueView('STANDINGS'); setScene('LEAGUE'); }],
-              ['1v1', () => loadArena('SIMULATION', 'Neill vs. Brendan 🦸‍♂️')],
-              ['2v2', () => loadArena('2V2', 'Heroes vs. Villains Tag Match')],
-              ['COACH', () => { setLeagueView('COACHING'); setScene('LEAGUE'); }],
-              ['CHALLENGE', createRemoteChallenge],
+              ['LOBBY', () => setScene('HOME')],
+              ['NEW GAME', () => loadArena('COACH_OPENING', 'You vs. Chester')],
+              ['MISSIONS', () => { setLeagueView('COACHING'); setScene('LEAGUE'); }],
+              ['INVITE', createRemoteChallenge],
             ].map(([label, action]) => (
               <button key={label as string} onClick={action as () => void} style={{ background: 'rgba(4,0,10,.9)', border: '1px solid rgba(184,162,255,.7)', color: '#dfeaff', padding: isLandscape ? '0.18rem 0.32rem' : '0.3rem 0.5rem', fontSize: isLandscape ? '0.42rem' : '0.58rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '.5px' }}>{label as string}</button>
             ))}
@@ -924,7 +921,7 @@ export default function Home() {
 
           <div aria-label="Arena view" style={{ position: 'absolute', left: '50%', bottom: isLandscape ? '0.35rem' : '0.75rem', transform: 'translateX(-50%)', zIndex: 70, display: 'flex', padding: '0.25rem', gap: '0.2rem', background: 'rgba(0,0,0,.92)', border: '2px solid #00ffff', borderRadius: '6px', boxShadow: '0 0 28px rgba(0,255,255,.35)' }}>
             {(['BOARD', 'CHESTER', ...(!isMobile && !isLandscape ? ['SPLIT'] : [])] as const).map((view) => (
-              <button key={view} onClick={() => setArenaView(view as 'BOARD'|'CHESTER'|'SPLIT')} aria-pressed={arenaView === view} style={{ border: 0, borderRadius: '4px', padding: isLandscape ? '0.3rem 0.5rem' : '0.5rem 0.8rem', background: arenaView === view ? (view === 'CHESTER' ? '#ffea00' : '#00ffff') : 'transparent', color: arenaView === view ? '#050008' : '#fff', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '1px' }}>{view === 'BOARD' ? '♟ BOARD' : view === 'CHESTER' ? '◉ CHESTER' : '▥ SPLIT'}</button>
+              <button key={view} onClick={() => setArenaView(view as 'BOARD'|'CHESTER'|'SPLIT')} aria-pressed={arenaView === view} style={{ border: 0, borderRadius: '4px', padding: isLandscape ? '0.3rem 0.5rem' : '0.5rem 0.8rem', background: arenaView === view ? (view === 'CHESTER' ? '#ffea00' : '#00ffff') : 'transparent', color: arenaView === view ? '#050008' : '#fff', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '1px' }}>{view === 'BOARD' ? '♟ PLAY' : view === 'CHESTER' ? '◉ COACH' : '▥ DUAL'}</button>
             ))}
           </div>
 
@@ -956,8 +953,8 @@ export default function Home() {
                maxWidth: '100%',
                aspectRatio: '1/1', 
                background: 'linear-gradient(135deg, rgba(26,0,51,0.9), rgba(45,0,82,0.8))',
-               border: isPhonePortrait ? '2px solid #00ffff' : isMobile ? '8px solid #00ffff' : 'clamp(8px, 1.5vw, 20px) solid #00ffff', 
-               borderRadius: isPhonePortrait ? '4px' : isMobile ? '24px' : '45px', 
+               border: isPhonePortrait ? '2px solid #00ffff' : isMobile ? '4px solid #00ffff' : '6px solid #00ffff',
+               borderRadius: isPhonePortrait ? '4px' : '8px',
                padding: isPhonePortrait ? 0 : isMobile ? '0.5rem' : '1rem', 
                position: 'relative', 
                display: 'flex', 
@@ -1076,7 +1073,7 @@ export default function Home() {
               border: isLandscape ? '2px solid #ffea00' : isMobile ? '4px solid #ffea00' : 'clamp(8px, 1.5vw, 16px) solid #ffea00', 
               borderTop: isMobile ? '4px solid rgba(255,234,0,0.5)' : undefined,
               borderLeft: isMobile ? undefined : 'clamp(8px, 1.5vw, 16px) solid rgba(255,234,0,0.5)',
-              borderRadius: isLandscape ? '6px' : isMobile ? '12px' : '32px',
+              borderRadius: '8px',
               padding: isLandscape ? '0.55rem' : isPhonePortrait ? '1.5rem 1.2rem calc(5rem + env(safe-area-inset-bottom))' : isMobile ? '1rem' : 'clamp(1.5rem, 3vw, 3rem)', 
               display: 'flex', 
               flexDirection: 'column', 

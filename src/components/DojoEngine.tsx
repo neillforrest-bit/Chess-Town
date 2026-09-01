@@ -130,6 +130,7 @@ const PIECE_VALUES: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q
 // Depth 1 already looks one reply ahead (avoids free blunders) and stays fast enough
 // to run synchronously on the main thread without freezing the board animation.
 const AI_SEARCH_DEPTH = 1;
+const AI_RESPONSE_DELAY_MS = 300;
 
 function evaluatePosition(chess: any): number {
   let score = 0;
@@ -330,6 +331,18 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           let legalTargetMarkers: Phaser.GameObjects.Arc[] = [];
           let renderBoard: () => void;
 
+          const jailX = 716;
+          const jailY = 16;
+          const jailPanel = scene.add.rectangle(jailX, jailY, 136, 24, 0x240019, 0.95)
+            .setStrokeStyle(2, 0xff007f, 0.9)
+            .setDepth(20);
+          const jailLabel = scene.add.text(jailX, jailY, 'PIECE JAIL', {
+            fontFamily: 'sans-serif',
+            fontSize: '12px',
+            fontStyle: 'bold',
+            color: '#ffb6dc',
+          }).setOrigin(0.5).setDepth(21);
+
           // Draw board coordinates (static background)
           for (let col = 0; col < 8; col++) {
             // File letters (a-h)
@@ -358,6 +371,51 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
           };
 
+          const renderAfterCapture = (move: any) => {
+            if (!move.captured) {
+              renderBoard();
+              return;
+            }
+
+            const capturedPiece = pieceContainers[move.to];
+            if (!capturedPiece) {
+              renderBoard();
+              return;
+            }
+
+            const attackingPiece = pieceContainers[move.from];
+            if (attackingPiece) attackingPiece.setAlpha(0);
+            capturedPiece.setDepth(30).setInteractive(false);
+
+            const moonwalk = scene.tweens.add({
+              targets: capturedPiece,
+              x: jailX,
+              y: jailY + 24,
+              angle: { from: -9, to: 9 },
+              scaleX: 0.56,
+              scaleY: 0.56,
+              duration: 780,
+              ease: 'Sine.InOut',
+              onUpdate: (_tween, target) => {
+                target.y += Math.sin(_tween.totalProgress * Math.PI * 8) * 1.6;
+              },
+              onComplete: () => {
+                const lock = scene.add.text(jailX, jailY + 24, '🔒', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
+                scene.tweens.add({
+                  targets: lock,
+                  alpha: 0,
+                  scale: 1.3,
+                  duration: 260,
+                  ease: 'Quad.Out',
+                  onComplete: () => lock.destroy(),
+                });
+                renderBoard();
+              },
+            });
+
+            moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => renderBoard());
+          };
+
           const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null) => {
             window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
@@ -380,7 +438,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.dispatchEvent(new CustomEvent('match-complete'));
           };
 
-          const playAiTurn = () => {
+          const playAiTurn = (responseDelay = AI_RESPONSE_DELAY_MS) => {
             
             if (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
             window.dispatchEvent(new CustomEvent('prediction-open'));
@@ -390,10 +448,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const moves = gameRef.current.chess.moves({ verbose: true });
               if (!moves.length) return;
               const fenBeforeMove = gameRef.current.chess.fen();
-              const searchD = difficulty === 'PRO' ? 3 : difficulty === 'CASUAL' ? 2 : 1;
+              const searchD = difficulty === 'PRO' ? 2 : 1;
               const aiMove = pickBestMove(gameRef.current.chess, searchD);
               const result = gameRef.current.chess.move({ from: aiMove.from, to: aiMove.to, promotion: 'q' });
-              const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, searchD);
+              const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, AI_SEARCH_DEPTH);
               emitCapture(result);
               gameRef.current.ply++;
               gameRef.current.lastMove = { from: result.from, to: result.to };
@@ -406,16 +464,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 const status = gameRef.current.chess.isCheckmate() ? 'CHECKMATE — The AI closes the book!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — Equilibrium achieved.' : 'DRAW — Respect all around.';
                 finishGame(`🏁 ${status} The ${AI_TAGS[mode]?.title} just defined an entire era.`);
               }
-              renderBoard();
-            }, 2200);
+              renderAfterCapture(result);
+            }, responseDelay);
           };
 
           const playUserMove = (from: string, to: string, isRemote = false) => {
             const fenBeforeMove = gameRef.current.chess.fen();
             const moveResult = gameRef.current.chess.move({ from, to, promotion: 'q' });
             if (!moveResult) return;
-            const searchD = difficulty === 'PRO' ? 3 : difficulty === 'CASUAL' ? 2 : 1;
-            const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion }, searchD);
             emitCapture(moveResult);
             gameRef.current.ply++;
             gameRef.current.lastMove = { from, to };
@@ -425,29 +481,33 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const playerName = mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE'
               ? (moveResult.color === 'w' ? AI_TAGS[mode].player : AI_TAGS[mode].rival)
               : AI_TAGS[mode]?.player || 'Neill';
-            if (moveResult.color === 'w' && !isRemote) {
-              gameRef.current.playerQualities.push({ label: quality?.label || 'GOOD', move: moveResult.san, ply: gameRef.current.ply });
-              gameRef.current.principleStreak = ['BEST', 'GREAT', 'GOOD'].includes(quality?.label || '') ? gameRef.current.principleStreak + 1 : 0;
-            }
-            if (mode === 'COACH_PRACTICE_OPENING' && moveResult.color === 'w' && !gameRef.current.openingAssessment) {
-              gameRef.current.openingAssessment = getOpeningAssessment(gameRef.current.chess);
-              if (gameRef.current.openingAssessment) {
-                window.dispatchEvent(new CustomEvent('opening-assessment', { detail: gameRef.current.openingAssessment }));
-              }
-            }
-            publishMove(moveResult, playerName, quality);
             if (mode === 'PVP_REMOTE' && !isRemote) {
               window.dispatchEvent(new CustomEvent('local-chess-move', { detail: { from, to, fen: gameRef.current.chess.fen() } }));
             }
 
+            requestAnimationFrame(() => {
+              const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion }, AI_SEARCH_DEPTH);
+              if (moveResult.color === 'w' && !isRemote) {
+                gameRef.current.playerQualities.push({ label: quality?.label || 'GOOD', move: moveResult.san, ply: gameRef.current.ply });
+                gameRef.current.principleStreak = ['BEST', 'GREAT', 'GOOD'].includes(quality?.label || '') ? gameRef.current.principleStreak + 1 : 0;
+              }
+              if (mode === 'COACH_PRACTICE_OPENING' && moveResult.color === 'w' && !gameRef.current.openingAssessment) {
+                gameRef.current.openingAssessment = getOpeningAssessment(gameRef.current.chess);
+                if (gameRef.current.openingAssessment) {
+                  window.dispatchEvent(new CustomEvent('opening-assessment', { detail: gameRef.current.openingAssessment }));
+                }
+              }
+              publishMove(moveResult, playerName, quality);
+            });
+
             if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {
               const status = gameRef.current.chess.isCheckmate() ? 'CHECKMATE — You bent the board to your will!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — The board called a truce.' : 'DRAW — The league just locked in a peace treaty.';
               finishGame(`🏁 ${status} ${AI_TAGS[mode]?.title} just delivered a full season arc.`);
-              renderBoard();
+              renderAfterCapture(moveResult);
               return;
             }
-            renderBoard();
-            if (!isRemote) playAiTurn();
+            renderAfterCapture(moveResult);
+            if (!isRemote) playAiTurn(moveResult.captured ? 850 : AI_RESPONSE_DELAY_MS);
           };
 
           const showLegalTargets = () => {
@@ -759,7 +819,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: moveResult.san });
                 const playerName = step % 2 === 0 ? AI_TAGS[mode]?.player : AI_TAGS[mode]?.rival;
                 publishMove(moveResult, playerName, quality);
-                renderBoard();
+                renderAfterCapture(moveResult);
               }
 
               step++;
