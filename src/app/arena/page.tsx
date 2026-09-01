@@ -656,7 +656,7 @@ export default function Home() {
   if (!isMounted) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, width: '100vw', height: '100dvh', backgroundColor: '#050008', color: 'white', fontFamily: 'Georgia, Times New Roman, serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#050008', color: 'white', fontFamily: 'Georgia, Times New Roman, serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
       {scene === 'SPLASH' && (
         <div className="gothic-shock-scene" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020005', position: 'relative', overflow: 'hidden' }}>
@@ -884,11 +884,11 @@ export default function Home() {
 
       {scene === 'GAME' && (
         <div className="live-game-layout" style={{ 
-          position: 'fixed', 
+          position: 'absolute',
           top: 0, 
           left: 0, 
-          width: '100vw', 
-          height: '100dvh', 
+          width: '100%',
+          height: '100%',
           background: 'linear-gradient(135deg, #031012 0%, #15000c 52%, #080a0b 100%)',
           backgroundAttachment: 'fixed',
           display: 'flex', 
@@ -910,6 +910,7 @@ export default function Home() {
                <span style={{ display: 'inline-block', color: '#ff007f', animation: 'pulse 1.5s infinite', fontSize: '1.1em', marginRight: '0.5rem' }}>🔴</span> LIVE
              </span>
              <span style={{ fontSize: isMobile ? '0.8rem' : 'clamp(1rem, 1.4vw, 1.5rem)', color: '#ffea00', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeMatchup}</span>
+             <button onClick={createRemoteChallenge} style={{ marginLeft: 'auto', border: '1px solid #b8a2ff', borderRadius: '4px', padding: isMobile ? '.28rem .42rem' : '.4rem .6rem', background: '#100b1b', color: '#d8ccff', fontSize: isMobile ? '.55rem' : '.7rem', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>1V1 INVITE</button>
           </div>
           {/* Board section */}
           <div className="live-game-board" style={{ 

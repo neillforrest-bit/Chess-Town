@@ -8,11 +8,12 @@ export const CHESTER_LANDING_COPY = {
 };
 
 export const PORTALS = [
-  { title: 'Daily Leaderboard', icon: '♛', href: '/chester-challenge', dialogue: "See who's ruling the board today. Think you can bump them off?", accent: 'gold' },
-  { title: 'Daily Chester Challenge', icon: '♞', href: '/chester-challenge', dialogue: "A Trompowsky setup went wrong. Find the mate in three to get on my wall of fame.", accent: 'pink' },
-  { title: 'Chess Town Gameplay', icon: '♜', href: '/arena?view=play', dialogue: "Choose your difficulty and take a seat. I have prepared some deeply educational consequences.", accent: 'cyan' },
-  { title: 'Player Challenges', icon: '♟', href: '/arena?view=matchups', dialogue: "Send the invite. Rivalries do not build themselves, despite what your group chat claims.", accent: 'acid' },
-  { title: 'League Play', icon: '♚', href: '/arena?view=leagues', dialogue: "The 12-player arena. Let's see who's actually studying their endgames.", accent: 'violet' },
+  { title: 'Play Chester', icon: '♞', href: '/gameplay', dialogue: "Choose your difficulty and take a seat. I have prepared some deeply educational consequences.", accent: 'cyan' },
+  { title: 'Daily Challenge', icon: '♜', href: '/daily-challenge', dialogue: "A fresh puzzle is ready. Find the best line and put your name on the board.", accent: 'pink' },
+  { title: 'Chess Town', icon: '♟', href: '/training', dialogue: "Mini Games, opening practice, and tactical training all live here.", accent: 'acid' },
+  { title: 'Challenge a Friend', icon: '♚', href: '/gameplay', dialogue: "Start a private 1v1 challenge and share the game link from the board.", accent: 'violet' },
+  { title: 'League Play', icon: '♛', href: '/league', dialogue: "The mock league table is ready for your group to inspect.", accent: 'gold' },
+  { title: 'Daily Leaderboard', icon: '♛', href: '/daily-leaderboard', dialogue: "See who solved Chester's daily challenge fastest.", accent: 'gold' },
 ] as const;
 
 export const DAILY_LEADERS = [
