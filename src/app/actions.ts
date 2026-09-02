@@ -76,7 +76,7 @@ export async function askChesterAnalysis(payloadString: string): Promise<Chester
       payloadString = JSON.stringify(payload);
     }
     
-    const response = await fetch('/api/grandmaster', {
+    const response = await fetch('/api/evaluate-move', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payloadString,
@@ -118,34 +118,30 @@ export async function askChesterChat(payloadString: string): Promise<string> {
       payloadString = JSON.stringify(payload);
     }
 
-    const response = await fetch('/api/chester/chat', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payloadString,
       signal: AbortSignal.timeout(12_000),
     });
-    if (!response.ok) return 'The court messenger is delayed. What would you like to explore on the board?';
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('[CHESTER CHAT] Request failed', {
+        status: response.status,
+        statusText: response.statusText,
+        errorBody,
+      });
+      return 'The court messenger is delayed. What would you like to explore on the board?';
+    }
 
-    const data = await response.json() as Partial<{ reply: string }>;
+    const data = await response.json() as Partial<{ reply: unknown }>;
     const reply = typeof data.reply === 'string' ? sanitizeCommentary(data.reply) : '';
+    if (!reply) console.error('[CHESTER CHAT] Invalid response payload', data);
     return reply || 'The court messenger is delayed. What would you like to explore on the board?';
-  } catch {
+  } catch (error) {
+    console.error('[CHESTER CHAT] Client request failed', error);
     return 'The court messenger is delayed. What would you like to explore on the board?';
   }
-}
-
-export async function askChester(payloadString: string): Promise<ChesterReply | string> {
-  let payload: CommentaryPayload;
-  try {
-    payload = JSON.parse(payloadString || '{}') as CommentaryPayload;
-  } catch {
-    payload = { message: payloadString };
-  }
-
-  if (payload.type === 'move' || detectUserIntent(payload.message || '')) {
-    return askChesterAnalysis(payloadString);
-  }
-  return askChesterChat(payloadString);
 }
 
 export async function askGrandmaster(payloadString: string) {

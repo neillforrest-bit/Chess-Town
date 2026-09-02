@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { askChesterAnalysis, askChesterChat, detectUserIntent } from '@/app/actions';
+import { askChesterChat } from '@/app/actions';
 import GlobalNav from '@/components/GlobalNav';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
@@ -22,15 +22,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setMessages((current) => [...current, { role: 'user', text: message }]);
     setThinking(true);
     try {
-      const intent = detectUserIntent(message);
-      const request = JSON.stringify({ type: intent === 'move' ? 'move' : 'chat', message, move: intent === 'move' ? message : undefined, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) });
-      if (intent === 'move') {
-        const reply = await askChesterAnalysis(request);
-        setMessages((current) => [...current, { role: 'chester', text: reply.banter, education: reply.education, kind: 'analysis' }]);
-      } else {
-        const reply = await askChesterChat(request);
-        setMessages((current) => [...current, { role: 'chester', text: reply, kind: 'chat' }]);
-      }
+      const reply = await askChesterChat(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
+      setMessages((current) => [...current, { role: 'chester', text: reply, kind: 'chat' }]);
     } catch {
       setError('Chester is briefly off the board. Try again.');
     } finally {

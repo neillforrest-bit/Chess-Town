@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { askChesterAnalysis, askChesterChat, askGrandmaster, detectUserIntent } from '@/app/actions';
+import { askChesterChat, askGrandmaster } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import CapturedPieceJails from '@/components/CapturedPieceJails';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
@@ -422,7 +422,7 @@ function LegacyHome() {
             instruction: 'Introduce this coaching scenario with hype energy: explain what the learning environment is and what the live challenge asks the player to do in 2-3 punchy sentences.',
             objective: payload?.objective,
           });
-          const aiResponse = await askGrandmaster(richPayload);
+          const aiResponse = await askChesterChat(richPayload);
           if (requestId === commentaryRequestRef.current) setHostBanter(`🎙️ CHESTER: ${aiResponse}`);
         } catch (err) {
           console.error('Scenario intro error:', err);
@@ -487,7 +487,9 @@ function LegacyHome() {
                 : 'Generate punchy, witty, strategic chess commentary on this move with a dry British sense of humour, grounded in the engine move-quality grade provided',
           });
           
-          const aiResponse = await askGrandmaster(richPayload);
+          const aiResponse = payload?.type === 'move'
+            ? await askGrandmaster(richPayload)
+            : await askChesterChat(richPayload);
           if (requestId !== commentaryRequestRef.current) return;
           setHostBanter(`🎙️ CHESTER: ${aiResponse}`);
           setBanterUpdated(true);
@@ -617,27 +619,18 @@ function LegacyHome() {
     setChatMessages(conversationHistory);
     setIsThinking(true);
     try {
-      const intent = detectUserIntent(message);
-      const request = JSON.stringify({
+      const reply = await askChesterChat(JSON.stringify({
         ...currentGameState,
         message,
-        type: intent === 'move' ? 'move' : 'chat',
-        move: intent === 'move' ? message : undefined,
+        type: 'chat',
         mode: gameMode,
         matchup: activeMatchup,
         openingAssessment,
         conversationHistory,
         instruction: 'Answer the latest player message directly as Chester. Use the conversation history, be strategically useful, and give a clear next action.',
-      });
-      if (intent === 'move') {
-        const reply = await askChesterAnalysis(request);
-        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education, kind: 'analysis' as const }].slice(-10));
-        setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
-      } else {
-        const reply = await askChesterChat(request);
-        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
-        setHostBanter(`🎙️ CHESTER: ${reply}`);
-      }
+      }));
+      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
+      setHostBanter(`🎙️ CHESTER: ${reply}`);
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);
     } catch {

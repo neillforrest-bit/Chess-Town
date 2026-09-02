@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
-import { askChesterAnalysis, askChesterChat, askGrandmaster, detectUserIntent } from '@/app/actions';
+import { askChesterChat, askGrandmaster } from '@/app/actions';
 import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -447,7 +447,7 @@ export default function Home() {
             instruction: 'Introduce this coaching scenario with hype energy: explain what the learning environment is and what the live challenge asks the player to do in 2-3 punchy sentences.',
             objective: payload?.objective,
           });
-          const aiResponse = await askGrandmaster(richPayload);
+          const aiResponse = await askChesterChat(richPayload);
           if (requestId === commentaryRequestRef.current) setHostBanter(`🎙️ CHESTER: ${aiResponse}`);
         } catch (err) {
           console.error('Scenario intro error:', err);
@@ -515,7 +515,9 @@ export default function Home() {
                 : 'Generate punchy, witty, strategic chess commentary on this move with a dry British sense of humour, grounded in the engine move-quality grade provided'),
           });
           
-          const aiResponse = await askGrandmaster(richPayload);
+          const aiResponse = payload?.type === 'move'
+            ? await askGrandmaster(richPayload)
+            : await askChesterChat(richPayload);
           if (requestId !== commentaryRequestRef.current) return;
           setHostBanter(`🎙️ CHESTER: ${aiResponse}`);
           setBanterUpdated(true);
@@ -657,12 +659,10 @@ export default function Home() {
           evalDelta: null,
         };
       }
-      const intent = detectUserIntent(message);
-      const request = JSON.stringify({
+      const reply = await askChesterChat(JSON.stringify({
         ...currentGameState,
         message,
-        type: intent === 'move' ? 'move' : 'chat',
-        move: intent === 'move' ? message : undefined,
+        type: 'chat',
         mode: gameMode,
         matchup: activeMatchup,
         openingAssessment,
@@ -676,16 +676,9 @@ export default function Home() {
         activeChaosEvent,
         conversationHistory,
         instruction: 'Use fresh Stockfish analysis to answer directly. Name the engine best move and translate the principal variation into a strategic plan. Be funny without sacrificing accuracy, then give exactly one concrete next action.',
-      });
-      if (intent === 'move') {
-        const reply = await askChesterAnalysis(request);
-        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education, kind: 'analysis' as const }].slice(-10));
-        setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
-      } else {
-        const reply = await askChesterChat(request);
-        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
-        setHostBanter(`🎙️ CHESTER: ${reply}`);
-      }
+      }));
+      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
+      setHostBanter(`🎙️ CHESTER: ${reply}`);
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);
     } catch {
