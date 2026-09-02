@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { askGrandmaster } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
+import CapturedPieceJails from '@/components/CapturedPieceJails';
+import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import ChessTownLanding from '@/components/ChessTownLanding';
 
@@ -236,7 +238,7 @@ function LegacyHome() {
   const [leagueView, setLeagueView] = useState<'STANDINGS' | 'MATCHUPS' | '2V2' | 'COACHING' | 'PLAYOFFS'>('COACHING');
   const [demoActiveUI, setDemoActiveUI] = useState(false); 
   const [matchOver, setMatchOver] = useState(false);
-  const [capturedPieces, setCapturedPieces] = useState<{ color: string; type: string }[]>([]);
+  const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [activeChallenge, setActiveChallenge] = useState<{ title: string; objective: string; level: string } | null>(null);
   const [openingAssessment, setOpeningAssessment] = useState<{ grade: string; score: number; line: string; strengths: string[]; improvements: string[] } | null>(null);
   const [openingName, setOpeningName] = useState('Opening book loading');
@@ -444,6 +446,8 @@ function LegacyHome() {
             from: payload?.from || '',
             to: payload?.to || '',
             captured: payload?.captured || null,
+            royalCatMove: Boolean(payload?.royalCatMove),
+            royalCatName: payload?.royalCatName || null,
             ply: Number(payload?.ply ?? 0),
             quality: payload?.quality || null,
             centipawnLoss: payload?.centipawnLoss ?? null,
@@ -511,7 +515,7 @@ function LegacyHome() {
     };
 
     const handleMatchComplete = () => setMatchOver(true);
-    const handleCapture = (e: Event) => setCapturedPieces((pieces) => [...pieces, (e as CustomEvent).detail]);
+    const handleCapture = (e: Event) => setCapturedPieces((pieces) => [...pieces, (e as CustomEvent<CapturedPiece>).detail]);
     const handleOpeningAssessment = (e: Event) => {
       setOpeningAssessment((e as CustomEvent).detail);
       if (['A', 'B'].includes((e as CustomEvent).detail?.grade)) unlockAchievement('Center Controller');
@@ -679,6 +683,7 @@ function LegacyHome() {
               <button onClick={() => router.push('/chester-challenge')}>Chester Challenge <small>1 Puzzle. 24 Hours. Global Glory.</small></button>
               <button onClick={() => router.push('/arena?view=mini-games')}>Player Map <small>Mini Games and learning progress.</small></button>
               <button onClick={() => router.push('/arena?view=play')}>Play Chester <small>Choose Beginner through Expert.</small></button>
+              <button onClick={() => router.push('/brawl')}>ENTER THE BRAWL <small>Choose two difficulty levels and face off locally.</small></button>
               <button onClick={() => router.push('/arena?view=matchups')}>Enter the Arena <small>Community PvP and matchmaking.</small></button>
               <button onClick={() => router.push('/arena?view=leagues')}>Town Hall <small>Leagues, challenges, and social play.</small></button>
               <button onClick={() => router.push('/profile')}>My Profile <small>Points, wins, rank, and progress.</small></button>
@@ -1001,49 +1006,7 @@ function LegacyHome() {
                     isMobile={isMobile}
                  />
 
-                 <div style={{ width: '100%', flex: 'none', height: isPhonePortrait ? '65px' : '90px', display: 'flex', gap: '0.4rem' }}>
-                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #39ff14', borderRadius: '6px', padding: '0.2rem', overflowY: 'auto' }}>
-                       {(() => {
-                         const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-                         const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const isWinning = bLost - wLost > 0;
-                       return (
-                         <div style={{ color: '#39ff14', fontSize: isPhonePortrait ? '0.5rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.1rem' }}>
-                           GREEN JAIL {isWinning ? `(+${bLost - wLost})` : ''}
-                         </div>
-                       );
-                       })()}
-                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', gap: '0.1rem', justifyItems: 'center' }}>
-                         {capturedPieces.map((piece, index) => {
-                           if (piece.color !== 'b') return null;
-                           const isNew = index === capturedPieces.length - 1;
-                           return <span key={`jail-b-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#ff4eb1', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.2rem' : '1.1rem', lineHeight: 1, textShadow: '0 0 10px #ff007f' }}>{PIECE_GLYPHS['b'][piece.type]}</span>
-                         })}
-                       </div>
-                    </div>
-                    
-                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #ff007f', borderRadius: '6px', padding: '0.2rem', overflowY: 'auto' }}>
-                       {(() => {
-                         const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-                         const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const isWinning = wLost - bLost > 0;
-                       return (
-                         <div style={{ color: '#ff007f', fontSize: isPhonePortrait ? '0.5rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.1rem' }}>
-                           PINK JAIL {isWinning ? `(+${wLost - bLost})` : ''}
-                         </div>
-                       );
-                       })()}
-                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', gap: '0.1rem', justifyItems: 'center' }}>
-                         {capturedPieces.map((piece, index) => {
-                           if (piece.color !== 'w') return null;
-                           const isNew = index === capturedPieces.length - 1;
-                           return <span key={`jail-w-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#dfffda', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.2rem' : '1.1rem', lineHeight: 1, textShadow: '0 0 10px #39ff14' }}>{PIECE_GLYPHS['w'][piece.type]}</span>
-                         })}
-                       </div>
-                    </div>
-                 </div>
+                 <CapturedPieceJails capturedPieces={capturedPieces} />
                </div>
              )}
           </div>

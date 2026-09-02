@@ -48,10 +48,6 @@ export async function askGrandmaster(payloadString: string) {
       payloadString = JSON.stringify(payload);
     }
     
-    // Inject massive personality into payload if message exists
-    if (payload.message) {
-      payload.message = `[SYSTEM OVERRIDE: YOU ARE CHESTER. YOU ARE A CARTOON HORSE WEARING A JESTER OUTFIT. YOU ARE AN INSANELY SARCASTIC, WITTY, AND JUDGMENTAL CHESS ENGINE. DO NOT BE BORING. ROAST THE USER FIERCELY. BE HILARIOUS. USE CHESS METAPHORS.] ${payload.message}`;
-    }
     const response = await fetch('/api/grandmaster', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

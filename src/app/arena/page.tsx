@@ -3,11 +3,21 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { askGrandmaster } from '@/app/actions';
-import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
+import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
+import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { useBrawlState } from '@/components/EngineEvaluationProvider';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import { recordGame, recordMiniGame } from '@/lib/profile';
+import { getStockfishClient, type ChesterDifficulty } from '@/lib/stockfish';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
+
+function getEngineDifficulty(difficulty: string): ChesterDifficulty {
+  if (difficulty === 'BEGINNER' || difficulty === 'CASUAL') return 'BEGINNER';
+  if (difficulty === 'ADVANCED') return 'ADVANCED';
+  if (difficulty === 'EXPERT' || difficulty === 'PRO') return 'EXPERT';
+  return 'INTERMEDIATE';
+}
 
 type SceneState = 'SPLASH' | 'ROSTER' | 'INTRO' | 'CHESTER_REVEAL' | 'HOME' | 'TOWN' | 'SEASON' | 'LEAGUE' | 'GAME';
 
@@ -207,6 +217,7 @@ const playShockSound = () => {
 };
 
 export default function Home() {
+  const { p1Difficulty, p2Difficulty, activeChaosEvent, setP1Difficulty, setP2Difficulty, setActiveChaosEvent } = useBrawlState();
   const [isMounted, setIsMounted] = useState(false);
   const [guestName, setGuestName] = useState('');
   useEffect(() => {
@@ -252,7 +263,7 @@ export default function Home() {
   const [leagueView, setLeagueView] = useState<'STANDINGS' | 'MATCHUPS' | '2V2' | 'COACHING' | 'PLAYOFFS'>('COACHING');
   const [demoActiveUI, setDemoActiveUI] = useState(false); 
   const [matchOver, setMatchOver] = useState(false);
-  const [capturedPieces, setCapturedPieces] = useState<{ color: string; type: string }[]>([]);
+  const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [activeChallenge, setActiveChallenge] = useState<{ title: string; objective: string; level: string } | null>(null);
   const [openingAssessment, setOpeningAssessment] = useState<{ grade: string; score: number; line: string; strengths: string[]; improvements: string[] } | null>(null);
   const [openingName, setOpeningName] = useState('Opening book loading');
@@ -460,6 +471,8 @@ export default function Home() {
             from: payload?.from || '',
             to: payload?.to || '',
             captured: payload?.captured || null,
+            royalCatMove: Boolean(payload?.royalCatMove),
+            royalCatName: payload?.royalCatName || null,
             ply: Number(payload?.ply ?? 0),
             quality: payload?.quality || null,
             centipawnLoss: payload?.centipawnLoss ?? null,
@@ -490,13 +503,16 @@ export default function Home() {
                 : (payload?.player?.includes('Neill') ? 'Gabe + Z-Man' : 'Neill + Brendan'),
             mode: gameMode,
             matchup: payload?.matchup || activeMatchup,
+            p1Difficulty,
+            p2Difficulty,
+            activeChaosEvent: payload?.activeChaosEvent || activeChaosEvent,
             
             // Instructions for Chester
-            instruction: payload?.type === 'summary' 
+            instruction: payload?.instruction || (payload?.type === 'summary' 
               ? 'Generate a quick, 2-sentence summary of the game based on the PGN highlighting the defining blunder or brilliant move. Use a punchy, witty, dry British sense of humour.'
               : (payload?.openingName && ['Trompowsky Attack', 'Halloween Gambit', 'Bongcloud Attack', 'Bongcloud'].some(spicy => payload.openingName.includes(spicy)))
                 ? `You detected the '${payload.openingName}'. Drop a punchy, witty, dry British comment about this chaotic opening.`
-                : 'Generate punchy, witty, strategic chess commentary on this move with a dry British sense of humour, grounded in the engine move-quality grade provided',
+                : 'Generate punchy, witty, strategic chess commentary on this move with a dry British sense of humour, grounded in the engine move-quality grade provided'),
           });
           
           const aiResponse = await askGrandmaster(richPayload);
@@ -527,7 +543,14 @@ export default function Home() {
     };
 
     const handleMatchComplete = () => setMatchOver(true);
-    const handleCapture = (e: Event) => setCapturedPieces((pieces) => [...pieces, (e as CustomEvent).detail]);
+    const handleCapture = (e: Event) => setCapturedPieces((pieces) => [...pieces, (e as CustomEvent<CapturedPiece>).detail]);
+    const handlePieceRestored = (e: Event) => {
+      const restoredPiece = (e as CustomEvent<CapturedPiece>).detail;
+      setCapturedPieces((pieces) => {
+        const index = pieces.findLastIndex((piece) => piece.color === restoredPiece.color && piece.type === restoredPiece.type);
+        return index < 0 ? pieces : pieces.filter((_, pieceIndex) => pieceIndex !== index);
+      });
+    };
     const handleOpeningAssessment = (e: Event) => {
       setOpeningAssessment((e as CustomEvent).detail);
       if (['A', 'B'].includes((e as CustomEvent).detail?.grade)) unlockAchievement('Center Controller');
@@ -552,6 +575,7 @@ export default function Home() {
     window.addEventListener('demo-complete', handleDemoComplete);
     window.addEventListener('match-complete', handleMatchComplete);
     window.addEventListener('piece-captured', handleCapture);
+    window.addEventListener('piece-restored', handlePieceRestored);
     window.addEventListener('opening-assessment', handleOpeningAssessment);
     window.addEventListener('game-report', handleGameReport);
     window.addEventListener('replay-status', handleReplayStatus);
@@ -561,11 +585,12 @@ export default function Home() {
       window.removeEventListener('demo-complete', handleDemoComplete);
       window.removeEventListener('match-complete', handleMatchComplete);
       window.removeEventListener('piece-captured', handleCapture);
+      window.removeEventListener('piece-restored', handlePieceRestored);
       window.removeEventListener('opening-assessment', handleOpeningAssessment);
       window.removeEventListener('game-report', handleGameReport);
       window.removeEventListener('replay-status', handleReplayStatus);
     };
-  }, [scene, activeMatchup, gameMode]);
+  }, [scene, activeMatchup, gameMode, p1Difficulty, p2Difficulty, activeChaosEvent]);
 
   const loadArena = (mode: string, matchTitle: string) => {
     gameStartedAtRef.current = performance.now();
@@ -620,6 +645,18 @@ export default function Home() {
     setChatMessages(conversationHistory);
     setIsThinking(true);
     try {
+      let engineTelemetry = currentGameState.engineTelemetry;
+      if (currentGameState.fen) {
+        const analysis = await getStockfishClient().analyzePosition(currentGameState.fen, getEngineDifficulty(coachingDifficulty));
+        engineTelemetry = {
+          ...engineTelemetry,
+          bestMove: analysis.bestMove,
+          principalVariation: analysis.pv,
+          evaluationBefore: analysis.score,
+          evaluationAfter: null,
+          evalDelta: null,
+        };
+      }
       const reply = await askGrandmaster(JSON.stringify({
         ...currentGameState,
         message,
@@ -627,8 +664,16 @@ export default function Home() {
         mode: gameMode,
         matchup: activeMatchup,
         openingAssessment,
+        engineTelemetry,
+        principalVariation: engineTelemetry?.principalVariation || [],
+        evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
+        evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
+        evalDelta: engineTelemetry?.evalDelta ?? null,
+        p1Difficulty,
+        p2Difficulty,
+        activeChaosEvent,
         conversationHistory,
-        instruction: 'Answer the latest player message directly as Chester. Use the conversation history, be strategically useful, and give a clear next action.',
+        instruction: 'Use fresh Stockfish analysis to answer directly. Name the engine best move and translate the principal variation into a strategic plan. Be funny without sacrificing accuracy, then give exactly one concrete next action.',
       }));
       setChatMessages((current) => [...current, { role: 'chester' as const, text: reply }].slice(-10));
       setHostBanter(`🎙️ CHESTER: ${reply}`);
@@ -643,7 +688,31 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const destination = new URLSearchParams(window.location.search).get('view');
+    const searchParams = new URLSearchParams(window.location.search);
+    const destination = searchParams.get('view');
+    const selectedMode = searchParams.get('mode');
+    const matchId = searchParams.get('match');
+    const isBrawl = selectedMode === 'PVP_REMOTE' && searchParams.get('brawl') === '1' && matchId;
+    if (isBrawl) {
+      const role = searchParams.get('role') === 'b' ? 'b' : 'w';
+      void fetch(`/api/brawl/sync?match=${encodeURIComponent(matchId)}`).then(async (response) => {
+        if (!response.ok) throw new Error('Brawl room not found');
+        const room = await response.json();
+        setP1Difficulty(room.p1Difficulty);
+        setP2Difficulty(room.p2Difficulty);
+        setActiveChaosEvent(room.activeChaosEvent);
+        setRemoteRole(role);
+        setRemoteConnected(true);
+        setRemoteStatus(role === 'w' ? 'Brawl room ready. Waiting for Jemma.' : 'Joined the Brawl. You play Black.');
+        loadArena('PVP_REMOTE', 'The Backroom Brawl');
+      }).catch((error) => setRemoteStatus(error instanceof Error ? error.message : 'Could not join the Brawl room.'));
+      return;
+    }
+    const selectedDrill = COACHING_DRILLS.find((drill) => drill.mode === selectedMode);
+    if (selectedDrill) {
+      loadArena(selectedDrill.mode, selectedDrill.title);
+      return;
+    }
     if (!destination) return;
     if (destination === 'play') {
       loadArena('COACH_OPENING', 'You vs. Chester');
@@ -652,6 +721,48 @@ export default function Home() {
     setScene('LEAGUE');
     setLeagueView(destination === 'mini-games' ? 'COACHING' : 'STANDINGS');
   }, []);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const matchId = searchParams.get('match');
+    const isBrawl = gameMode === 'PVP_REMOTE' && searchParams.get('brawl') === '1' && matchId;
+    if (!isBrawl || scene !== 'GAME') return;
+
+    let cancelled = false;
+    let knownFen = '';
+    const pollRoom = async () => {
+      try {
+        const response = await fetch(`/api/brawl/sync?match=${encodeURIComponent(matchId)}`);
+        if (!response.ok) throw new Error('Brawl room connection lost');
+        const room = await response.json();
+        if (cancelled) return;
+        setActiveChaosEvent(room.activeChaosEvent);
+        if (room.fen !== knownFen) {
+          knownFen = room.fen;
+          window.dispatchEvent(new CustomEvent('brawl-position', { detail: room }));
+        }
+      } catch (error) {
+        if (!cancelled) setRemoteStatus(error instanceof Error ? error.message : 'Brawl room connection lost');
+      }
+    };
+    const sendPosition = (event: Event) => {
+      const detail = (event as CustomEvent<{ fen: string; turn: 'w' | 'b'; activeChaosEvent: string | null }>).detail;
+      knownFen = detail.fen;
+      void fetch('/api/brawl/sync', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId, ...detail }),
+      });
+    };
+    void pollRoom();
+    const interval = window.setInterval(() => void pollRoom(), 2000);
+    window.addEventListener('brawl-position-update', sendPosition);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('brawl-position-update', sendPosition);
+    };
+  }, [gameMode, scene, setActiveChaosEvent]);
 
   if (!isMounted) return null;
 
@@ -789,7 +900,12 @@ export default function Home() {
       {scene === 'LEAGUE' && leagueView !== 'STANDINGS' && (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '0.6rem' : 'clamp(1rem, 2vw, 2.5rem)', position: 'relative', boxSizing: 'border-box', overflow: 'hidden' }}>
           <div style={{ width: '100%', maxWidth: '1400px', display: 'flex', marginBottom: isMobile ? '0.6rem' : '1.5rem', flexShrink: 0 }}>
-            <div>
+            <div className="arena-choice-heading">
+              <ChesterAvatar isThinking={false} size="large" />
+              <div>
+                <span>CHESTER SAYS</span>
+                <p>Fun animations to come soon, friends.</p>
+              </div>
               <h1 style={{ fontSize: isMobile ? '1.2rem' : 'clamp(2rem, 3.8vw, 4rem)', color: '#ffea00', fontWeight: 900, textTransform: 'uppercase', textShadow: '0 0 25px rgba(255,234,0,0.8)', margin: 0 }}>CHOOSE YOUR GAME</h1>
             </div>
           </div>
@@ -892,11 +1008,11 @@ export default function Home() {
           background: 'linear-gradient(135deg, #031012 0%, #15000c 52%, #080a0b 100%)',
           backgroundAttachment: 'fixed',
           display: 'flex', 
-          flexDirection: isLandscape ? 'row' : isMobile ? 'column' : 'row',
-          alignItems: 'stretch', 
-          justifyContent: isMobile ? 'flex-start' : 'center', 
-          padding: isLandscape ? '0.3rem' : isPhonePortrait ? '0.25rem' : 'clamp(1rem, 2vw, 2rem)', 
-          gap: isLandscape ? '0.4rem' : isMobile ? '0.5rem' : 'clamp(1rem, 2vw, 2.5rem)', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: '0.35rem', 
+          gap: '0.3rem', 
           boxSizing: 'border-box',
           overflow: 'hidden'
         }}>
@@ -905,7 +1021,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.08)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-30"></div>
           
           {/* Header badge */}
-          <div style={{ position: isLandscape ? 'absolute' : isMobile ? 'static' : 'absolute', top: isLandscape ? '0.45rem' : '1.5rem', left: isLandscape ? '0.55rem' : '1.5rem', backgroundColor: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', border: isLandscape ? '1px solid #00ffff' : isMobile ? '2px solid #00ffff' : '3px solid #00ffff', padding: isLandscape ? '0.25rem 0.5rem' : isPhonePortrait ? '0.3rem 0.5rem' : '0.8rem 1.5rem', borderRadius: isLandscape ? '4px' : isPhonePortrait ? '5px' : '20px', display: 'flex', alignItems: 'center', gap: isLandscape ? '0.3rem' : isMobile ? '0.5rem' : '1rem', zIndex: 50, flexShrink: 0, alignSelf: isPhonePortrait ? 'stretch' : undefined, marginBottom: isPhonePortrait ? '0.2rem' : 0 }}>
+          <div className="live-game-header" style={{ position: 'absolute', top: '0.45rem', left: '0.55rem', backgroundColor: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', border: '1px solid #00ffff', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem', zIndex: 50, flexShrink: 0 }}>
              <span style={{ fontSize: isMobile ? '0.75rem' : 'clamp(0.9rem, 1.3vw, 1.3rem)', color: '#fff', fontWeight: 900, letterSpacing: '1px' }}>
                <span style={{ display: 'inline-block', color: '#ff007f', animation: 'pulse 1.5s infinite', fontSize: '1.1em', marginRight: '0.5rem' }}>🔴</span> LIVE
              </span>
@@ -914,51 +1030,45 @@ export default function Home() {
           </div>
           {/* Board section */}
           <div className="live-game-board" style={{ 
-            width: isPhonePortrait ? '100%' : '52%', 
-            height: isPhonePortrait ? 'auto' : '100%', 
-            flex: isPhonePortrait ? '0 0 auto' : '1 1 52%',
+            width: 'min(92vw, 430px)', 
+            height: 'auto', 
+            flex: '0 0 auto',
             minHeight: 0,
-            maxHeight: '100dvh', 
+            maxHeight: '100%', 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: isPhonePortrait ? 'flex-start' : 'center', 
-            flexDirection: isPhonePortrait ? 'column' : 'row',
+            justifyContent: 'center', 
+            flexDirection: 'column',
             transition: 'all 0.4s ease', 
             boxSizing: 'border-box',
             position: 'relative',
             zIndex: 10
           }}>
-             {isPhonePortrait && (
-               <div style={{ display: 'flex', gap: '0.35rem', maxWidth: '100%', marginBottom: '0.5rem', justifyContent: 'center', whiteSpace: 'nowrap' }}>
-                 <span style={{ background: 'rgba(0,0,0,.88)', border: '2px solid #ffea00', color: '#ffea00', padding: '0.35rem 0.55rem', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis' }}>{openingName}</span>
-                 <span style={{ background: principleStreak >= 3 ? '#39ff14' : 'rgba(0,0,0,.88)', border: '2px solid #39ff14', color: principleStreak >= 3 ? '#050008' : '#39ff14', padding: '0.35rem 0.55rem', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 900, boxShadow: principleStreak >= 3 ? '0 0 24px rgba(57,255,20,.75)' : 'none' }}>STREAK ×{principleStreak}</span>
-               </div>
-             )}
+             <div className="mobile-play-difficulty" aria-label="Choose Chester difficulty">
+                 {(['BEGINNER', 'INTERMEDIATE', 'EXPERT'] as const).map((level) => (
+                   <button key={level} type="button" onClick={() => setCoachingDifficulty(level)} aria-pressed={coachingDifficulty === level}>{level}</button>
+                 ))}
+             </div>
+             <CapturedPieceJail capturedPieces={capturedPieces} color="b" label="BLACK CAPTURED" />
              <div style={{ 
-               height: isPhonePortrait ? 'auto' : '100%', 
+               height: 'auto', 
                width: '100%',
                maxWidth: '100%',
                aspectRatio: '1/1', 
                background: 'linear-gradient(135deg, rgba(26,0,51,0.9), rgba(45,0,82,0.8))',
-               border: isPhonePortrait ? '2px solid #00ffff' : isMobile ? '4px solid #00ffff' : '6px solid #00ffff',
-               borderRadius: isPhonePortrait ? '4px' : '8px',
-               padding: isPhonePortrait ? 0 : isMobile ? '0.5rem' : '1rem', 
+               border: '2px solid #00ffff',
+               borderRadius: '4px',
+               padding: 0, 
                position: 'relative', 
                display: 'flex', 
                alignItems: 'center', 
                justifyContent: 'center', 
-               boxShadow: isPhonePortrait ? 'none' : '0 0 80px rgba(0,255,255,0.35), inset 0 0 40px rgba(0,255,255,0.1)',
+               boxShadow: '0 0 32px rgba(0,255,255,0.35), inset 0 0 24px rgba(0,255,255,0.1)',
                boxSizing: 'border-box',
                backdropFilter: 'blur(2px)',
                margin: '0 auto'
              }}>
-                {!isPhonePortrait && (
-                  <div style={{ position: 'absolute', top: isLandscape ? '0.35rem' : '0.7rem', left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: '0.35rem', maxWidth: '92%', whiteSpace: 'nowrap' }}>
-                    <span style={{ background: 'rgba(0,0,0,.88)', border: '2px solid #ffea00', color: '#ffea00', padding: '0.35rem 0.55rem', borderRadius: '4px', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis' }}>{openingName}</span>
-                    <span style={{ background: principleStreak >= 3 ? '#39ff14' : 'rgba(0,0,0,.88)', border: '2px solid #39ff14', color: principleStreak >= 3 ? '#050008' : '#39ff14', padding: '0.35rem 0.55rem', borderRadius: '4px', fontSize: isLandscape ? '0.48rem' : '0.68rem', fontWeight: 900, boxShadow: principleStreak >= 3 ? '0 0 24px rgba(57,255,20,.75)' : 'none' }}>STREAK ×{principleStreak}</span>
-                  </div>
-                )}
-                <div id="phaser-game-container" style={{ width: '100%', height: '100%', borderRadius: isPhonePortrait ? '4px' : isMobile ? '18px' : '32px', overflow: 'hidden' }}>
+                <div id="phaser-game-container" style={{ width: '100%', height: '100%', borderRadius: '4px', overflow: 'hidden' }}>
                    <DojoEngineNoSSR
                      mode={gameMode}
                      playerColor={gameMode === 'PVP_REMOTE' && !remoteConnected ? null : remoteRole}
@@ -966,66 +1076,10 @@ export default function Home() {
                    />
                 </div>
              </div>
-             {arenaView === 'PLAY' && (
-               <div className="live-game-panels" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', height: isPhonePortrait ? 'auto' : '100%', flex: isPhonePortrait ? 'none' : '1', width: isPhonePortrait ? '100%' : '48%', flexShrink: 0, justifyContent: 'center' }}>
-                 
-                 <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
-                 
-                 <ChesterChatOverlay 
-                    chatMessages={chatMessages}
-                    chatInput={chatInput}
-                    setChatInput={setChatInput}
-                    onSendMessage={handleSendMessage}
-                    isThinking={isThinking}
-                    chatError={chatError || ''}
-                    isMobile={isMobile}
-                 />
-
-                 <div style={{ width: '100%', flex: 'none', height: isPhonePortrait ? '65px' : '90px', display: 'flex', gap: '0.4rem' }}>
-                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #39ff14', borderRadius: '6px', padding: '0.2rem', overflowY: 'auto' }}>
-                       {(() => {
-                         const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-                         const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const isWinning = bLost - wLost > 0;
-                       return (
-                         <div style={{ color: '#39ff14', fontSize: isPhonePortrait ? '0.5rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.1rem' }}>
-                           GREEN JAIL {isWinning ? `(+${bLost - wLost})` : ''}
-                         </div>
-                       );
-                       })()}
-                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', gap: '0.1rem', justifyItems: 'center' }}>
-                         {capturedPieces.map((piece, index) => {
-                           if (piece.color !== 'b') return null;
-                           const isNew = index === capturedPieces.length - 1;
-                           return <span key={`jail-b-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#ff4eb1', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.2rem' : '1.1rem', lineHeight: 1, textShadow: '0 0 10px #ff007f' }}>{PIECE_GLYPHS['b'][piece.type]}</span>
-                         })}
-                       </div>
-                    </div>
-                    
-                    <div style={{ flex: 1, background: 'rgba(0,0,0,.9)', border: '2px solid #ff007f', borderRadius: '6px', padding: '0.2rem', overflowY: 'auto' }}>
-                       {(() => {
-                         const vals: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-                         const wLost = capturedPieces.filter(p => p.color === 'w').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const bLost = capturedPieces.filter(p => p.color === 'b').reduce((s, p) => s + (vals[p.type] || 0), 0);
-                         const isWinning = wLost - bLost > 0;
-                       return (
-                         <div style={{ color: '#ff007f', fontSize: isPhonePortrait ? '0.5rem' : '0.45rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.1rem' }}>
-                           PINK JAIL {isWinning ? `(+${wLost - bLost})` : ''}
-                         </div>
-                       );
-                       })()}
-                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', gap: '0.1rem', justifyItems: 'center' }}>
-                         {capturedPieces.map((piece, index) => {
-                           if (piece.color !== 'w') return null;
-                           const isNew = index === capturedPieces.length - 1;
-                           return <span key={`jail-w-${index}`} className={isNew ? "moonwalk-piece" : ""} style={{ color: '#dfffda', fontFamily: 'Georgia, serif', fontSize: isPhonePortrait ? '1.2rem' : '1.1rem', lineHeight: 1, textShadow: '0 0 10px #39ff14' }}>{PIECE_GLYPHS['w'][piece.type]}</span>
-                         })}
-                       </div>
-                    </div>
-                 </div>
-               </div>
-             )}
+             <CapturedPieceJail capturedPieces={capturedPieces} color="w" label="WHITE CAPTURED" />
+             <div className="mobile-game-commentary">
+                 <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile />
+             </div>
           </div>
 
           {/* Chester commentary panel */}
@@ -1093,6 +1147,8 @@ export default function Home() {
                 >                  {isMobile ? '🔽' : '✖'}
                 </button>
               </div>
+
+              <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
 
               {activeChallenge && (
                 <div style={{ flexShrink: 0, background: 'linear-gradient(90deg, rgba(0,255,255,.12), rgba(255,0,127,.08))', borderLeft: '3px solid #00ffff', padding: isLandscape ? '0.35rem 0.45rem' : '0.65rem 0.75rem', marginBottom: isLandscape ? '0.35rem' : '0.7rem' }}>

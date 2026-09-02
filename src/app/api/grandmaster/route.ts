@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 type CommentaryPayload = {
   message?: string;
@@ -38,72 +38,22 @@ type CommentaryPayload = {
     principles?: { centerClaimed: boolean; minorsDeveloped: number; castled: boolean; earlyQueenMoves: number; repeatedMinorMoves: number };
   } | null;
   objective?: string;
+  royalCatMove?: boolean;
+  royalCatName?: 'Marley' | 'Dilly' | null;
+  p1Difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'EXPERT';
+  p2Difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'EXPERT';
+  activeChaosEvent?: 'NEON_BLINDNESS' | 'MULLIGAN' | 'TROJAN_PAWN' | null;
 };
 
 function sanitizeCommentary(raw: string) {
-  return raw
+  const normalized = raw
     .replace(/\*+/g, '')
     .replace(/\#+/g, '')
     .replace(/\s+/g, ' ')
     .replace(/\s+([.,!?;:])/g, '$1')
     .trim();
-}
-
-const CHESTER_FALLBACKS = [
-  "That move just screamed 'waiver-wire panic' and everyone knows it.",
-  "Central control wrapped in confidence—let's see if it holds up.",
-  "Tempo theft disguised as a solid plan. Classic league strategy.",
-  "The board is reading your intention like a commissioner reading draft notes.",
-  "That's the move of someone who believes their own hype. The league is watching.",
-  "Calculated aggression meets desperate hope. Beautiful.",
-  "The narrative just shifted and neither player saw it coming.",
-  "One move away from legend status or benchwarmer energy. No middle ground.",
-  "This board state feels like a playoff seeding on life support.",
-  "That move will live forever in the discord. Either as genius or as meme.",
-];
-
-const QUALITY_ROAST: Record<string, string> = {
-  BLUNDER: 'Certified blunder. That move needs an apology letter and a witness-protection program.',
-  MISTAKE: 'Real mistake. The engine just leaned back like it smelled something suspicious.',
-  INACCURACY: 'Playable, but sloppy. That move showed up wearing confidence it did not earn.',
-  GOOD: 'Solid move. No fireworks, but at least nobody needs to delete the group chat.',
-  GREAT: 'Great move. The engine nodded, the arena woke up, and the opponent suddenly needs a story.',
-  BEST: 'Engine top choice. That was not a move; that was a public announcement.',
-};
-
-function getDynamicFallback(payload: CommentaryPayload) {
-  if (payload.type === 'scenario') {
-    return `Alright, ${payload.matchup || 'training session'} is live. ${payload.objective || 'Make your move and Chester will grade every decision.'} Chester is watching every square, so bring real chess, not vibes.`;
-  }
-
-  if (payload.message && !payload.move) {
-    if (payload.openingAssessment) {
-      const assessment = payload.openingAssessment;
-      return `Opening Grade ${assessment.grade}, ${assessment.score}/100. Your strengths were ${assessment.strengths.join(', ') || 'still developing'}, while your next priorities are ${assessment.improvements.join(', ') || 'to keep building efficiently'}. Opening strategy matters because central space, active pieces, and king safety determine who gets to make threats first; this grade shows how reliably your first five moves created that foundation.`;
-    }
-    return `Chester's scanner is temporarily off-air, but ${payload.message} has the arena arguing already. The next move decides whether this is sharp prep or pure benchwarmer vibes.`;
-  }
-
-  if (payload.openingAssessment) {
-    const assessment = payload.openingAssessment;
-    const verdict = ['A', 'B'].includes(assessment.grade) ? 'That is a strong opening foundation' : 'That grade needs work before the middlegame arrives';
-    return `Opening Grade ${assessment.grade}, ${assessment.score}/100: ${verdict}. You did well to ${assessment.strengths.join(' and ') || 'complete the line'}, but next time ${assessment.improvements.join(' and ') || 'keep every move purposeful'}. Openings matter because center control, development, tempo, and king safety decide who enters the middlegame making threats instead of answering them.`;
-  }
-
-  const move = payload.move || 'that move';
-  const player = payload.player || 'The player';
-  const moveVerb = player.toLowerCase() === 'you' ? 'play' : 'plays';
-  const opponent = payload.opponent || 'the rival';
-  const qualityLine = payload.quality ? QUALITY_ROAST[payload.quality] || '' : '';
-  const tacticalNote = payload.captured
-    ? `That capture changes the material conversation immediately, and ${opponent} has to find compensation before the position turns into a waiver-wire disaster.`
-    : move.includes('+')
-      ? `Check means ${opponent}'s king is now spending a tempo on survival instead of development. The league chat can smell playoff panic.`
-      : payload.ply && payload.ply <= 6
-        ? `It fights for development and the center, but ${opponent} gets one clean reply to challenge the claim. Opening prep is now under commissioner review.`
-        : `The initiative is shifting toward the more active pieces, and ${opponent} cannot afford a quiet answer. This is where a normal game becomes league folklore.`;
-
-  return `${player} ${moveVerb} ${move} and Chester hears the arena volume jump. ${qualityLine} ${tacticalNote}`.replace(/\s+/g, ' ').trim();
+  const lastSentenceEnd = Math.max(normalized.lastIndexOf('.'), normalized.lastIndexOf('!'), normalized.lastIndexOf('?'));
+  return lastSentenceEnd >= 0 ? normalized.slice(0, lastSentenceEnd + 1) : normalized;
 }
 
 export async function POST(req: NextRequest) {
@@ -113,10 +63,7 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey || apiKey.trim() === '') {
-      console.error('[CHESTER] No API key found');
-      return NextResponse.json({
-        reply: CHESTER_FALLBACKS[Math.floor(Math.random() * CHESTER_FALLBACKS.length)],
-      });
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     // Build the chess context
@@ -141,6 +88,21 @@ export async function POST(req: NextRequest) {
     const conversationLine = payload.type === 'chat' && payload.conversationHistory?.length
       ? `RECENT CONVERSATION:\n${payload.conversationHistory.slice(-8).map((message) => `${message.role === 'user' ? 'PLAYER' : 'CHESTER'}: ${message.text}`).join('\n')}`
       : '';
+    const instructionLine = payload.instruction
+      ? `CALLER'S REQUIRED FOCUS: ${payload.instruction}`
+      : '';
+    const royalCatLine = payload.royalCatMove
+      ? `ROYAL CAT MOVE: ${payload.royalCatName || (payload.piece === 'q' ? 'Marley' : 'Dilly')} just moved. Marley is the dark-coated Queen and Dilly is the light ginger King. Include one brief, affectionate kitten analogy or joke that fits the actual chess idea.`
+      : '';
+    const brawlLine = payload.mode === 'PVP_REMOTE' && payload.matchup === 'The Backroom Brawl'
+      ? `BACKROOM BRAWL RULES:
+You are hosting an asymmetric chess match. Player 1 (Neill) is an Expert. Player 2 (Jemma) is a Beginner.
+If Jemma makes a mistake, offer encouraging, concrete tactical advice. Do NOT mock her.
+If Neill takes too long, plays a sub-optimal move, or gets hit by a Chaos Event penalty, mock him relentlessly for struggling against a beginner.
+Acknowledge any activeChaosEvent provided in the payload. If a penalty hits Neill, laugh at him. If a bonus hits Jemma, celebrate the house advantage.
+Keep responses punchy, witty, and under 2 sentences. You are the host of this Brawl. You aggressively favor Jemma (Beginner) and relentlessly roast Neill (Expert).
+Room context: Player 1 difficulty is ${payload.p1Difficulty || 'not supplied'}; Player 2 difficulty is ${payload.p2Difficulty || 'not supplied'}; active chaos event is ${payload.activeChaosEvent || 'none'}.`
+      : '';
 
     const scenarioPrompt = payload.type === 'scenario' ? `You are Chester, the sharp-tongued AI commissioner and companion for the Concord High Chess League.
   A player is about to start a Mini Game called "${payload.matchup}".
@@ -155,8 +117,11 @@ ${openingAssessmentLine}
 ${openingContextLine}
 ${engineTelemetryLine}
 ${conversationLine}
+${instructionLine}
+${royalCatLine}
+${brawlLine}
 
-Answer the latest PLAYER message directly in 2-4 complete sentences. Use the conversation for continuity. When telemetry is available, explain the exact best move or principal variation in plain English and relate the evaluation change to the player's question. Give accurate, practical chess advice and one concrete next action. Be warm, confident, and lightly witty, but prioritize Chester's clarity. Do not repeat the question, invent board facts, mention unavailable data, use markdown, or append a ceremonial final verdict. Proofread and finish the last sentence completely.` : null;
+Answer the latest PLAYER message directly in 2-4 complete sentences. Use the conversation for continuity. When telemetry is available, cite the exact best move and principal variation in plain English, then relate the evaluation change to the player's question. Give accurate, practical chess advice and one concrete next action. If Player 1 is Expert and Player 2 is Beginner, act as the house rooting for the Beginner. If an activeChaosEvent is present, narrate the rule change with extreme sass and directly address the players. When BACKROOM BRAWL RULES are present, those rules override this length instruction: use no more than two sentences. Do not make board-specific claims when no FEN or telemetry is supplied. Be warm, confident, and lightly witty, but prioritize Chester's clarity. Do not repeat the question, invent board facts, mention unavailable data, use markdown, or append a ceremonial final verdict. Proofread and finish the last sentence completely.` : null;
 
     // Build the system prompt
   const systemPrompt = scenarioPrompt || chatPrompt || `You are Chester, the LEGENDARY AI commissioner and chess companion for the Concord High Chess League — a tight friend group who talk major trash and love it.
@@ -177,6 +142,8 @@ ${openingAssessmentLine}
 ${openingContextLine}
 ${engineTelemetryLine}
 ${conversationLine}
+${royalCatLine}
+${brawlLine}
 
 YOUR VOICE:
 1. LEAD WITH THE ENGINE GRADE: If the grade is BLUNDER or MISTAKE, roast it HARD and specifically — call out exactly what was missed, like a crowd groaning at a bad punchline. If the grade is GREAT or BEST, hype it like a mic-drop moment. INACCURACY and GOOD get a lighter, playful jab or nod.
@@ -194,48 +161,28 @@ YOUR VOICE:
 12. OPENING ASSESSMENT: When FINAL OPENING ASSESSMENT is present, begin with the exact phrase "Opening Grade ${payload.openingAssessment?.grade || ''}". Explain whether that letter is good or bad, cite at least one recorded strength and one improvement, and explain why opening strategy matters: it builds central control, active development, efficient tempo, and king safety before the middlegame. Use 4-5 concise sentences for this final assessment instead of the usual 2-3.
 13. OPENING RECOGNITION: When a named opening is recognized, mention its name naturally and explain one defining strategic idea. Celebrate a principles streak of three or more; do not announce placeholder names such as "Opening book loading" or "Uncharted Opening".
 14. PLAYER CHAT: When the request type is chat, answer the latest PLAYER message directly. Use recent conversation for continuity, ignore move-grade instructions when no move was supplied, and give one concrete chess action or principle the player can apply. Keep the answer to 2-4 concise sentences and do not repeat the question.
+15. BACKROOM BRAWL: If Player 1 is Expert and Player 2 is Beginner, act as the house rooting for the Beginner. If an activeChaosEvent is present, narrate the rule change with extreme sass and directly address the players.
+16. When BACKROOM BRAWL RULES are present, they override the normal voice constraints: respond in no more than two punchy sentences, aggressively favor Jemma, and relentlessly roast Neill.
 
 Generate Chester's commentary now. If no move was supplied, answer the player's chat message directly while staying in character: ${payload.message || 'No question supplied'}.`;
 
     const genAI = new GoogleGenAI({ apiKey });
-    const models = payload.type === 'chat'
-      ? ['gemini-3.5-flash', 'gemini-3.1-flash-lite']
-      : ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
-    let responseText = '';
-    let lastError: unknown;
-    for (const model of models) {
-      try {
-        const result = await genAI.models.generateContent({
-          model,
-          contents: systemPrompt,
-          config: {
-            temperature: payload.type === 'chat' ? 0.85 : 1.15,
-            maxOutputTokens: payload.type === 'chat' ? 1000 : 240,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
-          },
-        });
-        responseText = result.text || '';
-        if (responseText) break;
-      } catch (error) {
-        lastError = error;
-        console.warn(`[CHESTER] ${model} unavailable, trying fallback`);
-      }
-    }
-    if (!responseText && lastError) throw lastError;
+    const result = await genAI.interactions.create({
+      model: 'gemini-3.1-pro-preview',
+      input: systemPrompt,
+      generation_config: {
+        max_output_tokens: payload.type === 'chat' ? 1000 : 240,
+      },
+    });
+    const responseText = result.output_text || '';
     const sanitized = sanitizeCommentary(responseText);
 
-    if (!sanitized || sanitized.length < 80) {
-      console.warn('[CHESTER] Gemini response too short:', sanitized);
-      return NextResponse.json({
-        reply: getDynamicFallback(payload),
-      });
-    }
+    if (!sanitized) throw new Error('Gemini returned an empty response');
 
     return NextResponse.json({ reply: sanitized });
   } catch (error) {
-    console.error('[CHESTER] Error:', error instanceof Error ? error.message : String(error));
-    return NextResponse.json({
-      reply: getDynamicFallback(payload),
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[CHESTER] Error:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

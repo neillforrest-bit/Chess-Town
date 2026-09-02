@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AppLayout from "@/components/AppLayout";
+import { EngineEvaluationProvider } from "@/components/EngineEvaluationProvider";
 
 export const metadata: Metadata = {
   title: "Chess Town",
@@ -14,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body><AppLayout>{children}</AppLayout></body>
+      <body><EngineEvaluationProvider><AppLayout>{children}</AppLayout></EngineEvaluationProvider></body>
     </html>
   );
 }

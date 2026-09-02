@@ -5,6 +5,8 @@ import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
+import { checkChaosTriggers } from '@/lib/ChaosEngine';
+import { useBrawlState } from '@/components/EngineEvaluationProvider';
 
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
@@ -295,6 +297,7 @@ function getChesterDifficulty(difficulty: string) {
 }
 
 export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE' }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO' }) {
+  const { p1Difficulty, p2Difficulty, setActiveChaosEvent } = useBrawlState();
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserRef = useRef<Phaser.Game | null>(null);
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -339,6 +342,22 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           let squareZones: Phaser.GameObjects.Zone[] = [];
           let legalTargetMarkers: Phaser.GameObjects.Arc[] = [];
           let renderBoard: () => void;
+          const royalCatTextures: Partial<Record<'q' | 'k', string>> = {};
+
+          const loadRoyalCatTextures = () => {
+            (['q', 'k'] as const).forEach((pieceType) => {
+              const imageUrl = localStorage.getItem(`chess-town-royal-cat-${pieceType}`);
+              if (!imageUrl || royalCatTextures[pieceType]) return;
+              const image = new Image();
+              image.onload = () => {
+                const textureKey = `royal-cat-${pieceType}`;
+                if (!scene.textures.exists(textureKey)) scene.textures.addImage(textureKey, image);
+                royalCatTextures[pieceType] = textureKey;
+                renderBoard?.();
+              };
+              image.src = imageUrl;
+            });
+          };
 
           const jailX = 716;
           const jailY = 16;
@@ -435,11 +454,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null) => {
+            const isBrawl = mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1';
             window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
                 type: 'move', ply: gameRef.current.ply, player, move: move.san,
                 from: move.from, to: move.to, piece: move.piece, captured: move.captured || null,
-                fen: engineTelemetry?.fenAfter || gameRef.current.chess.fen(), matchup: AI_TAGS[mode]?.title, context: `${mode} matchup`,
+                  royalCatMove: move.piece === 'q' || move.piece === 'k',
+                  royalCatName: move.piece === 'q' ? 'Marley' : move.piece === 'k' ? 'Dilly' : null,
+                fen: engineTelemetry?.fenAfter || gameRef.current.chess.fen(), matchup: isBrawl ? 'The Backroom Brawl' : AI_TAGS[mode]?.title, context: `${mode} matchup`,
                 quality: quality?.label || null, centipawnLoss: quality?.centipawnLoss ?? null,
                 checklist: mode === 'COACH_OPENING' || mode === 'COACH_PRACTICE_OPENING' ? getOpeningChecklist(gameRef.current.chess) : null,
                 openingAssessment: gameRef.current.openingAssessment,
@@ -455,6 +477,33 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
           };
 
+          const publishPositionEvaluation = (fen: string) => {
+            void getStockfishClient().analyzePosition(fen, getChesterDifficulty(difficulty)).then((analysis) => {
+              window.dispatchEvent(new CustomEvent('engine-evaluation', {
+                detail: {
+                  fen,
+                  evalScore: analysis.mate === null ? (analysis.score === null ? null : analysis.score / 100) : `M${analysis.mate}`,
+                  bestMove: { uci: analysis.bestMove, san: analysis.pv[0] || null },
+                  evalDelta: null,
+                  moveQuality: null,
+                },
+              }));
+            }).catch(() => undefined);
+          };
+
+          const flashHouseAdvantage = () => scene.cameras.main.flash(650, 80, 255, 120);
+          const chooseTrojanPawnSquare = () => {
+            const candidates: string[] = [];
+            const board = gameRef.current.chess.board();
+            for (let row = 0; row < 8; row++) {
+              for (let col = 0; col < 8; col++) {
+                const piece = board[row][col];
+                if (piece?.color === 'w' && (piece.type === 'n' || piece.type === 'b')) candidates.push(files[col] + ranks[row]);
+              }
+            }
+            return candidates.sort()[0] || null;
+          };
+
           const evaluateAndPublishMove = (move: any, player: string, fenBeforeMove: string, localQuality: { label: string; centipawnLoss: number } | null) => {
             const fenAfterMove = gameRef.current.chess.fen();
             const uci = `${move.from}${move.to}${move.promotion || ''}`;
@@ -467,8 +516,58 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               difficulty: getChesterDifficulty(difficulty),
             }).then((telemetry) => {
               const quality = { label: telemetry.classification === 'BRILLIANT' ? 'BEST' : telemetry.classification, centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
+              const isBrawl = mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1';
+              const triggeredChaos = isBrawl
+                ? checkChaosTriggers(telemetry.fenAfter, telemetry.evalScore, telemetry.moveQuality, p1Difficulty, p2Difficulty)
+                : null;
+              const chaosEvent = gameRef.current.pendingChaosEvent || (triggeredChaos === 'MULLIGAN' && move.color === 'b' ? 'MULLIGAN' : null);
+              gameRef.current.pendingChaosEvent = null;
+
+              if (triggeredChaos === 'TROJAN_PAWN' && !gameRef.current.trojanPawnArmed && !gameRef.current.trojanPawnSquare) gameRef.current.trojanPawnArmed = true;
+
+              if (chaosEvent === 'MULLIGAN' && gameRef.current.chess.fen() === fenAfterMove) {
+                const revertedMove = gameRef.current.chess.undo();
+                if (revertedMove) {
+                  gameRef.current.ply = Math.max(0, gameRef.current.ply - 1);
+                  gameRef.current.timeline.pop();
+                  gameRef.current.lastMove = gameRef.current.timeline.at(-1)?.lastMove || null;
+                  if (revertedMove.captured) {
+                    window.dispatchEvent(new CustomEvent('piece-restored', { detail: { color: revertedMove.color === 'w' ? 'b' : 'w', type: revertedMove.captured } }));
+                  }
+                  flashHouseAdvantage();
+                  renderBoard();
+                }
+              }
+
+              if (chaosEvent) setActiveChaosEvent(chaosEvent);
+              if (isBrawl) {
+                const syncedFen = gameRef.current.chess.fen();
+                window.dispatchEvent(new CustomEvent('brawl-position-update', {
+                  detail: {
+                    fen: syncedFen,
+                    turn: gameRef.current.chess.turn(),
+                    activeChaosEvent: chaosEvent,
+                    trojanPawnArmed: Boolean(gameRef.current.trojanPawnArmed),
+                    trojanPawnSquare: gameRef.current.trojanPawnSquare || null,
+                  },
+                }));
+              }
               window.dispatchEvent(new CustomEvent('dojo-engine-telemetry', { detail: telemetry }));
+              window.dispatchEvent(new CustomEvent('engine-evaluation', {
+                detail: {
+                  fen: telemetry.fenAfter,
+                  evalScore: telemetry.evalScore,
+                  bestMove: { uci: telemetry.bestMove, san: telemetry.bestMoveSan },
+                  evalDelta: telemetry.evalDelta,
+                  moveQuality: telemetry.moveQuality,
+                },
+              }));
               publishMove(move, player, quality, telemetry);
+              if (chaosEvent) {
+                window.dispatchEvent(new CustomEvent('dojo-banter', {
+                  detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. Try again, Jemma. Neill, keep your mouth shut.' : 'Reply exactly: Neill is getting too comfortable. I have disguised one of his pieces. Good luck remembering which is which, Expert.' },
+                }));
+              }
             }).catch(() => {
               publishMove(move, player, localQuality);
             });
@@ -515,6 +614,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const fenBeforeMove = gameRef.current.chess.fen();
             const moveResult = gameRef.current.chess.move({ from, to, promotion: 'q' });
             if (!moveResult) return;
+            const isBrawl = mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1';
+            if (isBrawl && moveResult.color === 'w' && gameRef.current.trojanPawnArmed && !gameRef.current.trojanPawnSquare) {
+              gameRef.current.trojanPawnSquare = chooseTrojanPawnSquare();
+              gameRef.current.trojanPawnArmed = false;
+              gameRef.current.pendingChaosEvent = 'TROJAN_PAWN';
+            }
+            const blindnessExpires = gameRef.current.neonBlindnessColor && moveResult.color !== gameRef.current.neonBlindnessColor;
+            if (blindnessExpires) gameRef.current.neonBlindnessColor = null;
             emitCapture(moveResult);
             gameRef.current.ply++;
             gameRef.current.lastMove = { from, to };
@@ -550,6 +657,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               return;
             }
             renderAfterCapture(moveResult);
+            if (blindnessExpires) renderBoard();
             if (!isRemote) playAiTurn(moveResult.captured ? 850 : AI_RESPONSE_DELAY_MS);
           };
 
@@ -594,7 +702,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               for (let col = 0; col < 8; col++) {
                 const squareName = files[col] + ranks[row];
                 const isMoveSpotlight = !isLastMoveInvisible && gameRef.current.lastMove && (squareName === gameRef.current.lastMove.from || squareName === gameRef.current.lastMove.to);
-                const squareColor = isMoveSpotlight ? 0x665a00 : (row + col) % 2 === 0 ? 0x1a0033 : 0x0a001a;
+                const squareColor = isMoveSpotlight ? 0x665a00 : (row + col) % 2 === 0 ? 0xf2f7f8 : 0x07090a;
                 graphics.fillStyle(squareColor, 1);
                 graphics.fillRect(
                   boardOffset + col * tileSize,
@@ -656,22 +764,26 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const isWhite = piece.color === 'w';
                   const isMovedPiece = !isLastMoveInvisible && gameRef.current.lastMove?.to === squareName;
                   const glowColor = isWhite ? '#39ff14' : '#ff007f';
-                  const pieceGlyph = scene.add.text(0, 0, PIECE_GLYPHS[piece.color][piece.type], {
-                    fontFamily: 'Georgia, Times New Roman, serif',
-                    fontSize: '88px',
-                    fontStyle: 'bold',
-                    color: isWhite ? '#dfffda' : '#ff4eb1',
-                    stroke: '#050008',
-                    strokeThickness: 7,
-                    shadow: { blur: 34, color: glowColor, fill: true, offsetX: 0, offsetY: 0 },
-                  });
-                  pieceGlyph.setOrigin(0.5);
+                  const isNeonBlind = gameRef.current.neonBlindnessColor === piece.color;
+                  const displayPieceType = gameRef.current.trojanPawnSquare === squareName ? 'p' : piece.type;
+                  const royalTexture = displayPieceType === piece.type && (piece.type === 'q' || piece.type === 'k') ? royalCatTextures[piece.type] : undefined;
+                  const pieceVisual = royalTexture
+                    ? scene.add.image(0, 0, royalTexture).setDisplaySize(tileSize * 1.22, tileSize * 1.22).setOrigin(0.5)
+                    : scene.add.text(0, 0, PIECE_GLYPHS[piece.color][displayPieceType], {
+                      fontFamily: 'Georgia, Times New Roman, serif',
+                      fontSize: '88px',
+                      fontStyle: 'bold',
+                      color: isWhite ? '#dfffda' : '#ff4eb1',
+                      stroke: '#050008',
+                      strokeThickness: 7,
+                      shadow: { blur: 34, color: glowColor, fill: true, offsetX: 0, offsetY: 0 },
+                    }).setOrigin(0.5);
 
                   const glowColorNumber = isWhite ? 0x39ff14 : 0xff007f;
                   const glow = scene.add.circle(0, 0, tileSize * 0.44, glowColorNumber, 0.28);
                   
                   if (!isInvisible) {
-                    container.add([glow, pieceGlyph]);
+                    container.add(isNeonBlind ? [glow] : [glow, pieceVisual]);
                     if (gameRef.current.lastMove && !isMovedPiece) container.setAlpha(0.42);
                   }
 
@@ -772,6 +884,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.principleStreak = 0;
             gameRef.current.playerQualities = [];
             gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
+            publishPositionEvaluation(gameRef.current.chess.fen());
 
             const isCoaching = mode.startsWith('COACH_');
             window.dispatchEvent(
@@ -878,6 +991,30 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           window.addEventListener('load-puzzle', handleLoadPuzzle);
           window.addEventListener('start-demo', handleStartDemo);
+          const handleBrawlPosition = (event: any) => {
+            const fen = event.detail?.fen;
+            if (mode !== 'PVP_REMOTE' || !fen) return;
+            try {
+              gameRef.current.trojanPawnArmed = Boolean(event.detail?.trojanPawnArmed);
+              gameRef.current.trojanPawnSquare = event.detail?.trojanPawnSquare || null;
+              if (event.detail?.activeChaosEvent === 'MULLIGAN' && gameRef.current.lastChaosEvent !== 'MULLIGAN') flashHouseAdvantage();
+              gameRef.current.lastChaosEvent = event.detail?.activeChaosEvent || null;
+              if (gameRef.current.chess.fen() === fen) {
+                renderBoard();
+                return;
+              }
+              gameRef.current.chess.load(fen);
+              gameRef.current.lastMove = null;
+              gameRef.current.selectedSquare = null;
+              gameRef.current.legalTargets = [];
+              gameRef.current.timeline.push({ fen, lastMove: null, san: 'Opponent move' });
+              renderBoard();
+              publishPositionEvaluation(fen);
+            } catch (error) {
+              console.warn('[DojoEngine] Ignoring invalid Brawl room position:', error);
+            }
+          };
+          window.addEventListener('brawl-position', handleBrawlPosition);
           const handleRemoteMove = (event: any) => {
             if (mode !== 'PVP_REMOTE') return;
             const { from, to, fen } = event.detail || {};
@@ -885,6 +1022,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               playUserMove(from, to, true);
               if (fen && gameRef.current.chess.fen() !== fen) {
                 gameRef.current.chess.load(fen);
+                publishPositionEvaluation(gameRef.current.chess.fen());
                 renderBoard();
               }
             }
@@ -895,6 +1033,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const index = Math.max(0, Math.min(gameRef.current.timeline.length - 1, Number(event.detail?.index || 0)));
             const snapshot = gameRef.current.timeline[index];
             gameRef.current.chess.load(snapshot.fen);
+            publishPositionEvaluation(snapshot.fen);
             gameRef.current.lastMove = snapshot.lastMove;
             window.dispatchEvent(new CustomEvent('replay-status', { detail: { index, total: gameRef.current.timeline.length, move: snapshot.san } }));
             renderBoard();
@@ -904,6 +1043,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           scene.events.once('destroy', () => {
             window.removeEventListener('load-puzzle', handleLoadPuzzle);
             window.removeEventListener('start-demo', handleStartDemo);
+            window.removeEventListener('brawl-position', handleBrawlPosition);
             window.removeEventListener('remote-chess-move', handleRemoteMove);
             window.removeEventListener('replay-step', handleReplayStep);
             if (demoIntervalRef.current) {
@@ -915,7 +1055,20 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const initialCoachingPosition = COACHING_POSITIONS[mode];
           if (initialCoachingPosition) gameRef.current.chess.load(initialCoachingPosition.fen);
           gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
+          publishPositionEvaluation(gameRef.current.chess.fen());
           renderBoard();
+          loadRoyalCatTextures();
+          const refreshRoyalCats = () => {
+            Object.keys(royalCatTextures).forEach((pieceType) => {
+              const textureKey = royalCatTextures[pieceType as 'q' | 'k'];
+              if (textureKey) scene.textures.remove(textureKey);
+              delete royalCatTextures[pieceType as 'q' | 'k'];
+            });
+            loadRoyalCatTextures();
+            renderBoard();
+          };
+          window.addEventListener('royal-cats-updated', refreshRoyalCats);
+          scene.events.once('destroy', () => window.removeEventListener('royal-cats-updated', refreshRoyalCats));
         },
       },
     };

@@ -1,6 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
 import { CHESTER_EMOTIONS, getChesterEmotion } from '@/lib/chester-emotions';
+import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 
 export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: boolean, size?: 'small' | 'default' | 'large' }) {
   const sizeMap = {
@@ -67,36 +68,38 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
 }
 
 export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: string, isThinking: boolean, isMobile?: boolean }) {
+  const engineEvaluation = useEngineEvaluation();
   const message = text.replace(/^🎙️ CHESTER:\s*/, '');
   const emotion = isThinking ? 'thinking' : getChesterEmotion(message);
   return (
-    <div style={{
+    <div className="chester-teleprompter" style={{
       width: '100%',
       background: 'rgba(10, 5, 20, 0.65)',
       backdropFilter: 'blur(10px)',
       border: '1px solid rgba(0, 229, 229, 0.3)',
       borderRadius: '12px',
-      padding: isMobile ? '0.75rem' : '1rem',
+      padding: isMobile ? '0.9rem' : '1rem',
       display: 'flex',
-      gap: isMobile ? '0.75rem' : '1rem',
-      alignItems: 'center',
+      gap: isMobile ? '0.9rem' : '1rem',
+      alignItems: 'flex-start',
       boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
       boxSizing: 'border-box'
     }}>
       <ChesterAvatar isThinking={isThinking} />
-      <div style={{ 
+      <div className="chester-teleprompter__message" style={{
         flex: 1,
         fontFamily: 'sans-serif',
-        fontSize: '0.9rem',
+        fontSize: isMobile ? '1rem' : '0.9rem',
         letterSpacing: '0.03em',
         color: '#ffffff',
         textShadow: '0 1px 4px rgba(0,0,0,0.8)',
         lineHeight: 1.4,
-        maxHeight: '150px',
-        overflowY: 'auto'
+        maxHeight: isMobile ? 'none' : '150px',
+        overflowY: isMobile ? 'visible' : 'auto'
       }}>
         <span aria-label={emotion}>{CHESTER_EMOTIONS[emotion].emoji}</span>{' '}
         {isThinking ? <span style={{ color: 'var(--arena-pink)', fontStyle: 'italic' }}>Chester is calculating...</span> : message}
+        {engineEvaluation && <div style={{ color: 'var(--arena-cyan)', fontSize: '0.75em', marginTop: '0.35rem' }}>ENGINE {engineEvaluation.evalScore ?? '...'} · BEST {engineEvaluation.bestMove.san || engineEvaluation.bestMove.uci || '...'}</div>}
       </div>
     </div>
   );
@@ -129,7 +132,7 @@ export function ChesterChatOverlay({
   }, [chatMessages, expanded]);
 
   return (
-    <div style={{
+    <div className="chester-chat" style={{
       width: '100%',
       flex: expanded ? 1 : 'none',
       background: 'rgba(0, 0, 0, 0.75)',
@@ -203,6 +206,7 @@ export function ChesterChatOverlay({
                   padding: '0.5rem',
                   color: '#fff',
                   fontFamily: 'inherit',
+                  fontSize: '16px',
                   outline: 'none'
                 }}
               />

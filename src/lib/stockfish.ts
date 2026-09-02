@@ -1,6 +1,16 @@
 export type ChesterDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 
+export type EngineEvaluation = {
+  evalScore: number | string | null;
+  bestMove: { uci: string | null; san: string | null };
+  evalDelta: number | null;
+  moveQuality: 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
+};
+
 export type EngineTelemetry = {
+  evalScore: number | string | null;
+  bestMoveSan: string | null;
+  moveQuality: EngineEvaluation['moveQuality'];
   fenBefore: string;
   fenAfter: string;
   san: string;
@@ -22,7 +32,7 @@ const PRESETS: Record<ChesterDifficulty, { skill: number; elo: number; depth: nu
   EXPERT: { skill: 20, elo: 2200, depth: 17 },
 };
 
-type Analysis = { score: number | null; pv: string[]; bestMove: string | null };
+type Analysis = { score: number | null; mate: number | null; pv: string[]; bestMove: string | null };
 
 function classify(loss: number | null, isBestMove: boolean): EngineTelemetry['classification'] {
   if (loss === null) return 'GREAT';
@@ -80,7 +90,7 @@ export class StockfishClient {
       if (!worker) throw new Error('Stockfish worker is unavailable');
       const preset = PRESETS[difficulty];
       return new Promise<Analysis>((resolve, reject) => {
-        let latest: Analysis = { score: null, pv: [], bestMove: null };
+        const latest: Analysis = { score: null, mate: null, pv: [], bestMove: null };
         const timeout = window.setTimeout(() => {
           worker.removeEventListener('message', onMessage);
           worker.postMessage('stop');
@@ -91,7 +101,10 @@ export class StockfishClient {
           if (line.startsWith('info ') && line.includes(' pv ')) {
             const scoreMatch = line.match(/score (cp|mate) (-?\d+)/);
             const pvMatch = line.match(/\bpv (.+)$/);
-            if (scoreMatch) latest.score = scoreMatch[1] === 'mate' ? Number(scoreMatch[2]) * 100000 : Number(scoreMatch[2]);
+            if (scoreMatch) {
+              if (scoreMatch[1] === 'mate') latest.mate = Number(scoreMatch[2]);
+              else latest.score = Number(scoreMatch[2]);
+            }
             if (pvMatch) latest.pv = pvMatch[1].split(' ');
           }
           if (line.startsWith('bestmove ')) {
@@ -116,16 +129,28 @@ export class StockfishClient {
     const after = await this.analyze(input.fenAfter, input.difficulty);
     const delta = before.score === null || after.score === null ? null : input.playerColor === 'w' ? before.score - after.score : after.score - before.score;
     const loss = delta === null ? null : Math.max(0, delta);
+    const classification = classify(loss, before.bestMove === input.uci);
     return {
+      evalScore: after.mate === null ? (after.score === null ? null : after.score / 100) : `M${after.mate}`,
+      bestMoveSan: before.pv[0] || null,
+      moveQuality: classification === 'BRILLIANT' || classification === 'BEST'
+        ? 'best'
+        : classification === 'GREAT'
+          ? 'good'
+          : classification.toLowerCase() as 'inaccuracy' | 'mistake' | 'blunder',
       fenBefore: input.fenBefore, fenAfter: input.fenAfter, san: input.san, uci: input.uci,
       evaluationBefore: before.score, evaluationAfter: after.score, evalDelta: loss,
-      classification: classify(loss, before.bestMove === input.uci), bestMove: before.bestMove,
+      classification, bestMove: before.bestMove,
       principalVariation: before.pv, alternateWinningLines: before.pv.length ? [before.pv.join(' ')] : [], engine: 'stockfish-18',
     };
   }
 
   async selectMove(fen: string, difficulty: ChesterDifficulty) {
     return (await this.analyze(fen, difficulty)).bestMove;
+  }
+
+  async analyzePosition(fen: string, difficulty: ChesterDifficulty) {
+    return this.analyze(fen, difficulty);
   }
 
   async diagnose() {
