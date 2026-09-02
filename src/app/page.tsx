@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { askGrandmaster } from '@/app/actions';
+import { askChester, askGrandmaster } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import CapturedPieceJails from '@/components/CapturedPieceJails';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
@@ -227,7 +227,7 @@ function LegacyHome() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [arenaView, setArenaView] = useState<'BOARD' | 'CHESTER' | 'SPLIT'>('BOARD');
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string }[]>([]);
   const [chatError, setChatError] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [hostBanter, setHostBanter] = useState("🎙️ CHESTER: Arena locked. This is where bad decisions meet their final judgment.");
@@ -617,7 +617,7 @@ function LegacyHome() {
     setChatMessages(conversationHistory);
     setIsThinking(true);
     try {
-      const reply = await askGrandmaster(JSON.stringify({
+      const reply = await askChester(JSON.stringify({
         ...currentGameState,
         message,
         type: 'chat',
@@ -627,8 +627,8 @@ function LegacyHome() {
         conversationHistory,
         instruction: 'Answer the latest player message directly as Chester. Use the conversation history, be strategically useful, and give a clear next action.',
       }));
-      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply }].slice(-10));
-      setHostBanter(`🎙️ CHESTER: ${reply}`);
+      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education }].slice(-10));
+      setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);
     } catch {

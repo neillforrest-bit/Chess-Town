@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { askGrandmaster } from '@/app/actions';
+import { askChester } from '@/app/actions';
 import GlobalNav from '@/components/GlobalNav';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
@@ -9,7 +9,7 @@ import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const engineEvaluation = useEngineEvaluation();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'chester'; text: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string }[]>([]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState('');
@@ -22,8 +22,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setMessages((current) => [...current, { role: 'user', text: message }]);
     setThinking(true);
     try {
-      const reply = await askGrandmaster(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
-      setMessages((current) => [...current, { role: 'chester', text: reply }]);
+      const reply = await askChester(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
+      setMessages((current) => [...current, { role: 'chester', text: reply.banter, education: reply.education }]);
     } catch {
       setError('Chester is briefly off the board. Try again.');
     } finally {

@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
-import { askGrandmaster } from '@/app/actions';
+import { askChester, askGrandmaster } from '@/app/actions';
 import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -252,7 +252,7 @@ export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [arenaView, setArenaView] = useState<'PLAY' | 'CHESTER'>('PLAY');
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string }[]>([]);
   const [chatError, setChatError] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [hostBanter, setHostBanter] = useState("🎙️ CHESTER: Arena locked. This is where bad decisions meet their final judgment.");
@@ -657,7 +657,7 @@ export default function Home() {
           evalDelta: null,
         };
       }
-      const reply = await askGrandmaster(JSON.stringify({
+      const reply = await askChester(JSON.stringify({
         ...currentGameState,
         message,
         type: 'chat',
@@ -675,8 +675,8 @@ export default function Home() {
         conversationHistory,
         instruction: 'Use fresh Stockfish analysis to answer directly. Name the engine best move and translate the principal variation into a strategic plan. Be funny without sacrificing accuracy, then give exactly one concrete next action.',
       }));
-      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply }].slice(-10));
-      setHostBanter(`🎙️ CHESTER: ${reply}`);
+      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education }].slice(-10));
+      setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);
     } catch {

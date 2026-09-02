@@ -114,7 +114,7 @@ export function ChesterChatOverlay({
   chatError,
   isMobile
 }: {
-  chatMessages: { role: 'user' | 'chester'; text: string }[];
+  chatMessages: { role: 'user' | 'chester'; text: string; education?: string }[];
   chatInput: string;
   setChatInput: (v: string) => void;
   onSendMessage: (e: React.FormEvent) => void;
@@ -186,7 +186,19 @@ export function ChesterChatOverlay({
                 <b style={{ display: 'block', fontSize: '0.7rem', color: msg.role === 'user' ? 'var(--arena-cyan)' : 'var(--arena-pink)', marginBottom: '0.2rem' }}>
                   {msg.role === 'user' ? 'YOU' : 'CHESTER'}
                 </b>
-                {msg.text}
+                {msg.role === 'chester' ? (
+                  <>
+                    <div style={{ background: 'rgba(255, 43, 136, 0.12)', borderLeft: '3px solid var(--arena-pink)', padding: '0.45rem 0.55rem', borderRadius: '0 5px 5px 0' }}>
+                      {msg.text}
+                    </div>
+                    {msg.education && (
+                      <details style={{ marginTop: '0.55rem', color: '#d9ffff' }}>
+                        <summary style={{ cursor: 'pointer', color: 'var(--arena-cyan)', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '0.06em' }}>COACH&apos;S NOTES</summary>
+                        <p style={{ margin: '0.45rem 0 0', fontSize: '0.82rem', lineHeight: 1.45 }}>{msg.education}</p>
+                      </details>
+                    )}
+                  </>
+                ) : msg.text}
               </div>
             ))}
           </div>
