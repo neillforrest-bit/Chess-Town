@@ -37,7 +37,7 @@ PLAYER: ${payload.message || 'Hello, Chester.'}`;
 
     const genAI = new GoogleGenAI({ apiKey });
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { responseMimeType: 'text/plain', maxOutputTokens: 500 },
     });
