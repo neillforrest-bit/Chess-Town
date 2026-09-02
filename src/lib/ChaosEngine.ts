@@ -11,7 +11,7 @@ export function checkChaosTriggers(
 ): ChaosEvent {
   if (!fen) return null;
   const numericScore = typeof evalScore === 'number' ? evalScore : null;
-  if (p1Difficulty === 'EXPERT' && numericScore !== null && numericScore > 3) return 'TROJAN_PAWN';
-  if (p2Difficulty === 'BEGINNER' && lastMoveQuality === 'blunder') return 'MULLIGAN';
+  if (p2Difficulty === 'EXPERT' && numericScore !== null && numericScore < -3) return 'TROJAN_PAWN';
+  if (p1Difficulty === 'BEGINNER' && lastMoveQuality === 'blunder') return 'MULLIGAN';
   return null;
 }

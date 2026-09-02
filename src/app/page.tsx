@@ -683,7 +683,7 @@ function LegacyHome() {
               <button onClick={() => router.push('/chester-challenge')}>Chester Challenge <small>1 Puzzle. 24 Hours. Global Glory.</small></button>
               <button onClick={() => router.push('/arena?view=mini-games')}>Player Map <small>Mini Games and learning progress.</small></button>
               <button onClick={() => router.push('/arena?view=play')}>Play Chester <small>Choose Beginner through Expert.</small></button>
-              <button onClick={() => router.push('/brawl')}>ENTER THE BRAWL <small>Choose two difficulty levels and face off locally.</small></button>
+              {/* <button onClick={() => router.push('/brawl')}>ENTER THE BRAWL <small>Choose two difficulty levels and face off locally.</small></button> */}
               <button onClick={() => router.push('/arena?view=matchups')}>Enter the Arena <small>Community PvP and matchmaking.</small></button>
               <button onClick={() => router.push('/arena?view=leagues')}>Town Hall <small>Leagues, challenges, and social play.</small></button>
               <button onClick={() => router.push('/profile')}>My Profile <small>Points, wins, rank, and progress.</small></button>

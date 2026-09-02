@@ -54,8 +54,7 @@ export default function GlobalNav() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-        <Link href="/brawl" className="global-nav__return global-nav__brawl">🔥 JEMMA&apos;S BRAWL</Link>
-        <button type="button" onClick={() => setIsRoyalCatsOpen(true)} className="global-nav__return" aria-haspopup="dialog">ROYAL CATS</button>
+        {/* <button type="button" onClick={() => setIsRoyalCatsOpen(true)} className="global-nav__return" aria-haspopup="dialog">ROYAL CATS</button> */}
         <Link href="/" className="global-nav__return">RETURN TO ARENA</Link>
       </div>
       {isRoyalCatsOpen && (

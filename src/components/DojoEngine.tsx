@@ -343,6 +343,28 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           let legalTargetMarkers: Phaser.GameObjects.Arc[] = [];
           let renderBoard: () => void;
           const royalCatTextures: Partial<Record<'q' | 'k', string>> = {};
+          const spotlightLayer = document.createElement('div');
+          spotlightLayer.className = 'dojo-board__spotlights';
+          containerRef.current?.appendChild(spotlightLayer);
+
+          const updateSpotlights = () => {
+            spotlightLayer.replaceChildren();
+            const lastMove = gameRef.current.lastMove;
+            if (!lastMove) return;
+
+            [lastMove.from, lastMove.to].forEach((squareName) => {
+              const col = files.indexOf(squareName[0]);
+              const row = ranks.indexOf(squareName[1]);
+              if (col < 0 || row < 0) return;
+              const spotlight = document.createElement('div');
+              spotlight.className = 'square-spotlight';
+              spotlight.style.left = `${((boardOffset + col * tileSize) / 800) * 100}%`;
+              spotlight.style.top = `${((boardOffset + row * tileSize) / 800) * 100}%`;
+              spotlight.style.width = `${(tileSize / 800) * 100}%`;
+              spotlight.style.height = `${(tileSize / 800) * 100}%`;
+              spotlightLayer.appendChild(spotlight);
+            });
+          };
 
           const loadRoyalCatTextures = () => {
             (['q', 'k'] as const).forEach((pieceType) => {
@@ -454,7 +476,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null) => {
-            const isBrawl = mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1';
+            const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
             window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
                 type: 'move', ply: gameRef.current.ply, player, move: move.san,
@@ -492,13 +514,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const flashHouseAdvantage = () => scene.cameras.main.flash(650, 80, 255, 120);
-          const chooseTrojanPawnSquare = () => {
+          const chooseTrojanPawnSquare = (pieceColor: 'w' | 'b') => {
             const candidates: string[] = [];
             const board = gameRef.current.chess.board();
             for (let row = 0; row < 8; row++) {
               for (let col = 0; col < 8; col++) {
                 const piece = board[row][col];
-                if (piece?.color === 'w' && (piece.type === 'n' || piece.type === 'b')) candidates.push(files[col] + ranks[row]);
+                if (piece?.color === pieceColor && (piece.type === 'n' || piece.type === 'b')) candidates.push(files[col] + ranks[row]);
               }
             }
             return candidates.sort()[0] || null;
@@ -516,11 +538,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               difficulty: getChesterDifficulty(difficulty),
             }).then((telemetry) => {
               const quality = { label: telemetry.classification === 'BRILLIANT' ? 'BEST' : telemetry.classification, centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
-              const isBrawl = mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1';
+              const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
               const triggeredChaos = isBrawl
                 ? checkChaosTriggers(telemetry.fenAfter, telemetry.evalScore, telemetry.moveQuality, p1Difficulty, p2Difficulty)
                 : null;
-              const chaosEvent = gameRef.current.pendingChaosEvent || (triggeredChaos === 'MULLIGAN' && move.color === 'b' ? 'MULLIGAN' : null);
+              const isUnderdogMulligan = mode === 'UNDERDOG' && move.color === 'w';
+              const isRemoteBrawlMulligan = mode === 'PVP_REMOTE' && move.color === 'b';
+              const chaosEvent = gameRef.current.pendingChaosEvent || (triggeredChaos === 'MULLIGAN' && (isUnderdogMulligan || isRemoteBrawlMulligan) ? 'MULLIGAN' : null);
               gameRef.current.pendingChaosEvent = null;
 
               if (triggeredChaos === 'TROJAN_PAWN' && !gameRef.current.trojanPawnArmed && !gameRef.current.trojanPawnSquare) gameRef.current.trojanPawnArmed = true;
@@ -565,7 +589,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               publishMove(move, player, quality, telemetry);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
-                  detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. Try again, Jemma. Neill, keep your mouth shut.' : 'Reply exactly: Neill is getting too comfortable. I have disguised one of his pieces. Good luck remembering which is which, Expert.' },
+                  detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },
                 }));
               }
             }).catch(() => {
@@ -595,6 +619,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 ? { from: engineMove.slice(0, 2), to: engineMove.slice(2, 4), promotion: engineMove.slice(4, 5) || undefined }
                 : pickBestMove(gameRef.current.chess, searchD);
               const result = gameRef.current.chess.move({ from: aiMove.from, to: aiMove.to, promotion: 'q' });
+              const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
+              if (isBrawl && result.color === 'b' && gameRef.current.trojanPawnArmed && !gameRef.current.trojanPawnSquare) {
+                gameRef.current.trojanPawnSquare = chooseTrojanPawnSquare('b');
+                gameRef.current.trojanPawnArmed = false;
+                gameRef.current.pendingChaosEvent = 'TROJAN_PAWN';
+              }
               const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, AI_SEARCH_DEPTH);
               emitCapture(result);
               gameRef.current.ply++;
@@ -614,9 +644,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const fenBeforeMove = gameRef.current.chess.fen();
             const moveResult = gameRef.current.chess.move({ from, to, promotion: 'q' });
             if (!moveResult) return;
-            const isBrawl = mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1';
+            const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
             if (isBrawl && moveResult.color === 'w' && gameRef.current.trojanPawnArmed && !gameRef.current.trojanPawnSquare) {
-              gameRef.current.trojanPawnSquare = chooseTrojanPawnSquare();
+              gameRef.current.trojanPawnSquare = chooseTrojanPawnSquare('w');
               gameRef.current.trojanPawnArmed = false;
               gameRef.current.pendingChaosEvent = 'TROJAN_PAWN';
             }
@@ -686,6 +716,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           renderBoard = () => {
+            updateSpotlights();
             graphics.clear();
             legalTargetMarkers.forEach((marker) => marker.destroy());
             legalTargetMarkers = [];
@@ -702,8 +733,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               for (let col = 0; col < 8; col++) {
                 const squareName = files[col] + ranks[row];
                 const isMoveSpotlight = !isLastMoveInvisible && gameRef.current.lastMove && (squareName === gameRef.current.lastMove.from || squareName === gameRef.current.lastMove.to);
-                const squareColor = isMoveSpotlight ? 0x665a00 : (row + col) % 2 === 0 ? 0xf2f7f8 : 0x07090a;
-                graphics.fillStyle(squareColor, 1);
+                const squareColor = (row + col) % 2 === 0 ? 0xf2f7f8 : 0x07090a;
+                graphics.fillStyle(squareColor, gameRef.current.lastMove && !isMoveSpotlight ? 0.52 : 1);
                 graphics.fillRect(
                   boardOffset + col * tileSize,
                   boardOffset + row * tileSize,
@@ -718,13 +749,16 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   tileSize
                 );
                 if (isMoveSpotlight) {
-                  graphics.lineStyle(5, squareName === gameRef.current.lastMove.to ? 0xffea00 : 0x00ffff, 0.95);
-                  graphics.strokeRect(
-                    boardOffset + col * tileSize + 4,
-                    boardOffset + row * tileSize + 4,
-                    tileSize - 8,
-                    tileSize - 8
-                  );
+                  const spotlight = scene.add.circle(
+                    boardOffset + col * tileSize + tileSize / 2,
+                    boardOffset + row * tileSize + tileSize / 2,
+                    tileSize * 0.55,
+                    squareName === gameRef.current.lastMove.to ? 0xffea00 : 0x00ffff,
+                    0.38
+                  ).setBlendMode(Phaser.BlendModes.ADD).setDepth(1);
+                  scene.tweens.add({ targets: spotlight, alpha: 0.14, scale: 1.18, duration: 620, ease: 'Sine.InOut', yoyo: true, repeat: 1, onComplete: () => spotlight.destroy() });
+                  graphics.lineStyle(3, squareName === gameRef.current.lastMove.to ? 0xffea00 : 0x00ffff, 0.9);
+                  graphics.strokeRect(boardOffset + col * tileSize + 4, boardOffset + row * tileSize + 4, tileSize - 8, tileSize - 8);
                 }
 
                 const zone = scene.add.zone(
@@ -1077,6 +1111,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
     return () => {
       disposeStockfishClient();
+      containerRef.current?.querySelector('.dojo-board__spotlights')?.remove();
       if (phaserRef.current) {
         phaserRef.current.destroy(true);
         phaserRef.current = null;
@@ -1084,5 +1119,5 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     };
   }, [mode, playerColor]);
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} />;
+  return <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} />;
 }

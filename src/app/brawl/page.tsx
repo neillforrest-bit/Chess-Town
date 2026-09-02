@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useBrawlState, type BrawlDifficulty } from '@/components/EngineEvaluationProvider';
 
 const DIFFICULTIES: BrawlDifficulty[] = ['BEGINNER', 'INTERMEDIATE', 'EXPERT'];
@@ -19,43 +19,20 @@ function DifficultyPicker({ player, value, onChange }: { player: string; value: 
   );
 }
 
-export default function BrawlPage() {
+function BrawlContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { p1Difficulty, p2Difficulty, setP1Difficulty, setP2Difficulty, setActiveChaosEvent } = useBrawlState();
-  const [createdMatchId, setCreatedMatchId] = useState('');
+  const { p1Difficulty, setP1Difficulty, setP2Difficulty, setActiveChaosEvent } = useBrawlState();
   const [inviteStatus, setInviteStatus] = useState('');
-  const matchId = createdMatchId || searchParams.get('match') || '';
 
-  const createRoom = async () => {
-    const nextMatchId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
-    const response = await fetch('/api/brawl/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ matchId: nextMatchId, p1Difficulty, p2Difficulty }),
-    });
-    if (!response.ok) throw new Error('Could not create the Brawl room');
-    setCreatedMatchId(nextMatchId);
-    router.replace(`/brawl?match=${nextMatchId}`);
-    return nextMatchId;
-  };
-
-  const shareInvite = async () => {
-    try {
-      const roomId = matchId || await createRoom();
-      const inviteUrl = `${window.location.origin}/arena?mode=PVP_REMOTE&brawl=1&match=${roomId}&role=b`;
-      await navigator.clipboard.writeText(inviteUrl);
-      setInviteStatus('Invite copied. Send it to Player 2.');
-    } catch (error) {
-      setInviteStatus(error instanceof Error ? error.message : 'Could not copy the invite.');
-    }
-  };
+  useEffect(() => {
+    setP1Difficulty('BEGINNER');
+    setP2Difficulty('EXPERT');
+  }, [setP1Difficulty, setP2Difficulty]);
 
   const startBrawl = async () => {
     try {
-      const roomId = matchId || await createRoom();
       setActiveChaosEvent(null);
-      router.push(`/arena?mode=PVP_REMOTE&brawl=1&match=${roomId}&role=w`);
+      router.push('/arena?mode=UNDERDOG&brawl=1');
     } catch (error) {
       setInviteStatus(error instanceof Error ? error.message : 'Could not start the Brawl.');
     }
@@ -65,15 +42,22 @@ export default function BrawlPage() {
     <main className="brawl-lobby">
       <div className="brawl-grid" aria-hidden="true" />
       <section className="brawl-panel">
-        <span className="brawl-kicker">CHESTER PRESENTS</span>
-        <h1>THE BACKROOM BRAWL</h1>
-        <p>Two players. One board. No graceful exits.</p>
-        <DifficultyPicker player="PLAYER 1" value={p1Difficulty} onChange={setP1Difficulty} />
-        <DifficultyPicker player="PLAYER 2" value={p2Difficulty} onChange={setP2Difficulty} />
-        <button className="brawl-start" type="button" onClick={shareInvite}>SHARE INVITE LINK</button>
-        <button className="brawl-start" type="button" onClick={startBrawl}>START BRAWL</button>
+        <span className="brawl-kicker">MINI GAME / CHESTER&apos;S HOUSE RULES</span>
+        <h1>PLAY AS THE UNDERDOG</h1>
+        <p>You take the White pieces. Chester plays Expert Black. The board has opinions about fair play.</p>
+        <DifficultyPicker player="YOUR LEVEL" value={p1Difficulty} onChange={setP1Difficulty} />
+        <section className="brawl-player" aria-label="Chester difficulty"><span>CHESTER</span><strong>EXPERT</strong></section>
+        <button className="brawl-start" type="button" onClick={startBrawl}>ENTER THE UNDERDOG MATCH</button>
         {inviteStatus && <p role="status">{inviteStatus}</p>}
       </section>
     </main>
+  );
+}
+
+export default function BrawlPage() {
+  return (
+    <Suspense fallback={<main className="brawl-lobby" />}>
+      <BrawlContent />
+    </Suspense>
   );
 }

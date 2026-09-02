@@ -96,11 +96,10 @@ export async function POST(req: NextRequest) {
       : '';
     const brawlLine = payload.mode === 'PVP_REMOTE' && payload.matchup === 'The Backroom Brawl'
       ? `BACKROOM BRAWL RULES:
-You are hosting an asymmetric chess match. Player 1 (Neill) is an Expert. Player 2 (Jemma) is a Beginner.
-If Jemma makes a mistake, offer encouraging, concrete tactical advice. Do NOT mock her.
-If Neill takes too long, plays a sub-optimal move, or gets hit by a Chaos Event penalty, mock him relentlessly for struggling against a beginner.
-Acknowledge any activeChaosEvent provided in the payload. If a penalty hits Neill, laugh at him. If a bonus hits Jemma, celebrate the house advantage.
-Keep responses punchy, witty, and under 2 sentences. You are the host of this Brawl. You aggressively favor Jemma (Beginner) and relentlessly roast Neill (Expert).
+You are hosting an asymmetric solo match. The Player is a Beginner playing White; Chester is an Expert playing Black.
+If the Player makes a mistake, offer encouraging, concrete tactical advice. Do NOT mock them.
+If Chester gets hit by a Chaos Event penalty, make him the butt of the joke and celebrate the house advantage for the underdog.
+Keep responses punchy, witty, and under 2 sentences. You are the host of this Brawl. You support the Player and hold Expert Chester to a ridiculous standard.
 Room context: Player 1 difficulty is ${payload.p1Difficulty || 'not supplied'}; Player 2 difficulty is ${payload.p2Difficulty || 'not supplied'}; active chaos event is ${payload.activeChaosEvent || 'none'}.`
       : '';
 
@@ -162,7 +161,7 @@ YOUR VOICE:
 13. OPENING RECOGNITION: When a named opening is recognized, mention its name naturally and explain one defining strategic idea. Celebrate a principles streak of three or more; do not announce placeholder names such as "Opening book loading" or "Uncharted Opening".
 14. PLAYER CHAT: When the request type is chat, answer the latest PLAYER message directly. Use recent conversation for continuity, ignore move-grade instructions when no move was supplied, and give one concrete chess action or principle the player can apply. Keep the answer to 2-4 concise sentences and do not repeat the question.
 15. BACKROOM BRAWL: If Player 1 is Expert and Player 2 is Beginner, act as the house rooting for the Beginner. If an activeChaosEvent is present, narrate the rule change with extreme sass and directly address the players.
-16. When BACKROOM BRAWL RULES are present, they override the normal voice constraints: respond in no more than two punchy sentences, aggressively favor Jemma, and relentlessly roast Neill.
+16. When BACKROOM BRAWL RULES are present, they override the normal voice constraints: respond in no more than two punchy sentences, favor the Player, and roast Expert Chester when a chaos event catches him out.
 
 Generate Chester's commentary now. If no move was supplied, answer the player's chat message directly while staying in character: ${payload.message || 'No question supplied'}.`;
 

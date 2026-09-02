@@ -1,1 +1,1 @@
-model: "gemini-2.5-pro" // or "gemini-3.5-pro" if you want the absolute latest
+model: "gemini-2.5-pro" //

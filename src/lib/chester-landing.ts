@@ -12,7 +12,7 @@ export const PORTALS = [
   { title: 'Play Chester', icon: '♞', href: '/gameplay', dialogue: "Choose your difficulty and take a seat. I have prepared some deeply educational consequences.", accent: 'cyan' },
   { title: 'Daily Challenge', icon: '♜', href: '/daily-challenge', dialogue: "A fresh puzzle is ready. Find the best line and put your name on the board.", accent: 'pink' },
   { title: 'Chess Town', icon: '♟', href: '/training', dialogue: "Mini Games, opening practice, and tactical training all live here.", accent: 'acid' },
-  { title: 'Mini Game Challenges', icon: '♚', href: '/training', dialogue: "Explore every mini-game challenge and send us your feedback.", accent: 'violet' },
+  { title: 'Play as the Underdog', icon: '♚', href: '/brawl', dialogue: "Take on Expert Chester in a chaos match where the house quietly helps the underdog.", accent: 'violet' },
   { title: 'League Play', icon: '♛', href: '/league', dialogue: "The mock league table is ready for your group to inspect.", accent: 'gold' },
   { title: 'Daily Leaderboard', icon: '♛', href: '/daily-leaderboard', dialogue: "See who solved Chester's daily challenge fastest.", accent: 'gold' },
 ] as const;
