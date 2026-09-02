@@ -2,6 +2,7 @@ type CommentaryPayload = {
   message?: string;
   context?: string;
   ply?: number;
+  type?: string;
   move?: string;
   fen?: string;
   player?: string;
@@ -19,6 +20,14 @@ export type ChesterReply = {
   banter: string;
   education: string;
 };
+
+export type ChesterIntent = 'chat' | 'move';
+
+const CHESS_MOVE_PATTERN = /^(?:O-O(?:-O)?|0-0(?:-0)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|[a-h][1-8][a-h][1-8][qrbn]?)$/i;
+
+export function detectUserIntent(input: string): ChesterIntent {
+  return CHESS_MOVE_PATTERN.test(input.trim()) ? 'move' : 'chat';
+}
 
 export function getFallbackRoast(payload: CommentaryPayload) {
   const classification = payload.engineTelemetry?.classification || payload.quality || 'GOOD';
@@ -57,7 +66,7 @@ function getFallbackReply(payload: CommentaryPayload): ChesterReply {
   };
 }
 
-export async function askChester(payloadString: string): Promise<ChesterReply> {
+export async function askChesterAnalysis(payloadString: string): Promise<ChesterReply> {
   try {
     let payload: CommentaryPayload;
     try {
@@ -99,7 +108,47 @@ export async function askChester(payloadString: string): Promise<ChesterReply> {
   }
 }
 
+export async function askChesterChat(payloadString: string): Promise<string> {
+  let payload: CommentaryPayload;
+  try {
+    try {
+      payload = JSON.parse(payloadString || '{}') as CommentaryPayload;
+    } catch {
+      payload = { message: payloadString };
+      payloadString = JSON.stringify(payload);
+    }
+
+    const response = await fetch('/api/chester/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payloadString,
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) return 'The court messenger is delayed. What would you like to explore on the board?';
+
+    const data = await response.json() as Partial<{ reply: string }>;
+    const reply = typeof data.reply === 'string' ? sanitizeCommentary(data.reply) : '';
+    return reply || 'The court messenger is delayed. What would you like to explore on the board?';
+  } catch {
+    return 'The court messenger is delayed. What would you like to explore on the board?';
+  }
+}
+
+export async function askChester(payloadString: string): Promise<ChesterReply | string> {
+  let payload: CommentaryPayload;
+  try {
+    payload = JSON.parse(payloadString || '{}') as CommentaryPayload;
+  } catch {
+    payload = { message: payloadString };
+  }
+
+  if (payload.type === 'move' || detectUserIntent(payload.message || '')) {
+    return askChesterAnalysis(payloadString);
+  }
+  return askChesterChat(payloadString);
+}
+
 export async function askGrandmaster(payloadString: string) {
-  const response = await askChester(payloadString);
+  const response = await askChesterAnalysis(payloadString);
   return response.banter;
 }

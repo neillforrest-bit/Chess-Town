@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { askGrandmaster } from '@/app/actions';
+import { askChesterChat } from '@/app/actions';
 import { ChesterAvatar } from '@/components/ChesterUI';
 
 const intro = "I'm Chester, Chess Town's built-in chess guide. Pick a game, make your moves, and use this chat when you want a quick nudge.";
@@ -22,7 +22,7 @@ export default function MeetChesterPage() {
     setMessages(conversationHistory);
     setIsThinking(true);
     try {
-      const reply = await askGrandmaster(JSON.stringify({
+      const reply = await askChesterChat(JSON.stringify({
         type: 'chat',
         message: text,
         matchup: 'Chess Town guide chat',

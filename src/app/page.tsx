@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { askChester, askGrandmaster } from '@/app/actions';
+import { askChesterAnalysis, askChesterChat, askGrandmaster, detectUserIntent } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import CapturedPieceJails from '@/components/CapturedPieceJails';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
@@ -227,7 +227,7 @@ function LegacyHome() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [arenaView, setArenaView] = useState<'BOARD' | 'CHESTER' | 'SPLIT'>('BOARD');
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[]>([]);
   const [chatError, setChatError] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [hostBanter, setHostBanter] = useState("🎙️ CHESTER: Arena locked. This is where bad decisions meet their final judgment.");
@@ -617,18 +617,27 @@ function LegacyHome() {
     setChatMessages(conversationHistory);
     setIsThinking(true);
     try {
-      const reply = await askChester(JSON.stringify({
+      const intent = detectUserIntent(message);
+      const request = JSON.stringify({
         ...currentGameState,
         message,
-        type: 'chat',
+        type: intent === 'move' ? 'move' : 'chat',
+        move: intent === 'move' ? message : undefined,
         mode: gameMode,
         matchup: activeMatchup,
         openingAssessment,
         conversationHistory,
         instruction: 'Answer the latest player message directly as Chester. Use the conversation history, be strategically useful, and give a clear next action.',
-      }));
-      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education }].slice(-10));
-      setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
+      });
+      if (intent === 'move') {
+        const reply = await askChesterAnalysis(request);
+        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education, kind: 'analysis' as const }].slice(-10));
+        setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
+      } else {
+        const reply = await askChesterChat(request);
+        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
+        setHostBanter(`🎙️ CHESTER: ${reply}`);
+      }
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);
     } catch {

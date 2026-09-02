@@ -114,7 +114,7 @@ export function ChesterChatOverlay({
   chatError,
   isMobile
 }: {
-  chatMessages: { role: 'user' | 'chester'; text: string; education?: string }[];
+  chatMessages: { role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[];
   chatInput: string;
   setChatInput: (v: string) => void;
   onSendMessage: (e: React.FormEvent) => void;
@@ -186,7 +186,7 @@ export function ChesterChatOverlay({
                 <b style={{ display: 'block', fontSize: '0.7rem', color: msg.role === 'user' ? 'var(--arena-cyan)' : 'var(--arena-pink)', marginBottom: '0.2rem' }}>
                   {msg.role === 'user' ? 'YOU' : 'CHESTER'}
                 </b>
-                {msg.role === 'chester' ? (
+                {msg.role === 'chester' && msg.kind === 'analysis' ? (
                   <>
                     <div style={{ background: 'rgba(255, 43, 136, 0.12)', borderLeft: '3px solid var(--arena-pink)', padding: '0.45rem 0.55rem', borderRadius: '0 5px 5px 0' }}>
                       {msg.text}

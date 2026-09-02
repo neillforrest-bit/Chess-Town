@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
-import { askChester, askGrandmaster } from '@/app/actions';
+import { askChesterAnalysis, askChesterChat, askGrandmaster, detectUserIntent } from '@/app/actions';
 import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -252,7 +252,7 @@ export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [arenaView, setArenaView] = useState<'PLAY' | 'CHESTER'>('PLAY');
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[]>([]);
   const [chatError, setChatError] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [hostBanter, setHostBanter] = useState("🎙️ CHESTER: Arena locked. This is where bad decisions meet their final judgment.");
@@ -657,10 +657,12 @@ export default function Home() {
           evalDelta: null,
         };
       }
-      const reply = await askChester(JSON.stringify({
+      const intent = detectUserIntent(message);
+      const request = JSON.stringify({
         ...currentGameState,
         message,
-        type: 'chat',
+        type: intent === 'move' ? 'move' : 'chat',
+        move: intent === 'move' ? message : undefined,
         mode: gameMode,
         matchup: activeMatchup,
         openingAssessment,
@@ -674,9 +676,16 @@ export default function Home() {
         activeChaosEvent,
         conversationHistory,
         instruction: 'Use fresh Stockfish analysis to answer directly. Name the engine best move and translate the principal variation into a strategic plan. Be funny without sacrificing accuracy, then give exactly one concrete next action.',
-      }));
-      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education }].slice(-10));
-      setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
+      });
+      if (intent === 'move') {
+        const reply = await askChesterAnalysis(request);
+        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply.banter, education: reply.education, kind: 'analysis' as const }].slice(-10));
+        setHostBanter(`🎙️ CHESTER: ${reply.banter}`);
+      } else {
+        const reply = await askChesterChat(request);
+        setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
+        setHostBanter(`🎙️ CHESTER: ${reply}`);
+      }
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);
     } catch {
