@@ -1,16 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { askChesterChat } from '@/app/actions';
 import { ChesterAvatar } from '@/components/ChesterUI';
 
-const intro = "I'm Chester, Chess Town's built-in chess guide. Pick a game, make your moves, and use this chat when you want a quick nudge.";
+function getIntro(username: string) {
+  return `Welcome ${username} to Chess Town. I'm your friendly Jester, Chester. You can consider me your partner in crime and I think you'll really enjoy getting to know the Chess Town we are creating. I also want to let you know that there is a Big Boss looming in here, and he goes by Joseph. Let's just say he has a few mini bosses under him, but i'm here to ensure you can defeat him. Let's get started, over to you.`;
+}
 
 export default function MeetChesterPage() {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([{ role: 'chester', text: intro }]);
+  const [messages, setMessages] = useState<{ role: 'chester' | 'user'; text: string }[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const username = localStorage.getItem('chessTownUser')?.trim() || 'Challenger';
+    setMessages([{ role: 'chester', text: getIntro(username) }]);
+  }, []);
 
   const sendMessage = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -29,7 +36,7 @@ export default function MeetChesterPage() {
         conversationHistory,
         instruction: 'Give a specific, useful chess answer tailored to the player question. When no board position is supplied, ask for the FEN or moves only when concrete analysis requires it; otherwise teach one actionable concept with a short example.',
       }));
-      setMessages((current) => [...current, { role: 'chester', text: reply }].slice(-10));
+      setMessages((current) => [...current, { role: 'chester' as const, text: reply }].slice(-10));
     } catch {
       setError('Chester could not reach the analysis desk. Please try again.');
       setMessage(text);

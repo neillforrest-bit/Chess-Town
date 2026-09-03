@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { askChesterChat, askChesterAdminChat, askGrandmaster, askCommentary } from '@/app/actions';
-import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
+import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import CapturedPieceJails from '@/components/CapturedPieceJails';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
@@ -192,7 +192,29 @@ const playShockSound = () => {
 };
 
 export default function Home() {
-  return <ChessTownLanding />;
+  const router = useRouter();
+  const [username, setUsername] = useState('');
+
+  const enterArena = (event: React.FormEvent) => {
+    event.preventDefault();
+    const savedName = username.trim().slice(0, 30) || 'Challenger';
+    localStorage.setItem('chessTownUser', savedName);
+    router.push('/arena');
+  };
+
+  return <main className="entry-gate" aria-labelledby="entry-gate-title">
+    <div className="entry-gate__grid" aria-hidden="true" />
+    <section className="entry-gate__content">
+      <div className="entry-gate__chester"><ChesterAvatar isThinking={false} size="large" /></div>
+      <p>THE BOARD IS WAITING</p>
+      <h1 id="entry-gate-title">Chess Town</h1>
+      <form onSubmit={enterArena}>
+        <label htmlFor="challenger-name">CHALLENGER NAME</label>
+        <input id="challenger-name" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Enter your name, Challenger..." autoComplete="name" maxLength={30} />
+        <button type="submit">ENTER <span aria-hidden="true">→</span></button>
+      </form>
+    </section>
+  </main>;
 }
 
 function LegacyHome() {
