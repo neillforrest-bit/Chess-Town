@@ -10,7 +10,7 @@ import { useBrawlState } from '@/components/EngineEvaluationProvider';
 
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
-  b: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
+  b: { p: '♟', r: '♜', n: '♞', b: '♝', q: '♛', k: '♚' },
 };
 
 const DEMO_SEQUENCES: Record<string, string[]> = {
@@ -380,6 +380,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const spotlight = document.createElement('div');
               spotlight.className = 'square-spotlight';
               spotlight.dataset.grade = lastMove.grade || 'A';
+              spotlight.dataset.square = squareName === lastMove.to ? 'to' : 'from';
               spotlight.style.left = `${((boardOffset + col * tileSize) / 800) * 100}%`;
               spotlight.style.top = `${((boardOffset + row * tileSize) / 800) * 100}%`;
               spotlight.style.width = `${(tileSize / 800) * 100}%`;
@@ -786,15 +787,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   tileSize
                 );
                 if (isMoveSpotlight) {
+                  const isDestination = squareName === gameRef.current.lastMove.to;
+                  const gradeColor = getGradeColor(gameRef.current.lastMove.grade);
                   const spotlight = scene.add.circle(
                     boardOffset + col * tileSize + tileSize / 2,
                     boardOffset + row * tileSize + tileSize / 2,
                     tileSize * 0.55,
-                    squareName === gameRef.current.lastMove.to ? 0xffea00 : 0x00ffff,
-                    0.38
+                    gradeColor,
+                    isDestination ? 0.38 : 0.1
                   ).setBlendMode(Phaser.BlendModes.ADD).setDepth(1);
-                  scene.tweens.add({ targets: spotlight, alpha: 0.14, scale: 1.18, duration: 620, ease: 'Sine.InOut', yoyo: true, repeat: 1, onComplete: () => spotlight.destroy() });
-                  graphics.lineStyle(3, squareName === gameRef.current.lastMove.to ? 0xffea00 : 0x00ffff, 0.9);
+                  scene.tweens.add({ targets: spotlight, alpha: isDestination ? 0.14 : 0.04, scale: 1.18, duration: 620, ease: 'Sine.InOut', yoyo: true, repeat: 1, onComplete: () => spotlight.destroy() });
+                  graphics.lineStyle(isDestination ? 3 : 1, gradeColor, isDestination ? 0.9 : 0.22);
                   graphics.strokeRect(boardOffset + col * tileSize + 4, boardOffset + row * tileSize + 4, tileSize - 8, tileSize - 8);
                 }
 
@@ -828,7 +831,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
                   // Highlight last move
                   if (!isInvisible && !isLastMoveInvisible && gameRef.current.lastMove && (squareName === gameRef.current.lastMove.from || squareName === gameRef.current.lastMove.to)) {
-                    const highlight = scene.add.circle(0, 0, tileSize * 0.45, 0xffea00, 0.4);
+                    const isDestination = squareName === gameRef.current.lastMove.to;
+                    const highlight = scene.add.circle(0, 0, tileSize * 0.45, getGradeColor(gameRef.current.lastMove.grade), isDestination ? 0.4 : 0.08);
                     container.add(highlight);
                   }
 
@@ -859,7 +863,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   }
 
                   if (!isInvisible && isMovedPiece) {
-                    const spotlight = scene.add.circle(0, 0, tileSize * 0.52, 0xffea00, 0.28);
+                    const spotlight = scene.add.circle(0, 0, tileSize * 0.52, getGradeColor(gameRef.current.lastMove?.grade), 0.28);
                     container.addAt(spotlight, 0);
                     container.setScale(0.35).setAlpha(1);
                     scene.tweens.add({
