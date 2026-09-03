@@ -10,6 +10,7 @@ import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import { recordGame, recordMiniGame } from '@/lib/profile';
 import Teleprompter from '@/components/Teleprompter';
 import { getStockfishClient, type ChesterDifficulty, type EngineTelemetry } from '@/lib/stockfish';
+import ChessTownLanding from '@/components/ChessTownLanding';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -218,6 +219,10 @@ const playShockSound = () => {
 };
 
 export default function Home() {
+  return <ChessTownLanding />;
+}
+
+function LegacyArena() {
   const { p1Difficulty, p2Difficulty, activeChaosEvent, setP1Difficulty, setP2Difficulty, setActiveChaosEvent } = useBrawlState();
   const [isMounted, setIsMounted] = useState(false);
   const [guestName, setGuestName] = useState('');
