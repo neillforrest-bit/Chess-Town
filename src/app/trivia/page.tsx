@@ -68,7 +68,7 @@ export default function TriviaPage() {
     <main className="trivia-page">
       <header className="trivia-header">
         <div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Last Call Quiz</h1></div>
-        <Link href="/">Town</Link>
+        <Link href="/arena">Arena</Link>
       </header>
       <ChesterHost eyebrow="THE HOUSE QUIZMASTER" instruction="Pick the right answer, collect the point, and try not to make Chester ring the shame bell." />
       <section className="trivia-game" aria-live="polite">

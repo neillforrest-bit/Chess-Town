@@ -55,7 +55,7 @@ export default function GlobalNav() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
         {/* <button type="button" onClick={() => setIsRoyalCatsOpen(true)} className="global-nav__return" aria-haspopup="dialog">ROYAL CATS</button> */}
-        <Link href="/" className="global-nav__return">RETURN TO ARENA</Link>
+        <Link href="/arena" className="global-nav__return">RETURN TO ARENA</Link>
       </div>
       {isRoyalCatsOpen && (
         <div role="dialog" aria-modal="true" aria-label="Royal cat pieces" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0, 0, 0, 0.78)', display: 'grid', placeItems: 'center', padding: '1rem' }}>

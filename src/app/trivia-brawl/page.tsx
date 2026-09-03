@@ -126,7 +126,7 @@ export default function TriviaBrawlPage() {
   const visibleHostText = (room.phase === 'intro' || room.phase === 'banter') && room.hostMessage ? room.hostMessage : hostText;
 
   return <main className="trivia-brawl-page">
-    <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/arena?view=mini-games">Arena</Link></header>
+    <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/arena">Arena</Link></header>
     <div className="trivia-brawl-score"><span>ROUND {Math.min(room.round + 1, 6)}/6</span><b>PLAYER 1 {room.score.p1}</b><b>PLAYER 2 {room.score.p2}</b></div>
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile />
     {error && <p className="trivia-brawl-error">{error}</p>}
