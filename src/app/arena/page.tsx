@@ -904,6 +904,7 @@ export default function Home() {
             <button onClick={() => loadArena('COACH_DAILY', 'Daily Breakthrough')}><b>DAILY POSITION</b><span>One shared puzzle. One score.</span></button>
             <button onClick={() => setScene('TOWN')}><b>TOWN SQUARE</b><span>Talk chess, call rivals out, follow Chester.</span></button>
             <button onClick={() => setScene('SEASON')}><b>SEASON HUB</b><span>Fixtures, power rankings, fantasy form.</span></button>
+            <button onClick={() => window.location.assign('/trivia-brawl')}><b>🍻 PUB TRIVIA BRAWL</b><span>Draft categories. Settle the tab.</span></button>
           </footer>
         </div>
       )}
