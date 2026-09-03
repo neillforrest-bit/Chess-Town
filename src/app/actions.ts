@@ -148,3 +148,42 @@ export async function askGrandmaster(payloadString: string) {
   const response = await askChesterAnalysis(payloadString);
   return response.banter;
 }
+
+export type AdminTool = 'reset_chess_board' | 'toggle_board_theme';
+
+export type ChesterAdminReply = {
+  reply: string;
+  toolCall: AdminTool | null;
+};
+
+const CHESTER_UNAVAILABLE_REPLY = 'The court messenger is delayed. What would you like to explore on the board?';
+
+export async function askChesterAdminChat(payloadString: string): Promise<ChesterAdminReply> {
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payloadString,
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('[CHESTER ADMIN CHAT] Request failed', {
+        status: response.status,
+        statusText: response.statusText,
+        errorBody,
+      });
+      return { reply: CHESTER_UNAVAILABLE_REPLY, toolCall: null };
+    }
+
+    const data = await response.json() as Partial<{ reply: unknown; toolCall: unknown }>;
+    const reply = typeof data.reply === 'string' ? sanitizeCommentary(data.reply) : '';
+    const toolCall = data.toolCall === 'reset_chess_board' || data.toolCall === 'toggle_board_theme' ? data.toolCall : null;
+    if (!reply) console.error('[CHESTER ADMIN CHAT] Invalid response payload', data);
+    return { reply: reply || CHESTER_UNAVAILABLE_REPLY, toolCall };
+  } catch (error) {
+    console.error('[CHESTER ADMIN CHAT] Client request failed', error);
+    return { reply: CHESTER_UNAVAILABLE_REPLY, toolCall: null };
+  }
+}
+

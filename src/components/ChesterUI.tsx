@@ -181,7 +181,10 @@ export function ChesterChatOverlay({
                 background: msg.role === 'user' ? 'rgba(0, 229, 229, 0.15)' : 'rgba(255, 43, 136, 0.15)',
                 border: `1px solid ${msg.role === 'user' ? 'rgba(0, 229, 229, 0.3)' : 'rgba(255, 43, 136, 0.3)'}`,
                 lineHeight: 1.4,
-                fontSize: '0.9rem'
+                fontSize: '0.9rem',
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word'
               }}>
                 <b style={{ display: 'block', fontSize: '0.7rem', color: msg.role === 'user' ? 'var(--arena-cyan)' : 'var(--arena-pink)', marginBottom: '0.2rem' }}>
                   {msg.role === 'user' ? 'YOU' : 'CHESTER'}

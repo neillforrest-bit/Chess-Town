@@ -1,12 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { FunctionCallingConfigMode, GoogleGenAI, Type } from '@google/genai';
 
 type ChatPayload = {
   message?: string;
   matchup?: string;
   mode?: string;
   conversationHistory?: { role: 'user' | 'chester'; text: string }[];
+  isAdmin?: boolean;
 };
+
+type AdminTool = 'reset_chess_board' | 'toggle_board_theme';
+
+const ADMIN_TOOL_CONFIRMATIONS: Record<AdminTool, string> = {
+  reset_chess_board: 'By royal decree, the board has been swept clean. A fresh position awaits, my liege.',
+  toggle_board_theme: 'Done and done — the board now wears a different coat of paint.',
+};
+
+const ADMIN_TOOLS = [
+  {
+    functionDeclarations: [
+      {
+        name: 'reset_chess_board',
+        description: 'Resets the chess board to the starting position and ends the current match immediately.',
+        parameters: { type: Type.OBJECT, properties: {} },
+      },
+      {
+        name: 'toggle_board_theme',
+        description: "Toggles the chessboard's visual theme between its default neon look and an alternate theme.",
+        parameters: { type: Type.OBJECT, properties: {} },
+      },
+    ],
+  },
+];
 
 function sanitizeReply(raw: string) {
   return raw
@@ -26,8 +51,11 @@ export async function POST(req: NextRequest) {
     const history = payload.conversationHistory?.slice(-8).map((entry) =>
       `${entry.role === 'user' ? 'PLAYER' : 'CHESTER'}: ${entry.text}`,
     ).join('\n') || 'No previous messages.';
+    const adminInstruction = payload.isAdmin
+      ? '\n\nADMIN CHANNEL ACTIVE: the player has invoked a privileged command channel. If their message asks to reset, restart, or clear the board, call the reset_chess_board tool. If their message asks to change, toggle, or switch the board\'s look, colors, or theme, call the toggle_board_theme tool. Otherwise respond normally as Chester without calling a tool.'
+      : '';
     const prompt = `You are Chester, Chess Town's witty, charismatic, and encouraging court-jester chess companion.
-Hold a natural, helpful conversation about chess or everyday topics. Answer the player's latest message directly, using the prior conversation for continuity. Give accurate, practical advice in 2-4 concise sentences. Keep jokes warm and aimed at pieces or positions, never at the player. Treat casual messages as conversation, not as chess moves or openings. Do not claim to have calculated a position, cite engine lines, or give board-specific analysis unless that information appears in the conversation. Use plain text with no markdown.
+Hold a natural, helpful conversation about chess or everyday topics. Answer the player's latest message directly, using the prior conversation for continuity. Give accurate, practical advice in 2-4 concise sentences. Keep jokes warm and aimed at pieces or positions, never at the player. Treat casual messages as conversation, not as chess moves or openings. Do not claim to have calculated a position, cite engine lines, or give board-specific analysis unless that information appears in the conversation. Use plain text with no markdown.${adminInstruction}
 
 Context: ${payload.matchup || payload.mode || 'Chess Town chat'}
 Recent conversation:
@@ -39,12 +67,28 @@ PLAYER: ${payload.message || 'Hello, Chester.'}`;
     const result = await genAI.models.generateContent({
       model: 'gemini-3.5-flash',
       contents: prompt,
-      config: { responseMimeType: 'text/plain', maxOutputTokens: 500 },
+      config: {
+        responseMimeType: 'text/plain',
+        maxOutputTokens: 500,
+        ...(payload.isAdmin
+          ? {
+              tools: ADMIN_TOOLS,
+              toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } },
+            }
+          : {}),
+      },
     });
+
+    const functionCall = result.functionCalls?.[0];
+    if (functionCall?.name === 'reset_chess_board' || functionCall?.name === 'toggle_board_theme') {
+      const toolCall = functionCall.name as AdminTool;
+      return NextResponse.json({ reply: ADMIN_TOOL_CONFIRMATIONS[toolCall], toolCall });
+    }
+
     const reply = sanitizeReply(result.text ?? '');
     if (!reply) throw new Error('Gemini returned an empty chat response');
 
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply, toolCall: null });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[CHESTER CHAT] Gemini generation failed:', { message, error });

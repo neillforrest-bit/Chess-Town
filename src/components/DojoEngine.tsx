@@ -18,6 +18,11 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
   '2V2': ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nf6', 'Ng5', 'd5', 'exd5', 'Nxd5', 'Nxf7', 'Kxf7', 'Qf3+', 'Ke6'],
 };
 
+const BOARD_THEMES = {
+  NEON: [0xf2f7f8, 0x07090a],
+  RETRO: [0xe8d9b5, 0x4a3728],
+} as const;
+
 const AI_TAGS: Record<string, { player: string; rival: string; title: string }> = {
   SIMULATION: { player: 'Neill', rival: 'Brendan 🦸‍♂️', title: 'Neill vs. Brendan 🦸‍♂️' },
   '2V2': { player: 'Neill + Brendan', rival: 'Gabe + Z-Man', title: 'Heroes vs. Villains Tag Match' },
@@ -312,6 +317,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     timeline: [],
     isGameOver: false,
     ply: 0,
+    boardTheme: 'NEON',
   });
 
   useEffect(() => {
@@ -736,7 +742,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               for (let col = 0; col < 8; col++) {
                 const squareName = files[col] + ranks[row];
                 const isMoveSpotlight = !isLastMoveInvisible && gameRef.current.lastMove && (squareName === gameRef.current.lastMove.from || squareName === gameRef.current.lastMove.to);
-                const squareColor = (row + col) % 2 === 0 ? 0xf2f7f8 : 0x07090a;
+                const [lightSquare, darkSquare] = BOARD_THEMES[gameRef.current.boardTheme as keyof typeof BOARD_THEMES] || BOARD_THEMES.NEON;
+                const squareColor = (row + col) % 2 === 0 ? lightSquare : darkSquare;
                 graphics.fillStyle(squareColor, gameRef.current.lastMove && !isMoveSpotlight ? 0.52 : 1);
                 graphics.fillRect(
                   boardOffset + col * tileSize,
@@ -1081,6 +1088,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             finishGame('🏳️ RESIGNATION — The board is conceded before the final blow lands.', 'resigned');
           };
           window.addEventListener('request-resign', handleRequestResign);
+          const handleToggleBoardTheme = () => {
+            gameRef.current.boardTheme = gameRef.current.boardTheme === 'RETRO' ? 'NEON' : 'RETRO';
+            renderBoard();
+          };
+          window.addEventListener('toggle-board-theme', handleToggleBoardTheme);
 
           scene.events.once('destroy', () => {
             window.removeEventListener('load-puzzle', handleLoadPuzzle);
@@ -1089,6 +1101,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('remote-chess-move', handleRemoteMove);
             window.removeEventListener('replay-step', handleReplayStep);
             window.removeEventListener('request-resign', handleRequestResign);
+            window.removeEventListener('toggle-board-theme', handleToggleBoardTheme);
             if (demoIntervalRef.current) {
               clearInterval(demoIntervalRef.current);
               demoIntervalRef.current = null;

@@ -1120,7 +1120,7 @@ body {
   line-height: 1.3 !important;
 }
 .live-game-layout .chester-chat { max-height: 15rem; overflow: hidden !important; }
-.live-game-layout .chester-chat > div:nth-child(2) { overflow: hidden !important; }
+.live-game-layout .chester-chat > div:nth-child(2) { overflow-y: auto !important; overflow-x: hidden !important; }
 .live-game-layout .chester-chat input { font-size: 16px !important; }
 
 /* Broadcast-room treatment for the board and Chester's commentary surfaces. */
