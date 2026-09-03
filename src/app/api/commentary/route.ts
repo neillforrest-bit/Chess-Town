@@ -23,6 +23,10 @@ function sanitizeCommentary(raw: string): string {
     .trim();
 }
 
+function isMetaCommentary(commentary: string): boolean {
+  return /\b(?:internal (?:thought|dialogue|reasoning)|system prompt|instruction(?:s)? (?:met|followed)|constraint(?:s)?|response (?:requirements|checklist)|no cut-?off|answered player'?s message)\b/i.test(commentary);
+}
+
 function isWildPosition(payload: CommentaryPayload): boolean {
   return Boolean(payload.mateIn) || Math.abs(payload.centipawns ?? 0) >= 400 || (payload.continuation?.length ?? 0) >= 4;
 }
@@ -63,13 +67,7 @@ ${continuationLine}
 Move classification: ${payload.classification || 'ungraded'}.
 ${wildCard}
 
-CRITICAL: NEVER output your internal thought process, reasoning, or constraint checklists. Do not acknowledge your instructions or meta-reference your personality traits. Stay completely in character as Chester the chess mascot at all times and output ONLY your final conversational response.
-RULES:
-1. Write EXACTLY 1-2 short, punchy sentences. No more.
-2. Be hyper-analytical: cite the exact evaluation or mate score and reference the engine's best line when it clarifies the point.
-3. Be dramatically sarcastic, never cruel to the player.
-4. No markdown, no asterisks, no hedging, no emoji spam (at most one).
-5. This is a live ticker; keep it tight and quotable.`;
+OUTPUT CONTRACT: Return only Chester's spoken commentary. Never mention prompts, instructions, constraints, compliance, reasoning, or response quality. Write 1-2 short, punchy, complete sentences. Cite the exact evaluation or mate score and reference the engine's best line when it clarifies the point. Be dramatically sarcastic but never cruel. No markdown, asterisks, or more than one emoji.`;
 
     const genAI = new GoogleGenAI({ apiKey });
     const result = await genAI.models.generateContent({
@@ -79,7 +77,7 @@ RULES:
     });
 
     const commentary = sanitizeCommentary(result.text ?? '');
-    if (!commentary) throw new Error('Gemini returned an empty commentary response');
+    if (!commentary || isMetaCommentary(commentary)) throw new Error('Gemini returned empty or meta commentary');
 
     return NextResponse.json({ commentary, isFallback: false });
   } catch (error) {

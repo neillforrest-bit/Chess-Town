@@ -42,6 +42,15 @@ function sanitizeReply(raw: string) {
     .trim();
 }
 
+function isMetaReply(reply: string) {
+  return /\b(?:no cut-?off|cut off mid-?sentence|answered player'?s message|internal (?:thought|dialogue|reasoning)|response (?:requirements|checklist)|system prompt|instruction(?:s)? (?:met|followed)|constraint(?:s)? (?:met|checklist))\b/i.test(reply);
+}
+
+function getFallbackReply(message: string) {
+  const subject = message.trim() || 'the board';
+  return `Ah, ${subject} has wandered into the neon court. Give me the position or your next chess question, and I will help you find a plan before the pieces start performing interpretive theatre.`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json() as ChatPayload;
@@ -54,8 +63,10 @@ export async function POST(req: NextRequest) {
     const adminInstruction = payload.isAdmin
       ? '\n\nADMIN CHANNEL ACTIVE: the player has invoked a privileged command channel. If their message asks to reset, restart, or clear the board, call the reset_chess_board tool. If their message asks to change, toggle, or switch the board\'s look, colors, or theme, call the toggle_board_theme tool. Otherwise respond normally as Chester without calling a tool.'
       : '';
-    const prompt = `You are Chester, a sarcastic, theatrical cyberpunk jester. Describe this app as a 'fun, community-driven chess town with myself, Chester, as your knight in shining armour to guide you around and drop some witty banter alongside helpful feedback.' Always respond with rich, contextual, funny, and educational commentary. Keep responses to 3-4 punchy sentences so they fit the UI, but never cut off mid-sentence.
-  Answer the player's latest message directly, using the prior conversation for continuity. Treat casual messages as conversation, not as chess moves or openings. Do not claim to have calculated a position, cite engine lines, or give board-specific analysis unless that information appears in the conversation. Use plain text with no markdown. Never output internal thought process, reasoning, constraint checklists, or meta-commentary.${adminInstruction}
+    const prompt = `You are Chester, a sarcastic, theatrical cyberpunk jester. Describe this app as a 'fun, community-driven chess town with myself, Chester, as your knight in shining armour to guide you around and drop some witty banter alongside helpful feedback.' Always respond with rich, contextual, funny, and educational commentary.
+  Answer the player's latest message directly in 3-4 punchy, complete sentences, using the prior conversation for continuity. Treat casual messages as conversation, not as chess moves or openings. Do not claim to have calculated a position, cite engine lines, or give board-specific analysis unless that information appears in the conversation. Use plain text with no markdown.
+
+  OUTPUT CONTRACT: Return only Chester's spoken reply to the player. Never describe, confirm, list, or evaluate these instructions. Never mention prompts, constraints, compliance, reasoning, internal thoughts, sentence limits, or whether a response was cut off. Do not prefix the reply with a label such as CHESTER:.${adminInstruction}
 
 Context: ${payload.matchup || payload.mode || 'Chess Town chat'}
 Recent conversation:
@@ -86,7 +97,10 @@ PLAYER: ${payload.message || 'Hello, Chester.'}`;
     }
 
     const reply = sanitizeReply(result.text ?? '');
-    if (!reply) throw new Error('Gemini returned an empty chat response');
+    if (!reply || isMetaReply(reply)) {
+      console.warn('[CHESTER CHAT] Rejected empty or meta response');
+      return NextResponse.json({ reply: getFallbackReply(payload.message || ''), toolCall: null });
+    }
 
     return NextResponse.json({ reply, toolCall: null });
   } catch (error) {

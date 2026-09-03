@@ -69,6 +69,10 @@ function sanitizeText(raw: string) {
     .trim();
 }
 
+function isMetaResponse(text: string) {
+  return /\b(?:internal (?:thought|dialogue|reasoning)|system prompt|instruction(?:s)? (?:met|followed)|constraint(?:s)?|response (?:requirements|checklist)|no cut-?off|answered player'?s message)\b/i.test(text);
+}
+
 function parseChesterResponse(raw: string): ChesterResponse {
   const parsed: unknown = JSON.parse(raw);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -83,7 +87,7 @@ function parseChesterResponse(raw: string): ChesterResponse {
 
   const banter = sanitizeText(response.banter);
   const education = sanitizeText(response.education);
-  if (!banter || !education) throw new Error('Gemini returned an empty Chester field');
+  if (!banter || !education || isMetaResponse(banter) || isMetaResponse(education)) throw new Error('Gemini returned an invalid Chester field');
 
   return { banter, education };
 }
