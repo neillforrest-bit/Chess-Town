@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { askChesterChat } from '@/app/actions';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
@@ -12,7 +12,7 @@ const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false
 
 type GameReport = { gradeHistory: GradedMove[] };
 
-export default function PlayChesterPage() {
+function PlayChesterGame() {
   const searchParams = useSearchParams();
   const requestedMode = searchParams.get('mode');
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
@@ -60,4 +60,8 @@ export default function PlayChesterPage() {
     </ChessGameBoardShell>
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} onClose={() => setReport(null)} />}
   </>;
+}
+
+export default function PlayChesterPage() {
+  return <Suspense fallback={<main className="play-chester-page" aria-label="Loading Play Chester" />}><PlayChesterGame /></Suspense>;
 }

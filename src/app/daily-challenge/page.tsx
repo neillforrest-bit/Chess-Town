@@ -1,11 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { getProfile, recordDailyAttempt, type ProfileState } from '@/lib/profile';
 import NeonChessboard from '@/components/NeonChessboard';
 import ChessGameBoardShell from '@/components/ChessGameBoardShell';
-import ChesterHost from '@/components/ChesterHost';
 
 const PUZZLES = [
   { phase: 'MIDGAME', title: 'Break the Pin', fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 4 6', line: ['d4', 'Re1'], choices: [['d4', 'h3', 'Re1'], ['Re1', 'h3', 'a3']] },
@@ -42,5 +40,5 @@ export default function DailyChallengePage() {
   };
   const leaderboard = [...seededLeaderboard, ...(profile?.dailyAttempts[date] ? [{ name: profile.username, time: profile.dailyAttempts[date].timeMs, accuracy: profile.dailyAttempts[date].accuracy }] : [])].sort((left, right) => left.time - right.time).slice(0, 10);
   const commentary = result?.message || `Find the forcing line. Chester is watching move ${moveIndex + 1} of ${puzzle.line.length}.`;
-  return <><ChesterHost eyebrow="CHESTER'S DAILY ORDER" instruction={`Solve today's ${puzzle.title} puzzle in ${puzzle.line.length} moves or I am revoking your grandmaster card. Find the forcing line.`} /><ChessGameBoardShell commentary={commentary} opponentLabel="CHESTER" opponentStatus={`DAILY CHALLENGE · ${date}`} helpText="Look for forcing moves first: checks, captures, and immediate threats. Then compare each candidate against the puzzle's objective." chatContext={`Daily Challenge: ${puzzle.title}. Move ${moveIndex + 1} of ${puzzle.line.length}.`}><div className="daily-puzzle"><span className="daily-phase">{puzzle.phase} START · MOVE {moveIndex + 1}/{puzzle.line.length}</span><h2>{puzzle.title}</h2><NeonChessboard fen={puzzle.fen} label={`${puzzle.phase} position`} /><div className="daily-choices">{puzzle.choices[moveIndex].map((move) => <button key={move} onClick={() => chooseMove(move)} disabled={result?.correct}>{move}</button>)}</div>{result && <p className={result.correct ? 'daily-success' : 'daily-error'}>{result.message}{result.timeMs ? ` ${formatTime(result.timeMs)} · +${result.points} points.` : ''}</p>}</div></ChessGameBoardShell></>;
+  return <ChessGameBoardShell commentary={commentary} opponentLabel="CHESTER" opponentStatus={`DAILY CHALLENGE · ${date}`} helpText="Look for forcing moves first: checks, captures, and immediate threats. Then compare each candidate against the puzzle's objective." chatContext={`Daily Challenge: ${puzzle.title}. Move ${moveIndex + 1} of ${puzzle.line.length}.`} boardHeader={<div className="daily-board-heading"><span>{puzzle.phase} START · MOVE {moveIndex + 1}/{puzzle.line.length}</span><h2>{puzzle.title}</h2></div>} footer={<div className="daily-puzzle"><div className="daily-choices">{puzzle.choices[moveIndex].map((move) => <button key={move} onClick={() => chooseMove(move)} disabled={result?.correct}>{move}</button>)}</div>{result && <p className={result.correct ? 'daily-success' : 'daily-error'}>{result.message}{result.timeMs ? ` ${formatTime(result.timeMs)} · +${result.points} points.` : ''}</p>}</div>}><NeonChessboard fen={puzzle.fen} label={`${puzzle.phase} position`} /></ChessGameBoardShell>;
 }

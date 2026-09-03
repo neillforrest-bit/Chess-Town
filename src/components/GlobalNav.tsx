@@ -36,7 +36,7 @@ export default function GlobalNav() {
   return (
     <nav className="global-nav">
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <Link href="/arena" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ animation: 'chester-float 4s ease-in-out infinite' }}>
             <ChesterAvatar isThinking={false} size="small" />
           </div>
