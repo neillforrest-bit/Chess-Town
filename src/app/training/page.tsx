@@ -15,7 +15,7 @@ export default function TrainingPage() {
       <span>CHESTER MINI GAMES</span>
       <h1>Choose Your Challenge</h1>
       <label>MINI GAME<select value={drill} onChange={(event) => setDrill(event.target.value)}>{drills.map((item) => <option key={item}>{item}</option>)}</select></label>
-      <Link href={`/arena?mode=${drillModes[drill]}`}>PLAY {drill}</Link>
+      <Link href={`/play-chester?mode=${drillModes[drill]}`}>PLAY {drill}</Link>
     </section>
   </main>;
 }

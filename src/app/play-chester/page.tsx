@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { askChesterChat } from '@/app/actions';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
@@ -12,6 +13,10 @@ const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false
 type GameReport = { gradeHistory: GradedMove[] };
 
 export default function PlayChesterPage() {
+  const searchParams = useSearchParams();
+  const requestedMode = searchParams.get('mode');
+  const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
+  const opponentLabel = mode === 'PVP_LOCAL' ? 'YOUR RIVAL' : mode === '2V2' ? "CHESTER'S CHAOS CREW" : 'CHESTER';
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [commentary, setCommentary] = useState('Your board is live. Claim the center and make Chester work for his lunch.');
   const [isThinking, setIsThinking] = useState(false);
@@ -20,7 +25,7 @@ export default function PlayChesterPage() {
   const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
-    const startGame = window.setTimeout(() => window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode: 'COACH_OPENING' } })), 0);
+    const startGame = window.setTimeout(() => window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })), 0);
     const handleCapture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const handleBanter = (event: Event) => {
       const detail = (event as CustomEvent<{ message?: string; move?: string; grade?: string }>).detail;
@@ -37,7 +42,7 @@ export default function PlayChesterPage() {
       window.removeEventListener('dojo-banter', handleBanter);
       window.removeEventListener('game-report', handleReport);
     };
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     if (!report) return;
@@ -50,8 +55,8 @@ export default function PlayChesterPage() {
   }, [report]);
 
   return <>
-    <ChessGameBoardShell capturedPieces={capturedPieces} commentary={commentary} isThinking={isThinking} opponentLabel="CHESTER" opponentStatus="LIVE ENGINE" helpText="Start with checks, captures, and threats. Then choose the move that improves your center control or development without exposing your king." chatContext="Play Chester single-player game.">
-      <DojoEngine mode="COACH_OPENING" difficulty="INTERMEDIATE" />
+    <ChessGameBoardShell capturedPieces={capturedPieces} commentary={commentary} isThinking={isThinking} opponentLabel={opponentLabel} opponentStatus={mode === 'PVP_LOCAL' ? 'LOCAL 1V1 DUEL' : mode === '2V2' ? '2V2 CHAOS' : 'LIVE ENGINE'} helpText="Start with checks, captures, and threats. Then choose the move that improves your center control or development without exposing your king." chatContext={`Chess Town game mode: ${mode}.`}>
+      <DojoEngine mode={mode} difficulty="INTERMEDIATE" />
     </ChessGameBoardShell>
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} onClose={() => setReport(null)} />}
   </>;

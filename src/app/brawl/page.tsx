@@ -32,7 +32,7 @@ function BrawlContent() {
   const startBrawl = async () => {
     try {
       setActiveChaosEvent(null);
-      router.push('/arena?mode=UNDERDOG&brawl=1');
+      router.push('/play-chester?mode=UNDERDOG&brawl=1');
     } catch (error) {
       setInviteStatus(error instanceof Error ? error.message : 'Could not start the Brawl.');
     }
