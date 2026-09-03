@@ -94,7 +94,7 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
       boxSizing: 'border-box'
     }}>
       <ChesterAvatar isThinking={isThinking} />
-      <div ref={messageRef} className="chester-teleprompter__message max-h-40 overflow-y-auto" style={{
+      <div ref={messageRef} className="chester-teleprompter__message max-h-48 overflow-y-auto" style={{
         flex: 1,
         fontFamily: 'sans-serif',
         fontSize: isMobile ? '1rem' : '0.9rem',
@@ -102,7 +102,7 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
         color: '#ffffff',
         textShadow: '0 1px 4px rgba(0,0,0,0.8)',
         lineHeight: 1.4,
-        maxHeight: '10rem',
+        maxHeight: '12rem',
         overflowY: 'auto'
       }}>
         <span aria-label={emotion}>{CHESTER_EMOTIONS[emotion].emoji}</span>{' '}

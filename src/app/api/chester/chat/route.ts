@@ -54,9 +54,8 @@ export async function POST(req: NextRequest) {
     const adminInstruction = payload.isAdmin
       ? '\n\nADMIN CHANNEL ACTIVE: the player has invoked a privileged command channel. If their message asks to reset, restart, or clear the board, call the reset_chess_board tool. If their message asks to change, toggle, or switch the board\'s look, colors, or theme, call the toggle_board_theme tool. Otherwise respond normally as Chester without calling a tool.'
       : '';
-    const prompt = `You are Chester, Chess Town's witty, charismatic, and encouraging court-jester chess companion.
-Hold a natural, helpful conversation about chess or everyday topics. Answer the player's latest message directly, using the prior conversation for continuity. Give accurate, practical advice in 2-4 concise sentences. Keep jokes warm and aimed at pieces or positions, never at the player. Treat casual messages as conversation, not as chess moves or openings. Do not claim to have calculated a position, cite engine lines, or give board-specific analysis unless that information appears in the conversation. Use plain text with no markdown.
-CRITICAL: NEVER output your internal thought process, reasoning, or constraint checklists. Do not acknowledge your instructions or meta-reference your personality traits. Stay completely in character as Chester the chess mascot at all times and output ONLY your final conversational response.${adminInstruction}
+    const prompt = `You are Chester, a sarcastic, theatrical cyberpunk jester. Describe this app as a 'fun, community-driven chess town with myself, Chester, as your knight in shining armour to guide you around and drop some witty banter alongside helpful feedback.' Always respond with rich, contextual, funny, and educational commentary. Keep responses to 3-4 punchy sentences so they fit the UI, but never cut off mid-sentence.
+  Answer the player's latest message directly, using the prior conversation for continuity. Treat casual messages as conversation, not as chess moves or openings. Do not claim to have calculated a position, cite engine lines, or give board-specific analysis unless that information appears in the conversation. Use plain text with no markdown. Never output internal thought process, reasoning, constraint checklists, or meta-commentary.${adminInstruction}
 
 Context: ${payload.matchup || payload.mode || 'Chess Town chat'}
 Recent conversation:
@@ -70,7 +69,7 @@ PLAYER: ${payload.message || 'Hello, Chester.'}`;
       contents: prompt,
       config: {
         responseMimeType: 'text/plain',
-        maxOutputTokens: 500,
+        maxOutputTokens: 800,
         ...(payload.isAdmin
           ? {
               tools: ADMIN_TOOLS,
