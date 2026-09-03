@@ -1,5 +1,6 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
+import { askChesterChat } from '@/app/actions';
 import { CHESTER_EMOTIONS, getChesterEmotion } from '@/lib/chester-emotions';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 
@@ -119,7 +120,8 @@ export function ChesterChatOverlay({
   onSendMessage,
   isThinking,
   chatError,
-  isMobile
+  isMobile,
+  defaultExpanded
 }: {
   chatMessages: { role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[];
   chatInput: string;
@@ -128,8 +130,9 @@ export function ChesterChatOverlay({
   isThinking: boolean;
   chatError: string;
   isMobile?: boolean;
+  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(!isMobile);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? !isMobile);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -270,4 +273,47 @@ export function ChesterChatOverlay({
       )}
     </div>
   );
+}
+
+export function ChessGameTools({ helpText, context = '' }: { helpText: string; context?: string }) {
+  const [activePanel, setActivePanel] = useState<'chat' | 'help' | null>(null);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; kind?: 'chat' }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatError, setChatError] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  const sendMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const message = chatInput.trim();
+    if (!message || isTyping) return;
+    setChatInput('');
+    setChatError('');
+    setChatMessages((current) => [...current, { role: 'user', text: message }]);
+    setIsTyping(true);
+    try {
+      const reply = await askChesterChat(JSON.stringify({ type: 'chat', message, context }));
+      setChatMessages((current) => [...current, { role: 'chester', text: reply, kind: 'chat' }]);
+    } catch {
+      setChatError('Chester is briefly off the board. Try again.');
+      setChatInput(message);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return <>
+    <div className="chess-game-tools" aria-label="Chess game tools">
+      <button type="button" onClick={() => setActivePanel('chat')}>💬 Chat with Chester</button>
+      <button type="button" onClick={() => setActivePanel('help')}>💡 Ask for Help</button>
+    </div>
+    {activePanel && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label={activePanel === 'chat' ? 'Chat with Chester' : 'Chess help'}>
+      <div className="chess-game-sheet__backdrop" onClick={() => setActivePanel(null)} />
+      <section className="chess-game-sheet__content">
+        <header><b>{activePanel === 'chat' ? 'CHAT WITH CHESTER' : "CHESTER'S HELP"}</b><button type="button" onClick={() => setActivePanel(null)} aria-label="Close">×</button></header>
+        {activePanel === 'chat'
+          ? <ChesterChatOverlay chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} onSendMessage={sendMessage} isThinking={isTyping} chatError={chatError} isMobile defaultExpanded />
+          : <div className="chess-game-sheet__help"><p>{helpText}</p><button type="button" onClick={() => setActivePanel('chat')}>Ask Chester about this position</button></div>}
+      </section>
+    </div>}
+  </>;
 }

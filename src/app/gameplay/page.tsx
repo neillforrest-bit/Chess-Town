@@ -1,7 +1,7 @@
 'use client';
 
 import NeonChessboard from '@/components/NeonChessboard';
-import { ChesterTeleprompter } from '@/components/ChesterUI';
+import { ChesterTeleprompter, ChessGameTools } from '@/components/ChesterUI';
 
 export default function GameplayPage() {
   return <main className="gameplay-page h-[100dvh] w-full overflow-hidden" aria-label="Chess Town gameplay">
@@ -11,6 +11,7 @@ export default function GameplayPage() {
       </div>
       <aside className="gameplay-commentary" aria-label="Chester commentary">
         <ChesterTeleprompter text="Your board is live. Start with the center, develop cleanly, and do not make me explain why your queen is out on move two." isThinking={false} isMobile />
+        <ChessGameTools helpText="Start by contesting the center, developing a knight or bishop, and keeping your king safe. Ask Chester for a concrete plan when the position gets unclear." context="Gameplay board from the starting position." />
       </aside>
     </section>
   </main>;

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { askChesterChat, askCommentary, askGrandmaster } from '@/app/actions';
-import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
+import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter, ChessGameTools } from '@/components/ChesterUI';
 import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
@@ -1129,21 +1129,7 @@ export default function Home() {
              <div className="mobile-game-commentary">
                  <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile />
              </div>
-             <form className="play-chester-chat" onSubmit={handleSendMessage}>
-               <textarea
-                 rows={1}
-                 value={chatInput}
-                 onChange={(event) => {
-                   const textarea = event.currentTarget;
-                   textarea.style.height = 'auto';
-                   textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
-                   setChatInput(textarea.value);
-                 }}
-                 placeholder="Ask Chester..."
-                 aria-label="Message Chester"
-               />
-               <button type="submit" disabled={isThinking || !chatInput.trim()}>SEND</button>
-             </form>
+             <ChessGameTools helpText="Review the latest commentary, look for checks, captures, and threats, then ask Chester to explain the strongest plan." context={`Mode: ${gameMode}. Matchup: ${activeMatchup}.`} />
           </div>
 
           {/* Chester commentary panel */}
