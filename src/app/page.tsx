@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { askChesterChat, askChesterAdminChat, askGrandmaster, askCommentary } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
@@ -773,6 +774,7 @@ function LegacyHome() {
                 <div className="command-actions">
                   <button className="command-play" onClick={() => loadArena('COACH_OPENING', 'You vs. Chester')}><span>♞</span> START GAME</button>
                   <button className="command-secondary" onClick={() => { setLeagueView('COACHING'); setScene('LEAGUE'); }}>EXPLORE MINI GAMES</button>
+                  <Link href="/arena" style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #00ffff', borderRadius: '4px', padding: '0.9rem 1.15rem', background: 'rgba(0,229,229,.12)', color: '#eaffff', boxShadow: '0 0 28px rgba(0,229,229,.45), inset 0 0 18px rgba(0,229,229,.08)', fontWeight: 900, letterSpacing: '1.5px', textAlign: 'center', textDecoration: 'none' }}>ENTER THE ARENA</Link>
                 </div>
               </div>
               <div className="command-knight" aria-hidden="true"><span>♞</span><i /></div>
