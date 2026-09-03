@@ -879,7 +879,7 @@ export default function Home() {
           </header>
 
           <div style={{ position: 'relative', zIndex: 1, width: 'min(100%, 1440px)', margin: '0 auto', border: '1px solid rgba(255,43,136,.58)', borderLeft: '3px solid #ffea00', borderRadius: '6px', padding: '0.7rem 0.85rem', background: 'rgba(12,7,17,.84)', color: '#fff4bd', boxShadow: '0 0 20px rgba(255,43,136,.14)', fontSize: 'clamp(.72rem, 1.7vw, .95rem)', fontWeight: 800, lineHeight: 1.4, boxSizing: 'border-box' }}>
-            👑 Welcome to the Court, Jemma &amp; Neill! Choose your challenge below.
+            👑 Welcome to the Court, Jemma &amp; Neill! Chess mastery, chaotic blunders, or pub trivia glory - choose your battlefield below.
           </div>
 
           <main className="command-layout">
