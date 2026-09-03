@@ -9,6 +9,7 @@ import CapturedPieceJails from '@/components/CapturedPieceJails';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import ChessTownLanding from '@/components/ChessTownLanding';
+import PostGameGazette from '@/components/PostGameGazette';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -238,6 +239,7 @@ function LegacyHome() {
   const [leagueView, setLeagueView] = useState<'STANDINGS' | 'MATCHUPS' | '2V2' | 'COACHING' | 'PLAYOFFS'>('COACHING');
   const [demoActiveUI, setDemoActiveUI] = useState(false); 
   const [matchOver, setMatchOver] = useState(false);
+  const [matchResult, setMatchResult] = useState<{ pgn: string; result: 'checkmate' | 'draw' | 'resigned' } | null>(null);
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [activeChallenge, setActiveChallenge] = useState<{ title: string; objective: string; level: string } | null>(null);
   const [openingAssessment, setOpeningAssessment] = useState<{ grade: string; score: number; line: string; strengths: string[]; improvements: string[] } | null>(null);
@@ -516,7 +518,11 @@ function LegacyHome() {
       setTimeout(() => setBanterUpdated(false), 600);
     };
 
-    const handleMatchComplete = () => setMatchOver(true);
+    const handleMatchComplete = (e: Event) => {
+      setMatchOver(true);
+      const detail = (e as CustomEvent<{ pgn?: string; result?: 'checkmate' | 'draw' | 'resigned' }>).detail;
+      if (detail?.pgn && detail.result) setMatchResult({ pgn: detail.pgn, result: detail.result });
+    };
     const handleCapture = (e: Event) => setCapturedPieces((pieces) => [...pieces, (e as CustomEvent<CapturedPiece>).detail]);
     const handleOpeningAssessment = (e: Event) => {
       setOpeningAssessment((e as CustomEvent).detail);
@@ -569,6 +575,7 @@ function LegacyHome() {
     setDemoActiveUI(false);
     setIsThinking(false);
     setMatchOver(false);
+    setMatchResult(null);
     setCapturedPieces([]);
     setOpeningAssessment(null);
     setOpeningName('Opening book loading');
@@ -1194,6 +1201,27 @@ function LegacyHome() {
                   </div>
                 )}
                 
+                {!matchOver && !demoActiveUI && gameMode !== 'STANDBY' && (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'transparent',
+                      color: '#ff007f',
+                      fontSize: isLandscape ? '0.55rem' : isMobile ? '0.78rem' : '0.75rem',
+                      fontWeight: 900,
+                      padding: isLandscape ? '0.35rem' : isMobile ? '0.55rem' : '0.5rem',
+                      borderRadius: isMobile ? '16px' : '28px',
+                      border: '2px solid #ff007f',
+                      cursor: 'pointer',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px'
+                    }}
+                  >
+                    🏳️ RESIGN
+                  </button>
+                )}
+
                 {matchOver && !demoActiveUI && (
                   <button
                     onClick={() => loadArena(gameMode, activeMatchup)}
@@ -1303,6 +1331,15 @@ function LegacyHome() {
             </div>
           )}
         </div>
+      )}
+
+      {matchResult && (
+        <PostGameGazette
+          pgn={matchResult.pgn}
+          result={matchResult.result}
+          playerColor={gameMode === 'PVP_REMOTE' ? (remoteRole || 'w') : 'w'}
+          onClose={() => setMatchResult(null)}
+        />
       )}
 
       <style>{`

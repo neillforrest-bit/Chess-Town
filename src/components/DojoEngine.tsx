@@ -597,11 +597,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             });
           };
 
-          const finishGame = (message: string) => {
+          const finishGame = (message: string, result: 'checkmate' | 'draw' | 'resigned' = 'draw') => {
             gameRef.current.isGameOver = true;
+            const pgn = gameRef.current.chess.pgn();
             window.dispatchEvent(new CustomEvent('game-report', { detail: getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities) }));
-            window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn: gameRef.current.chess.pgn() } }));
-            window.dispatchEvent(new CustomEvent('match-complete'));
+            window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn } }));
+            window.dispatchEvent(new CustomEvent('match-complete', { detail: { result, pgn } }));
           };
 
           const playAiTurn = (responseDelay = AI_RESPONSE_DELAY_MS) => {
@@ -633,8 +634,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               evaluateAndPublishMove(result, AI_TAGS[mode]?.rival || 'Brendan', fenBeforeMove, quality);
 
               if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {
-                const status = gameRef.current.chess.isCheckmate() ? 'CHECKMATE — The AI closes the book!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — Equilibrium achieved.' : 'DRAW — Respect all around.';
-                finishGame(`🏁 ${status} The ${AI_TAGS[mode]?.title} just defined an entire era.`);
+                const isCheckmate = gameRef.current.chess.isCheckmate();
+                const status = isCheckmate ? 'CHECKMATE — The AI closes the book!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — Equilibrium achieved.' : 'DRAW — Respect all around.';
+                finishGame(`🏁 ${status} The ${AI_TAGS[mode]?.title} just defined an entire era.`, isCheckmate ? 'checkmate' : 'draw');
               }
               renderAfterCapture(result);
             }, responseDelay);
@@ -681,8 +683,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             });
 
             if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {
-              const status = gameRef.current.chess.isCheckmate() ? 'CHECKMATE — You bent the board to your will!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — The board called a truce.' : 'DRAW — The league just locked in a peace treaty.';
-              finishGame(`🏁 ${status} ${AI_TAGS[mode]?.title} just delivered a full season arc.`);
+              const isCheckmate = gameRef.current.chess.isCheckmate();
+              const status = isCheckmate ? 'CHECKMATE — You bent the board to your will!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — The board called a truce.' : 'DRAW — The league just locked in a peace treaty.';
+              finishGame(`🏁 ${status} ${AI_TAGS[mode]?.title} just delivered a full season arc.`, isCheckmate ? 'checkmate' : 'draw');
               renderAfterCapture(moveResult);
               return;
             }
@@ -1073,6 +1076,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             renderBoard();
           };
           window.addEventListener('replay-step', handleReplayStep);
+          const handleRequestResign = () => {
+            if (gameRef.current.isGameOver) return;
+            finishGame('🏳️ RESIGNATION — The board is conceded before the final blow lands.', 'resigned');
+          };
+          window.addEventListener('request-resign', handleRequestResign);
 
           scene.events.once('destroy', () => {
             window.removeEventListener('load-puzzle', handleLoadPuzzle);
@@ -1080,6 +1088,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('brawl-position', handleBrawlPosition);
             window.removeEventListener('remote-chess-move', handleRemoteMove);
             window.removeEventListener('replay-step', handleReplayStep);
+            window.removeEventListener('request-resign', handleRequestResign);
             if (demoIntervalRef.current) {
               clearInterval(demoIntervalRef.current);
               demoIntervalRef.current = null;
