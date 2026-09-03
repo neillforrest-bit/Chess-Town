@@ -3,9 +3,9 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { askChesterChat } from '@/app/actions';
-import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
+import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
-import { ChessGameTools, ChesterTeleprompter } from '@/components/ChesterUI';
+import ChessGameBoardShell from '@/components/ChessGameBoardShell';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -49,15 +49,10 @@ export default function PlayChesterPage() {
     })).then(setReview).finally(() => setReviewLoading(false));
   }, [report]);
 
-  return <main className="play-chester-page" aria-label="Play Chester">
-    <header className="play-chester-opponent"><span>OPPONENT</span><b>CHESTER</b><small>LIVE ENGINE</small></header>
-    <section className="play-chester-board-stack">
-      <CapturedPieceJail capturedPieces={capturedPieces} color="b" label="CHESTER CAPTURED" />
-      <div className="play-chester-board aspect-square"><DojoEngine mode="COACH_OPENING" difficulty="INTERMEDIATE" /></div>
-      <CapturedPieceJail capturedPieces={capturedPieces} color="w" label="YOU CAPTURED" />
-      <ChesterTeleprompter text={commentary} isThinking={isThinking} isMobile />
-      <ChessGameTools helpText="Start with checks, captures, and threats. Then choose the move that improves your center control or development without exposing your king." context="Play Chester single-player game." />
-    </section>
+  return <>
+    <ChessGameBoardShell capturedPieces={capturedPieces} commentary={commentary} isThinking={isThinking} opponentLabel="CHESTER" opponentStatus="LIVE ENGINE" helpText="Start with checks, captures, and threats. Then choose the move that improves your center control or development without exposing your king." chatContext="Play Chester single-player game.">
+      <DojoEngine mode="COACH_OPENING" difficulty="INTERMEDIATE" />
+    </ChessGameBoardShell>
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} onClose={() => setReport(null)} />}
-  </main>;
+  </>;
 }
