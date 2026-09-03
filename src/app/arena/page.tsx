@@ -879,7 +879,7 @@ export default function Home() {
           </header>
 
           <div style={{ position: 'relative', zIndex: 1, width: 'min(100%, 1440px)', margin: '0 auto', border: '1px solid rgba(255,43,136,.58)', borderLeft: '3px solid #ffea00', borderRadius: '6px', padding: '0.7rem 0.85rem', background: 'rgba(12,7,17,.84)', color: '#fff4bd', boxShadow: '0 0 20px rgba(255,43,136,.14)', fontSize: 'clamp(.72rem, 1.7vw, .95rem)', fontWeight: 800, lineHeight: 1.4, boxSizing: 'border-box' }}>
-            👑 Welcome to the Court, Jemma &amp; Neill! Chess mastery, chaotic blunders, or pub trivia glory - choose your battlefield below.
+            👑 Welcome to the Court, Jemma &amp; Neill! Choose your challenge below.
           </div>
 
           <main className="command-layout">
@@ -900,13 +900,19 @@ export default function Home() {
                 <div><b>LIVE</b><span>Move grading</span></div>
               </div>
             </section>
-            <section className="command-primary" style={{ minHeight: 'auto', padding: 'clamp(1rem, 2.2vw, 1.6rem)', gridTemplateColumns: 'minmax(0, 1fr) auto', borderColor: 'rgba(255,216,77,.75)', background: 'linear-gradient(135deg, rgba(255,216,77,.14), rgba(5,7,8,.96) 52%, rgba(255,43,136,.12))', boxShadow: 'inset 0 0 42px rgba(255,216,77,.05), 0 0 26px rgba(255,216,77,.12)' }}>
+            <section className="command-primary">
               <div className="command-primary__copy">
-                <span className="command-label" style={{ color: '#ffea00' }}>1V1 REAL-TIME BATTLE</span>
-                <h2 style={{ fontSize: 'clamp(1.55rem, 4vw, 3.35rem)', marginBottom: '0.45rem', color: '#fff4bd', textShadow: '0 0 24px rgba(255,216,77,.25)' }}>🍻 PUB TRIVIA BRAWL</h2>
+                <span className="command-label">1V1 LIVE SHOWDOWN</span>
+                <h2>🍻 PUB TRIVIA BRAWL</h2>
                 <p>Draft categories, challenge a rival, and let Chester keep the score behind the bar.</p>
               </div>
-              <button className="command-play" onClick={() => window.location.assign('/trivia-brawl')} style={{ alignSelf: 'center', background: '#ffea00', color: '#130b00', boxShadow: '0 0 28px rgba(255,216,77,.35)' }}>PLAY →</button>
+              <div className="command-knight" aria-hidden="true"><span>🍻</span><i /></div>
+              <div className="command-metrics">
+                <div><b>1V1</b><span>Live showdown</span></div>
+                <div><b>6</b><span>Trivia rounds</span></div>
+                <div><b>LIVE</b><span>Chester hosts</span></div>
+              </div>
+              <div className="command-actions"><button className="command-play" onClick={() => window.location.assign('/trivia-brawl')}>PLAY →</button></div>
             </section>
           </main>
 
@@ -1003,7 +1009,6 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                  <button onClick={() => window.location.assign('/trivia-brawl')} style={{ width: '100%', border: '2px solid #ffea00', borderRadius: '6px', padding: '0.9rem 1rem', background: 'linear-gradient(90deg, rgba(255,216,77,.2), rgba(255,43,136,.14))', color: '#fff4bd', fontSize: '1rem', fontWeight: 900, cursor: 'pointer', textAlign: 'left', boxShadow: '0 0 22px rgba(255,216,77,.2)' }}>🍻 PUB TRIVIA BRAWL <span style={{ color: '#ffb8d9', fontSize: '.72rem', marginLeft: '.5rem' }}>DRAFT CATEGORIES. SETTLE THE TAB.</span></button>
                   <div className="player-map__route">
                     {COACHING_DRILLS.map((drill, index) => (
                       <button className="player-map__node" key={drill.mode} onClick={() => loadArena(drill.mode, drill.title)} style={{ '--node-color': drill.color } as React.CSSProperties}>
