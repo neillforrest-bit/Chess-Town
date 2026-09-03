@@ -993,6 +993,7 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
+                  <button onClick={() => window.location.assign('/trivia-brawl')} style={{ width: '100%', border: '2px solid #ffea00', borderRadius: '6px', padding: '0.9rem 1rem', background: 'linear-gradient(90deg, rgba(255,216,77,.2), rgba(255,43,136,.14))', color: '#fff4bd', fontSize: '1rem', fontWeight: 900, cursor: 'pointer', textAlign: 'left', boxShadow: '0 0 22px rgba(255,216,77,.2)' }}>🍻 PUB TRIVIA BRAWL <span style={{ color: '#ffb8d9', fontSize: '.72rem', marginLeft: '.5rem' }}>DRAFT CATEGORIES. SETTLE THE TAB.</span></button>
                   <div className="player-map__route">
                     {COACHING_DRILLS.map((drill, index) => (
                       <button className="player-map__node" key={drill.mode} onClick={() => loadArena(drill.mode, drill.title)} style={{ '--node-color': drill.color } as React.CSSProperties}>
