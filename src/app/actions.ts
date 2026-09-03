@@ -187,3 +187,39 @@ export async function askChesterAdminChat(payloadString: string): Promise<Cheste
   }
 }
 
+export type StockfishInsights = {
+  fen: string;
+  san: string;
+  player?: string;
+  centipawns: number | null;
+  mateIn: number | null;
+  bestMove: string | null;
+  continuation: string[];
+  classification?: string;
+};
+
+function getFallbackCommentaryText(insights: StockfishInsights): string {
+  if (insights.mateIn) return `Mate in ${Math.abs(insights.mateIn)} on the board. Chester needs a moment to compose himself.`;
+  const cp = insights.centipawns ?? 0;
+  if (Math.abs(cp) >= 400) return `The evaluation just swung to ${(cp / 100).toFixed(1)}. Chester is dramatically clutching his pearls.`;
+  return `Position holding steady at ${(cp / 100).toFixed(1)}. Chester remains suspiciously calm.`;
+}
+
+export async function askCommentary(insights: StockfishInsights): Promise<string> {
+  try {
+    const response = await fetch('/api/commentary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(insights),
+      signal: AbortSignal.timeout(12_000),
+    });
+    const data = await response.json() as Partial<{ commentary: unknown }>;
+    const commentary = typeof data.commentary === 'string' ? sanitizeCommentary(data.commentary) : '';
+    return commentary || getFallbackCommentaryText(insights);
+  } catch (error) {
+    console.error('[COMMENTARY] Client request failed', error);
+    return getFallbackCommentaryText(insights);
+  }
+}
+
+

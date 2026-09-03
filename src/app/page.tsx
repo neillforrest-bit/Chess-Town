@@ -3,13 +3,15 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { askChesterChat, askChesterAdminChat, askGrandmaster } from '@/app/actions';
+import { askChesterChat, askChesterAdminChat, askGrandmaster, askCommentary } from '@/app/actions';
 import { ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import CapturedPieceJails from '@/components/CapturedPieceJails';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import ChessTownLanding from '@/components/ChessTownLanding';
 import PostGameGazette from '@/components/PostGameGazette';
+import Teleprompter from '@/components/Teleprompter';
+import type { EngineTelemetry } from '@/lib/stockfish';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -258,6 +260,9 @@ function LegacyHome() {
   const peerRef = useRef<any>(null);
   const connectionRef = useRef<any>(null);
   const commentaryRequestRef = useRef(0);
+  const teleprompterRequestRef = useRef(0);
+  const [teleprompterText, setTeleprompterText] = useState('');
+  const [teleprompterLoading, setTeleprompterLoading] = useState(false);
 
   useEffect(() => {
     if (scene !== 'GAME' || !hostBanter) return;
@@ -547,6 +552,27 @@ function LegacyHome() {
       }));
     };
     const handleReplayStatus = (e: Event) => setReplay((current) => ({ ...current, ...(e as CustomEvent).detail }));
+    const handleEngineTelemetry = async (e: Event) => {
+      const telemetry = (e as CustomEvent<EngineTelemetry>).detail;
+      if (!telemetry) return;
+      const requestId = ++teleprompterRequestRef.current;
+      setTeleprompterLoading(true);
+      try {
+        const commentary = await askCommentary({
+          fen: telemetry.fenAfter,
+          san: telemetry.san,
+          centipawns: telemetry.centipawns,
+          mateIn: telemetry.mateIn,
+          bestMove: telemetry.bestMove,
+          continuation: telemetry.continuation,
+          classification: telemetry.classification,
+        });
+        if (requestId !== teleprompterRequestRef.current) return;
+        setTeleprompterText(commentary);
+      } finally {
+        if (requestId === teleprompterRequestRef.current) setTeleprompterLoading(false);
+      }
+    };
 
     window.addEventListener('dojo-banter', handleBanter);
     window.addEventListener('demo-complete', handleDemoComplete);
@@ -557,6 +583,7 @@ function LegacyHome() {
     window.addEventListener('prediction-open', handlePredictionOpen);
     window.addEventListener('prediction-result', handlePredictionResult);
     window.addEventListener('replay-status', handleReplayStatus);
+    window.addEventListener('dojo-engine-telemetry', handleEngineTelemetry);
     
     return () => {
       window.removeEventListener('dojo-banter', handleBanter);
@@ -568,6 +595,7 @@ function LegacyHome() {
       window.removeEventListener('prediction-open', handlePredictionOpen);
       window.removeEventListener('prediction-result', handlePredictionResult);
       window.removeEventListener('replay-status', handleReplayStatus);
+      window.removeEventListener('dojo-engine-telemetry', handleEngineTelemetry);
     };
   }, [scene, activeMatchup, gameMode]);
 
@@ -588,6 +616,8 @@ function LegacyHome() {
     setCommentaryHistory([]);
     setChatMessages([]);
     setChatError('');
+    setTeleprompterText('');
+    setTeleprompterLoading(false);
     setArenaView('BOARD');
     const drill = COACHING_DRILLS.find((item) => item.mode === mode);
     setActiveChallenge(drill ? { title: drill.title, objective: drill.detail, level: drill.level } : null);
@@ -996,6 +1026,11 @@ function LegacyHome() {
                    />
                 </div>
              </div>
+             {arenaView === 'BOARD' && (teleprompterText || teleprompterLoading) && (
+               <div style={{ width: '100%', marginTop: '0.5rem' }}>
+                 <Teleprompter text={teleprompterText} isLoading={teleprompterLoading} />
+               </div>
+             )}
              {isPhonePortrait && prediction.open && (
                <div style={{ width: '100%', background: 'rgba(0,0,0,.94)', border: '2px solid #ff007f', borderRadius: '4px', padding: '0.5rem', textAlign: 'center', marginTop: '0.5rem' }}>
                  <div style={{ color: '#fff', fontSize: '0.7rem', fontWeight: 900, marginBottom: '0.35rem' }}>PREDICT CHESTER’S REPLY · {prediction.points} PTS</div>

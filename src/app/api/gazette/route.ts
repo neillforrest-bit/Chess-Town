@@ -59,9 +59,9 @@ RULES:
 
     const genAI = new GoogleGenAI({ apiKey });
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
-      config: { responseMimeType: 'text/plain', maxOutputTokens: 400 },
+      config: { responseMimeType: 'text/plain', maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } },
     });
 
     const dispatch = sanitizeDispatch(result.text ?? '');

@@ -23,6 +23,12 @@ export type EngineTelemetry = {
   principalVariation: string[];
   alternateWinningLines: string[];
   engine: 'stockfish-18' | 'local-fallback';
+  /** Exact centipawn score of the resulting position; null when a forced mate is found. */
+  centipawns: number | null;
+  /** Mate-in-X for the resulting position, from the side to move's perspective; null when no forced mate exists. */
+  mateIn: number | null;
+  /** Top recommended continuation line from the resulting position. */
+  continuation: string[];
 };
 
 const PRESETS: Record<ChesterDifficulty, { skill: number; elo: number; depth: number }> = {
@@ -142,6 +148,7 @@ export class StockfishClient {
       evaluationBefore: before.score, evaluationAfter: after.score, evalDelta: loss,
       classification, bestMove: before.bestMove,
       principalVariation: before.pv, alternateWinningLines: before.pv.length ? [before.pv.join(' ')] : [], engine: 'stockfish-18',
+      centipawns: after.score, mateIn: after.mate, continuation: after.pv,
     };
   }
 
