@@ -233,6 +233,20 @@ function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: str
   return { label, centipawnLoss };
 }
 
+function getLetterGrade(centipawnLoss: number | null | undefined) {
+  if (centipawnLoss === null || centipawnLoss === undefined || centipawnLoss <= 60) return 'A';
+  if (centipawnLoss <= 120) return 'B';
+  if (centipawnLoss <= 300) return 'C';
+  return 'F';
+}
+
+function getGradeColor(grade: string | undefined) {
+  if (grade === 'A') return 0x39ff14;
+  if (grade === 'B') return 0xffea00;
+  if (grade === 'C') return 0xff8c00;
+  return 0xff1744;
+}
+
 // Simple opening-principles checklist used to give the Chester coaching module concrete talking points.
 function getOpeningChecklist(chess: any) {
   const history = chess.history({ verbose: true });
@@ -314,6 +328,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     openingAssessment: null,
     principleStreak: 0,
     playerQualities: [],
+    gradeHistory: [],
     timeline: [],
     isGameOver: false,
     ply: 0,
@@ -364,6 +379,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (col < 0 || row < 0) return;
               const spotlight = document.createElement('div');
               spotlight.className = 'square-spotlight';
+              spotlight.dataset.grade = lastMove.grade || 'A';
               spotlight.style.left = `${((boardOffset + col * tileSize) / 800) * 100}%`;
               spotlight.style.top = `${((boardOffset + row * tileSize) / 800) * 100}%`;
               spotlight.style.width = `${(tileSize / 800) * 100}%`;
@@ -451,6 +467,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const targetY = jailY + 28;
             const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0.45).setDepth(29);
             scene.tweens.add({ targets: impact, scale: 1.8, alpha: 0, duration: 420, ease: 'Quad.Out', onComplete: () => impact.destroy() });
+            const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2);
+            scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 1250, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
 
             const moonwalk = scene.tweens.add({
               targets: capturedPiece,
@@ -465,6 +483,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 target.y += Math.sin(_tween.totalProgress * Math.PI * 6) * 2.4;
               },
               onComplete: () => {
+                emitCapture(move);
                 const lock = scene.add.text(targetX, targetY, '🔒', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
                 scene.tweens.add({
                   targets: lock,
@@ -482,6 +501,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null) => {
+            const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
+            gameRef.current.lastMove = { ...gameRef.current.lastMove, grade };
             const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
             window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
@@ -490,7 +511,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   royalCatMove: move.piece === 'q' || move.piece === 'k',
                   royalCatName: move.piece === 'q' ? 'Marley' : move.piece === 'k' ? 'Dilly' : null,
                 fen: engineTelemetry?.fenAfter || gameRef.current.chess.fen(), matchup: isBrawl ? 'The Backroom Brawl' : AI_TAGS[mode]?.title, context: `${mode} matchup`,
-                quality: quality?.label || null, centipawnLoss: quality?.centipawnLoss ?? null,
+                quality: quality?.label || null, grade, centipawnLoss: quality?.centipawnLoss ?? null,
                 checklist: mode === 'COACH_OPENING' || mode === 'COACH_PRACTICE_OPENING' ? getOpeningChecklist(gameRef.current.chess) : null,
                 openingAssessment: gameRef.current.openingAssessment,
                 openingName: getOpeningName(gameRef.current.chess),
@@ -592,6 +613,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   moveQuality: telemetry.moveQuality,
                 },
               }));
+              const gradeEntry = gameRef.current.gradeHistory.find((entry: any) => entry.ply === gameRef.current.ply && entry.move === move.san);
+              if (gradeEntry) {
+                gradeEntry.grade = getLetterGrade(quality.centipawnLoss);
+                gradeEntry.centipawnLoss = quality.centipawnLoss;
+              }
               publishMove(move, player, quality, telemetry);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
@@ -606,7 +632,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const finishGame = (message: string, result: 'checkmate' | 'draw' | 'resigned' = 'draw') => {
             gameRef.current.isGameOver = true;
             const pgn = gameRef.current.chess.pgn();
-            window.dispatchEvent(new CustomEvent('game-report', { detail: getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities) }));
+            window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory } }));
             window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn } }));
             window.dispatchEvent(new CustomEvent('match-complete', { detail: { result, pgn } }));
           };
@@ -633,9 +659,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 gameRef.current.pendingChaosEvent = 'TROJAN_PAWN';
               }
               const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, AI_SEARCH_DEPTH);
-              emitCapture(result);
               gameRef.current.ply++;
-              gameRef.current.lastMove = { from: result.from, to: result.to };
+              gameRef.current.lastMove = { from: result.from, to: result.to, grade: getLetterGrade(quality?.centipawnLoss) };
+              gameRef.current.gradeHistory.push({ move: result.san, player: AI_TAGS[mode]?.rival || 'Chester', ply: gameRef.current.ply, grade: getLetterGrade(quality?.centipawnLoss), centipawnLoss: quality?.centipawnLoss ?? null });
               gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: result.san });
               evaluateAndPublishMove(result, AI_TAGS[mode]?.rival || 'Brendan', fenBeforeMove, quality);
 
@@ -660,7 +686,6 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
             const blindnessExpires = gameRef.current.neonBlindnessColor && moveResult.color !== gameRef.current.neonBlindnessColor;
             if (blindnessExpires) gameRef.current.neonBlindnessColor = null;
-            emitCapture(moveResult);
             gameRef.current.ply++;
             gameRef.current.lastMove = { from, to };
             gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: moveResult.san });
@@ -669,12 +694,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const playerName = mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE'
               ? (moveResult.color === 'w' ? AI_TAGS[mode].player : AI_TAGS[mode].rival)
               : AI_TAGS[mode]?.player || 'Neill';
+            const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion }, AI_SEARCH_DEPTH);
+            gameRef.current.lastMove.grade = getLetterGrade(quality?.centipawnLoss);
+            gameRef.current.gradeHistory.push({ move: moveResult.san, player: playerName, ply: gameRef.current.ply, grade: getLetterGrade(quality?.centipawnLoss), centipawnLoss: quality?.centipawnLoss ?? null });
             if (mode === 'PVP_REMOTE' && !isRemote) {
               window.dispatchEvent(new CustomEvent('local-chess-move', { detail: { from, to, fen: gameRef.current.chess.fen() } }));
             }
 
             requestAnimationFrame(() => {
-              const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion }, AI_SEARCH_DEPTH);
               if (moveResult.color === 'w' && !isRemote) {
                 gameRef.current.playerQualities.push({ label: quality?.label || 'GOOD', move: moveResult.san, ply: gameRef.current.ply });
                 gameRef.current.principleStreak = ['BEST', 'GREAT', 'GOOD'].includes(quality?.label || '') ? gameRef.current.principleStreak + 1 : 0;
@@ -927,6 +954,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.ply = 0;
             gameRef.current.principleStreak = 0;
             gameRef.current.playerQualities = [];
+            gameRef.current.gradeHistory = [];
             gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
             publishPositionEvaluation(gameRef.current.chess.fen());
 
@@ -967,6 +995,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.ply = 0;
             gameRef.current.principleStreak = 0;
             gameRef.current.playerQualities = [];
+            gameRef.current.gradeHistory = [];
             gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
 
             const sequence = DEMO_SEQUENCES[mode] || [];
@@ -1018,9 +1047,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
               if (moveResult) {
                 const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion });
-                emitCapture(moveResult);
                 gameRef.current.ply++;
-                gameRef.current.lastMove = { from: moveResult.from, to: moveResult.to };
+                gameRef.current.lastMove = { from: moveResult.from, to: moveResult.to, grade: getLetterGrade(quality?.centipawnLoss) };
+                gameRef.current.gradeHistory.push({ move: moveResult.san, player: step % 2 === 0 ? AI_TAGS[mode]?.player : AI_TAGS[mode]?.rival, ply: gameRef.current.ply, grade: getLetterGrade(quality?.centipawnLoss), centipawnLoss: quality?.centipawnLoss ?? null });
                 gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: moveResult.san });
                 const playerName = step % 2 === 0 ? AI_TAGS[mode]?.player : AI_TAGS[mode]?.rival;
                 evaluateAndPublishMove(moveResult, playerName, fenBeforeMove, quality);
