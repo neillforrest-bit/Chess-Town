@@ -878,6 +878,10 @@ export default function Home() {
             <div className="command-status"><span /> CHESTER ONLINE</div>
           </header>
 
+          <div style={{ position: 'relative', zIndex: 1, width: 'min(100%, 1440px)', margin: '0 auto', border: '1px solid rgba(255,43,136,.58)', borderLeft: '3px solid #ffea00', borderRadius: '6px', padding: '0.7rem 0.85rem', background: 'rgba(12,7,17,.84)', color: '#fff4bd', boxShadow: '0 0 20px rgba(255,43,136,.14)', fontSize: 'clamp(.72rem, 1.7vw, .95rem)', fontWeight: 800, lineHeight: 1.4, boxSizing: 'border-box' }}>
+            👑 Welcome to the Court, Jemma &amp; Neill! Chess mastery, chaotic blunders, or pub trivia glory - choose your battlefield below.
+          </div>
+
           <main className="command-layout">
             <section className="command-primary">
               <div className="command-primary__copy">
@@ -896,15 +900,20 @@ export default function Home() {
                 <div><b>LIVE</b><span>Move grading</span></div>
               </div>
             </section>
-
-            
+            <section className="command-primary" style={{ minHeight: 'auto', padding: 'clamp(1rem, 2.2vw, 1.6rem)', gridTemplateColumns: 'minmax(0, 1fr) auto', borderColor: 'rgba(255,216,77,.75)', background: 'linear-gradient(135deg, rgba(255,216,77,.14), rgba(5,7,8,.96) 52%, rgba(255,43,136,.12))', boxShadow: 'inset 0 0 42px rgba(255,216,77,.05), 0 0 26px rgba(255,216,77,.12)' }}>
+              <div className="command-primary__copy">
+                <span className="command-label" style={{ color: '#ffea00' }}>1V1 REAL-TIME BATTLE</span>
+                <h2 style={{ fontSize: 'clamp(1.55rem, 4vw, 3.35rem)', marginBottom: '0.45rem', color: '#fff4bd', textShadow: '0 0 24px rgba(255,216,77,.25)' }}>🍻 PUB TRIVIA BRAWL</h2>
+                <p>Draft categories, challenge a rival, and let Chester keep the score behind the bar.</p>
+              </div>
+              <button className="command-play" onClick={() => window.location.assign('/trivia-brawl')} style={{ alignSelf: 'center', background: '#ffea00', color: '#130b00', boxShadow: '0 0 28px rgba(255,216,77,.35)' }}>PLAY →</button>
+            </section>
           </main>
 
           <footer className="command-footer">
             <button onClick={() => loadArena('COACH_DAILY', 'Daily Breakthrough')}><b>DAILY POSITION</b><span>One shared puzzle. One score.</span></button>
             <button onClick={() => setScene('TOWN')}><b>TOWN SQUARE</b><span>Talk chess, call rivals out, follow Chester.</span></button>
             <button onClick={() => setScene('SEASON')}><b>SEASON HUB</b><span>Fixtures, power rankings, fantasy form.</span></button>
-            <button onClick={() => window.location.assign('/trivia-brawl')}><b>🍻 PUB TRIVIA BRAWL</b><span>Draft categories. Settle the tab.</span></button>
           </footer>
         </div>
       )}
