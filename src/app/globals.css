@@ -49,6 +49,11 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background:
 .portal-shell--compact { height: 100%; min-height: 0; padding: clamp(.7rem, 2vw, 1.4rem); display: flex; align-items: center; }
 @keyframes portalIntroGlow { 50% { transform: scale(1.12); filter: brightness(1.35); } }
 @keyframes portalCursor { 50% { opacity: 0; } }
+.chester-typing-indicator { display: inline-block; width: 1.5em; overflow: hidden; vertical-align: bottom; animation: chester-typing-dots 1.1s steps(4, end) infinite; }
+@keyframes chester-typing-dots { from { width: 0; } to { width: 1.5em; } }
+.portal-enter-arena { width: min(100%, 540px); min-height: 62px; margin: 0 auto 1.25rem; padding: .85rem 1.2rem; display: flex; align-items: center; justify-content: center; gap: .75rem; border: 1px solid var(--arena-cyan); border-radius: 6px; color: #effdff; background: linear-gradient(110deg, rgba(0,229,229,.24), rgba(255,43,136,.28)); box-shadow: 0 0 22px rgba(0,229,229,.55), 0 0 42px rgba(255,43,136,.34), inset 0 0 18px rgba(255,255,255,.11); font: 900 clamp(1rem, 2.6vw, 1.25rem)/1 Georgia, serif; letter-spacing: 1.5px; text-align: center; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; box-sizing: border-box; }
+.portal-enter-arena span { color: var(--arena-gold); font-size: 1.2em; }
+.portal-enter-arena:hover, .portal-enter-arena:focus-visible { transform: translateY(-3px); filter: brightness(1.18); box-shadow: 0 0 30px rgba(0,229,229,.8), 0 0 58px rgba(255,43,136,.5), inset 0 0 22px rgba(255,255,255,.16); outline: 2px solid var(--arena-gold); outline-offset: 3px; }
 .portal-dashboard { width: min(1120px, 100%); margin: 0 auto; }.portal-dashboard__header { margin: 0 0 1.5rem; }.portal-dashboard__header span { color: var(--arena-pink); font-size: .7rem; font-weight: 900; letter-spacing: 3px; }.portal-dashboard__header h1 { margin: .4rem 0 0; font: 900 clamp(2.25rem, 6vw, 5.5rem)/.9 Georgia, serif; }.portal-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: clamp(.65rem, 1.5vw, 1.15rem); }.portal-card { --portal: var(--arena-cyan); position: relative; min-height: clamp(180px, 24vw, 270px); padding: clamp(1rem, 2vw, 1.4rem); display: flex; flex-direction: column; justify-content: end; overflow: hidden; border: 1px solid color-mix(in srgb, var(--portal) 55%, transparent); border-radius: 7px; color: var(--arena-paper); text-decoration: none; background: linear-gradient(150deg, color-mix(in srgb, var(--portal) 18%, #070a0b), #07090a 60%); box-shadow: inset 0 0 28px color-mix(in srgb, var(--portal) 9%, transparent); transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }.portal-card:nth-child(1), .portal-card:nth-child(2) { grid-column: span 3; }.portal-card:nth-child(n+3) { grid-column: span 2; }.portal-card:hover, .portal-card:focus-visible { transform: translateY(-7px); border-color: var(--portal); box-shadow: 0 0 30px color-mix(in srgb, var(--portal) 45%, transparent), inset 0 0 38px color-mix(in srgb, var(--portal) 16%, transparent); outline: none; }.portal-card i { position: absolute; top: .5rem; right: .8rem; opacity: .35; color: var(--portal); font: 900 clamp(5rem, 10vw, 9rem)/1 Georgia, serif; transition: opacity .25s ease, transform .25s ease; }.portal-card:hover i { opacity: .75; transform: rotate(-8deg) scale(1.08); }.portal-card span { position: relative; color: var(--portal); font-size: .65rem; font-weight: 900; letter-spacing: 1.5px; }.portal-card h2 { position: relative; max-width: 12ch; margin: .45rem 0; font: 900 clamp(1.25rem, 2.4vw, 2rem)/1 Georgia, serif; }.portal-card b { position: relative; color: #d5e4e6; font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; }.portal-card b::after { content: ' →'; color: var(--portal); }.portal-card--gold { --portal: var(--arena-gold); }.portal-card--pink { --portal: var(--arena-pink); }.portal-card--cyan { --portal: var(--arena-cyan); }.portal-card--acid { --portal: var(--arena-acid); }.portal-card--violet { --portal: #b8a2ff; }
 .portal-guide { position: fixed; z-index: 20; right: clamp(1rem, 3vw, 2.5rem); bottom: clamp(1rem, 3vw, 2.5rem); display: flex; align-items: end; gap: .65rem; }.portal-guide__bubble { width: min(320px, calc(100vw - 130px)); padding: .85rem 1rem; border: 1px solid rgba(0,229,229,.55); border-radius: 7px; background: rgba(4,8,9,.94); box-shadow: 0 0 24px rgba(0,229,229,.16); }.portal-guide__bubble span { color: var(--arena-pink); font-size: .62rem; font-weight: 900; letter-spacing: 2px; }.portal-guide__bubble p { margin: .3rem 0 0; color: #d5e4e6; font-size: .86rem; line-height: 1.4; }.portal-guide__avatar { width: 62px; aspect-ratio: 1; display: grid; place-items: center; border: 2px solid var(--arena-gold); border-radius: 50%; background: #07090a; color: var(--arena-paper); font: 900 3.3rem/1 Georgia, serif; text-shadow: 4px 3px 0 var(--arena-pink); box-shadow: 0 0 18px rgba(255,216,77,.35); }.portal-shell::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .13; background-image: linear-gradient(rgba(238,252,255,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(238,252,255,.12) 1px, transparent 1px); background-size: 54px 54px; mask-image: linear-gradient(to bottom, black, transparent 80%); }
 @media (max-width: 720px) {
@@ -1118,13 +1123,13 @@ body {
 }
 .mobile-game-commentary .chester-teleprompter__message {
   max-height: 6.9rem !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;
   font-size: 1rem !important;
   line-height: 1.3 !important;
 }
 .live-game-layout .chester-chat { max-height: 15rem; overflow: hidden !important; }
 .live-game-layout .chester-chat > div:nth-child(2) { overflow-y: auto !important; overflow-x: hidden !important; }
-.live-game-layout .chester-chat input { font-size: 16px !important; }
+.live-game-layout .chester-chat textarea { font-size: 16px !important; }
 
 .play-chester-chat {
   display: grid;
@@ -1132,15 +1137,18 @@ body {
   width: 100%;
   gap: .35rem;
 }
-.play-chester-chat input {
+.play-chester-chat textarea {
   min-width: 0;
   min-height: 2.15rem;
+  max-height: 6rem;
   border: 1px solid var(--arena-cyan);
   border-radius: 4px;
   padding: .4rem .55rem;
   background: rgba(4, 12, 16, .94);
   color: var(--arena-paper);
   font: 700 16px/1 Georgia, serif;
+  resize: none;
+  overflow-y: auto;
 }
 .play-chester-chat button {
   min-height: 2.15rem;
@@ -1182,6 +1190,7 @@ body {
   }
   .live-game-board .mobile-game-commentary .chester-teleprompter__message {
     max-height: 3.25rem !important;
+    overflow-y: auto !important;
     font-size: .68rem !important;
     line-height: 1.25 !important;
   }

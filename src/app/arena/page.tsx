@@ -1130,9 +1130,15 @@ export default function Home() {
                  <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile />
              </div>
              <form className="play-chester-chat" onSubmit={handleSendMessage}>
-               <input
+               <textarea
+                 rows={1}
                  value={chatInput}
-                 onChange={(event) => setChatInput(event.target.value)}
+                 onChange={(event) => {
+                   const textarea = event.currentTarget;
+                   textarea.style.height = 'auto';
+                   textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+                   setChatInput(textarea.value);
+                 }}
                  placeholder="Ask Chester..."
                  aria-label="Message Chester"
                />

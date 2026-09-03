@@ -69,8 +69,15 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
 
 export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: string, isThinking: boolean, isMobile?: boolean }) {
   const engineEvaluation = useEngineEvaluation();
+  const messageRef = useRef<HTMLDivElement>(null);
   const message = text.replace(/^🎙️ CHESTER:\s*/, '');
   const emotion = isThinking ? 'thinking' : getChesterEmotion(message);
+
+  useEffect(() => {
+    const container = messageRef.current;
+    if (container) container.scrollTop = container.scrollHeight;
+  }, [message, isThinking, engineEvaluation]);
+
   return (
     <div className="chester-teleprompter" style={{
       width: '100%',
@@ -86,7 +93,7 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
       boxSizing: 'border-box'
     }}>
       <ChesterAvatar isThinking={isThinking} />
-      <div className="chester-teleprompter__message" style={{
+      <div ref={messageRef} className="chester-teleprompter__message max-h-40 overflow-y-auto" style={{
         flex: 1,
         fontFamily: 'sans-serif',
         fontSize: isMobile ? '1rem' : '0.9rem',
@@ -94,11 +101,11 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
         color: '#ffffff',
         textShadow: '0 1px 4px rgba(0,0,0,0.8)',
         lineHeight: 1.4,
-        maxHeight: isMobile ? 'none' : '150px',
-        overflowY: isMobile ? 'visible' : 'auto'
+        maxHeight: '10rem',
+        overflowY: 'auto'
       }}>
         <span aria-label={emotion}>{CHESTER_EMOTIONS[emotion].emoji}</span>{' '}
-        {isThinking ? <span style={{ color: 'var(--arena-pink)', fontStyle: 'italic' }}>Chester is calculating...</span> : message}
+        {isThinking ? <span style={{ color: 'var(--arena-pink)', fontStyle: 'italic' }}>Chester is calculating<span className="chester-typing-indicator" aria-label="Chester is typing">...</span></span> : message}
         {engineEvaluation && <div style={{ color: 'var(--arena-cyan)', fontSize: '0.75em', marginTop: '0.35rem' }}>ENGINE {engineEvaluation.evalScore ?? '...'} · BEST {engineEvaluation.bestMove.san || engineEvaluation.bestMove.uci || '...'}</div>}
       </div>
     </div>
@@ -124,12 +131,20 @@ export function ChesterChatOverlay({
 }) {
   const [expanded, setExpanded] = useState(!isMobile);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [chatMessages, expanded]);
+
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+  }, [chatInput]);
 
   return (
     <div className="chester-chat" style={{
@@ -209,12 +224,18 @@ export function ChesterChatOverlay({
           <div style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
             {chatError && <div style={{ color: '#ff007f', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{chatError}</div>}
             <form onSubmit={onSendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
+              <textarea
+                ref={inputRef}
+                rows={1}
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 placeholder="Message Chester..."
+                aria-label="Message Chester"
                 style={{
                   flex: 1,
+                  minWidth: 0,
+                  minHeight: '2.4rem',
+                  maxHeight: '120px',
                   background: 'rgba(0,0,0,0.5)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
                   borderRadius: '4px',
@@ -222,7 +243,9 @@ export function ChesterChatOverlay({
                   color: '#fff',
                   fontFamily: 'inherit',
                   fontSize: '16px',
-                  outline: 'none'
+                  outline: 'none',
+                  resize: 'none',
+                  overflowY: 'auto'
                 }}
               />
               <button 
@@ -239,7 +262,7 @@ export function ChesterChatOverlay({
                   opacity: isThinking || !chatInput.trim() ? 0.5 : 1
                 }}
               >
-                Send
+                {isThinking ? <span className="chester-typing-indicator" aria-label="Chester is typing">...</span> : 'Send'}
               </button>
             </form>
           </div>
