@@ -2,13 +2,14 @@
 
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
-import { askChesterChat, askGrandmaster } from '@/app/actions';
+import { askChesterChat, askCommentary, askGrandmaster } from '@/app/actions';
 import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import { recordGame, recordMiniGame } from '@/lib/profile';
-import { getStockfishClient, type ChesterDifficulty } from '@/lib/stockfish';
+import Teleprompter from '@/components/Teleprompter';
+import { getStockfishClient, type ChesterDifficulty, type EngineTelemetry } from '@/lib/stockfish';
 
 const DojoEngineNoSSR = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 
@@ -61,7 +62,7 @@ function getPersonalizedIntro(name: string) {
   if (name === 'Paul') return PAUL_INTRO_SCRIPT;
   if (name === 'Richard') return RICHARD_INTRO_SCRIPT;
   return [
-    `🐴💬 \"Your move now, ${name}.\" 🏰`,
+    `Your move now, ${name}.`,
     "Feeling competitive? Let's see if your actual play backs up the confidence.",
     "Welcome to Chess Town."
   ];
@@ -259,6 +260,8 @@ export default function Home() {
   const [commentaryHistory, setCommentaryHistory] = useState<string[]>([]);
   const [currentGameState, setCurrentGameState] = useState<any>(null);
   const [banterUpdated, setBanterUpdated] = useState(false);
+  const [teleprompterText, setTeleprompterText] = useState('');
+  const [teleprompterLoading, setTeleprompterLoading] = useState(false);
   
   const [leagueView, setLeagueView] = useState<'STANDINGS' | 'MATCHUPS' | '2V2' | 'COACHING' | 'PLAYOFFS'>('COACHING');
   const [demoActiveUI, setDemoActiveUI] = useState(false); 
@@ -280,6 +283,7 @@ export default function Home() {
   const peerRef = useRef<any>(null);
   const connectionRef = useRef<any>(null);
   const commentaryRequestRef = useRef(0);
+  const teleprompterRequestRef = useRef(0);
   const gameStartedAtRef = useRef(0);
 
   useEffect(() => {
@@ -572,6 +576,26 @@ export default function Home() {
       setArenaView('CHESTER');
     };
     const handleReplayStatus = (e: Event) => setReplay((current) => ({ ...current, ...(e as CustomEvent).detail }));
+    const handleEngineTelemetry = async (e: Event) => {
+      const telemetry = (e as CustomEvent<EngineTelemetry>).detail;
+      if (!telemetry) return;
+      const requestId = ++teleprompterRequestRef.current;
+      setTeleprompterLoading(true);
+      try {
+        const commentary = await askCommentary({
+          fen: telemetry.fenAfter,
+          san: telemetry.san,
+          centipawns: telemetry.centipawns,
+          mateIn: telemetry.mateIn,
+          bestMove: telemetry.bestMove,
+          continuation: telemetry.continuation,
+          classification: telemetry.classification,
+        });
+        if (requestId === teleprompterRequestRef.current) setTeleprompterText(commentary);
+      } finally {
+        if (requestId === teleprompterRequestRef.current) setTeleprompterLoading(false);
+      }
+    };
 
     window.addEventListener('dojo-banter', handleBanter);
     window.addEventListener('demo-complete', handleDemoComplete);
@@ -581,6 +605,7 @@ export default function Home() {
     window.addEventListener('opening-assessment', handleOpeningAssessment);
     window.addEventListener('game-report', handleGameReport);
     window.addEventListener('replay-status', handleReplayStatus);
+    window.addEventListener('dojo-engine-telemetry', handleEngineTelemetry);
     
     return () => {
       window.removeEventListener('dojo-banter', handleBanter);
@@ -591,6 +616,7 @@ export default function Home() {
       window.removeEventListener('opening-assessment', handleOpeningAssessment);
       window.removeEventListener('game-report', handleGameReport);
       window.removeEventListener('replay-status', handleReplayStatus);
+      window.removeEventListener('dojo-engine-telemetry', handleEngineTelemetry);
     };
   }, [scene, activeMatchup, gameMode, p1Difficulty, p2Difficulty, activeChaosEvent]);
 
@@ -610,6 +636,8 @@ export default function Home() {
     setCommentaryHistory([]);
     setChatMessages([]);
     setChatError('');
+    setTeleprompterText('');
+    setTeleprompterLoading(false);
     setArenaView('PLAY');
     const drill = COACHING_DRILLS.find((item) => item.mode === mode);
     setActiveChallenge(drill ? { title: drill.title, objective: drill.detail, level: drill.level } : null);
@@ -1079,9 +1107,21 @@ export default function Home() {
                 </div>
              </div>
              <CapturedPieceJail capturedPieces={capturedPieces} color="w" label="WHITE CAPTURED" />
+             {(teleprompterText || teleprompterLoading) && (
+               <Teleprompter text={teleprompterText} isLoading={teleprompterLoading} />
+             )}
              <div className="mobile-game-commentary">
                  <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile />
              </div>
+             <form className="play-chester-chat" onSubmit={handleSendMessage}>
+               <input
+                 value={chatInput}
+                 onChange={(event) => setChatInput(event.target.value)}
+                 placeholder="Ask Chester..."
+                 aria-label="Message Chester"
+               />
+               <button type="submit" disabled={isThinking || !chatInput.trim()}>SEND</button>
+             </form>
           </div>
 
           {/* Chester commentary panel */}
