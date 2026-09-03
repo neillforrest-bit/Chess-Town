@@ -196,8 +196,8 @@ export default function Home() {
   const [username, setUsername] = useState('');
 
   useEffect(() => {
-    if (localStorage.getItem('chessTownUser')?.trim()) router.replace('/arena');
-  }, [router]);
+    setUsername(localStorage.getItem('chessTownUser')?.trim() || '');
+  }, []);
 
   const enterArena = (event: React.FormEvent) => {
     event.preventDefault();
