@@ -1256,3 +1256,12 @@ body {
   border-color: var(--arena-cyan) !important;
   box-shadow: 0 0 0 2px rgba(0, 229, 229, .18) !important;
 }
+
+.play-chester-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; margin: 0 0 .6rem; }
+.play-chester-controls [role="group"] { display: flex; gap: .35rem; flex-wrap: wrap; }
+.play-chester-controls button, .chester-coach-pause button { border: 1px solid var(--arena-cyan); background: rgba(0,229,229,.08); color: #eaffff; padding: .45rem .65rem; font: inherit; font-size: .72rem; font-weight: 800; text-transform: uppercase; cursor: pointer; }
+.play-chester-controls button.is-active, .chester-help-button { border-color: var(--arena-pink) !important; background: rgba(255,43,136,.18) !important; color: #fff !important; }
+.play-chester-controls button:disabled { opacity: .5; cursor: not-allowed; }
+.chester-coach-pause { position: fixed; z-index: 120; inset: auto 1rem 1rem; max-width: 38rem; margin: auto; padding: 1rem; border: 1px solid var(--arena-pink); border-radius: 10px; background: #110816; box-shadow: 0 0 32px rgba(255,43,136,.35); color: #fff; }
+.chester-coach-pause b { color: var(--arena-cyan); font-size: .8rem; letter-spacing: .08em; }
+.chester-coach-pause p { line-height: 1.45; }

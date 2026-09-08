@@ -138,7 +138,8 @@ const PIECE_VALUES: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q
 // Depth 1 already looks one reply ahead (avoids free blunders) and stays fast enough
 // to run synchronously on the main thread without freezing the board animation.
 const AI_SEARCH_DEPTH = 1;
-const AI_RESPONSE_DELAY_MS = 300;
+const AI_RESPONSE_DELAY_MS = 1400;
+const MOVE_ANIMATION_MS = 650;
 
 function evaluatePosition(chess: any): number {
   let score = 0;
@@ -317,6 +318,11 @@ function getChesterDifficulty(difficulty: string) {
 
 export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE' }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO' }) {
   const { p1Difficulty, p2Difficulty, setActiveChaosEvent } = useBrawlState();
+  const difficultyRef = useRef(difficulty);
+
+  useEffect(() => {
+    difficultyRef.current = difficulty;
+  }, [difficulty]);
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserRef = useRef<Phaser.Game | null>(null);
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -333,6 +339,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     isGameOver: false,
     ply: 0,
     boardTheme: 'NEON',
+    isPaused: false,
   });
 
   useEffect(() => {
@@ -527,8 +534,31 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
           };
 
+          const pauseForCoaching = (move: any, telemetry: any = null) => {
+            if (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE' || gameRef.current.isGameOver) return;
+            let bestMove: string | null = null;
+            let continuation: string[] = [];
+            if (telemetry?.fenBefore) {
+              try {
+                const position = new Chess(telemetry.fenBefore);
+                continuation = (telemetry.principalVariation || []).flatMap((uci: string) => {
+                  const nextMove = position.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4, 5) || undefined });
+                  return nextMove ? [nextMove.san] : [];
+                });
+                bestMove = continuation[0] || null;
+              } catch {
+                bestMove = null;
+                continuation = [];
+              }
+            }
+            gameRef.current.isPaused = true;
+            window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
+              detail: { fen: gameRef.current.chess.fen(), move: move.san, ply: gameRef.current.ply, bestMove, continuation, difficulty: getChesterDifficulty(difficultyRef.current) },
+            }));
+          };
+
           const publishPositionEvaluation = (fen: string) => {
-            void getStockfishClient().analyzePosition(fen, getChesterDifficulty(difficulty)).then((analysis) => {
+            void getStockfishClient().analyzePosition(fen, getChesterDifficulty(difficultyRef.current)).then((analysis) => {
               window.dispatchEvent(new CustomEvent('engine-evaluation', {
                 detail: {
                   fen,
@@ -563,8 +593,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               san: move.san,
               uci,
               playerColor: move.color,
-              difficulty: getChesterDifficulty(difficulty),
+              difficulty: getChesterDifficulty(difficultyRef.current),
             }).then((telemetry) => {
+              if (gameRef.current.chess.fen() !== fenAfterMove) return;
               const quality = { label: telemetry.classification === 'BRILLIANT' ? 'BEST' : telemetry.classification, centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
               const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
               const triggeredChaos = isBrawl
@@ -620,13 +651,16 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 gradeEntry.centipawnLoss = quality.centipawnLoss;
               }
               publishMove(move, player, quality, telemetry);
+              if (move.color === 'w') pauseForCoaching(move, telemetry);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
                   detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },
                 }));
               }
             }).catch(() => {
+              if (gameRef.current.chess.fen() !== fenAfterMove) return;
               publishMove(move, player, localQuality);
+              if (move.color === 'w') pauseForCoaching(move);
             });
           };
 
@@ -643,12 +677,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             if (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
             setTimeout(async () => {
 
-              if (gameRef.current.isGameOver) return;
+              if (gameRef.current.isGameOver || gameRef.current.isPaused) return;
               const moves = gameRef.current.chess.moves({ verbose: true });
               if (!moves.length) return;
               const fenBeforeMove = gameRef.current.chess.fen();
               const searchD = difficulty === 'PRO' ? 2 : 1;
-              const engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty)).catch(() => null);
+              const engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficultyRef.current)).catch(() => null);
+              if (gameRef.current.isGameOver || gameRef.current.isPaused) return;
               const aiMove = engineMove
                 ? { from: engineMove.slice(0, 2), to: engineMove.slice(2, 4), promotion: engineMove.slice(4, 5) || undefined }
                 : pickBestMove(gameRef.current.chess, searchD);
@@ -725,7 +760,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
             renderAfterCapture(moveResult);
             if (blindnessExpires) renderBoard();
-            if (!isRemote) playAiTurn(moveResult.captured ? 850 : AI_RESPONSE_DELAY_MS);
+
           };
 
           const showLegalTargets = () => {
@@ -738,7 +773,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const canControlPiece = (pieceColor: string) => {
-            if (gameRef.current.isGameOver || pieceColor !== gameRef.current.chess.turn()) return false;
+            if (gameRef.current.isGameOver || gameRef.current.isPaused || pieceColor !== gameRef.current.chess.turn()) return false;
             if (mode === 'PVP_REMOTE') return pieceColor === playerColor;
             if (mode === 'PVP_LOCAL') return true;
             return pieceColor === 'w';
@@ -865,19 +900,21 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   if (!isInvisible && isMovedPiece) {
                     const spotlight = scene.add.circle(0, 0, tileSize * 0.52, getGradeColor(gameRef.current.lastMove?.grade), 0.28);
                     container.addAt(spotlight, 0);
-                    container.setScale(0.35).setAlpha(1);
+                    const fromCol = files.indexOf(gameRef.current.lastMove.from[0]);
+                    const fromRow = ranks.indexOf(gameRef.current.lastMove.from[1]);
+                    const fromX = boardOffset + fromCol * tileSize + tileSize / 2;
+                    const fromY = boardOffset + fromRow * tileSize + tileSize / 2;
+                    container.setPosition(fromX, fromY).setScale(0.9).setAlpha(1);
                     scene.tweens.add({
                       targets: container,
-                      scaleX: 1.22,
-                      scaleY: 1.22,
-                      alpha: 1,
-                      duration: 220,
-                      ease: 'Back.Out',
-                      yoyo: true,
-                      hold: 120,
-                      onComplete: () => container.setScale(1),
+                      x: posX,
+                      y: posY,
+                      scaleX: 1,
+                      scaleY: 1,
+                      duration: MOVE_ANIMATION_MS,
+                      ease: 'Cubic.Out',
                     });
-                    scene.tweens.add({ targets: spotlight, alpha: 0.05, scale: 1.35, duration: 720, yoyo: true, repeat: 1 });
+                    scene.tweens.add({ targets: spotlight, alpha: 0.05, scale: 1.35, duration: MOVE_ANIMATION_MS, yoyo: true, repeat: 1 });
                   }
                   container.setInteractive(
                     new Phaser.Geom.Rectangle(-tileSize / 2, -tileSize / 2, tileSize, tileSize),
@@ -955,6 +992,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.lastMove = null;
             gameRef.current.openingAssessment = null;
             gameRef.current.isGameOver = false;
+            gameRef.current.isPaused = false;
             gameRef.current.ply = 0;
             gameRef.current.principleStreak = 0;
             gameRef.current.playerQualities = [];
@@ -996,6 +1034,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.lastMove = null;
             gameRef.current.openingAssessment = null;
             gameRef.current.isGameOver = false;
+            gameRef.current.isPaused = false;
             gameRef.current.ply = 0;
             gameRef.current.principleStreak = 0;
             gameRef.current.playerQualities = [];
@@ -1121,6 +1160,24 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             finishGame('🏳️ RESIGNATION — The board is conceded before the final blow lands.', 'resigned');
           };
           window.addEventListener('request-resign', handleRequestResign);
+          const handleResumeGame = () => {
+            if (gameRef.current.isGameOver || !gameRef.current.isPaused) return;
+            gameRef.current.isPaused = false;
+            if (mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && gameRef.current.chess.turn() === 'b') playAiTurn();
+            renderBoard();
+          };
+          const handleChesterHelp = () => {
+            if (gameRef.current.isGameOver) return;
+            gameRef.current.isPaused = true;
+            const fen = gameRef.current.chess.fen();
+            void getStockfishClient().analyzePosition(fen, getChesterDifficulty(difficultyRef.current)).then((analysis) => {
+              window.dispatchEvent(new CustomEvent('chester-help-response', {
+                detail: { fen, bestMove: analysis.bestMove, continuation: analysis.pv, evaluation: analysis.mate === null ? analysis.score : `M${analysis.mate}` },
+              }));
+            }).catch(() => window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: null, continuation: [], evaluation: null } })));
+          };
+          window.addEventListener('chester-resume-game', handleResumeGame);
+          window.addEventListener('chester-help-request', handleChesterHelp);
           const handleToggleBoardTheme = () => {
             gameRef.current.boardTheme = gameRef.current.boardTheme === 'RETRO' ? 'NEON' : 'RETRO';
             renderBoard();
@@ -1134,6 +1191,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('remote-chess-move', handleRemoteMove);
             window.removeEventListener('replay-step', handleReplayStep);
             window.removeEventListener('request-resign', handleRequestResign);
+            window.removeEventListener('chester-resume-game', handleResumeGame);
+            window.removeEventListener('chester-help-request', handleChesterHelp);
             window.removeEventListener('toggle-board-theme', handleToggleBoardTheme);
             if (demoIntervalRef.current) {
               clearInterval(demoIntervalRef.current);
