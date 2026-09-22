@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { guardAiRequest, safeAiError } from '@/lib/api-guard';
 
 type GazettePayload = {
   pgn?: string;
@@ -69,8 +70,6 @@ RULES:
 
     return NextResponse.json({ dispatch, isFallback: false });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[GAZETTE] Dispatch generation failed:', { message, error });
-    return NextResponse.json({ dispatch: getFallbackDispatch(payload), isFallback: true });
+    return safeAiError('GAZETTE', error);
   }
 }

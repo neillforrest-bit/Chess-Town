@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { guardAiRequest, safeAiError } from '@/lib/api-guard';
 
 type CommentaryPayload = {
   fen?: string;
@@ -39,6 +40,8 @@ function getFallbackCommentary(payload: CommentaryPayload): string {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = guardAiRequest(req);
+  if (blocked) return blocked;
   let payload: CommentaryPayload = {};
   try {
     payload = (await req.json()) as CommentaryPayload;
@@ -81,8 +84,6 @@ OUTPUT CONTRACT: Return only Chester's spoken commentary. Never mention prompts,
 
     return NextResponse.json({ commentary, isFallback: false });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[COMMENTARY] Dispatch generation failed:', { message, error });
-    return NextResponse.json({ commentary: getFallbackCommentary(payload), isFallback: true });
+    return safeAiError('COMMENTARY', error);
   }
 }

@@ -8,15 +8,8 @@ export const CHESTER_LANDING_COPY = {
 };
 
 export const PORTALS = [
-  { title: 'Meet Chester', icon: '♞', href: '/meet-chester', dialogue: "Meet Chester and try the beta chatbox before you play.", accent: 'pink' },
-  { title: 'Play Chester', icon: '♞', href: '/play-chester', dialogue: "Choose your difficulty and take a seat. I have prepared some deeply educational consequences.", accent: 'cyan' },
-  { title: 'Daily Challenge', icon: '♜', href: '/daily-challenge', dialogue: "A fresh puzzle is ready. Find the best line and put your name on the board.", accent: 'pink' },
-  { title: 'Go Time', icon: '♟', href: '/go-time', dialogue: "Start the daily tactical puzzle immediately.", accent: 'acid' },
-  { title: 'Boss Map', icon: '♚', href: '/boss-map', dialogue: "Choose a mini-game and step onto Chester's training path.", accent: 'violet' },
-  { title: 'Pub Trivia Brawl', icon: '♜', href: '/trivia-brawl', dialogue: "Draft categories and challenge your friends at Chester's pub table.", accent: 'pink' },
-  { title: 'Play as the Underdog', icon: '♚', href: '/brawl', dialogue: "Take on Expert Chester in a chaos match where the house quietly helps the underdog.", accent: 'violet' },
-  { title: 'League Play', icon: '♛', href: '/league', dialogue: "The mock league table is ready for your group to inspect.", accent: 'gold' },
-  { title: 'Daily Leaderboard', icon: '♛', href: '/daily-leaderboard', dialogue: "See who solved Chester's daily challenge fastest.", accent: 'gold' },
+  { title: 'Play Chester', icon: '♞', href: '/play-chester', dialogue: "Choose your difficulty and learn with Chester move by move.", accent: 'cyan' },
+  { title: 'Daily Challenge', icon: '♜', href: '/daily-challenge', dialogue: "Solve today's position and earn your place on Chester's board.", accent: 'pink' },
 ] as const;
 
 export const DAILY_LEADERS = [

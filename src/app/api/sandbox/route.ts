@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { guardAiRequest, safeAiError } from '@/lib/api-guard';
 
 type SandboxPayload = {
   message?: string;
@@ -42,8 +43,6 @@ OPERATOR: ${payload.message || 'Run a diagnostic.'}`;
 
     return NextResponse.json({ reply });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[SANDBOX] Gemini generation failed:', { message, error });
-    return NextResponse.json({ reply: getFallbackReply() });
+    return safeAiError('SANDBOX', error);
   }
 }

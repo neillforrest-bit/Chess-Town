@@ -1256,3 +1256,17 @@ body {
   border-color: var(--arena-cyan) !important;
   box-shadow: 0 0 0 2px rgba(0, 229, 229, .18) !important;
 }
+
+/* Focused first loop and shareable post-game card */
+.gazette-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 1rem; background: rgba(5,0,10,.86); backdrop-filter: blur(7px); }
+.gazette-card { width: min(92vw,480px); max-height: 88dvh; overflow-y: auto; box-sizing: border-box; padding: 1.35rem; border: 3px solid #1a1208; border-radius: 8px; color: #1a1208; background: #f4ecd8; box-shadow: 0 0 60px rgba(0,0,0,.65); font-family: Georgia,"Times New Roman",serif; }
+.gazette-card header { padding-bottom: .75rem; border-bottom: 3px double #1a1208; text-align: center; }
+.gazette-card small { font-size: .62rem; letter-spacing: 2px; }.gazette-card h2 { margin: .3rem 0; font-size: clamp(1.55rem,7vw,2rem); line-height: 1; }.gazette-card header b { font-size: .72rem; letter-spacing: 1px; }
+.gazette-dispatch { margin: 1rem 0 .75rem; font-size: 1rem; line-height: 1.5; }.gazette-turning { margin: 0; padding: .7rem; border-left: 4px solid #1a1208; background: #e8dcc0; font-size: .82rem; font-weight: 900; line-height: 1.35; }.gazette-loading { padding: 2rem 0; text-align: center; font-weight: 900; letter-spacing: 1px; }
+.gazette-card footer { display: grid; grid-template-columns: 1fr auto; gap: .55rem; margin-top: 1rem; }.gazette-card button { min-height: 48px; padding: .65rem; border: 2px solid #1a1208; border-radius: 4px; background: #1a1208; color: #f4ecd8; font-weight: 900; letter-spacing: .7px; cursor: pointer; }.gazette-card button.secondary { background: transparent; color: #1a1208; }.gazette-card button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 760px) {
+  .portal-shell--compact .portal-grid { grid-template-rows: repeat(2,minmax(0,1fr)); gap: .55rem; }
+  .portal-shell--compact .portal-card:nth-child(n) { min-height: 58px; padding: .7rem .75rem; }
+  .portal-shell--compact .portal-card h2 { font-size: 1rem; }
+  .gazette-card { padding: 1rem; }.gazette-card footer { grid-template-columns: 1fr; }.gazette-card button.secondary { order: 2; }
+}

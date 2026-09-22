@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { askChesterChat, askChesterAdminChat, askGrandmaster, askCommentary } from '@/app/actions';
+import { askChesterChat, askGrandmaster, askCommentary } from '@/app/actions';
 import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter } from '@/components/ChesterUI';
 import CapturedPieceJails from '@/components/CapturedPieceJails';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
@@ -677,15 +677,14 @@ function LegacyHome() {
     e.preventDefault();
     if (!chatInput.trim() || isThinking) return;
     const rawMessage = chatInput.trim();
-    const isAdmin = /^\/sudo\b/i.test(rawMessage);
-    const message = isAdmin ? rawMessage.replace(/^\/sudo\s*/i, '') : rawMessage;
+    const message = rawMessage;
     setChatInput('');
     setChatError('');
     const conversationHistory = [...chatMessages, { role: 'user' as const, text: rawMessage }].slice(-8);
     setChatMessages(conversationHistory);
     setIsThinking(true);
     try {
-      const { reply, toolCall } = await askChesterAdminChat(JSON.stringify({
+      const reply = await askChesterChat(JSON.stringify({
         ...currentGameState,
         message,
         type: 'chat',
@@ -693,11 +692,8 @@ function LegacyHome() {
         matchup: activeMatchup,
         openingAssessment,
         conversationHistory,
-        isAdmin,
         instruction: 'Answer the latest player message directly as Chester. Use the conversation history, be strategically useful, and give a clear next action.',
       }));
-      if (toolCall === 'reset_chess_board') loadArena(gameMode, activeMatchup);
-      if (toolCall === 'toggle_board_theme') window.dispatchEvent(new CustomEvent('toggle-board-theme'));
       setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
       setHostBanter(`🎙️ CHESTER: ${reply}`);
       setBanterUpdated(true);

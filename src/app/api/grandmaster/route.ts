@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { guardAiRequest, safeAiError } from '@/lib/api-guard';
 
 type CommentaryPayload = {
   message?: string;
@@ -93,6 +94,8 @@ function parseChesterResponse(raw: string): ChesterResponse {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = guardAiRequest(req);
+  if (blocked) return blocked;
   let payload: CommentaryPayload = {};
   try {
     payload = (await req.json()) as CommentaryPayload;
@@ -204,8 +207,6 @@ Return only the JSON object required by the response schema. Put character dialo
 
     return NextResponse.json({ reply: response.banter, education: response.education });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[CHESTER] Error:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return safeAiError('GRANDMASTER', error);
   }
 }

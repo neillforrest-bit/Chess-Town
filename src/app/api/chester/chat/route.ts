@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FunctionCallingConfigMode, GoogleGenAI, Type } from '@google/genai';
+import { guardAiRequest, safeAiError } from '@/lib/api-guard';
 
 type ChatPayload = {
   message?: string;
@@ -52,6 +53,8 @@ function getFallbackReply(message: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = guardAiRequest(req);
+  if (blocked) return blocked;
   try {
     const payload = await req.json() as ChatPayload;
     const apiKey = process.env.GEMINI_API_KEY;
@@ -104,8 +107,6 @@ PLAYER: ${payload.message || 'Hello, Chester.'}`;
 
     return NextResponse.json({ reply, toolCall: null });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[CHESTER CHAT] Gemini generation failed:', { message, error });
-    return NextResponse.json({ error: message }, { status: 500 });
+    return safeAiError('CHESTER CHAT', error);
   }
 }
