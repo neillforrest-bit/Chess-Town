@@ -18,9 +18,9 @@ const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'EXPERT', label: 'NIGHTMARE', note: 'No mercy, no refunds' },
 ];
 const LESSONS = [
-  { title: 'Take the centre', body: 'Move a centre pawn. Pieces gain space and your army gets exits.' },
-  { title: 'Develop with purpose', body: 'Bring out a knight or bishop. One move, one useful piece.' },
-  { title: 'Protect the king', body: 'Prepare to castle. A safe king lets the rest of your army attack.' },
+  { title: 'Take the centre', body: 'Tap a pawn in front of your king or queen, then tap a glowing square. That opens the road for your other pieces.' },
+  { title: 'Develop with purpose', body: 'Tap a horse-shaped knight or a bishop, then choose a glowing square. Bring one new teammate into the game.' },
+  { title: 'Protect the king', body: 'Move your king two squares toward a rook when the road is clear. That special move is castling: king safe, rook ready.' },
 ];
 
 function PlayChesterGame() {
@@ -49,8 +49,8 @@ function PlayChesterGame() {
     const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const banter = (event: Event) => { const d = (event as CustomEvent<{ message?: string; move?: string; grade?: string }>).detail; if (d) setCommentary(d.grade ? `${d.move || 'That move'} earns ${d.grade}. ${d.message || ''}` : d.message || 'Chester is watching.'); };
     const gameReport = (event: Event) => setReport((event as CustomEvent<GameReport>).detail);
-    const coach = (event: Event) => { setCoachPrompt({ kind: 'move', ...(event as CustomEvent<CoachPrompt>).detail }); setActivePanel('coach'); setLessonStep((step) => Math.min(2, step + 1)); };
-    const help = (event: Event) => { setCoachPrompt({ kind: 'help', ...(event as CustomEvent<CoachPrompt>).detail }); setActivePanel('coach'); };
+    const coach = (event: Event) => { setCoachPrompt({ ...(event as CustomEvent<CoachPrompt>).detail, kind: 'move' }); setActivePanel('coach'); setLessonStep((step) => Math.min(2, step + 1)); };
+    const help = (event: Event) => { setCoachPrompt({ ...(event as CustomEvent<CoachPrompt>).detail, kind: 'help' }); setActivePanel('coach'); };
     window.addEventListener('piece-captured', capture); window.addEventListener('dojo-banter', banter); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help);
     return () => { window.clearTimeout(timer); window.removeEventListener('piece-captured', capture); window.removeEventListener('dojo-banter', banter); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); };
   }, [mode, started]);
