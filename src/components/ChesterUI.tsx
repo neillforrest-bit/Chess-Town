@@ -198,8 +198,7 @@ export function ChesterChatOverlay({
                 borderRadius: '8px',
                 background: msg.role === 'user' ? 'rgba(0, 229, 229, 0.15)' : 'rgba(255, 43, 136, 0.15)',
                 border: `1px solid ${msg.role === 'user' ? 'rgba(0, 229, 229, 0.3)' : 'rgba(255, 43, 136, 0.3)'}`,
-                lineHeight: 1.4,
-                fontSize: '0.9rem',
+                fontSize: '1.05rem', lineHeight: 1.55,
                 whiteSpace: 'pre-wrap',
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word'
@@ -215,7 +214,7 @@ export function ChesterChatOverlay({
                     {msg.education && (
                       <details style={{ marginTop: '0.55rem', color: '#d9ffff' }}>
                         <summary style={{ cursor: 'pointer', color: 'var(--arena-cyan)', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '0.06em' }}>COACH&apos;S NOTES</summary>
-                        <p style={{ margin: '0.45rem 0 0', fontSize: '0.82rem', lineHeight: 1.45 }}>{msg.education}</p>
+                        <p style={{ margin: '0.45rem 0 0', fontSize: '0.95rem', lineHeight: 1.5 }}>{msg.education}</p>
                       </details>
                     )}
                   </>

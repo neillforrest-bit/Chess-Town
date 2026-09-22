@@ -325,6 +325,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     selectedSquare: null,
     legalTargets: [],
     lastMove: null,
+    coachSuggestion: null,
     openingAssessment: null,
     principleStreak: 0,
     playerQualities: [],
@@ -689,6 +690,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             if (blindnessExpires) gameRef.current.neonBlindnessColor = null;
             gameRef.current.ply++;
             gameRef.current.lastMove = { from, to };
+            gameRef.current.coachSuggestion = null;
             gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: moveResult.san });
             gameRef.current.selectedSquare = null;
             gameRef.current.legalTargets = [];
@@ -843,9 +845,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const ring = scene.add.circle(x2, y2, tileSize * 0.46, color, 0).setStrokeStyle(3, color, 0.55).setDepth(15);
               scene.tweens.add({ targets: ring, alpha: 0.25, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
             };
-            if (gameRef.current.coachMarks && !gameRef.current.isGameOver) {
-              if (gameRef.current.coachMarks.idea) drawCoachArrow(gameRef.current.coachMarks.idea.from, gameRef.current.coachMarks.idea.to, 0x2563eb);
-              (gameRef.current.coachMarks.threats || []).forEach((threat: any) => drawCoachArrow(threat.from, threat.to, 0xf43f7a));
+            // Arrow discipline: lines appear ONLY for (a) a lesson/hint suggestion,
+            // (b) the move just made, (c) a tapped piece's options (the green dots above).
+            // One of each, always replaced - never a spiderweb.
+            if (!gameRef.current.isGameOver) {
+              if (gameRef.current.lastMove) drawCoachArrow(gameRef.current.lastMove.from, gameRef.current.lastMove.to, 0xffd84d);
+              if (gameRef.current.coachSuggestion) drawCoachArrow(gameRef.current.coachSuggestion.from, gameRef.current.coachSuggestion.to, 0x2563eb);
             }
 
             // Draw pieces
@@ -1152,6 +1157,19 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             if (gameRef.current.isGameOver) return;
             finishGame('🏳️ RESIGNATION — The board is conceded before the final blow lands.', 'resigned');
           };
+          const handleHelpRequest = () => {
+            const fen = gameRef.current.chess.fen();
+            void getStockfishClient().analyzePosition(fen, getChesterDifficulty(difficulty)).then((analysis: any) => {
+              if (!analysis?.bestMove) return;
+              const uci: string = analysis.bestMove;
+              gameRef.current.coachSuggestion = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+              renderBoard?.();
+              window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: uci, continuation: analysis.pv || [], evaluation: analysis.mate ?? analysis.score ?? null } }));
+            }).catch(() => {
+              window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: null } }));
+            });
+          };
+          window.addEventListener('chester-help-request', handleHelpRequest);
           window.addEventListener('request-resign', handleRequestResign);
           const handleToggleBoardTheme = () => {
             gameRef.current.boardTheme = gameRef.current.boardTheme === 'RETRO' ? 'NEON' : 'RETRO';
@@ -1165,6 +1183,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('brawl-position', handleBrawlPosition);
             window.removeEventListener('remote-chess-move', handleRemoteMove);
             window.removeEventListener('replay-step', handleReplayStep);
+            window.removeEventListener('chester-help-request', handleHelpRequest);
             window.removeEventListener('request-resign', handleRequestResign);
             window.removeEventListener('toggle-board-theme', handleToggleBoardTheme);
             if (demoIntervalRef.current) {
