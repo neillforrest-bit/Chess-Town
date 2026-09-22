@@ -32,7 +32,7 @@ function getFallbackDispatch(payload: GazettePayload): string {
   return `EXTRA! EXTRA! Word from the Chess-Town square: a spirited contest has concluded in ${outcome}, with the correspondent commanding ${side} throughout. The printing press being temporarily indisposed, a full account of the game's swings and blunders shall follow in the next edition. Huzzah for a match well fought!`;
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse<GazetteResponse>> {
+export async function POST(req: NextRequest) {
   let payload: GazettePayload = {};
   try {
     payload = (await req.json()) as GazettePayload;
