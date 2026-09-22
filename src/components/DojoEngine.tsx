@@ -799,7 +799,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                     gradeColor,
                     isDestination ? 0.38 : 0.1
                   ).setBlendMode(Phaser.BlendModes.ADD).setDepth(1);
-                  gameRef.current.coachMarks.push(spotlight);
+                  (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(spotlight);
                   scene.tweens.add({ targets: spotlight, alpha: isDestination ? 0.14 : 0.04, scale: 1.18, duration: 620, ease: 'Sine.InOut', yoyo: true, repeat: 1, onComplete: () => { try { spotlight.destroy(); } catch { /* wiped by redraw */ } } });
                   graphics.lineStyle(isDestination ? 3 : 1, gradeColor, isDestination ? 0.9 : 0.22);
                   graphics.strokeRect(boardOffset + col * tileSize + 4, boardOffset + row * tileSize + 4, tileSize - 8, tileSize - 8);
@@ -845,7 +845,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 x2 - headLength * Math.cos(angle + 0.45), y2 - headLength * Math.sin(angle + 0.45)
               );
               const ring = scene.add.circle(x2, y2, tileSize * 0.46, color, 0).setStrokeStyle(3, color, 0.55).setDepth(15);
-              gameRef.current.coachMarks.push(arrow, ring);
+              (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(arrow, ring);
               scene.tweens.add({ targets: ring, alpha: 0.25, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
             };
             // Arrow discipline: lines appear ONLY for (a) a lesson/hint suggestion,
