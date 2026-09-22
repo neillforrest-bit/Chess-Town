@@ -50,6 +50,9 @@ function PlayChesterGame() {
   const [moveTrail, setMoveTrail] = useState<{ move: string; classification?: string | null }[]>([]);
   const [lastBest, setLastBest] = useState<string | null>(null);
   const selectedLevel = useMemo(() => LEVELS.find((level) => level.value === difficulty)!, [difficulty]);
+  const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : 'PLAYING CHESTER';
+  const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : selectedLevel.label;
+  const isFriendMode = mode === 'PVP_LOCAL' || mode === '2V2';
 
   useEffect(() => {
     if (!started) return;
@@ -109,15 +112,15 @@ function PlayChesterGame() {
   const help = () => { if (!helpRemaining || isThinking) return; setHelpRemaining((n) => n - 1); setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
-    <section><span>CHESS-TOWN ACADEMY</span><h1>PLAY CHESTER</h1><p>Pick your opponent. Chester coaches the first three decisions, then lets you fight.</p>
-      <div className="chester-level-grid">{LEVELS.map((level) => <button key={level.value} className={difficulty === level.value ? 'is-active' : ''} onClick={() => setDifficulty(level.value)}><b>{level.label}</b><small>{level.note}</small></button>)}</div>
-      <button className="chester-start-button" onClick={() => setStarted(true)}>START GUIDED GAME <i>→</i></button>
+    <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
+      {!isFriendMode && <div className="chester-level-grid">{LEVELS.map((level) => <button key={level.value} className={difficulty === level.value ? 'is-active' : ''} onClick={() => setDifficulty(level.value)}><b>{level.label}</b><small>{level.note}</small></button>)}</div>}
+      <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>
     </section>
   </main>;
 
   const lesson = LESSONS[lessonStep];
   return <main className="chester-game" aria-label="Play Chester guided game">
-    <header className="chester-game__top"><div><span>PLAYING CHESTER</span><b>{selectedLevel.label}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button></header>
+    <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button></header>
     <section className="chester-game__board">
       <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} /></div>
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined}>
