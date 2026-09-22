@@ -19,7 +19,7 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 };
 
 const BOARD_THEMES = {
-  NEON: [0xf2f7f8, 0x07090a],
+  NEON: [0xfffbfc, 0xf3c8d6],
   RETRO: [0xe8d9b5, 0x4a3728],
 } as const;
 
@@ -772,14 +772,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 const isMoveSpotlight = !isLastMoveInvisible && gameRef.current.lastMove && (squareName === gameRef.current.lastMove.from || squareName === gameRef.current.lastMove.to);
                 const [lightSquare, darkSquare] = BOARD_THEMES[gameRef.current.boardTheme as keyof typeof BOARD_THEMES] || BOARD_THEMES.NEON;
                 const squareColor = (row + col) % 2 === 0 ? lightSquare : darkSquare;
-                graphics.fillStyle(squareColor, gameRef.current.lastMove && !isMoveSpotlight ? 0.52 : 1);
+                graphics.fillStyle(squareColor, 1);
                 graphics.fillRect(
                   boardOffset + col * tileSize,
                   boardOffset + row * tileSize,
                   tileSize,
                   tileSize
                 );
-                graphics.lineStyle(1.5, 0x00ffff, 0.2);
+                graphics.lineStyle(1.2, 0x7a3047, 0.16);
                 graphics.strokeRect(
                   boardOffset + col * tileSize,
                   boardOffset + row * tileSize,
@@ -838,7 +838,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
                   const isWhite = piece.color === 'w';
                   const isMovedPiece = !isLastMoveInvisible && gameRef.current.lastMove?.to === squareName;
-                  const glowColor = isWhite ? '#39ff14' : '#ff007f';
+                  const glowColor = isWhite ? '#0f5a3a' : '#6f1733';
                   const isNeonBlind = gameRef.current.neonBlindnessColor === piece.color;
                   const displayPieceType = gameRef.current.trojanPawnSquare === squareName ? 'p' : piece.type;
                   const royalTexture = displayPieceType === piece.type && (piece.type === 'q' || piece.type === 'k') ? royalCatTextures[piece.type] : undefined;
@@ -849,12 +849,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                       fontSize: '88px',
                       fontStyle: 'bold',
                       color: isWhite ? '#dfffda' : '#ff4eb1',
-                      stroke: '#050008',
+                      stroke: isWhite ? '#072f20' : '#3c091c',
                       strokeThickness: 7,
                       shadow: { blur: 34, color: glowColor, fill: true, offsetX: 0, offsetY: 0 },
                     }).setOrigin(0.5);
 
-                  const glowColorNumber = isWhite ? 0x39ff14 : 0xff007f;
+                  const glowColorNumber = isWhite ? 0x176b49 : 0x7d1d3f;
                   const glow = scene.add.circle(0, 0, tileSize * 0.44, glowColorNumber, 0.28);
                   
                   if (!isInvisible) {
