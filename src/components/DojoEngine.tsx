@@ -19,7 +19,7 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 };
 
 const BOARD_THEMES = {
-  NEON: [0xfffbfc, 0xf3c8d6],
+  NEON: [0xf5f1e6, 0x5e505a],
   RETRO: [0xe8d9b5, 0x4a3728],
 } as const;
 
@@ -335,6 +335,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     isGameOver: false,
     ply: 0,
     boardTheme: 'NEON',
+    coachMarks: [] as any[],
   });
 
   useEffect(() => {
@@ -758,6 +759,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           renderBoard = () => {
             updateSpotlights();
             graphics.clear();
+            // Wipe every mark from the previous redraw (arrows, rings, spotlights) so
+            // only the single last move + current hint get drawn - never a spiderweb.
+            (gameRef.current.coachMarks || []).forEach((mark: any) => {
+              scene.tweens.killTweensOf(mark);
+              try { mark.destroy(); } catch { /* already destroyed */ }
+            });
+            gameRef.current.coachMarks = [];
             legalTargetMarkers.forEach((marker) => marker.destroy());
             legalTargetMarkers = [];
             squareZones.forEach((zone) => zone.destroy());
