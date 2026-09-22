@@ -528,6 +528,22 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 alternateWinningLines: engineTelemetry?.alternateWinningLines ?? [],
               },
             }));
+            // Live-move commentary for the play-chester page (Chester games AND pass & play):
+            // the page listens for chester-coaching-pause; nothing else dispatches it.
+            window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
+              detail: {
+                kind: 'move',
+                move: move.san,
+                fen: engineTelemetry?.fenAfter || gameRef.current.chess.fen(),
+                bestMove: engineTelemetry?.bestMoveSan || engineTelemetry?.bestMove || null,
+                classification: quality?.label || null,
+                evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null,
+                evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
+                evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
+                captured: move.captured || null,
+                player,
+              },
+            }));
           };
 
           const publishPositionEvaluation = (fen: string) => {
