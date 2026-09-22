@@ -55,7 +55,7 @@ export default function ChessTownLanding() {
 
   const greeting = returning
     ? `Welcome back${name ? `, ${name}` : ''}. Joseph is still unbeaten, still smug, still at the top of the boss map. Go take something from him.`
-    : 'Evening. I’m Chester - knight, coach and mayor of Chess Town. Play a game in my dojo, challenge a friend in the arena, and climb the boss map. At the top sits Joseph, the Big Boss. Nobody has beaten him. Yet.';
+    : 'Evening. I’m Chester - knight, coach and mayor of Chess Town. Play a game in my dojo, challenge a friend in the town hall, and climb the boss map. At the top sits Joseph, the Big Boss. Nobody has beaten him. Yet.';
 
   return <main className="town-night">
     <div className="town-sky" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
