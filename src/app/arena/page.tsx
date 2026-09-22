@@ -219,7 +219,7 @@ const playShockSound = () => {
 };
 
 export default function Home() {
-  return <ChessTownLanding />;
+  return <LegacyArena />;
 }
 
 function LegacyArena() {
@@ -360,6 +360,7 @@ function LegacyArena() {
     setActiveMatchup('Live Challenge: Green vs. Black');
     setCapturedPieces([]);
     setDrawerOpen(true);
+    setArenaView('CHESTER');
     setScene('GAME');
   };
 

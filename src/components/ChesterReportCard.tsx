@@ -36,6 +36,10 @@ export default function ChesterReportCard({
         {grades.map((entry) => <span key={`${entry.ply}-${entry.move}`} data-grade={entry.grade}>{entry.ply}. {entry.move} <b>{entry.grade}</b></span>)}
       </div>
       <p>{isLoading ? 'Chester is writing his final review...' : review}</p>
+      <aside className="chester-report-card__wip" aria-label="Work in progress">
+        <span>WORK IN PROGRESS</span>
+        <p>This report card is in training camp. Growing soon into a full post-game masterclass: sharper insights, the turning point replayed, and a personal lesson plan for your next match.</p>
+      </aside>
     </section>
   </div>;
 }

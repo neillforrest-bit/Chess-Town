@@ -816,6 +816,38 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               }
             }
 
+            // Chester's visual coaching: blue idea arrow (his preferred move) + rose danger arrows (concrete threats)
+            const drawCoachArrow = (fromSquare: string, toSquare: string, color: number) => {
+              const fromCol = files.indexOf(fromSquare[0]);
+              const fromRow = ranks.indexOf(fromSquare[1]);
+              const toCol = files.indexOf(toSquare[0]);
+              const toRow = ranks.indexOf(toSquare[1]);
+              if (fromCol < 0 || fromRow < 0 || toCol < 0 || toRow < 0) return;
+              const x1 = boardOffset + fromCol * tileSize + tileSize / 2;
+              const y1 = boardOffset + fromRow * tileSize + tileSize / 2;
+              const x2 = boardOffset + toCol * tileSize + tileSize / 2;
+              const y2 = boardOffset + toRow * tileSize + tileSize / 2;
+              const arrow = scene.add.graphics().setDepth(16);
+              arrow.lineStyle(7, color, 0.28);
+              arrow.strokeLineShape(new Phaser.Geom.Line(x1, y1, x2, y2));
+              arrow.lineStyle(3.5, color, 0.95);
+              arrow.strokeLineShape(new Phaser.Geom.Line(x1, y1, x2, y2));
+              const angle = Phaser.Math.Angle.Between(x1, y1, x2, y2);
+              const headLength = 15;
+              arrow.fillStyle(color, 0.95);
+              arrow.fillTriangle(
+                x2, y2,
+                x2 - headLength * Math.cos(angle - 0.45), y2 - headLength * Math.sin(angle - 0.45),
+                x2 - headLength * Math.cos(angle + 0.45), y2 - headLength * Math.sin(angle + 0.45)
+              );
+              const ring = scene.add.circle(x2, y2, tileSize * 0.46, color, 0).setStrokeStyle(3, color, 0.55).setDepth(15);
+              scene.tweens.add({ targets: ring, alpha: 0.25, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+            };
+            if (gameRef.current.coachMarks && !gameRef.current.isGameOver) {
+              if (gameRef.current.coachMarks.idea) drawCoachArrow(gameRef.current.coachMarks.idea.from, gameRef.current.coachMarks.idea.to, 0x2563eb);
+              (gameRef.current.coachMarks.threats || []).forEach((threat: any) => drawCoachArrow(threat.from, threat.to, 0xf43f7a));
+            }
+
             // Draw pieces
             const board = gameRef.current.chess.board();
             for (let row = 0; row < 8; row++) {
