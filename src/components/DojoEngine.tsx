@@ -241,7 +241,7 @@ function getLetterGrade(centipawnLoss: number | null | undefined) {
 }
 
 function getGradeColor(grade: string | undefined) {
-  if (grade === 'A') return 0x39ff14;
+  if (grade === 'A') return 0x2563eb;
   if (grade === 'B') return 0xffea00;
   if (grade === 'C') return 0xff8c00;
   return 0xff1744;
@@ -407,13 +407,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const jailX = 716;
           const jailY = 16;
           const jailPanel = scene.add.rectangle(jailX, jailY, 136, 24, 0x240019, 0.95)
-            .setStrokeStyle(2, 0xff007f, 0.9)
+            .setStrokeStyle(2, 0xf43f7a, 0.9)
             .setDepth(20);
           const jailLabel = scene.add.text(jailX, jailY, 'PIECE JAIL', {
             fontFamily: 'sans-serif',
             fontSize: '12px',
             fontStyle: 'bold',
-            color: '#ffb6dc',
+            color: '#fecdd8',
           }).setOrigin(0.5).setDepth(21);
           const greenJailX = 84;
           scene.add.rectangle(greenJailX, jailY, 136, 24, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
@@ -464,7 +464,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             capturedPiece.setDepth(30).setInteractive(false);
             const capturedIsWhite = move.color === 'b';
             const targetX = capturedIsWhite ? greenJailX : jailX;
-            const targetColor = capturedIsWhite ? 0x39ff14 : 0xff007f;
+            const targetColor = capturedIsWhite ? 0x2563eb : 0xf43f7a;
             const targetY = jailY + 28;
             const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0.45).setDepth(29);
             scene.tweens.add({ targets: impact, scale: 1.8, alpha: 0, duration: 420, ease: 'Quad.Out', onComplete: () => impact.destroy() });

@@ -13,10 +13,10 @@ export function PieceJail({ capturedPieces, color, label }: { capturedPieces: Ca
   const isWhite = color === 'w';
 
   return (
-    <div key={pieces.length} className={`piece-jail flex h-10 min-w-0 items-center gap-2 overflow-hidden rounded-md border px-2 ${pieces.length ? 'piece-jail--impact' : ''} ${isWhite ? 'border-pink-400/50 bg-pink-500/10 shadow-[inset_0_0_18px_rgba(255,43,136,0.12)]' : 'border-green-400/50 bg-green-400/10 shadow-[inset_0_0_18px_rgba(57,255,20,0.12)]'}`}>
-      <span className={`shrink-0 text-[9px] font-black tracking-wide ${isWhite ? 'text-pink-300' : 'text-green-300'}`}>{label}</span>
+    <div key={pieces.length} className={`piece-jail flex h-10 min-w-0 items-center gap-2 overflow-hidden rounded-md border px-2 ${pieces.length ? 'piece-jail--impact' : ''} ${isWhite ? 'border-blue-400/50 bg-blue-500/10 shadow-[inset_0_0_18px_rgba(37,99,235,0.14)]' : 'border-zinc-500/50 bg-zinc-800/40 shadow-[inset_0_0_18px_rgba(20,24,31,0.35)]'}`}>
+      <span className={`shrink-0 text-[9px] font-black tracking-wide ${isWhite ? 'text-blue-300' : 'text-zinc-400'}`}>{label}</span>
       <div className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto">
-        {pieces.map((piece, index) => <span key={`${color}-${index}`} className={`shrink-0 font-serif text-lg leading-none ${isWhite ? 'text-pink-200 drop-shadow-[0_0_8px_#ff4eb1]' : 'text-green-100 drop-shadow-[0_0_8px_#39ff14]'} ${index === pieces.length - 1 ? 'piece-jail__piece' : ''}`} style={{ transform: 'scale(.8)' }}>{PIECE_GLYPHS[color][piece.type]}</span>)}
+        {pieces.map((piece, index) => <span key={`${color}-${index}`} className={`shrink-0 font-serif text-lg leading-none ${isWhite ? 'text-blue-200 drop-shadow-[0_0_8px_#2563eb]' : 'text-gray-300 drop-shadow-[0_0_8px_#14181f]'} ${index === pieces.length - 1 ? 'piece-jail__piece' : ''}`} style={{ transform: 'scale(.8)' }}>{PIECE_GLYPHS[color][piece.type]}</span>)}
       </div>
     </div>
   );

@@ -96,44 +96,44 @@ const INTRO_THEMES = [
   { accent: '#800080', icon: '🔮' },
   { accent: '#ff0040', icon: '🔥' },
   { accent: '#aaaaaa', icon: '📜' },
-  { accent: '#00ffff', icon: '♞' },
+  { accent: '#22d3ee', icon: '♞' },
 ];
 
 const HOME_HUB = [
-  { key: 'QUICK_PLAY', title: 'PLAY CHESTER', color: '#39ff14', icon: '♞', detail: 'Start a live game immediately. Every move is graded and answered in real time.' },
-  { key: 'COACHING', title: 'MINI GAMES', color: '#ff007f', icon: '🧭', detail: "Train with Chester across beginner-to-expert challenges that grade your real chess decisions." },
+  { key: 'QUICK_PLAY', title: 'PLAY CHESTER', color: '#2563eb', icon: '♞', detail: 'Start a live game immediately. Every move is graded and answered in real time.' },
+  { key: 'COACHING', title: 'MINI GAMES', color: '#f43f7a', icon: '🧭', detail: "Train with Chester across beginner-to-expert challenges that grade your real chess decisions." },
   { key: 'DEMO_1V1', title: 'DEMO 1v1', color: '#ffea00', icon: '⚔️', detail: 'Jump into a live single-board matchup and watch or play against the arena engine.' },
-  { key: 'CHALLENGE', title: 'CHALLENGE SOMEONE', color: '#ff007f', icon: '👑', detail: 'Create a private beta link and play a live legal game from two devices.' },
-  { key: 'DEMO_2V2', title: 'DEMO 2v2', color: '#39ff14', icon: '🔥', detail: 'The world-first tag-team format. Chaos, coordination, and pure arena trauma.' },
-  { key: 'TOWN', title: 'TOWN SQUARE', color: '#00ffff', icon: '♜', detail: 'Join the live conversation, react to rivalries, and call your next opponent out.' },
+  { key: 'CHALLENGE', title: 'CHALLENGE SOMEONE', color: '#f43f7a', icon: '👑', detail: 'Create a private beta link and play a live legal game from two devices.' },
+  { key: 'DEMO_2V2', title: 'DEMO 2v2', color: '#2563eb', icon: '🔥', detail: 'The world-first tag-team format. Chaos, coordination, and pure arena trauma.' },
+  { key: 'TOWN', title: 'TOWN SQUARE', color: '#22d3ee', icon: '♜', detail: 'Join the live conversation, react to rivalries, and call your next opponent out.' },
   { key: 'SEASON', title: 'SEASON HUB', color: '#ffea00', icon: '🏆', detail: 'Follow fixtures, fantasy form, power rankings, and Chester’s weekly verdict.' },
 ];
 
 
 
 const FEATURED_MATCHUPS = [
-  { title: 'Neill vs. Brendan 🦸‍♂️', mode: 'SIMULATION', accent: '#00ffff', summary: 'The rivalry is boiling over and the opening is already full of tension.', badge: 'MAIN EVENT' },
-  { title: 'Heroes vs. Villains Tag Match', mode: '2V2', accent: '#ff007f', summary: 'A chaotic 2v2 scramble with callouts, tempo swings, and pure league chaos.', badge: 'TAG TEAM' },
+  { title: 'Neill vs. Brendan 🦸‍♂️', mode: 'SIMULATION', accent: '#22d3ee', summary: 'The rivalry is boiling over and the opening is already full of tension.', badge: 'MAIN EVENT' },
+  { title: 'Heroes vs. Villains Tag Match', mode: '2V2', accent: '#f43f7a', summary: 'A chaotic 2v2 scramble with callouts, tempo swings, and pure league chaos.', badge: 'TAG TEAM' },
   { title: 'Z-Man Championship Watch', mode: 'SIMULATION', accent: '#ffea00', summary: 'The king is under pressure and everyone wants the crown to crack.', badge: 'TITLE RACE' },
 ];
 
 const COMMISSIONER_FEED = [
   { label: 'CROWN', color: '#ffea00', text: 'Z-Man 👑 is still the arena king, but the board is growing louder.' },
-  { label: 'HERO WATCH', color: '#00ffff', text: 'Brendan 🦸‍♂️ is turning momentum into narrative.' },
-  { label: 'VILLAIN PLOT', color: '#ff007f', text: 'Gabe 🦹‍♂️ is still one calculated trap away from rewriting the standings.' },
-  { label: 'TICKER', color: '#39ff14', text: 'Arena trauma is spiking. Everyone wants the spotlight.' },
+  { label: 'HERO WATCH', color: '#22d3ee', text: 'Brendan 🦸‍♂️ is turning momentum into narrative.' },
+  { label: 'VILLAIN PLOT', color: '#f43f7a', text: 'Gabe 🦹‍♂️ is still one calculated trap away from rewriting the standings.' },
+  { label: 'TICKER', color: '#2563eb', text: 'Arena trauma is spiking. Everyone wants the spotlight.' },
 ];
 
 const COACHING_DRILLS = [
-  { mode: 'COACH_DAILY', level: 'DAILY', badge: 'TODAY IN CHESS TOWN', color: '#39ff14', title: 'Daily Breakthrough', detail: 'Everyone gets the same position. Find the strongest active move, earn a daily score, and chase the friend-group leaderboard.' },
+  { mode: 'COACH_DAILY', level: 'DAILY', badge: 'TODAY IN CHESS TOWN', color: '#2563eb', title: 'Daily Breakthrough', detail: 'Everyone gets the same position. Find the strongest active move, earn a daily score, and chase the friend-group leaderboard.' },
   { mode: 'COACH_PRACTICE_OPENING', level: 'ASSESSMENT', badge: 'PRACTICE YOUR OPENING', color: '#ffea00', title: 'Practice Your Opening', detail: 'Play your first five moves from the starting position. Chester will grade your opening A-F and explain your center control, development, tempo, queen timing, and king safety.' },
-  { mode: 'COACH_OPENING', level: 'BEGINNER', badge: 'OPENING FUNDAMENTALS', color: '#00ffff', title: 'Own the Center', detail: 'Claim the center, develop two minor pieces, and prepare to castle within your first five moves.' },
-  { mode: 'COACH_DEVELOPMENT', level: 'BEGINNER', badge: 'BACKLINE ACTIVATION', color: '#39ff14', title: 'Bring Out the Squad', detail: 'Activate a bishop or knight, avoid moving the same piece twice, and complete your development.' },
+  { mode: 'COACH_OPENING', level: 'BEGINNER', badge: 'OPENING FUNDAMENTALS', color: '#22d3ee', title: 'Own the Center', detail: 'Claim the center, develop two minor pieces, and prepare to castle within your first five moves.' },
+  { mode: 'COACH_DEVELOPMENT', level: 'BEGINNER', badge: 'BACKLINE ACTIVATION', color: '#2563eb', title: 'Bring Out the Squad', detail: 'Activate a bishop or knight, avoid moving the same piece twice, and complete your development.' },
   { mode: 'COACH_KING_SAFETY', level: 'INTERMEDIATE', badge: 'KING SAFETY', color: '#ffea00', title: 'Castle Before Chaos', detail: 'Get your king castled before Chester creates a central threat. Every wasted tempo raises the pressure.' },
-  { mode: 'COACH_PRESSURE', level: 'INTERMEDIATE', badge: 'TACTICAL PRESSURE', color: '#ff007f', title: 'Build the Squeeze', detail: 'Create a concrete threat, improve your least active piece, and win material without forcing a reckless attack.' },
+  { mode: 'COACH_PRESSURE', level: 'INTERMEDIATE', badge: 'TACTICAL PRESSURE', color: '#f43f7a', title: 'Build the Squeeze', detail: 'Create a concrete threat, improve your least active piece, and win material without forcing a reckless attack.' },
   { mode: 'COACH_ENDGAME', level: 'EXPERT', badge: 'ENDGAME CALCULATION', color: '#b8a2ff', title: 'Convert the Advantage', detail: 'Activate your king, create a passed pawn, and convert the position without allowing counterplay.' },
   { mode: 'COACH_KNIGHTMARE', level: 'CHAOS', badge: 'CHESTER’S CHEATS', color: '#ffea00', title: 'The Knightmare', detail: 'Survive the chaos. Chester has given up his Queen and Rooks in exchange for 4 hyper-aggressive Knights. Defend your pawns and beware the royal fork!' },
-  { mode: 'COACH_INVISIBLE', level: 'MYSTERY', badge: 'CHESTER’S CHEATS', color: '#ff007f', title: 'Phantom Threat', detail: 'Play from the opening against Chester, but 5 of his most important pieces (Queen, Rooks, Knights) are completely invisible. Can you survive?' },
+  { mode: 'COACH_INVISIBLE', level: 'MYSTERY', badge: 'CHESTER’S CHEATS', color: '#f43f7a', title: 'Phantom Threat', detail: 'Play from the opening against Chester, but 5 of his most important pieces (Queen, Rooks, Knights) are completely invisible. Can you survive?' },
 ];
 
 const DAILY_LEADERS = [
@@ -144,8 +144,8 @@ const DAILY_LEADERS = [
 
 const LEAGUE_TIERS = [
   { title: 'THE MASTERS', subtitle: 'PRO TIER', accent: '#ffea00', className: 'league-tier--masters', players: [{ name: 'Charlie', rating: '2,184', momentum: '+3 ▲', direction: 'up' }, { name: 'Wolf', rating: '2,091', momentum: '+1 ▲', direction: 'up' }, { name: 'Brendan', rating: '2,024', momentum: '-2 ▼', direction: 'down' }] },
-  { title: 'THE GRINDERS', subtitle: 'GOOD NOT GREAT', accent: '#00e5e5', className: 'league-tier--grinders', players: [{ name: 'James', rating: '1,842', momentum: '+5 ▲', direction: 'up' }, { name: 'Kyle', rating: '1,790', momentum: '-1 ▼', direction: 'down' }] },
-  { title: 'THE ROOKIES', subtitle: 'BEGINNER TIER', accent: '#7cff45', className: 'league-tier--rookies', players: [{ name: 'Marley', rating: '1,416', momentum: '+4 ▲', direction: 'up' }, { name: 'Dilly', rating: '1,372', momentum: '-3 ▼', direction: 'down' }] },
+  { title: 'THE GRINDERS', subtitle: 'GOOD NOT GREAT', accent: '#22d3ee', className: 'league-tier--grinders', players: [{ name: 'James', rating: '1,842', momentum: '+5 ▲', direction: 'up' }, { name: 'Kyle', rating: '1,790', momentum: '-1 ▼', direction: 'down' }] },
+  { title: 'THE ROOKIES', subtitle: 'BEGINNER TIER', accent: '#2563eb', className: 'league-tier--rookies', players: [{ name: 'Marley', rating: '1,416', momentum: '+4 ▲', direction: 'up' }, { name: 'Dilly', rating: '1,372', momentum: '-3 ▼', direction: 'down' }] },
 ];
 
 function LeagueLeaderboard() {
@@ -806,7 +806,7 @@ function LegacyArena() {
       
       {scene === 'SPLASH' && (
         <div className="gothic-shock-scene" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020005', position: 'relative', overflow: 'hidden' }}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,.14)_0%,rgba(20,0,35,.42)_38%,rgba(0,0,0,1)_80%)]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,.14)_0%,rgba(20,0,35,.42)_38%,rgba(0,0,0,1)_80%)]"></div>
           <div className="shock-bolt shock-bolt-left"></div><div className="shock-bolt shock-bolt-right"></div>
           <div className="opening-reveal" style={{ zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
             <div className="opening-horse"><span>🐴</span><span className="opening-smirk">😏</span></div>
@@ -822,13 +822,13 @@ function LegacyArena() {
           <div style={{ display: 'grid', gridTemplateColumns: isLandscape ? 'repeat(6, 1fr)' : 'repeat(4, 1fr)', gap: isLandscape ? '0.5rem 1.2rem' : 'clamp(0.7rem, 2vw, 2rem)', maxWidth: '1200px', width: '92%' }}>
              {LEAGUE_STANDINGS.map((p, i) => (
                <div key={p.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animation: 'fadeInGhostly 0.8s ease-out forwards', animationDelay: `${i * 0.15}s`, opacity: 0 }}>
-                 <div style={{ fontSize: isLandscape ? '1.8rem' : 'clamp(2rem, 5vw, 4rem)', animation: 'rpgIdle 3s ease-in-out infinite', animationDelay: `${i * 0.2}s`, filter: 'drop-shadow(0 0 10px rgba(255,0,127,.45))' }}>{ROSTER_AVATARS[i % 12]}</div>
+                 <div style={{ fontSize: isLandscape ? '1.8rem' : 'clamp(2rem, 5vw, 4rem)', animation: 'rpgIdle 3s ease-in-out infinite', animationDelay: `${i * 0.2}s`, filter: 'drop-shadow(0 0 10px rgba(244,63,122,.45))' }}>{ROSTER_AVATARS[i % 12]}</div>
                  <span style={{ color: '#aaa', marginTop: isLandscape ? '0.2rem' : '0.6rem', fontSize: isLandscape ? '0.5rem' : 'clamp(0.55rem, 1vw, 0.9rem)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 'bold' }}>{p.name.replace(/[^\w\s-]/gi, '').trim()}</span>
                </div>
              ))}
            </div>
            <div style={{ color: '#596e77', textAlign: 'center', fontSize: isLandscape ? '0.45rem' : '0.7rem', margin: isLandscape ? '0.5rem 0' : '1rem 0' }}>{LEAGUE_ROLL_CALL}</div>
-           <button onClick={() => setScene('HOME')} style={{ marginTop: isLandscape ? '0.35rem' : '0.8rem', background: '#39ff14', color: '#020502', border: '1px solid #dfffff', boxShadow: '0 0 32px rgba(57,255,20,.75)', letterSpacing: '2px', cursor: 'pointer', fontWeight: 900, padding: isLandscape ? '0.45rem 1.2rem' : '0.8rem 2rem', fontSize: isLandscape ? '0.65rem' : '1rem' }}>ENTER THE ARENA →</button>
+           <button onClick={() => setScene('HOME')} style={{ marginTop: isLandscape ? '0.35rem' : '0.8rem', background: '#2563eb', color: '#020502', border: '1px solid #dfffff', boxShadow: '0 0 32px rgba(37,99,235,.75)', letterSpacing: '2px', cursor: 'pointer', fontWeight: 900, padding: isLandscape ? '0.45rem 1.2rem' : '0.8rem 2rem', fontSize: isLandscape ? '0.65rem' : '1rem' }}>ENTER THE ARENA →</button>
         </div>
       )}
 
@@ -847,7 +847,7 @@ function LegacyArena() {
               {pageIndex < activeScript.length - 1 ? (
                 <button onClick={() => setPageIndex(p => p + 1)} style={{ background: 'transparent', color: theme.accent, fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ CLICK TO CONTINUE ▼</button>
               ) : (
-                <button onClick={() => setScene('ROSTER')} style={{ background: 'transparent', color: '#39ff14', fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ MEET THE CONTENDERS ▼</button>
+                <button onClick={() => setScene('ROSTER')} style={{ background: 'transparent', color: '#2563eb', fontSize: 'clamp(1rem, 2vw, 1.4rem)', fontWeight: 900, border: 'none', cursor: 'pointer', letterSpacing: '4px', animation: 'pulseOminous 2s infinite', outline: 'none' }}>▼ MEET THE CONTENDERS ▼</button>
               )}
             </div>
           </div>
@@ -857,17 +857,17 @@ function LegacyArena() {
 
       {scene === 'CHESTER_REVEAL' && (
         <div className="chester-intro-page chester-reveal" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: isLandscape ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020005', padding: isLandscape ? '1rem 4rem' : '2rem', position: 'relative', overflow: 'hidden', gap: isLandscape ? '4rem' : '0' }}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.16)_0%,rgba(20,0,35,0.38)_35%,rgba(0,0,0,1)_78%)]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.16)_0%,rgba(20,0,35,0.38)_35%,rgba(0,0,0,1)_78%)]"></div>
           <div className="chester-sigil" style={{ position: 'relative', width: isLandscape ? '42vh' : 'min(62vw, 440px)', aspectRatio: '1', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <div className="chester-ring chester-ring-outer"></div><div className="chester-ring chester-ring-inner"></div>
             <div className="chester-knight-shadow">♞</div><div className="chester-knight">♞</div><span className="chester-eye"></span>
             <span className="chester-cunning">😏</span><span className="chester-spark spark-one">⚡</span><span className="chester-spark spark-two">✦</span>
           </div>
           <div style={{ position: 'relative', zIndex: 2, textAlign: isLandscape ? 'left' : 'center', maxWidth: '720px' }}>
-            <div style={{ color: '#ff007f', letterSpacing: '5px', fontSize: isLandscape ? '0.65rem' : 'clamp(0.7rem, 1.5vw, 1rem)', fontWeight: 900 }}>THE MASTER OF THE BOARD HAS ARRIVED</div>
-            <h1 style={{ fontSize: isLandscape ? 'clamp(2.4rem, 7vw, 4.8rem)' : 'clamp(3.5rem, 11vw, 8rem)', fontWeight: 900, color: '#eaffff', textShadow: '0 0 18px #00ffff, 0 0 55px rgba(0,255,255,0.8)', textTransform: 'uppercase', letterSpacing: isLandscape ? '4px' : '7px', lineHeight: .9, margin: '0.8rem 0' }}>CHESTER</h1>
+            <div style={{ color: '#f43f7a', letterSpacing: '5px', fontSize: isLandscape ? '0.65rem' : 'clamp(0.7rem, 1.5vw, 1rem)', fontWeight: 900 }}>THE MASTER OF THE BOARD HAS ARRIVED</div>
+            <h1 style={{ fontSize: isLandscape ? 'clamp(2.4rem, 7vw, 4.8rem)' : 'clamp(3.5rem, 11vw, 8rem)', fontWeight: 900, color: '#eaffff', textShadow: '0 0 18px #22d3ee, 0 0 55px rgba(34,211,238,0.8)', textTransform: 'uppercase', letterSpacing: isLandscape ? '4px' : '7px', lineHeight: .9, margin: '0.8rem 0' }}>CHESTER</h1>
             <p style={{ color: '#b8faff', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', lineHeight: 1.45, maxWidth: '55ch', margin: isLandscape ? '0 0 1rem' : '0 auto 1.6rem' }}>{guestName === 'Richard' ? 'Richard... turning off your screen will not save you from this matchup. The board is ready. I can hear your heart rate spiking... do not run from me.' : guestName === 'Paul' ? 'Paul, I am Chester, the shadow in the machine. I cull the weak. The beach can wait; the grid demands your answer.' : guestName ? `${guestName}, I am the shadow in the machine. The board is ready, and your truth will be exposed.` : 'I am Chester. I grade the moves, summon the chaos, and remember every blunder. Ready to play, my friends?'}</p>
-            <button onClick={() => setScene('ROSTER')} className="chester-enter" style={{ backgroundColor: '#00ffff', color: '#020005', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', fontWeight: 900, padding: isLandscape ? '0.65rem 1.4rem' : '0.9rem 2rem', borderRadius: '4px', border: '1px solid #dfffff', boxShadow: '0 0 25px rgba(0,255,255,0.8)', cursor: 'pointer', letterSpacing: '2px' }}>{guestName === 'Richard' ? 'ENTER. RIGHT NOW, RICHIE. →' : guestName === 'Paul' ? 'STEP UP TO PLAY, PAUL →' : 'JOIN YOUR FRIENDS NOW →'}</button>
+            <button onClick={() => setScene('ROSTER')} className="chester-enter" style={{ backgroundColor: '#22d3ee', color: '#020005', fontSize: isLandscape ? '0.82rem' : 'clamp(1rem, 2vw, 1.35rem)', fontWeight: 900, padding: isLandscape ? '0.65rem 1.4rem' : '0.9rem 2rem', borderRadius: '4px', border: '1px solid #dfffff', boxShadow: '0 0 25px rgba(34,211,238,0.8)', cursor: 'pointer', letterSpacing: '2px' }}>{guestName === 'Richard' ? 'ENTER. RIGHT NOW, RICHIE. →' : guestName === 'Paul' ? 'STEP UP TO PLAY, PAUL →' : 'JOIN YOUR FRIENDS NOW →'}</button>
           </div>
         </div>
       )}
@@ -883,7 +883,7 @@ function LegacyArena() {
             <div className="command-status"><span /> CHESTER ONLINE</div>
           </header>
 
-          <div style={{ position: 'relative', zIndex: 1, width: 'min(100%, 1440px)', margin: '0 auto', border: '1px solid rgba(255,43,136,.58)', borderLeft: '3px solid #ffea00', borderRadius: '6px', padding: '0.7rem 0.85rem', background: 'rgba(12,7,17,.84)', color: '#fff4bd', boxShadow: '0 0 20px rgba(255,43,136,.14)', fontSize: 'clamp(.72rem, 1.7vw, .95rem)', fontWeight: 800, lineHeight: 1.4, boxSizing: 'border-box' }}>
+          <div style={{ position: 'relative', zIndex: 1, width: 'min(100%, 1440px)', margin: '0 auto', border: '1px solid rgba(244,63,122,.58)', borderLeft: '3px solid #ffea00', borderRadius: '6px', padding: '0.7rem 0.85rem', background: 'rgba(12,7,17,.84)', color: '#fff4bd', boxShadow: '0 0 20px rgba(244,63,122,.14)', fontSize: 'clamp(.72rem, 1.7vw, .95rem)', fontWeight: 800, lineHeight: 1.4, boxSizing: 'border-box' }}>
             👑 Welcome to the Court, Jemma &amp; Neill! Chess mastery, chaotic blunders, or pub trivia glory - choose your battlefield below.
           </div>
 
@@ -962,13 +962,13 @@ function LegacyArena() {
           </div>
           
           <div style={{ flex: 1, width: '100%', maxWidth: '1400px', minHeight: 0, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '0.6rem' : '2rem', position: 'relative', alignItems: 'stretch', overflow: 'hidden' }}>
-            <div style={{ flex: isMobile ? '1 1 60%' : 2, minHeight: 0, backgroundColor: '#000', borderRadius: '6px', border: '2px solid #00ffff', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,255,255,0.2)', overflowY: 'auto' }}>
+            <div style={{ flex: isMobile ? '1 1 60%' : 2, minHeight: 0, backgroundColor: '#000', borderRadius: '6px', border: '2px solid #22d3ee', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(34,211,238,0.2)', overflowY: 'auto' }}>
 
               {leagueView === 'MATCHUPS' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
                     <h3 style={{ color: '#ffea00', fontSize: 'clamp(1.2rem, 1.8vw, 1.8rem)', margin: 0, fontWeight: 900 }}>LIVE MATCHUP BOARD</h3>
-                    <span style={{ color: '#39ff14', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px' }}>SEASON 1 // LIVE</span>
+                    <span style={{ color: '#2563eb', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px' }}>SEASON 1 // LIVE</span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
@@ -991,12 +991,12 @@ function LegacyArena() {
 
               {leagueView === '2V2' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h3 style={{ color: '#39ff14', fontSize: 'clamp(1.2rem, 1.8vw, 1.8rem)', margin: 0, fontWeight: 900 }}>WORLD-FIRST 2v2 TAG-TEAM</h3>
-                  <div style={{ background: 'linear-gradient(135deg, rgba(255,0,127,0.18), rgba(57,255,20,0.08), rgba(0,255,255,0.1))', border: '3px solid #ff007f', borderRadius: '24px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', alignItems: 'center', textAlign: 'center' }}>
+                  <h3 style={{ color: '#2563eb', fontSize: 'clamp(1.2rem, 1.8vw, 1.8rem)', margin: 0, fontWeight: 900 }}>WORLD-FIRST 2v2 TAG-TEAM</h3>
+                  <div style={{ background: 'linear-gradient(135deg, rgba(244,63,122,0.18), rgba(37,99,235,0.08), rgba(34,211,238,0.1))', border: '3px solid #f43f7a', borderRadius: '24px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', alignItems: 'center', textAlign: 'center' }}>
                     <span style={{ color: '#ffea00', fontWeight: 900, fontSize: '1.1rem' }}>THE ULTIMATE GRUDGE MATCH</span>
-                    <div style={{ fontWeight: 900, fontSize: 'clamp(1.3rem, 2vw, 2.2rem)', color: '#00ffff', lineHeight: 1.2 }}>[YOU + Brendan 🦸‍♂️] vs. [Gabe 🦹‍♂️ + Z-Man 👑]</div>
+                    <div style={{ fontWeight: 900, fontSize: 'clamp(1.3rem, 2vw, 2.2rem)', color: '#22d3ee', lineHeight: 1.2 }}>[YOU + Brendan 🦸‍♂️] vs. [Gabe 🦹‍♂️ + Z-Man 👑]</div>
                     <p style={{ margin: 0, color: '#ddd', fontSize: '1rem', maxWidth: '60ch' }}>Alternating half-moves, coordinated chaos, and enough tactical panic for the entire league group chat to implode.</p>
-                    <button onClick={() => loadArena('2V2', 'Heroes vs. Villains Tag Match')} style={{ backgroundColor: '#ff007f', color: '#fff', fontSize: '1.1rem', fontWeight: 900, padding: '0.9rem 2rem', borderRadius: '18px', border: '4px solid #fff', cursor: 'pointer', marginTop: '0.5rem', width: '100%' }}>
+                    <button onClick={() => loadArena('2V2', 'Heroes vs. Villains Tag Match')} style={{ backgroundColor: '#f43f7a', color: '#fff', fontSize: '1.1rem', fontWeight: 900, padding: '0.9rem 2rem', borderRadius: '18px', border: '4px solid #fff', cursor: 'pointer', marginTop: '0.5rem', width: '100%' }}>
                       🔥 ENTER 4-PLAYER ARENA
                     </button>
                   </div>
@@ -1010,7 +1010,7 @@ function LegacyArena() {
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 900 }}>DIFFICULTY:</span>
                       {(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'] as const).map((diff) => (
-                        <button key={diff} onClick={() => setCoachingDifficulty(diff)} style={{ backgroundColor: coachingDifficulty === diff ? '#00ffff' : '#111', color: coachingDifficulty === diff ? '#000' : '#00ffff', border: '1px solid #00ffff', borderRadius: '4px', padding: '0.3rem 0.6rem', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer' }}>{diff}</button>
+                        <button key={diff} onClick={() => setCoachingDifficulty(diff)} style={{ backgroundColor: coachingDifficulty === diff ? '#22d3ee' : '#111', color: coachingDifficulty === diff ? '#000' : '#22d3ee', border: '1px solid #22d3ee', borderRadius: '4px', padding: '0.3rem 0.6rem', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer' }}>{diff}</button>
                       ))}
                     </div>
                   </div>
@@ -1026,15 +1026,15 @@ function LegacyArena() {
               )}
             </div>
 
-            <div style={{ flex: isMobile ? '1 1 35%' : 1, minHeight: 0, backgroundColor: '#000', borderRadius: '6px', border: '2px solid #ff007f', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(255,0,127,0.25)', overflow: 'hidden' }}>
-              <h3 style={{ color: '#ff007f', fontSize: isMobile ? '1rem' : 'clamp(1.2rem, 1.6vw, 1.8rem)', borderBottom: '2px solid #ff007f', paddingBottom: isMobile ? '0.4rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', fontWeight: 900, flexShrink: 0 }}>CHESTER'S FEED</h3>
+            <div style={{ flex: isMobile ? '1 1 35%' : 1, minHeight: 0, backgroundColor: '#000', borderRadius: '6px', border: '2px solid #f43f7a', padding: isMobile ? '0.8rem' : '1.5rem', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(244,63,122,0.25)', overflow: 'hidden' }}>
+              <h3 style={{ color: '#f43f7a', fontSize: isMobile ? '1rem' : 'clamp(1.2rem, 1.6vw, 1.8rem)', borderBottom: '2px solid #f43f7a', paddingBottom: isMobile ? '0.4rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', fontWeight: 900, flexShrink: 0 }}>CHESTER'S FEED</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: isMobile ? '0.5rem' : '0.8rem', marginBottom: isMobile ? '0.5rem' : '1rem', flexShrink: 0 }}>
                 <div style={{ backgroundColor: '#111', borderRadius: isMobile ? '10px' : '16px', border: '2px solid #ffea00', padding: isMobile ? '0.5rem' : '0.8rem', textAlign: 'center' }}>
                   <div style={{ color: '#ffea00', fontSize: isMobile ? '0.65rem' : '0.8rem', fontWeight: 900 }}>ARENA PEAK</div>
                   <div style={{ color: '#fff', fontSize: isMobile ? '1.1rem' : '1.5rem', fontWeight: 900 }}>10-1</div>
                 </div>
-                <div style={{ backgroundColor: '#111', borderRadius: isMobile ? '10px' : '16px', border: '2px solid #00ffff', padding: isMobile ? '0.5rem' : '0.8rem', textAlign: 'center' }}>
-                  <div style={{ color: '#00ffff', fontSize: isMobile ? '0.65rem' : '0.8rem', fontWeight: 900 }}>TENSION</div>
+                <div style={{ backgroundColor: '#111', borderRadius: isMobile ? '10px' : '16px', border: '2px solid #22d3ee', padding: isMobile ? '0.5rem' : '0.8rem', textAlign: 'center' }}>
+                  <div style={{ color: '#22d3ee', fontSize: isMobile ? '0.65rem' : '0.8rem', fontWeight: 900 }}>TENSION</div>
                   <div style={{ color: '#fff', fontSize: isMobile ? '1.1rem' : '1.5rem', fontWeight: 900 }}>97%</div>
                 </div>
               </div>
@@ -1069,12 +1069,12 @@ function LegacyArena() {
         }}>
           
           {/* Animated background grid */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.08)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-30"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.08)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-30"></div>
           
           {/* Header badge */}
-          <div className="live-game-header" style={{ position: 'absolute', top: '0.45rem', left: '0.55rem', backgroundColor: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', border: '1px solid #00ffff', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem', zIndex: 50, flexShrink: 0 }}>
+          <div className="live-game-header" style={{ position: 'absolute', top: '0.45rem', left: '0.55rem', backgroundColor: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', border: '1px solid #22d3ee', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem', zIndex: 50, flexShrink: 0 }}>
              <span style={{ fontSize: isMobile ? '0.75rem' : 'clamp(0.9rem, 1.3vw, 1.3rem)', color: '#fff', fontWeight: 900, letterSpacing: '1px' }}>
-               <span style={{ display: 'inline-block', color: '#ff007f', animation: 'pulse 1.5s infinite', fontSize: '1.1em', marginRight: '0.5rem' }}>🔴</span> LIVE
+               <span style={{ display: 'inline-block', color: '#f43f7a', animation: 'pulse 1.5s infinite', fontSize: '1.1em', marginRight: '0.5rem' }}>🔴</span> LIVE
              </span>
              <span style={{ fontSize: isMobile ? '0.8rem' : 'clamp(1rem, 1.4vw, 1.5rem)', color: '#ffea00', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeMatchup}</span>
              <button onClick={createRemoteChallenge} style={{ marginLeft: 'auto', border: '1px solid #b8a2ff', borderRadius: '4px', padding: isMobile ? '.28rem .42rem' : '.4rem .6rem', background: '#100b1b', color: '#d8ccff', fontSize: isMobile ? '.55rem' : '.7rem', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>1V1 INVITE</button>
@@ -1107,14 +1107,14 @@ function LegacyArena() {
                maxWidth: '100%',
                aspectRatio: '1/1', 
                background: 'linear-gradient(135deg, rgba(26,0,51,0.9), rgba(45,0,82,0.8))',
-               border: '2px solid #00ffff',
+               border: '2px solid #22d3ee',
                borderRadius: '4px',
                padding: 0, 
                position: 'relative', 
                display: 'flex', 
                alignItems: 'center', 
                justifyContent: 'center', 
-               boxShadow: '0 0 32px rgba(0,255,255,0.35), inset 0 0 24px rgba(0,255,255,0.1)',
+               boxShadow: '0 0 32px rgba(34,211,238,0.35), inset 0 0 24px rgba(34,211,238,0.1)',
                boxSizing: 'border-box',
                backdropFilter: 'blur(2px)',
                margin: '0 auto'
@@ -1206,15 +1206,15 @@ function LegacyArena() {
               <ChesterTeleprompter text={hostBanter} isThinking={isThinking} isMobile={isMobile} />
 
               {activeChallenge && (
-                <div style={{ flexShrink: 0, background: 'linear-gradient(90deg, rgba(0,255,255,.12), rgba(255,0,127,.08))', borderLeft: '3px solid #00ffff', padding: isLandscape ? '0.35rem 0.45rem' : '0.65rem 0.75rem', marginBottom: isLandscape ? '0.35rem' : '0.7rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', color: '#00ffff', fontSize: isLandscape ? '0.45rem' : '0.62rem', fontWeight: 900, letterSpacing: '1px' }}><span>LIVE CHALLENGE</span><span>{activeChallenge.level}</span></div>
+                <div style={{ flexShrink: 0, background: 'linear-gradient(90deg, rgba(34,211,238,.12), rgba(244,63,122,.08))', borderLeft: '3px solid #22d3ee', padding: isLandscape ? '0.35rem 0.45rem' : '0.65rem 0.75rem', marginBottom: isLandscape ? '0.35rem' : '0.7rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', color: '#22d3ee', fontSize: isLandscape ? '0.45rem' : '0.62rem', fontWeight: 900, letterSpacing: '1px' }}><span>LIVE CHALLENGE</span><span>{activeChallenge.level}</span></div>
                   <div style={{ color: '#fff', fontSize: isLandscape ? '0.62rem' : '0.82rem', fontWeight: 900, margin: '0.18rem 0' }}>{activeChallenge.title}</div>
                   <div style={{ color: '#c7d5da', fontSize: isLandscape ? '0.5rem' : '0.68rem', lineHeight: 1.35 }}>{activeChallenge.objective}</div>
                 </div>
               )}
 
-              <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.5rem', border: '1px solid #39ff14', background: 'rgba(57,255,20,.07)', padding: isLandscape ? '0.35rem' : '0.55rem', marginBottom: isLandscape ? '0.35rem' : '0.7rem', color: '#dfffd8', fontSize: isLandscape ? '0.48rem' : '0.66rem' }}>
-                <span><b style={{ color: '#39ff14' }}>MISSION</b> {missionProgress}</span>
+              <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.5rem', border: '1px solid #2563eb', background: 'rgba(37,99,235,.07)', padding: isLandscape ? '0.35rem' : '0.55rem', marginBottom: isLandscape ? '0.35rem' : '0.7rem', color: '#dfffd8', fontSize: isLandscape ? '0.48rem' : '0.66rem' }}>
+                <span><b style={{ color: '#2563eb' }}>MISSION</b> {missionProgress}</span>
                 <span>{gameMode.startsWith('PVP_') ? 'Live challenge' : 'Chester analysis'}</span>
               </div>
 
@@ -1237,20 +1237,20 @@ function LegacyArena() {
                     <div style={{ flex: 1 }}><b style={{ color: '#b8a2ff' }}>POST-GAME REPORT · {postGameReport.score}/100</b><div style={{ color: '#fff', fontSize: isLandscape ? '0.46rem' : '0.65rem', marginTop: '0.2rem' }}>{postGameReport.openingName} · {postGameReport.moves} ply</div></div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.3rem', marginTop: '0.55rem' }}>
-                    {[['ACCURACY', postGameReport.accuracy], ['DEVELOP', postGameReport.development], ['KING', postGameReport.kingSafety], ['TACTICS', postGameReport.tactics]].map(([label, value]) => <div key={label} style={{ background: '#090510', padding: '0.35rem', textAlign: 'center', color: '#fff', fontSize: isLandscape ? '0.42rem' : '0.56rem' }}><b style={{ display: 'block', color: '#00ffff', fontSize: '1.15em' }}>{value}</b>{label}</div>)}
+                    {[['ACCURACY', postGameReport.accuracy], ['DEVELOP', postGameReport.development], ['KING', postGameReport.kingSafety], ['TACTICS', postGameReport.tactics]].map(([label, value]) => <div key={label} style={{ background: '#090510', padding: '0.35rem', textAlign: 'center', color: '#fff', fontSize: isLandscape ? '0.42rem' : '0.56rem' }}><b style={{ display: 'block', color: '#22d3ee', fontSize: '1.15em' }}>{value}</b>{label}</div>)}
                   </div>
                   <div style={{ color: '#ffea00', fontSize: isLandscape ? '0.44rem' : '0.62rem', marginTop: '0.45rem' }}><b>TURNING POINT</b> {postGameReport.turningPoint}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.35rem', alignItems: 'center', marginTop: '0.55rem' }}>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: replay.index - 1 } }))} disabled={replay.index <= 0} style={{ padding: '0.35rem 0.55rem', background: '#00ffff', border: 0, fontWeight: 900, cursor: 'pointer' }}>◀</button>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: replay.index - 1 } }))} disabled={replay.index <= 0} style={{ padding: '0.35rem 0.55rem', background: '#22d3ee', border: 0, fontWeight: 900, cursor: 'pointer' }}>◀</button>
                     <div style={{ textAlign: 'center', color: '#fff', fontSize: isLandscape ? '0.46rem' : '0.62rem' }}>REPLAY {replay.index}/{replay.total - 1} · {replay.move}</div>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: replay.index + 1 } }))} disabled={replay.index >= replay.total - 1} style={{ padding: '0.35rem 0.55rem', background: '#00ffff', border: 0, fontWeight: 900, cursor: 'pointer' }}>▶</button>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: replay.index + 1 } }))} disabled={replay.index >= replay.total - 1} style={{ padding: '0.35rem 0.55rem', background: '#22d3ee', border: 0, fontWeight: 900, cursor: 'pointer' }}>▶</button>
                   </div>
                 </div>
               )}
 
               {gameMode === 'COACH_DAILY' && (
-                <div style={{ flexShrink: 0, borderLeft: '3px solid #39ff14', padding: '0.4rem 0.6rem', marginBottom: '0.6rem', background: 'rgba(57,255,20,.05)', fontSize: isLandscape ? '0.46rem' : '0.64rem' }}>
-                  <b style={{ color: '#39ff14' }}>TODAY’S LEADERBOARD</b>
+                <div style={{ flexShrink: 0, borderLeft: '3px solid #2563eb', padding: '0.4rem 0.6rem', marginBottom: '0.6rem', background: 'rgba(37,99,235,.05)', fontSize: isLandscape ? '0.46rem' : '0.64rem' }}>
+                  <b style={{ color: '#2563eb' }}>TODAY’S LEADERBOARD</b>
                   {[...DAILY_LEADERS, ...(dailyScore === null ? [] : [{ name: guestName || 'You', score: dailyScore }])].sort((a, b) => b.score - a.score).map((entry, index) => <div key={`${entry.name}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', color: entry.name === (guestName || 'You') ? '#ffea00' : '#fff', marginTop: '0.18rem' }}><span>{index + 1}. {entry.name}</span><b>{entry.score}</b></div>)}
                 </div>
               )}
@@ -1273,7 +1273,7 @@ function LegacyArena() {
               }}>
                 {commentaryHistory.map((commentary, index) => {
                   const isLatest = index === commentaryHistory.length - 1;
-                  return <p key={`${index}-${commentary.slice(0, 20)}`} style={{ color: isLatest && banterUpdated ? '#00ffff' : '#fff', fontSize: isLandscape ? '0.75rem' : isMobile ? '1.1rem' : arenaView === 'CHESTER' ? 'clamp(1.1rem, 1.5vw, 1.4rem)' : 'clamp(0.85rem, 1vw, 1.1rem)', fontWeight: isLatest ? 900 : 600, lineHeight: 1.5, margin: '0 0 1rem', padding: isLatest ? '0.8rem' : '0.6rem 0.8rem', background: isLatest ? 'rgba(0,255,255,.07)' : 'rgba(255,255,255,.03)', borderLeft: `4px solid ${isLatest ? '#00ffff' : '#554466'}`, whiteSpace: 'pre-wrap', transition: 'all 0.4s ease' }}>{commentary}</p>;
+                  return <p key={`${index}-${commentary.slice(0, 20)}`} style={{ color: isLatest && banterUpdated ? '#22d3ee' : '#fff', fontSize: isLandscape ? '0.75rem' : isMobile ? '1.1rem' : arenaView === 'CHESTER' ? 'clamp(1.1rem, 1.5vw, 1.4rem)' : 'clamp(0.85rem, 1vw, 1.1rem)', fontWeight: isLatest ? 900 : 600, lineHeight: 1.5, margin: '0 0 1rem', padding: isLatest ? '0.8rem' : '0.6rem 0.8rem', background: isLatest ? 'rgba(34,211,238,.07)' : 'rgba(255,255,255,.03)', borderLeft: `4px solid ${isLatest ? '#22d3ee' : '#554466'}`, whiteSpace: 'pre-wrap', transition: 'all 0.4s ease' }}>{commentary}</p>;
                 })}
                 {isThinking && (
                   <div style={{ 
@@ -1321,12 +1321,12 @@ function LegacyArena() {
 
                 {gameMode === 'PVP_REMOTE' && (
                   <div style={{ border: '1px solid #b8a2ff', padding: isLandscape ? '0.35rem' : isMobile ? '1rem' : '0.6rem', color: '#ddd', fontSize: isLandscape ? '0.52rem' : isMobile ? '1rem' : '0.72rem', background: 'rgba(184,162,255,.08)' }}>
-                    <b style={{ color: remoteRole === 'w' ? '#39ff14' : '#b8a2ff', display: 'block', fontSize: isMobile ? '1.1rem' : 'inherit', marginBottom: '0.4rem' }}>{remoteRole === 'w' ? 'YOU ARE GREEN (WHITE SIDE)' : 'YOU ARE BLACK'}</b>{remoteStatus}
+                    <b style={{ color: remoteRole === 'w' ? '#2563eb' : '#b8a2ff', display: 'block', fontSize: isMobile ? '1.1rem' : 'inherit', marginBottom: '0.4rem' }}>{remoteRole === 'w' ? 'YOU ARE BLUE (WHITE SIDE)' : 'YOU ARE BLACK'}</b>{remoteStatus}
                     {remoteRole === 'w' && <>
-                      <input readOnly value={challengeUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Challenge URL" style={{ width: '100%', marginTop: '0.75rem', padding: '0.6rem', boxSizing: 'border-box', background: '#08050f', border: '1px solid #b8a2ff', color: '#39ff14', fontSize: isMobile ? '1rem' : 'inherit', fontWeight: 900 }} />
+                      <input readOnly value={challengeUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Challenge URL" style={{ width: '100%', marginTop: '0.75rem', padding: '0.6rem', boxSizing: 'border-box', background: '#08050f', border: '1px solid #b8a2ff', color: '#2563eb', fontSize: isMobile ? '1rem' : 'inherit', fontWeight: 900 }} />
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
                         <button onClick={copyChallengeLink} style={{ padding: '0.6rem', border: 0, background: '#b8a2ff', color: '#050008', fontWeight: 900, cursor: 'pointer', fontSize: isMobile ? '1rem' : 'inherit' }}>COPY URL</button>
-                        <button onClick={shareChallengeLink} style={{ padding: '0.6rem', border: '1px solid #39ff14', background: '#081108', color: '#39ff14', fontWeight: 900, cursor: 'pointer', fontSize: isMobile ? '1rem' : 'inherit' }}>SHARE LINK</button>
+                        <button onClick={shareChallengeLink} style={{ padding: '0.6rem', border: '1px solid #2563eb', background: '#081108', color: '#2563eb', fontWeight: 900, cursor: 'pointer', fontSize: isMobile ? '1rem' : 'inherit' }}>SHARE LINK</button>
                       </div>
                     </>}
                   </div>
@@ -1337,7 +1337,7 @@ function LegacyArena() {
                     onClick={() => loadArena(gameMode, activeMatchup)}
                     style={{
                       width: '100%',
-                      backgroundColor: '#ff007f',
+                      backgroundColor: '#f43f7a',
                       color: '#fff',
                       fontSize: isLandscape ? '0.58rem' : isMobile ? '0.85rem' : '0.82rem',
                       fontWeight: 900,
@@ -1346,7 +1346,7 @@ function LegacyArena() {
                       border: isMobile ? '3px solid #fff' : 'clamp(4px, 0.8vw, 8px) solid #fff',
                       cursor: 'pointer',
                       textTransform: 'uppercase',
-                      boxShadow: '0 0 40px rgba(255,0,127,0.6)',
+                      boxShadow: '0 0 40px rgba(244,63,122,0.6)',
                       letterSpacing: '1px',
                       fontFamily: 'Comic Sans MS, sans-serif'
                     }}
@@ -1360,7 +1360,7 @@ function LegacyArena() {
                     onClick={startAiDemo} 
                     style={{ 
                       width: '100%', 
-                      backgroundColor: '#39ff14', 
+                      backgroundColor: '#2563eb', 
                       color: '#000', 
                       fontSize: isLandscape ? '0.58rem' : isMobile ? '0.85rem' : '0.82rem', 
                       fontWeight: 900, 
@@ -1369,7 +1369,7 @@ function LegacyArena() {
                       border: isMobile ? '3px solid #000' : 'clamp(4px, 0.8vw, 8px) solid #000', 
                       cursor: 'pointer', 
                       textTransform: 'uppercase', 
-                      boxShadow: '0 0 40px rgba(57,255,20,0.6), inset 0 0 20px rgba(255,255,255,0.2)',
+                      boxShadow: '0 0 40px rgba(37,99,235,0.6), inset 0 0 20px rgba(255,255,255,0.2)',
                       transition: 'all 0.2s',
                       transform: 'scale(1)',
                       letterSpacing: '1px',
@@ -1413,13 +1413,13 @@ function LegacyArena() {
                   onClick={() => setScene('LEAGUE')} 
                   style={{ 
                     width: '100%', 
-                    backgroundColor: 'rgba(0,255,255,0.1)', 
-                    color: '#00ffff', 
+                    backgroundColor: 'rgba(34,211,238,0.1)', 
+                    color: '#22d3ee', 
                     fontSize: isLandscape ? '0.55rem' : isMobile ? '0.75rem' : '0.75rem', 
                     fontWeight: 900, 
                     padding: isLandscape ? '0.32rem' : isMobile ? '0.45rem' : '0.5rem', 
                     borderRadius: isMobile ? '14px' : '22px', 
-                    border: isMobile ? '3px solid #00ffff' : 'clamp(4px, 0.8vw, 8px) solid #00ffff', 
+                    border: isMobile ? '3px solid #22d3ee' : 'clamp(4px, 0.8vw, 8px) solid #22d3ee', 
                     cursor: 'pointer', 
                     textTransform: 'uppercase', 
                     boxSizing: 'border-box',
@@ -1427,11 +1427,11 @@ function LegacyArena() {
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(0,255,255,0.2)';
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 30px rgba(0,255,255,0.4)';
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,211,238,0.2)';
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 30px rgba(34,211,238,0.4)';
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(0,255,255,0.1)';
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,211,238,0.1)';
                     (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
                   }}
                 >
@@ -1474,7 +1474,7 @@ ${GAME_SCENES_CSS}
         }
         @keyframes eyeFlare {
           0%, 82%, 100% { opacity: 0.55; transform: scale(0.8); }
-          88% { opacity: 1; transform: scale(2.4); box-shadow: 0 0 28px 12px #ff007f; }
+          88% { opacity: 1; transform: scale(2.4); box-shadow: 0 0 28px 12px #f43f7a; }
         }
         @keyframes cunningFloat {
           0%, 100% { transform: translate(38px,-54px) rotate(-7deg) scale(.88); }
@@ -1526,36 +1526,36 @@ ${GAME_SCENES_CSS}
           0%, 100% { opacity: .15; transform: scaleX(.7); }
           50% { opacity: .75; transform: scaleX(1); }
         }
-        .intro-rpg-stage::before { content: ''; position: absolute; inset: -20%; background: radial-gradient(ellipse at 50% 65%, rgba(128,0,128,.32), transparent 42%), radial-gradient(ellipse at 20% 50%, rgba(0,255,255,.13), transparent 32%), radial-gradient(ellipse at 80% 35%, rgba(255,0,127,.12), transparent 30%); filter: blur(35px); animation: fogDrift 8s ease-in-out infinite; pointer-events: none; }
-        .intro-rpg-stage::after { content: ''; position: absolute; left: 10%; right: 10%; top: 50%; height: 1px; background: linear-gradient(90deg, transparent, #ff007f, #00ffff, transparent); box-shadow: 0 0 22px #00ffff; animation: horizonPulse 3s ease-in-out infinite; pointer-events: none; }
+        .intro-rpg-stage::before { content: ''; position: absolute; inset: -20%; background: radial-gradient(ellipse at 50% 65%, rgba(128,0,128,.32), transparent 42%), radial-gradient(ellipse at 20% 50%, rgba(34,211,238,.13), transparent 32%), radial-gradient(ellipse at 80% 35%, rgba(244,63,122,.12), transparent 30%); filter: blur(35px); animation: fogDrift 8s ease-in-out infinite; pointer-events: none; }
+        .intro-rpg-stage::after { content: ''; position: absolute; left: 10%; right: 10%; top: 50%; height: 1px; background: linear-gradient(90deg, transparent, #f43f7a, #22d3ee, transparent); box-shadow: 0 0 22px #22d3ee; animation: horizonPulse 3s ease-in-out infinite; pointer-events: none; }
         .intro-story-text { animation: storyImpact .8s cubic-bezier(.16,.8,.22,1) both; }
-        .opening-horse { position: relative; font-size: clamp(6rem, 19vw, 14rem); line-height: 1; filter: drop-shadow(0 0 18px #00ffff) drop-shadow(0 0 52px rgba(255,0,127,.7)); animation: horseArrival 1.35s cubic-bezier(.2,.85,.25,1) both, knightBreath 3s 1.35s ease-in-out infinite; }
+        .opening-horse { position: relative; font-size: clamp(6rem, 19vw, 14rem); line-height: 1; filter: drop-shadow(0 0 18px #22d3ee) drop-shadow(0 0 52px rgba(244,63,122,.7)); animation: horseArrival 1.35s cubic-bezier(.2,.85,.25,1) both, knightBreath 3s 1.35s ease-in-out infinite; }
         .opening-smirk { position: absolute; left: 50%; top: 50%; font-size: .28em; filter: drop-shadow(0 0 8px #ffea00); animation: smirkArrival 2.4s both; }
-        .opening-hello { margin: .35rem 0 0; color: #eaffff; font-size: clamp(1.7rem, 6vw, 4.8rem); text-shadow: 0 0 18px #00ffff, 0 0 45px rgba(0,255,255,.65); animation: titleArrival 2.6s both; }
-        .opening-town { margin: .55rem 0 0; color: #ff007f; font-size: clamp(.8rem, 2vw, 1.35rem); font-weight: 900; letter-spacing: 5px; text-shadow: 0 0 16px #ff007f; animation: townArrival 3.5s both; }
+        .opening-hello { margin: .35rem 0 0; color: #eaffff; font-size: clamp(1.7rem, 6vw, 4.8rem); text-shadow: 0 0 18px #22d3ee, 0 0 45px rgba(34,211,238,.65); animation: titleArrival 2.6s both; }
+        .opening-town { margin: .55rem 0 0; color: #f43f7a; font-size: clamp(.8rem, 2vw, 1.35rem); font-weight: 900; letter-spacing: 5px; text-shadow: 0 0 16px #f43f7a; animation: townArrival 3.5s both; }
         .gothic-shock-scene { animation: realmFlash 6.5s infinite; }
         .gothic-shock-scene::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 14vw 4vw rgba(125,0,20,.42); animation: pulseOminous 3.5s infinite; }
-        .shock-bolt { position: absolute; top: -15%; width: 2px; height: 85%; background: #eaffff; box-shadow: 0 0 8px #fff, 0 0 22px #00ffff; opacity: 0; transform: skewX(-20deg); animation: lightningStrike 6.5s infinite; }
+        .shock-bolt { position: absolute; top: -15%; width: 2px; height: 85%; background: #eaffff; box-shadow: 0 0 8px #fff, 0 0 22px #22d3ee; opacity: 0; transform: skewX(-20deg); animation: lightningStrike 6.5s infinite; }
         .shock-bolt::after { content: ''; position: absolute; top: 38%; left: -18px; width: 38px; height: 2px; background: inherit; box-shadow: inherit; transform: rotate(-44deg); }
         .shock-bolt-left { left: 18%; }
         .shock-bolt-right { right: 15%; animation-delay: 2.7s; transform: skewX(24deg); }
         .chester-intro-page { animation: fadeInUp 0.5s ease-out; }
-        .chester-ring { position: absolute; inset: 4%; border-radius: 50%; border: 1px solid rgba(0,255,255,0.55); }
-        .chester-ring::before, .chester-ring::after { content: ''; position: absolute; width: 12px; height: 12px; background: #00ffff; box-shadow: 0 0 16px #00ffff; transform: rotate(45deg); }
+        .chester-ring { position: absolute; inset: 4%; border-radius: 50%; border: 1px solid rgba(34,211,238,0.55); }
+        .chester-ring::before, .chester-ring::after { content: ''; position: absolute; width: 12px; height: 12px; background: #22d3ee; box-shadow: 0 0 16px #22d3ee; transform: rotate(45deg); }
         .chester-ring::before { top: -6px; left: 50%; }
         .chester-ring::after { bottom: -6px; right: 50%; }
-        .chester-ring-outer { animation: sigilSpin 16s linear infinite; box-shadow: inset 0 0 35px rgba(0,255,255,0.12), 0 0 35px rgba(0,255,255,0.18); }
-        .chester-ring-inner { inset: 15%; border-color: rgba(255,0,127,0.65); animation: sigilSpinReverse 9s linear infinite; }
+        .chester-ring-outer { animation: sigilSpin 16s linear infinite; box-shadow: inset 0 0 35px rgba(34,211,238,0.12), 0 0 35px rgba(34,211,238,0.18); }
+        .chester-ring-inner { inset: 15%; border-color: rgba(244,63,122,0.65); animation: sigilSpinReverse 9s linear infinite; }
         .chester-knight-shadow, .chester-knight { position: absolute; font: 900 min(35vw, 280px)/1 Georgia, serif; }
-        .chester-knight-shadow { color: #00181c; -webkit-text-stroke: 12px rgba(255,0,127,0.72); filter: blur(12px); }
-        .chester-knight { color: #ffffff; -webkit-text-stroke: 4px #00ffff; text-shadow: 0 0 10px #fff, 0 0 22px #00ffff, 0 0 62px #00ffff, 14px 10px 0 rgba(255,0,127,0.48), -12px -8px 0 rgba(255,234,0,.18); animation: knightBreath 3s ease-in-out infinite; }
-        .chester-eye { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #ff007f; box-shadow: 0 0 18px 6px #ff007f; transform: translate(16px,-48px); animation: eyeFlare 4s infinite; }
+        .chester-knight-shadow { color: #00181c; -webkit-text-stroke: 12px rgba(244,63,122,0.72); filter: blur(12px); }
+        .chester-knight { color: #ffffff; -webkit-text-stroke: 4px #22d3ee; text-shadow: 0 0 10px #fff, 0 0 22px #22d3ee, 0 0 62px #22d3ee, 14px 10px 0 rgba(244,63,122,0.48), -12px -8px 0 rgba(255,234,0,.18); animation: knightBreath 3s ease-in-out infinite; }
+        .chester-eye { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #f43f7a; box-shadow: 0 0 18px 6px #f43f7a; transform: translate(16px,-48px); animation: eyeFlare 4s infinite; }
         .chester-cunning { position: absolute; z-index: 4; font-size: clamp(1.5rem, 4vw, 2.8rem); filter: drop-shadow(0 0 12px #ffea00); animation: cunningFloat 2.2s ease-in-out infinite; }
         .chester-spark { position: absolute; z-index: 3; color: #ffea00; font-size: clamp(1.2rem, 3vw, 2rem); text-shadow: 0 0 15px #ffea00; animation: sparkOrbit 5s linear infinite; }
         .spark-one { inset: 8%; }
-        .spark-two { inset: 19%; color: #ff007f; text-shadow: 0 0 15px #ff007f; animation-direction: reverse; animation-duration: 3.5s; }
+        .spark-two { inset: 19%; color: #f43f7a; text-shadow: 0 0 15px #f43f7a; animation-direction: reverse; animation-duration: 3.5s; }
         .chester-enter { transition: transform .2s, box-shadow .2s; }
-        .chester-enter:hover { transform: translateY(-3px); box-shadow: 0 0 42px #00ffff !important; }
+        .chester-enter:hover { transform: translateY(-3px); box-shadow: 0 0 42px #22d3ee !important; }
         .home-hub-card {
           opacity: 0;
           animation: fadeInUp 0.55s ease-out forwards;

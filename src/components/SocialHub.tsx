@@ -35,7 +35,7 @@ const STARTER_POSTS: CommunityPost[] = [
     message: 'Week Seven is live. Brendan has form, Gabe has excuses, and Z-Man has the crown. Submit your moves before the narrative submits you.',
     time: 'NOW',
     reactions: 24,
-    accent: '#00e5e5',
+    accent: '#22d3ee',
     official: true,
   },
   {
@@ -47,7 +47,7 @@ const STARTER_POSTS: CommunityPost[] = [
     message: 'That central pawn break was completely sound. I will be accepting apologies after Chester confirms it.',
     time: '4M',
     reactions: 13,
-    accent: '#7cff45',
+    accent: '#2563eb',
   },
   {
     id: 'gabe-callout',
@@ -58,7 +58,7 @@ const STARTER_POSTS: CommunityPost[] = [
     message: 'Neill, private challenge tonight. No simulations, no committee, no witnesses required.',
     time: '11M',
     reactions: 18,
-    accent: '#ff2b88',
+    accent: '#f43f7a',
   },
   {
     id: 'zman-prep',
@@ -75,9 +75,9 @@ const STARTER_POSTS: CommunityPost[] = [
 
 const POWER_RANKINGS = [
   { rank: 1, player: 'Z-Man', record: '10-1', form: 'W6', rating: 96, change: 'HOLD', accent: '#ffd84d' },
-  { rank: 2, player: 'Brendan', record: '9-2', form: 'W4', rating: 92, change: '+1', accent: '#00e5e5' },
-  { rank: 3, player: 'Gabe', record: '8-3', form: 'W2', rating: 87, change: '-1', accent: '#ff2b88' },
-  { rank: 4, player: 'Neill', record: '8-3', form: 'L1', rating: 84, change: 'HOLD', accent: '#7cff45' },
+  { rank: 2, player: 'Brendan', record: '9-2', form: 'W4', rating: 92, change: '+1', accent: '#22d3ee' },
+  { rank: 3, player: 'Gabe', record: '8-3', form: 'W2', rating: 87, change: '-1', accent: '#f43f7a' },
+  { rank: 4, player: 'Neill', record: '8-3', form: 'L1', rating: 84, change: 'HOLD', accent: '#2563eb' },
   { rank: 5, player: 'Sam', record: '7-4', form: 'W1', rating: 76, change: '+2', accent: '#b7c8cc' },
 ];
 
@@ -139,7 +139,7 @@ export function TownSquare(props: HubProps) {
       message,
       time: 'NOW',
       reactions: 0,
-      accent: '#7cff45',
+      accent: '#2563eb',
     };
     const next = [post, ...posts];
     setPosts(next);

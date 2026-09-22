@@ -52,7 +52,7 @@ export default function Teleprompter({
         border: '1px solid rgba(0, 255, 255, 0.35)',
         borderRadius: '6px',
         padding: '0.5rem 0.75rem',
-        boxShadow: 'inset 0 0 18px rgba(0,255,255,0.08), 0 4px 16px rgba(0,0,0,0.4)',
+        boxShadow: 'inset 0 0 18px rgba(34,211,238,0.08), 0 4px 16px rgba(0,0,0,0.4)',
         boxSizing: 'border-box',
         overflow: 'hidden',
         fontFamily: 'monospace',
@@ -61,7 +61,7 @@ export default function Teleprompter({
       <span
         style={{
           flexShrink: 0,
-          color: '#ff2b88',
+          color: '#f43f7a',
           fontSize: '0.62rem',
           fontWeight: 900,
           letterSpacing: '1.5px',
@@ -86,7 +86,7 @@ export default function Teleprompter({
         }}
       >
         {isLoading && !displayed ? (
-          <span style={{ color: 'var(--arena-cyan, #00e5e5)', fontStyle: 'italic' }}>Chester is crunching the numbers...</span>
+          <span style={{ color: 'var(--arena-cyan, #22d3ee)', fontStyle: 'italic' }}>Chester is crunching the numbers...</span>
         ) : (
           <>
             {displayed}

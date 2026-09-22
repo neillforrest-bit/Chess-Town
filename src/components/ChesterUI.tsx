@@ -30,7 +30,7 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
       {isThinking && (
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(180deg, transparent, rgba(255,43,136,0.4), transparent)',
+          background: 'linear-gradient(180deg, transparent, rgba(244,63,122,0.4), transparent)',
           animation: 'chester-scan 1s linear infinite'
         }} />
       )}
@@ -225,7 +225,7 @@ export function ChesterChatOverlay({
           </div>
 
           <div style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            {chatError && <div style={{ color: '#ff007f', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{chatError}</div>}
+            {chatError && <div style={{ color: '#f43f7a', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{chatError}</div>}
             <form onSubmit={onSendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
               <textarea
                 ref={inputRef}
