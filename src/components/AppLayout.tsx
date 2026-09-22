@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { askChesterChat } from '@/app/actions';
+import { chesterOfflineChat } from '@/lib/chester-voice';
 import GlobalNav from '@/components/GlobalNav';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
@@ -23,7 +24,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setThinking(true);
     try {
       const reply = await askChesterChat(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
-      setMessages((current) => [...current, { role: 'chester', text: reply, kind: 'chat' }]);
+      const text = reply && !/messenger|delayed|unavailable/i.test(reply)
+        ? reply
+        : chesterOfflineChat(message, { persona: 'INTERMEDIATE', historyCount: messages.length });
+      setMessages((current) => [...current, { role: 'chester', text, kind: 'chat' }]);
     } catch {
       setError('Chester is briefly off the board. Try again.');
     } finally {

@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'; 
 import { useState, useEffect, useRef } from 'react';
 import { askChesterChat, askCommentary, askGrandmaster } from '@/app/actions';
+import { chesterOfflineChat, getVerdict } from '@/lib/chester-voice';
 import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter, ChessGameTools } from '@/components/ChesterUI';
 import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -458,7 +459,10 @@ function LegacyArena() {
             objective: payload?.objective,
           });
           const aiResponse = await askChesterChat(richPayload);
-          if (requestId === commentaryRequestRef.current) setHostBanter(`🎙️ CHESTER: ${aiResponse}`);
+          const introText = aiResponse && !/messenger|delayed|unavailable/i.test(aiResponse)
+            ? aiResponse
+            : `${payload?.objective || 'Training board is live.'} I am reading every move - make it a good one.`;
+          if (requestId === commentaryRequestRef.current) setHostBanter(`🎙️ CHESTER: ${introText}`);
         } catch (err) {
           console.error('Scenario intro error:', err);
           setHostBanter(`🎙️ CHESTER: ${payload?.objective || 'Training board is live. Make your move.'}`);
@@ -529,7 +533,10 @@ function LegacyArena() {
             ? await askGrandmaster(richPayload)
             : await askChesterChat(richPayload);
           if (requestId !== commentaryRequestRef.current) return;
-          setHostBanter(`🎙️ CHESTER: ${aiResponse}`);
+          const moveText = aiResponse && !/messenger|delayed|unavailable/i.test(aiResponse)
+            ? aiResponse
+            : chesterOfflineChat(`rate that move`, { persona: 'INTERMEDIATE', classification: payload?.classification, lastMove: payload?.san || payload?.move, historyCount: payload?.historyCount });
+          setHostBanter(`🎙️ CHESTER: ${moveText}`);
           setBanterUpdated(true);
           setTimeout(() => setBanterUpdated(false), 600);
         } catch (err) {
@@ -711,7 +718,10 @@ function LegacyArena() {
         conversationHistory,
         instruction: 'Use fresh Stockfish analysis to answer directly. Name the engine best move and translate the principal variation into a strategic plan. Be funny without sacrificing accuracy, then give exactly one concrete next action.',
       }));
-      setChatMessages((current) => [...current, { role: 'chester' as const, text: reply, kind: 'chat' as const }].slice(-10));
+      const chatText = reply && !/messenger|delayed|unavailable/i.test(reply)
+        ? reply
+        : chesterOfflineChat(message, { persona: 'INTERMEDIATE', historyCount: 0 });
+      setChatMessages((current) => [...current, { role: 'chester' as const, text: chatText, kind: 'chat' as const }].slice(-10));
       setHostBanter(`🎙️ CHESTER: ${reply}`);
       setBanterUpdated(true);
       setTimeout(() => setBanterUpdated(false), 600);

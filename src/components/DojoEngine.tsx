@@ -326,6 +326,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     legalTargets: [],
     lastMove: null,
     coachSuggestion: null,
+    trailPly: -1,
     openingAssessment: null,
     principleStreak: 0,
     playerQualities: [],
@@ -849,7 +850,21 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // (b) the move just made, (c) a tapped piece's options (the green dots above).
             // One of each, always replaced - never a spiderweb.
             if (!gameRef.current.isGameOver) {
-              if (gameRef.current.lastMove) drawCoachArrow(gameRef.current.lastMove.from, gameRef.current.lastMove.to, 0xffd84d);
+              if (gameRef.current.lastMove) {
+                drawCoachArrow(gameRef.current.lastMove.from, gameRef.current.lastMove.to, 0xffd84d);
+                // Fun trail: a spark rides the path of the move that was just made (both sides).
+                if (gameRef.current.trailPly !== gameRef.current.ply) {
+                  gameRef.current.trailPly = gameRef.current.ply;
+                  const fCol = files.indexOf(gameRef.current.lastMove.from[0]);
+                  const fRow = ranks.indexOf(gameRef.current.lastMove.from[1]);
+                  const tCol = files.indexOf(gameRef.current.lastMove.to[0]);
+                  const tRow = ranks.indexOf(gameRef.current.lastMove.to[1]);
+                  if (fCol >= 0 && fRow >= 0 && tCol >= 0 && tRow >= 0) {
+                    const spark = scene.add.circle(boardOffset + fCol * tileSize + tileSize / 2, boardOffset + fRow * tileSize + tileSize / 2, tileSize * 0.16, 0xffd84d, 0.95).setDepth(30);
+                    scene.tweens.add({ targets: spark, x: boardOffset + tCol * tileSize + tileSize / 2, y: boardOffset + tRow * tileSize + tileSize / 2, duration: 420, ease: 'Cubic.Out', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
+                  }
+                }
+              }
               if (gameRef.current.coachSuggestion) drawCoachArrow(gameRef.current.coachSuggestion.from, gameRef.current.coachSuggestion.to, 0x2563eb);
             }
 
@@ -891,12 +906,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                       shadow: { blur: 34, color: glowColor, fill: true, offsetX: 0, offsetY: 0 },
                     }).setOrigin(0.5);
 
-                  const glowColorNumber = isWhite ? 0x176b49 : 0x7d1d3f;
-                  const glow = scene.add.circle(0, 0, tileSize * 0.44, glowColorNumber, 0.28);
-                  
+                  // No permanent discs, no dimming - the board stays clean. Only the
+                  // last move, a hint suggestion, and tapped-piece targets get marks.
                   if (!isInvisible) {
-                    container.add(isNeonBlind ? [glow] : [glow, pieceVisual]);
-                    if (gameRef.current.lastMove && !isMovedPiece) container.setAlpha(0.42);
+                    container.add(isNeonBlind ? [] : [pieceVisual]);
                   }
 
                   if (!isInvisible && isMovedPiece) {
