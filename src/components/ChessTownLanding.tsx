@@ -15,8 +15,8 @@ const destinations = [
     className: 'town-building--dojo',
   },
   {
-    eyebrow: 'PLAY THE TOWN',
-    title: 'THE ARENA',
+    eyebrow: 'THE TOWN HALL',
+    title: 'TOWN HALL',
     copy: 'Rivalries, daily battles, mini-games and the lights that turn one good move into local legend.',
     href: '/arena',
     action: 'STEP INTO THE LIGHTS',
@@ -62,28 +62,21 @@ export default function ChessTownLanding() {
     <div className="town-moon" aria-hidden="true">♘</div>
 
     <header className="town-masthead">
+      <div className="town-greet" role="note" aria-label="Chester greets you">
+        <div className="town-greet__avatar" aria-hidden="true">♞</div>
+        <div className="town-greet__bubble">
+          <span>{returning ? 'CHESTER SAYS' : 'CHESTER, MAYOR OF CHESS TOWN'}</span>
+          <p>{greeting}</p>
+        </div>
+      </div>
       <span className="town-masthead__kicker">WELCOME TO</span>
       <h1>CHESS <em>TOWN</em></h1>
-      <p className="town-masthead__tag">The chess app where learning feels like playing - and the Big Boss is always watching.</p>
       <div className="town-cta">
         <Link href="/play-chester" className="town-cta__play">▶ PLAY WITH CHESTER</Link>
         <Link href="/arena?friend=1" className="town-cta__friend">⚔ CHALLENGE A FRIEND</Link>
       </div>
       <div className="town-live"><i /> THE TOWN IS OPEN - FREE TO PLAY</div>
     </header>
-
-    <section className="town-host" aria-label="Chester, your host">
-      <div className="town-host__avatar" aria-hidden="true">♞</div>
-      <div className="town-host__card">
-        <span>{returning ? 'CHESTER / WELCOME BACK' : 'CHESTER / YOUR HOST'}</span>
-        <p>{greeting}</p>
-        <div className="town-host__actions">
-          {returning
-            ? <><Link href="/play-chester">BACK TO THE DOJO →</Link><Link href="/arena?friend=1">CHALLENGE A FRIEND</Link></>
-            : <><Link href="/play-chester">START YOUR FIRST GAME →</Link><Link href="#town-street">EXPLORE THE TOWN</Link></>}
-        </div>
-      </div>
-    </section>
 
     <section className="town-boss" aria-label="The Big Boss">
       <div className="town-boss__crown" aria-hidden="true">♚</div>
