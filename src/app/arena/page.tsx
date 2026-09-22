@@ -759,6 +759,10 @@ function LegacyArena() {
       loadArena(selectedDrill.mode, selectedDrill.title);
       return;
     }
+    if (searchParams.get('friend') === '1') {
+      void createRemoteChallenge();
+      return;
+    }
     if (!destination) return;
     if (destination === 'play') {
       loadArena('COACH_OPENING', 'You vs. Chester');

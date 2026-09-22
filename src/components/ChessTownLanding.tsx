@@ -8,7 +8,7 @@ const destinations = [
   {
     eyebrow: 'LEARN WITH CHESTER',
     title: "CHESTER'S DOJO",
-    copy: 'Play a guided game. Chester watches every move and teaches while the board stays live.',
+    copy: 'A guided game where Chester reads every move with you. The fastest fun way to actually get better.',
     href: '/play-chester',
     action: 'ENTER THE DOJO',
     icon: '♞',
@@ -17,7 +17,7 @@ const destinations = [
   {
     eyebrow: 'PLAY THE TOWN',
     title: 'THE ARENA',
-    copy: 'Rivalries, daily battles and games that turn one good move into local legend.',
+    copy: 'Rivalries, daily battles, mini-games and the lights that turn one good move into local legend.',
     href: '/arena',
     action: 'STEP INTO THE LIGHTS',
     icon: '♜',
@@ -26,7 +26,7 @@ const destinations = [
   {
     eyebrow: 'BUILD YOUR GAME',
     title: 'LESSON HALL',
-    copy: 'Sharp tactics, deeper strategy and focused missions for every stage of your game.',
+    copy: 'Sharp tactics and focused missions that quietly turn you into the player your friends fear.',
     href: '/training',
     action: 'START A LESSON',
     icon: '♝',
@@ -35,9 +35,9 @@ const destinations = [
 ];
 
 const howItWorks = [
-  { icon: '🚪', title: 'PICK YOUR DISTRICT', copy: 'Start with a guided game, a live rivalry, a focused lesson or today’s challenge.' },
-  { icon: '♞', title: 'CHESTER READS THE POSITION', copy: 'Useful insight lands beside the board while you play, from first principles to sharp tactics.' },
-  { icon: '📈', title: 'YOUR GAME GETS DEEPER', copy: 'Play for five minutes or chase the leaderboard. The town grows with your ambition.' },
+  { icon: '🎮', title: 'PLAY SOMETHING FUN', copy: 'A guided game, a mini-game, today’s challenge - every visit starts with a game, not a lecture.' },
+  { icon: '♞', title: 'CHESTER COACHES LIVE', copy: 'Real Stockfish analysis translated into plain English while you play. You learn without noticing.' },
+  { icon: '👑', title: 'CLIMB TOWARD THE BOSS', copy: 'Every win moves you up the boss map. At the top, Joseph is waiting. Beat him and the town is yours.' },
 ];
 
 export default function ChessTownLanding() {
@@ -54,18 +54,24 @@ export default function ChessTownLanding() {
   }, []);
 
   const greeting = returning
-    ? `Welcome back${name ? `, ${name}` : ''}. The town kept the lights on for you. Chase a stronger game in the dojo, take today’s challenge, or step into the Arena.`
-    : 'Evening. I’m Chester — knight, coach and unofficial mayor of Chess Town. This is a living chess world for everyone: your first legal move, your hundredth tactical win, and every rivalry between. I read the position with you, explain what matters without slowing the game, and point you toward the district that fits your mood. Learn, compete, experiment, or just play.';
+    ? `Welcome back${name ? `, ${name}` : ''}. Joseph is still unbeaten, still smug, still at the top of the boss map. Go take something from him.`
+    : 'Evening. I’m Chester - knight, coach and mayor of Chess Town. Play a game in my dojo, challenge a friend in the arena, and climb the boss map. At the top sits Joseph, the Big Boss. Nobody has beaten him. Yet.';
 
   return <main className="town-night">
-    <div className="town-sky" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
+    <div className="town-sky" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
     <div className="town-moon" aria-hidden="true">♘</div>
+
     <header className="town-masthead">
-      <span>WELCOME TO</span>
-      <h1>CHESS TOWN</h1>
-      <p>Chess is better when the board feels alive. Learn, compete, experiment, or simply play.</p>
-      <div className="town-live"><i /> THE TOWN IS OPEN</div>
+      <span className="town-masthead__kicker">WELCOME TO</span>
+      <h1>CHESS <em>TOWN</em></h1>
+      <p className="town-masthead__tag">The chess app where learning feels like playing - and the Big Boss is always watching.</p>
+      <div className="town-cta">
+        <Link href="/play-chester" className="town-cta__play">▶ PLAY WITH CHESTER</Link>
+        <Link href="/arena?friend=1" className="town-cta__friend">⚔ CHALLENGE A FRIEND</Link>
+      </div>
+      <div className="town-live"><i /> THE TOWN IS OPEN - FREE TO PLAY</div>
     </header>
+
     <section className="town-host" aria-label="Chester, your host">
       <div className="town-host__avatar" aria-hidden="true">♞</div>
       <div className="town-host__card">
@@ -73,14 +79,25 @@ export default function ChessTownLanding() {
         <p>{greeting}</p>
         <div className="town-host__actions">
           {returning
-            ? <><Link href="/play-chester">BACK TO THE DOJO →</Link><Link href="/daily-challenge">TODAY'S CHALLENGE</Link></>
-            : <><Link href="/play-chester">CHOOSE YOUR GAME →</Link><Link href="#town-street">EXPLORE THE TOWN</Link></>}
+            ? <><Link href="/play-chester">BACK TO THE DOJO →</Link><Link href="/arena?friend=1">CHALLENGE A FRIEND</Link></>
+            : <><Link href="/play-chester">START YOUR FIRST GAME →</Link><Link href="#town-street">EXPLORE THE TOWN</Link></>}
         </div>
       </div>
     </section>
-    <section className="town-how" aria-label="How Chess Town works">
-      {howItWorks.map((step) => <div key={step.title}><b><i>{step.icon}</i>{step.title}</b><p>{step.copy}</p></div>)}
+
+    <section className="town-boss" aria-label="The Big Boss">
+      <div className="town-boss__crown" aria-hidden="true">♚</div>
+      <div className="town-boss__card">
+        <span>THE BIG BOSS OF CHESS TOWN</span>
+        <h2>JOSEPH IS WAITING<span className="town-boss__dots">…</span></h2>
+        <p>Climb the boss map one rival at a time. Win games, take districts, earn your shot at the top of the hill - where Joseph sits, undefeated, pretending not to check the leaderboard.</p>
+        <div className="town-boss__actions">
+          <Link href="/boss-map">SEE THE BOSS MAP →</Link>
+          <Link href="/arena?friend=1">WARM UP VS A FRIEND</Link>
+        </div>
+      </div>
     </section>
+
     <section className="town-street" id="town-street" aria-label="Choose a Chess Town destination">
       <div className="town-street__glow" aria-hidden="true" />
       {destinations.map((destination) => <Link href={destination.href} key={destination.title} className={`town-building ${destination.className}`}>
@@ -92,8 +109,13 @@ export default function ChessTownLanding() {
         <strong>{destination.action} <i>→</i></strong>
       </Link>)}
     </section>
+
+    <section className="town-how" aria-label="How Chess Town works">
+      {howItWorks.map((step) => <div key={step.title}><b><i>{step.icon}</i>{step.title}</b><p>{step.copy}</p></div>)}
+    </section>
+
     <footer className="town-footer">
-      <p><b>Tonight in town:</b> Chester is reading positions. The arena lights are on. Every level has a game waiting.</p>
+      <p><b>Tonight in town:</b> the dojo lights are on, the arena is loud, and Joseph just checked the leaderboard again.</p>
       <nav><Link href="/daily-challenge">Daily challenge</Link><Link href="/boss-map">Boss map</Link><Link href="/meet-chester">Meet Chester</Link></nav>
     </footer>
   </main>;
