@@ -8,6 +8,8 @@ import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
 
+import { drawPieceSprite } from '@/lib/piece-sprites';
+
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
   b: { p: '♟', r: '♜', n: '♞', b: '♝', q: '♛', k: '♚' },
@@ -19,7 +21,7 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 };
 
 const BOARD_THEMES = {
-  NEON: [0xf5f1e6, 0x5e505a],
+  NEON: [0xfffaf0, 0xecd9b0],
   RETRO: [0xe8d9b5, 0x4a3728],
 } as const;
 
@@ -406,6 +408,19 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               image.src = imageUrl;
             });
           };
+
+          // Glossy sprite piece textures: bitmaps, so iOS emoji presentation can never
+          // override the piece colors. Generated once per scene.
+          (['w', 'b'] as const).forEach((color) => {
+            ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => {
+              const key = `piece-${color}-${type}`;
+              if (scene.textures.exists(key)) return;
+              const tex = scene.textures.createCanvas(key, 144, 144);
+              if (!tex) return;
+              drawPieceSprite(tex.getContext(), color, type, 144);
+              tex.refresh();
+            });
+          });
 
           const jailX = 716;
           const jailY = 16;
@@ -922,15 +937,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const royalTexture = displayPieceType === piece.type && (piece.type === 'q' || piece.type === 'k') ? royalCatTextures[piece.type] : undefined;
                   const pieceVisual = royalTexture
                     ? scene.add.image(0, 0, royalTexture).setDisplaySize(tileSize * 1.22, tileSize * 1.22).setOrigin(0.5)
-                    : scene.add.text(0, 0, PIECE_GLYPHS[piece.color][displayPieceType], {
-                      fontFamily: 'Georgia, Times New Roman, serif',
-                      fontSize: '88px',
-                      fontStyle: 'bold',
-                      color: isWhite ? '#dfffda' : '#ff4eb1',
-                      stroke: isWhite ? '#072f20' : '#3c091c',
-                      strokeThickness: 7,
-                      shadow: { blur: 9, color: glowColor, fill: true, offsetX: 0, offsetY: 2 },
-                    }).setOrigin(0.5);
+                    : scene.add.image(0, 0, `piece-${piece.color}-${displayPieceType}`).setDisplaySize(tileSize * 0.98, tileSize * 0.98).setOrigin(0.5);
 
                   // No permanent discs, no dimming - the board stays clean. Only the
                   // last move, a hint suggestion, and tapped-piece targets get marks.
