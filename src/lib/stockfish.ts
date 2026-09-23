@@ -32,11 +32,19 @@ export type EngineTelemetry = {
 };
 
 const PRESETS: Record<ChesterDifficulty, { skill: number; elo: number; depth: number }> = {
-  BEGINNER: { skill: 3, elo: 900, depth: 8 },
-  INTERMEDIATE: { skill: 8, elo: 1350, depth: 11 },
-  ADVANCED: { skill: 14, elo: 1750, depth: 14 },
-  EXPERT: { skill: 20, elo: 2200, depth: 17 },
+  // Play strength (how Chester moves). BEGINNER is deliberately soft - see the rookie
+  // move picker in DojoEngine, which adds human mistakes on top.
+  BEGINNER: { skill: 0, elo: 1320, depth: 4 },
+  INTERMEDIATE: { skill: 5, elo: 1350, depth: 8 },
+  ADVANCED: { skill: 12, elo: 1750, depth: 12 },
+  EXPERT: { skill: 20, elo: 2400, depth: 15 },
 };
+
+// Grading strength (how moves are judged, hinted and scored). Always full power so the
+// hint, the verdict and the eval bar are three reads of the SAME position by the SAME
+// strong analyst - a hint can never come back graded as a bad move.
+export const ANALYST_PRESET: ChesterDifficulty = 'EXPERT';
+export const ANALYST_DEPTH = 12;
 
 type Analysis = { score: number | null; mate: number | null; pv: string[]; bestMove: string | null };
 
@@ -89,7 +97,7 @@ export class StockfishClient {
     return result;
   }
 
-  private async analyze(fen: string, difficulty: ChesterDifficulty): Promise<Analysis> {
+  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number): Promise<Analysis> {
     return this.enqueue(async () => {
       await this.initialize();
       const worker = this.worker;
@@ -125,14 +133,15 @@ export class StockfishClient {
         worker.postMessage('setoption name UCI_LimitStrength value true');
         worker.postMessage(`setoption name UCI_Elo value ${preset.elo}`);
         worker.postMessage(`position fen ${fen}`);
-        worker.postMessage(`go depth ${preset.depth}`);
+        worker.postMessage(`go depth ${depthOverride ?? preset.depth}`);
       });
     });
   }
 
   async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty }): Promise<EngineTelemetry> {
-    const before = await this.analyze(input.fenBefore, input.difficulty);
-    const after = await this.analyze(input.fenAfter, input.difficulty);
+    void input.difficulty; // grading always runs at analyst strength for verdict integrity
+    const before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH);
+    const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH);
     const delta = before.score === null || after.score === null ? null : input.playerColor === 'w' ? before.score - after.score : after.score - before.score;
     const loss = delta === null ? null : Math.max(0, delta);
     const classification = classify(loss, before.bestMove === input.uci);
@@ -158,6 +167,10 @@ export class StockfishClient {
 
   async analyzePosition(fen: string, difficulty: ChesterDifficulty) {
     return this.analyze(fen, difficulty);
+  }
+
+  async analyzeForDisplay(fen: string) {
+    return this.analyze(fen, ANALYST_PRESET, ANALYST_DEPTH);
   }
 
   async diagnose() {

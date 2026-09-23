@@ -7,12 +7,13 @@ import { askChesterChat } from '@/app/actions';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC } from '@/lib/chester-voice';
+import { phrasesFromPgn } from '@/lib/move-words';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
-type GameReport = { gradeHistory: GradedMove[] };
-type CoachPrompt = { kind: 'move' | 'help'; move?: string; fen: string; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean };
+type GameReport = { gradeHistory: GradedMove[]; pgn?: string };
+type CoachPrompt = { kind: 'move' | 'help'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
@@ -56,7 +57,7 @@ function PlayChesterGame() {
 
   useEffect(() => {
     if (!started) return;
-    setHelpRemaining(3); setCoachPrompt(null);
+    setHelpRemaining(difficulty === 'BEGINNER' ? 5 : 3); setCoachPrompt(null);
     const timer = window.setTimeout(() => window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })), 0);
     const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const gameReport = (event: Event) => setReport((event as CustomEvent<GameReport>).detail);
@@ -70,7 +71,7 @@ function PlayChesterGame() {
     if (!coachPrompt) return;
     setIsThinking(true); setCoachReply('');
     const grounded = personaCoaching(coachPrompt, difficulty);
-    const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 sentences. Use this Stockfish evidence only. Move: ${coachPrompt.move || 'help request'}. Classification: ${coachPrompt.classification || 'unknown'}. Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Best move: ${coachPrompt.bestMove || 'unknown'}. Principal variation: ${(coachPrompt.continuation || []).slice(0, 4).join(' ') || 'unknown'}. Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts.`;
+    const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 sentences. Use this Stockfish evidence only. Move: ${coachPrompt.move || 'help request'}. Classification: ${coachPrompt.classification || 'unknown'}. Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Best move: ${coachPrompt.bestMove || 'unknown'}. Principal variation: ${(coachPrompt.continuation || []).slice(0, 4).join(' ') || 'unknown'}. Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts. NEVER use chess notation or coordinates - describe moves in words, like 'knight to the kingside' or 'pawn two squares up'.`;
     void askChesterChat(JSON.stringify({ type: 'coach', message: coachPrompt.kind === 'help' ? 'Give me a strategic hint.' : `Review ${coachPrompt.move}.`, context }))
       .then((reply) => { const text = reply && !/messenger|delayed|unavailable/i.test(reply) ? reply : grounded; setCoachReply(text); })
       .catch(() => { setCoachReply(grounded); })
@@ -79,10 +80,11 @@ function PlayChesterGame() {
 
   useEffect(() => {
     if (!report) return;
-    const story = buildStoryRecap(report.gradeHistory, difficulty);
+    const phraseMap = phrasesFromPgn(report.pgn || '');
+    const story = buildStoryRecap(report.gradeHistory, difficulty, (ply) => phraseMap.get(ply) || null);
     setReview(story);
     setReviewLoading(false);
-    void askChesterChat(JSON.stringify({ type: 'post-game-report', gradeHistory: report.gradeHistory, persona: PERSONA_DESC[difficulty], instruction: 'Tell the story of this match in Chester’s voice: the turning point, what the player did well, one lesson, one concrete thing to try next game. At most 4 sentences, plain English, no engine jargon.' }))
+    void askChesterChat(JSON.stringify({ type: 'post-game-report', gradeHistory: report.gradeHistory, persona: PERSONA_DESC[difficulty], instruction: 'Tell the story of this match in Chester’s voice: the turning point, what the player did well, one lesson, one concrete thing to try next game. At most 4 sentences, plain English, no engine jargon, and NEVER chess notation or coordinates - describe moves in words, like \'knight to the kingside\'.' }))
       .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setReview(reply); })
       .catch(() => undefined);
   }, [report, difficulty]);
@@ -141,7 +143,7 @@ function PlayChesterGame() {
         <ChesterChatOverlay chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} onSendMessage={sendChat} isThinking={chatBusy} chatError={chatError} isMobile defaultExpanded />
       </section>
     </div>}
-    {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} onClose={() => setReport(null)} />}
+    {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} onClose={() => setReport(null)} />}
   </main>;
 }
 

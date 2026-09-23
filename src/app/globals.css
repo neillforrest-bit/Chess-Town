@@ -1401,3 +1401,10 @@ body {
 .town-greet__bubble:before{content:'';position:absolute;left:-13px;top:14px;border:7px solid transparent;border-right-color:#ff4eb1}
 .town-greet__bubble>span{color:#ff8c00;font:900 .56rem Arial,sans-serif;letter-spacing:2.5px}
 .town-greet__bubble p{margin:.35rem 0 0;color:#e8dfe3;font-size:clamp(.9rem,1.5vw,1rem);line-height:1.55}
+.chester-report-card__tagline { margin: 0 0 .6rem; color: #efdce4; line-height: 1.45; font-size: .9rem; }
+.chester-report-card__strip { display: flex; flex-wrap: wrap; gap: .28rem; margin: .5rem 0 .9rem; padding: .55rem .6rem; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: rgba(255,255,255,.04); }
+.chester-report-card__strip span { font-size: 1rem; line-height: 1; }
+.chester-report-card__moment { margin: .45rem 0; padding: .55rem .65rem; border: 1px solid rgba(244,63,122,.4); border-radius: 6px; background: rgba(244,63,122,.07); }
+.chester-report-card__moment b { color: var(--arena-pink); font-size: .62rem; letter-spacing: 1.4px; }
+.chester-report-card__moment p { margin: .25rem 0 0; color: #fcecef; font-size: .92rem; line-height: 1.4; }
+.chester-report-card__story { margin-top: .7rem; color: #efdce4; line-height: 1.5; }

@@ -4,6 +4,7 @@
 import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
+import { describeMove } from '@/lib/move-words';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -185,6 +186,27 @@ function minimax(chess: any, depth: number, alpha: number, beta: number, maximiz
 }
 
 // Picks the strongest available move for whichever color is currently on the move.
+// Rookie move source: human-looking moves - random choice among moves that do not
+// immediately lose material, so BEGINNER games are genuinely winnable while still sane.
+function pickRookieMove(chess: any): any {
+  try {
+    const candidates: any[] = [];
+    for (const m of chess.moves({ verbose: true })) {
+      const next = new Chess(chess.fen());
+      next.move({ from: m.from, to: m.to, promotion: 'q' });
+      const replies = next.moves({ verbose: true });
+      let worstLoss = 0;
+      for (const r of replies) if (r.captured) worstLoss = Math.max(worstLoss, ({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 } as Record<string, number>)[r.captured] || 0);
+      const gain = (({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 } as Record<string, number>)[m.captured] || 0) + (m.promotion ? 8 : 0);
+      if (worstLoss <= gain) candidates.push(m);
+    }
+    if (!candidates.length) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  } catch {
+    return null;
+  }
+}
+
 function pickBestMove(chess: any, searchDepth: number): any {
   const aiIsWhite = chess.turn() === 'w';
   const moves = chess.moves({ verbose: true });
@@ -519,7 +541,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => renderBoard());
           };
 
-          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null) => {
+          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null } = {}) => {
             // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
             const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
@@ -559,12 +581,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
                 captured: move.captured || null,
                 player,
+                movePhrase: phrases.movePhrase || null,
+                bestMovePhrase: phrases.bestMovePhrase || null,
               },
             }));
           };
 
           const publishPositionEvaluation = (fen: string) => {
-            void getStockfishClient().analyzePosition(fen, getChesterDifficulty(difficulty)).then((analysis) => {
+            void getStockfishClient().analyzeForDisplay(fen).then((analysis) => {
               window.dispatchEvent(new CustomEvent('engine-evaluation', {
                 detail: {
                   fen,
@@ -656,7 +680,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 gradeEntry.grade = getLetterGrade(quality.centipawnLoss);
                 gradeEntry.centipawnLoss = quality.centipawnLoss;
               }
-              publishMove(move, player, quality, telemetry);
+              const movePhrase = describeMove(fenBeforeMove, move.san);
+              const bestMovePhrase = telemetry?.bestMove ? describeMove(fenBeforeMove, telemetry.bestMove) : null;
+              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase });
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
                   detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },
@@ -670,7 +696,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const finishGame = (message: string, result: 'checkmate' | 'draw' | 'resigned' = 'draw') => {
             gameRef.current.isGameOver = true;
             const pgn = gameRef.current.chess.pgn();
-            window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory } }));
+            window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory, pgn } }));
             window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn } }));
             window.dispatchEvent(new CustomEvent('match-complete', { detail: { result, pgn } }));
           };
@@ -686,9 +712,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const fenBeforeMove = gameRef.current.chess.fen();
               const searchD = difficulty === 'PRO' ? 2 : 1;
               const engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty)).catch(() => null);
-              const aiMove = engineMove
+              let aiMove = engineMove
                 ? { from: engineMove.slice(0, 2), to: engineMove.slice(2, 4), promotion: engineMove.slice(4, 5) || undefined }
                 : pickBestMove(gameRef.current.chess, searchD);
+              if (difficulty === 'BEGINNER' && Math.random() < 0.45) {
+                const rookie = pickRookieMove(gameRef.current.chess);
+                if (rookie) aiMove = { from: rookie.from, to: rookie.to, promotion: rookie.promotion || undefined };
+              }
               const result = gameRef.current.chess.move({ from: aiMove.from, to: aiMove.to, promotion: 'q' });
               const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
               if (isBrawl && result.color === 'b' && gameRef.current.trojanPawnArmed && !gameRef.current.trojanPawnSquare) {
@@ -1208,12 +1238,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
           const handleHelpRequest = () => {
             const fen = gameRef.current.chess.fen();
-            void getStockfishClient().analyzePosition(fen, getChesterDifficulty(difficulty)).then((analysis: any) => {
+            void getStockfishClient().analyzeForDisplay(fen).then((analysis: any) => {
               if (!analysis?.bestMove) return;
               const uci: string = analysis.bestMove;
+              const phrase = describeMove(fen, uci);
+              if (!phrase) return; // never show a hint that is not legal in this position
               gameRef.current.coachSuggestion = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
               renderBoard?.();
-              window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: uci, continuation: analysis.pv || [], evaluation: analysis.mate ?? analysis.score ?? null } }));
+              window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: uci, bestMovePhrase: phrase, continuation: analysis.pv || [], evaluation: analysis.mate ?? analysis.score ?? null } }));
             }).catch(() => {
               window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: null } }));
             });

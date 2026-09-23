@@ -227,8 +227,10 @@ function varietySeed(prompt: CoachPromptShape): number {
 export type CoachPromptShape = {
   kind?: 'move' | 'help';
   move?: string;
+  movePhrase?: string | null;
   classification?: string | null;
   bestMove?: string | null;
+  bestMovePhrase?: string | null;
   continuation?: string[];
   captured?: string | null;
   check?: boolean;
@@ -239,17 +241,18 @@ export type CoachPromptShape = {
 
 export function personaCoaching(prompt: CoachPromptShape, persona: PersonaKey): string {
   const label = (prompt.classification || '').toUpperCase();
-  const best = prompt.bestMove;
-  const line = (prompt.continuation || []).slice(0, 2).join(' → ');
+  // Only natural-language, legality-checked phrases may be shown - never raw notation.
+  const moveWords = prompt.movePhrase || null;
+  const bestWords = prompt.bestMovePhrase || null;
   if (prompt.kind === 'help') {
-    const idea = best || 'bringing a new piece into the game';
+    const idea = bestWords || 'bringing a new piece into the game';
     const suffix: Record<PersonaKey, string> = {
       BEGINNER: 'Before you move, check whether Chester can take an unprotected piece or give check.',
       INTERMEDIATE: 'Before you commit, count what each side can take next.',
       ADVANCED: 'Calculate my most forcing reply first. Then decide.',
       EXPERT: 'Try not to ruin it. I am watching.',
     };
-    return `Try ${idea}. ${suffix[persona]}${line ? ` A simple route is ${line}.` : ''}`;
+    return `Try this: ${idea}. ${suffix[persona]}`;
   }
   const voice = pick(LINES[persona][label] || LINES[persona].GOOD, varietySeed(prompt));
   const positive = label === 'BRILLIANT' || label === 'BEST' || label === 'GREAT';
@@ -266,13 +269,14 @@ export function personaCoaching(prompt: CoachPromptShape, persona: PersonaKey): 
   else if (prompt.captured) fact = 'Material changed hands, so count what each side can take next.';
   else if (label === 'INACCURACY' || label === 'MISTAKE' || label === 'BLUNDER') fact = 'One of your pieces may now be easier to attack. Find Chester’s most forcing reply before planning anything else.';
   else fact = 'Now ask what Chester can attack, then improve a piece that is still sitting at home.';
-  const alternative = best && best !== prompt.move ? ` I preferred ${best}: it keeps your pieces safer while building pressure.` : '';
-  return `${streakPrefix}${voice} You played ${prompt.move}. ${fact}${alternative}${line ? ` The short idea is ${line}.` : ''}`;
+  const played = moveWords ? `You played: ${moveWords}.` : (prompt.move ? `You played ${prompt.move}.` : '');
+  const alternative = bestWords && bestWords !== moveWords ? ` My engine's pick in that spot was ${bestWords}.` : '';
+  return `${streakPrefix}${voice} ${played} ${fact}${alternative}`;
 }
 
 export type StoryMove = { move: string; player: string; ply: number; grade: 'A' | 'B' | 'C' | 'F'; centipawnLoss: number | null };
 
-export function buildStoryRecap(grades: StoryMove[], persona: PersonaKey): string {
+export function buildStoryRecap(grades: StoryMove[], persona: PersonaKey, phraseFor?: (ply: number, san: string) => string | null): string {
   const mine = grades.filter((entry) => entry.player !== 'Chester');
   if (!mine.length) return 'Short game. Come back with a longer story and I will grade every chapter.';
   const best = mine.reduce((a, b) => ((a.centipawnLoss ?? 999) <= (b.centipawnLoss ?? 999) ? a : b));
@@ -285,9 +289,15 @@ export function buildStoryRecap(grades: StoryMove[], persona: PersonaKey): strin
     ADVANCED: 'The post-mortem. No flattery, only facts.',
     EXPERT: 'The autopsy. Try not to cry.',
   };
-  const bestLine = `Your finest moment was ${best.move} on move ${best.ply} - that is the habit to keep.`;
+  const bestWords = phraseFor?.(best.ply, best.move);
+  const worstWords = phraseFor?.(worst.ply, worst.move);
+  const bestLine = bestWords
+    ? `Your finest moment was on move ${Math.ceil(best.ply / 2)}: ${bestWords} - that is the habit to keep.`
+    : `Your finest moment came on move ${Math.ceil(best.ply / 2)} - that is the habit to keep.`;
   const turnLine = hadRealBlunder
-    ? `The turning point was ${worst.move} on move ${worst.ply}, where the position swung hard against you. Before your next big idea, scan checks and captures first.`
+    ? worstWords
+      ? `The turning point was move ${Math.ceil(worst.ply / 2)} - ${worstWords} - where the position swung hard against you. Before your next big idea, scan checks and captures first.`
+      : `The turning point was move ${Math.ceil(worst.ply / 2)}, where the position swung hard against you. Before your next big idea, scan checks and captures first.`
     : `You never gave me a real opening - no single move swung the game, which is how strong players win slowly.`;
   const countLine = `${goodCount} of your ${mine.length} moves were genuinely good ones.`;
   const tip = hadRealBlunder
