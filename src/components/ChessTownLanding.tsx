@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getProfile } from '@/lib/profile';
+import { getChessdleState, todaysChessdle } from '@/lib/chessdle';
 
 const destinations = [
   {
@@ -49,6 +50,8 @@ const howItWorks = [
 export default function ChessTownLanding() {
   const [returning, setReturning] = useState(false);
   const [name, setName] = useState('');
+  const [lineIndex, setLineIndex] = useState(0);
+  const [chessdle, setChessdle] = useState<{ number: number; streak: number } | null>(null);
 
   useEffect(() => {
     try {
@@ -56,12 +59,29 @@ export default function ChessTownLanding() {
       window.localStorage.setItem('chess-town-visited', '1');
       const profileName = getProfile().username;
       if (profileName && profileName !== 'Challenger') setName(profileName);
+      const today = todaysChessdle();
+      const state = getChessdleState(today.day);
+      setChessdle({ number: today.number, streak: state.streak });
     } catch { /* private browsing: first-visit welcome is fine */ }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setLineIndex((index) => index + 1), 7000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const greeting = returning
     ? `Welcome back${name ? `, ${name}` : ''}. Joseph is still unbeaten, still smug, still at the top of the boss map. Go take something from him.`
     : 'Evening. I’m Chester - knight, coach and mayor of Chess Town. Play a game in my dojo, challenge a friend in the town hall, and climb the boss map. At the top sits Joseph, the Big Boss. Nobody has beaten him. Yet.';
+  const chesterLines = [
+    greeting,
+    'One good move a day beats an hour of homework. Today’s Chessdle is waiting - the whole world gets the same one.',
+    'Town tip: the player who counts what changed after every move beats the player who memorises openings.',
+    'Joseph checked the leaderboard twice while you were gone. He pretends he doesn’t. He does.',
+    'Bring a friend to the town hall. I commentate both sides and I am only slightly biased.',
+    'Blunders are just lessons wearing a false moustache. I grade them, you learn, we both move on.',
+  ];
+  const bubbleLine = chesterLines[lineIndex % chesterLines.length];
 
   return <main className="town-night">
     <div className="town-sky" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
@@ -72,7 +92,7 @@ export default function ChessTownLanding() {
         <div className="town-greet__avatar" aria-hidden="true">♞</div>
         <div className="town-greet__bubble">
           <span>{returning ? 'CHESTER SAYS' : 'CHESTER, MAYOR OF CHESS TOWN'}</span>
-          <p>{greeting}</p>
+          <p key={lineIndex % chesterLines.length} className="town-greet__line">{bubbleLine}</p>
         </div>
       </div>
       <span className="town-masthead__kicker">WELCOME TO</span>
@@ -110,7 +130,16 @@ export default function ChessTownLanding() {
     </section>
 
     <section className="town-minis" aria-label="Mini games">
-      {miniGames.map((game) => <Link href={game.href} key={game.title}><b>{game.title}</b><span>{game.copy}</span></Link>)}
+      {miniGames.map((game) => {
+        const isChessdle = game.href === '/chessdle';
+        const title = isChessdle && chessdle ? `CHESSDLE #${chessdle.number}` : game.title;
+        const copy = isChessdle && chessdle
+          ? chessdle.streak > 0
+            ? `Today’s mate-in-1 is live. Your streak: ${chessdle.streak} - keep it breathing.`
+            : 'Today’s mate-in-1 is live - same puzzle for the whole world. Start your streak.'
+          : game.copy;
+        return <Link href={game.href} key={game.title}><b>{title}</b><span>{copy}</span></Link>;
+      })}
     </section>
 
     <section className="town-how" aria-label="How Chess Town works">

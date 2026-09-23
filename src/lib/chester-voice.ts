@@ -39,7 +39,7 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'That move deserves a little parade. The whole position just lit up - enjoy this feeling, then do it again.',
     ],
     BEST: [
-      'Beautiful. That is exactly the move I hoped you would find - moves like that win games before the ending even starts.',
+      'The best move on the board, and you played it like it was obvious. That confidence is earned.',
       'Perfect choice. The board agreed with you completely - and the board is a harsh critic.',
       'Exactly right. You trusted your read of the position and the position rewarded you.',
       'Spot on. That is the move a coach would circle in green ink. Keep this standard.',
@@ -83,7 +83,7 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'That is highlight-reel chess. Somewhere a commentator just stood up.',
     ],
     BEST: [
-      'Now that was a shot. Brilliantly played - you made the board do the work for you.',
+      'The engine nods, and so do I. Maximum value, minimum fuss, zero regret.',
       'The engine nods, and so do I. Maximum value, minimum fuss.',
       'Best move on the board. You are reading positions, not guessing them.',
       'Exactly the right call. That is the move that keeps pressure where it belongs.',
@@ -127,7 +127,7 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'Impressive accuracy. You found the one continuation that punishes the setup.',
     ],
     BEST: [
-      'Precise. That is how a strong player thinks - the position was read, not guessed.',
+      'Optimal and calm. You took the full point the position offered without over-reaching.',
       'Optimal. You squeezed the maximum from that position without a wasted tempo.',
       'The correct continuation. Calculation and evaluation in agreement - as they should be.',
       'Best available. That is the standard to hold yourself to.',
@@ -171,7 +171,7 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'Fine. Stunning move. My circuits briefly considered applauding. Briefly.',
     ],
     BEST: [
-      'Huh. I was going to play that. Enjoy your one good move - savour it, frame it, because I adapt.',
+      'Engine-best. I suppose I have to respect that, out loud, briefly. Do not get comfortable.',
       'The engine agrees with you. Do not let it go to your head - I have beaten the engine too.',
       'Best move. Even my smugness has limits, and you just found one.',
       'Correct. I hate admitting that, so let us move on quickly.',
@@ -263,12 +263,40 @@ export function personaCoaching(prompt: CoachPromptShape, persona: PersonaKey): 
     EXPERT: 'A streak of good moves. I am choosing to find it irritating. ',
   };
   const streakPrefix = positive && (prompt.streak || 0) >= 3 ? streakOpeners[persona] : '';
+  // Fact tails vary like the voices do - the same situation never gets the same sentence twice in a row.
+  const FACT_MATE = [
+    'Chester’s king has nowhere safe to go. That is the whole story.',
+    'Every escape square is covered. That is what checkmate feels like from the wrong side.',
+    'The king is out of moves and out of hiding places. Textbook finish.',
+  ];
+  const FACT_CHECK = [
+    'Your check forces a reply, so you win time for your next idea.',
+    'Check means Chester moves where you say - you just took the steering wheel.',
+    'That check buys you a free tempo. Spend it on your most ambitious piece.',
+  ];
+  const FACT_CAPTURE = [
+    'Material changed hands, so count what each side can take next.',
+    'Pieces are coming off - recount the trade before you plan anything fancy.',
+    'A capture shifts the balance sheet. Check who profits before the dust settles.',
+  ];
+  const FACT_DANGER = [
+    'One of your pieces may now be easier to attack. Find Chester’s most forcing reply before planning anything else.',
+    'Something in your camp just got looser. Ask what Chester can hit before you build anything new.',
+    'That move may have left a piece under-defended. Count the attackers before you count your plans.',
+  ];
+  const FACT_QUIET = [
+    'Now ask what Chester can attack, then improve a piece that is still sitting at home.',
+    'Good positions are built one job at a time - which of your pieces is still unemployed?',
+    'No fireworks needed here. Give your quietest piece a better square and the position grows.',
+    'Steady. Strong players use calm moves to ask: what is my worst-placed piece, and where does it want to live?',
+  ];
+  const factSeed = varietySeed(prompt) + 5;
   let fact = '';
-  if (prompt.mate) fact = 'Chester’s king has nowhere safe to go. That is the whole story.';
-  else if (prompt.check) fact = 'Your check forces a reply, so you win time for your next idea.';
-  else if (prompt.captured) fact = 'Material changed hands, so count what each side can take next.';
-  else if (label === 'INACCURACY' || label === 'MISTAKE' || label === 'BLUNDER') fact = 'One of your pieces may now be easier to attack. Find Chester’s most forcing reply before planning anything else.';
-  else fact = 'Now ask what Chester can attack, then improve a piece that is still sitting at home.';
+  if (prompt.mate) fact = pick(FACT_MATE, factSeed);
+  else if (prompt.check) fact = pick(FACT_CHECK, factSeed);
+  else if (prompt.captured) fact = pick(FACT_CAPTURE, factSeed);
+  else if (label === 'INACCURACY' || label === 'MISTAKE' || label === 'BLUNDER') fact = pick(FACT_DANGER, factSeed);
+  else fact = pick(FACT_QUIET, factSeed);
   const played = moveWords ? `You played: ${moveWords}.` : (prompt.move ? `You played ${prompt.move}.` : '');
   const alternative = bestWords && bestWords !== moveWords ? ` My engine's pick in that spot was ${bestWords}.` : '';
   return `${streakPrefix}${voice} ${played} ${fact}${alternative}`;

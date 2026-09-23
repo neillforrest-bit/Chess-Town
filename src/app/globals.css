@@ -1458,3 +1458,7 @@ body {
 .town-minis a b { font-size: .72rem; font-weight: 900; letter-spacing: 1.2px; color: #a5f3fc; }
 .town-minis a span { font-size: .62rem; line-height: 1.35; color: rgba(232,223,227,.7); }
 @media (max-width: 560px) { .town-minis { grid-template-columns: 1fr; } .minigame-board { width: min(92vw, calc(100dvh - 300px)); } }
+
+/* Batch 22: living landing */
+.town-greet__line { animation: town-greet-fade .6s ease both; }
+@keyframes town-greet-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
