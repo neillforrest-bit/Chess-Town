@@ -63,7 +63,8 @@ export function phrasesFromPgn(pgn: string): Map<number, string> {
     const replay = new Chess();
     const check = new Chess();
     let ply = 0;
-    for (const token of pgn.split(/\s+/).filter((t) => t && !/^\d+\.+$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t))) {
+    const body = pgn.replace(/\[[^\]]*\]/g, ' ');
+    for (const token of body.split(/\s+/).filter((t) => t && !/^\d+\.+$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t))) {
       const fen = check.fen();
       let mv: any = null;
       try { mv = check.move(token); } catch { mv = null; }
