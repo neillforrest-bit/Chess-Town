@@ -589,10 +589,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const publishPositionEvaluation = (fen: string) => {
             void getStockfishClient().analyzeForDisplay(fen).then((analysis) => {
+              const stm = fen.split(/\s+/)[1];
+              const absScore = analysis.score === null ? null : stm === 'b' ? -analysis.score : analysis.score;
+              const absMate = analysis.mate === null ? null : stm === 'b' ? -analysis.mate : analysis.mate;
               window.dispatchEvent(new CustomEvent('engine-evaluation', {
                 detail: {
                   fen,
-                  evalScore: analysis.mate === null ? (analysis.score === null ? null : analysis.score / 100) : `M${analysis.mate}`,
+                  evalScore: absMate === null ? (absScore === null ? null : absScore / 100) : `M${absMate}`,
                   bestMove: { uci: analysis.bestMove, san: analysis.pv[0] || null },
                   evalDelta: null,
                   moveQuality: null,

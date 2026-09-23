@@ -142,11 +142,18 @@ export class StockfishClient {
     void input.difficulty; // grading always runs at analyst strength for verdict integrity
     const before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH);
     const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH);
-    const delta = before.score === null || after.score === null ? null : input.playerColor === 'w' ? before.score - after.score : after.score - before.score;
+    // Stockfish reports scores relative to the SIDE TO MOVE. Before a move and after it the
+    // side to move flips, so the centipawn loss of the played move is before + after
+    // (same formula for both colours). The old before-minus-after double-counted the
+    // standing eval, which is why engine-recommended moves could come back graded bad.
+    const delta = before.score === null || after.score === null ? null : before.score + after.score;
     const loss = delta === null ? null : Math.max(0, delta);
     const classification = classify(loss, before.bestMove === input.uci);
+    const stmAfter = input.fenAfter.split(/\s+/)[1];
+    const absAfter = after.score === null ? null : stmAfter === 'b' ? -after.score : after.score;
+    const absMateAfter = after.mate === null ? null : stmAfter === 'b' ? -after.mate : after.mate;
     return {
-      evalScore: after.mate === null ? (after.score === null ? null : after.score / 100) : `M${after.mate}`,
+      evalScore: absMateAfter === null ? (absAfter === null ? null : absAfter / 100) : `M${absMateAfter}`,
       bestMoveSan: before.pv[0] || null,
       moveQuality: classification === 'BRILLIANT' || classification === 'BEST'
         ? 'best'
