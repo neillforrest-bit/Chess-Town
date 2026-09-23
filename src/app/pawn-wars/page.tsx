@@ -44,6 +44,7 @@ function judge(chess: Chess, lastMover: 'w' | 'b'): Outcome {
   if (blackPawns === 0 && whitePawns === 0) return { winner: 'draw', reason: 'No pawns left on either side - a truce.' };
   if (blackPawns === 0) return { winner: 'w', reason: 'Every enemy pawn is gone. Total wipeout!' };
   if (whitePawns === 0) return { winner: 'b', reason: 'Your pawns are all gone.' };
+  if (chess.isThreefoldRepetition() || chess.isDrawByFiftyMoves()) return { winner: 'draw', reason: 'Neither side can break through - a truce.' };
   if (chess.moves().length === 0) {
     const stuck = chess.turn();
     if (stuck === 'b') return { winner: 'w', reason: 'The enemy has no moves left - you froze them out!' };
