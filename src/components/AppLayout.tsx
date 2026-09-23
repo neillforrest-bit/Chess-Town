@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { askChesterChat } from '@/app/actions';
 import { chesterOfflineChat } from '@/lib/chester-voice';
 import GlobalNav from '@/components/GlobalNav';
+import BuildBadge from '@/components/BuildBadge';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 
@@ -36,6 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
   return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">
     <GlobalNav />
+    <BuildBadge />
     <main className="app-main flex-1 overflow-hidden">{children}</main>
     <button className="chester-fab" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="chester-drawer" aria-label="Open Chester chat"><ChesterAvatar isThinking={thinking} /></button>
     <aside id="chester-drawer" className={`chester-drawer ${open ? 'is-open' : ''}`} aria-hidden={!open}>
