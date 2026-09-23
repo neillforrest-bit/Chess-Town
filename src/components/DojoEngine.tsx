@@ -140,7 +140,7 @@ const PIECE_VALUES: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q
 // Depth 1 already looks one reply ahead (avoids free blunders) and stays fast enough
 // to run synchronously on the main thread without freezing the board animation.
 const AI_SEARCH_DEPTH = 1;
-const AI_RESPONSE_DELAY_MS = 300;
+const AI_RESPONSE_DELAY_MS = 2200;
 
 function evaluatePosition(chess: any): number {
   let score = 0;
@@ -520,10 +520,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null) => {
+            // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
+            const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
             gameRef.current.lastMove = { ...gameRef.current.lastMove, grade };
             const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
-            window.dispatchEvent(new CustomEvent('dojo-banter', {
+            if (!isAiMover) window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
                 type: 'move', ply: gameRef.current.ply, player, move: move.san,
                 from: move.from, to: move.to, piece: move.piece, captured: move.captured || null,
@@ -545,7 +547,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
             // Live-move commentary for the play-chester page (Chester games AND pass & play):
             // the page listens for chester-coaching-pause; nothing else dispatches it.
-            window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
+            if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
               detail: {
                 kind: 'move',
                 move: move.san,
@@ -638,7 +640,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   },
                 }));
               }
-              window.dispatchEvent(new CustomEvent('dojo-engine-telemetry', { detail: telemetry }));
+              const isAiMoverTelemetry = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
+              if (!isAiMoverTelemetry) window.dispatchEvent(new CustomEvent('dojo-engine-telemetry', { detail: telemetry }));
               window.dispatchEvent(new CustomEvent('engine-evaluation', {
                 detail: {
                   fen: telemetry.fenAfter,
@@ -760,7 +763,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
             renderAfterCapture(moveResult);
             if (blindnessExpires) renderBoard();
-            if (!isRemote) playAiTurn(moveResult.captured ? 850 : AI_RESPONSE_DELAY_MS);
+            if (!isRemote) playAiTurn(moveResult.captured ? 2600 : AI_RESPONSE_DELAY_MS);
           };
 
           const showLegalTargets = () => {

@@ -351,6 +351,12 @@ export function chesterOfflineChat(message: string, state: OfflineChatState): st
       `My favourite opening lesson fits in one breath: centre pawn, develop knights and bishops, castle early, connect the rooks. Fancy openings can wait - habits win games first.`,
     ]);
   }
+  if (/too (fast|quick)|slow|tempo|commentar|commentat|remarks? about|banter/.test(m)) {
+    return pickFrom([
+      `Heard, and already handled: I now take a proper thinking pause - a couple of seconds, like a real opponent - before my reply lands, and commentary belongs to YOUR moves only. My own moves just appear on the board after the beat. Your move, your spotlight.`,
+      `Sharp eyes, and good news: my replies now arrive after a deliberate pause so you can read the verdict on your move, and I no longer commentate my own moves at all. Quiet opponent, loud coach.`,
+    ]);
+  }
   if (/hint|help|what.*(do|play|move)|should i|worried|safe|danger|threat/.test(m)) {
     const idea = state.bestMove ? `Try ${state.bestMove}.` : 'Look for checks and captures first, then ask which of your pieces is loose.';
     const personaSuffix: Record<PersonaKey, string> = {
