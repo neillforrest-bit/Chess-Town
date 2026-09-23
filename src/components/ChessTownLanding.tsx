@@ -16,9 +16,9 @@ const destinations = [
     className: 'town-building--dojo',
   },
   {
-    eyebrow: 'THE TOWN HALL',
-    title: 'TOWN HALL',
-    copy: 'Rivalries, daily battles, mini-games and the lights that turn one good move into local legend.',
+    eyebrow: 'THE MAIN EVENT',
+    title: 'THE ARENA',
+    copy: 'Rivalries, daily battles and the lights that turn one good move into local legend.',
     href: '/arena',
     action: 'STEP INTO THE LIGHTS',
     icon: '♜',
@@ -72,13 +72,13 @@ export default function ChessTownLanding() {
 
   const greeting = returning
     ? `Welcome back${name ? `, ${name}` : ''}. Joseph is still unbeaten, still smug, still at the top of the boss map. Go take something from him.`
-    : 'Evening. I’m Chester - knight, coach and mayor of Chess Town. Play a game in my dojo, challenge a friend in the town hall, and climb the boss map. At the top sits Joseph, the Big Boss. Nobody has beaten him. Yet.';
+    : 'Evening. I’m Chester - knight, coach and mayor of Chess Town. Play a game in my dojo, challenge a friend in the arena, and climb the boss map. At the top sits Joseph, the Big Boss. Nobody has beaten him. Yet.';
   const chesterLines = [
     greeting,
     'One good move a day beats an hour of homework. Today’s Chessdle is waiting - the whole world gets the same one.',
     'Town tip: the player who counts what changed after every move beats the player who memorises openings.',
     'Joseph checked the leaderboard twice while you were gone. He pretends he doesn’t. He does.',
-    'Bring a friend to the town hall. I commentate both sides and I am only slightly biased.',
+    'Bring a friend to the arena. I commentate both sides and I am only slightly biased.',
     'Blunders are just lessons wearing a false moustache. I grade them, you learn, we both move on.',
   ];
   const bubbleLine = chesterLines[lineIndex % chesterLines.length];
@@ -96,7 +96,7 @@ export default function ChessTownLanding() {
         </div>
       </div>
       <span className="town-masthead__kicker">WELCOME TO</span>
-      <h1>CHESS <em>TOWN</em></h1>
+      <h1>CHESTER<em>VILLE</em></h1>
       <div className="town-cta">
         <Link href="/play-chester" className="town-cta__play">▶ PLAY WITH CHESTER</Link>
         <Link href="/arena?friend=1" className="town-cta__friend">⚔ CHALLENGE A FRIEND</Link>

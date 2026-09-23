@@ -124,7 +124,7 @@ export default function MateSprintPage() {
     {phase === 'ready' && <section className="minigame-result minigame-ready">
       <p>White to play, every time. Tap a piece, tap the killer square, next puzzle. Your high score: <b>{best}</b>.</p>
       <button type="button" className="minigame-cta" onClick={start}>START THE CLOCK ⏱</button>
-      <div className="minigame-links"><Link href="/">← Back to town</Link></div>
+      <div className="minigame-links"><Link href="/">← Back to Chesterville</Link></div>
     </section>}
 
     {phase === 'running' && <>
@@ -143,7 +143,7 @@ export default function MateSprintPage() {
       </div>
       <div className="minigame-links">
         <Link href="/chessdle">Try today&apos;s CHESSDLE →</Link>
-        <Link href="/">← Back to town</Link>
+        <Link href="/">← Back to Chesterville</Link>
       </div>
     </section>}
   </main>;

@@ -90,7 +90,7 @@ export default function ChessdlePage() {
       <p className="minigame-sub">Spoiler-free: your friends see the emojis, never the moves. New puzzle at midnight.</p>
       <div className="minigame-links">
         <Link href="/mate-sprint">Can&apos;t wait? Play MATE SPRINT →</Link>
-        <Link href="/">← Back to town</Link>
+        <Link href="/">← Back to Chesterville</Link>
       </div>
     </section>}
 

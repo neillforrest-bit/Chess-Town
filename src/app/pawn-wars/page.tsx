@@ -166,7 +166,7 @@ export default function PawnWarsPage() {
       </div>
       <div className="minigame-links">
         <Link href="/chessdle">Try today&apos;s CHESSDLE →</Link>
-        <Link href="/">← Back to town</Link>
+        <Link href="/">← Back to Chesterville</Link>
       </div>
     </section>}
   </main>;
