@@ -1408,3 +1408,53 @@ body {
 .chester-report-card__moment b { color: var(--arena-pink); font-size: .62rem; letter-spacing: 1.4px; }
 .chester-report-card__moment p { margin: .25rem 0 0; color: #fcecef; font-size: .92rem; line-height: 1.4; }
 .chester-report-card__story { margin-top: .7rem; color: #efdce4; line-height: 1.5; }
+
+/* Batch 21: Chessdle, Pawn Wars, Mate Sprint */
+.tapboard { border-color: #b98a4e !important; box-shadow: 0 12px 40px rgba(0,0,0,.48) !important; }
+.tapboard__square { position: relative; padding: 0; border: 0; cursor: pointer; font: 900 clamp(1.2rem, 4vw, 3.4rem)/1 Georgia, serif; display: grid; place-items: center; touch-action: manipulation; }
+.tapboard__square--selected { outline: 3px solid #22d3ee; outline-offset: -3px; z-index: 1; }
+.tapboard__square--last { box-shadow: inset 0 0 0 3px rgba(250,204,21,.85); }
+.tapboard__square--target::after { content: ''; position: absolute; width: 26%; height: 26%; border-radius: 50%; background: rgba(34,116,238,.5); pointer-events: none; }
+.tapboard__square--capture::after { content: ''; position: absolute; inset: 5%; border-radius: 50%; border: 3px solid rgba(238,68,68,.75); pointer-events: none; }
+.minigame-page { min-height: calc(100dvh - 64px); box-sizing: border-box; padding: .9rem .7rem 2.5rem; display: flex; flex-direction: column; align-items: center; gap: .55rem; color: var(--arena-paper, #e8dfe3); background: radial-gradient(circle at 18% 10%, rgba(34,211,238,.14), transparent 32%), radial-gradient(circle at 82% 72%, rgba(244,63,122,.16), transparent 35%), #050708; font-family: Arial, sans-serif; }
+.minigame-head { text-align: center; max-width: 460px; }
+.minigame-kicker { display: block; font-size: .55rem; font-weight: 900; letter-spacing: 1.6px; color: #22d3ee; }
+.minigame-head h1 { margin: .15rem 0 .1rem; font: 900 clamp(1.6rem, 7vw, 2.3rem) Georgia, serif; color: #fff; letter-spacing: .5px; }
+.minigame-head h1 em { font-style: normal; color: #f43f7a; }
+.minigame-head p { margin: 0; font-size: .74rem; line-height: 1.45; color: rgba(232,223,227,.78); }
+.minigame-board { width: min(92vw, calc(100dvh - 330px), 460px); min-width: 250px; aspect-ratio: 1; flex-shrink: 0; }
+.minigame-board .neon-chessboard { width: 100%; height: 100%; }
+.minigame-board--hit { outline: 3px solid rgba(34,197,94,.9); outline-offset: 2px; }
+.minigame-board--miss { outline: 3px solid rgba(244,63,63,.9); outline-offset: 2px; }
+.minigame-record { display: flex; gap: .9rem; font-size: .62rem; font-weight: 900; letter-spacing: 1.2px; color: rgba(232,223,227,.75); }
+.minigame-hud { display: flex; gap: 1rem; align-items: baseline; }
+.minigame-clock { font: 900 1.15rem Georgia, serif; color: #22d3ee; }
+.minigame-clock--warm { color: #facc15; }
+.minigame-clock--danger { color: #f43f3f; animation: minigame-pulse 1s infinite; }
+.minigame-score { font: 900 1.05rem Georgia, serif; color: #fff; }
+.minigame-best { font-size: .62rem; font-weight: 900; letter-spacing: 1.2px; color: rgba(232,223,227,.7); }
+@keyframes minigame-pulse { 50% { opacity: .45; } }
+.minigame-message { margin: 0; max-width: 460px; text-align: center; font-size: .8rem; line-height: 1.45; color: #fff; min-height: 1.2em; }
+.minigame-message--win { color: #4ade80; font-weight: 700; }
+.minigame-sub { margin: 0; max-width: 460px; text-align: center; font-size: .68rem; line-height: 1.45; color: rgba(232,223,227,.65); }
+.minigame-result { display: flex; flex-direction: column; align-items: center; gap: .55rem; max-width: 460px; }
+.minigame-result__actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+.minigame-final { margin: 0; font: 900 1.15rem Georgia, serif; color: #fff; text-align: center; }
+.minigame-ready p { margin: 0; font-size: .8rem; line-height: 1.5; text-align: center; color: rgba(232,223,227,.85); }
+.minigame-cta { padding: .6rem 1.1rem; border: 2px solid #22d3ee; border-radius: 6px; background: rgba(34,211,238,.16); color: #a5f3fc; font: 900 .72rem Arial, sans-serif; letter-spacing: 1.2px; cursor: pointer; }
+.minigame-cta:active { transform: scale(.97); }
+.minigame-cta--ghost { border-color: #f43f7a; background: rgba(244,63,122,.14); color: #fda4c3; }
+.minigame-links { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+.minigame-links a { font-size: .68rem; font-weight: 700; color: #22d3ee; text-decoration: none; }
+.chessdle-guesses { display: flex; gap: .3rem; min-height: 2rem; align-items: center; }
+.chessdle-guess { width: 1.9rem; height: 1.9rem; display: grid; place-items: center; font-size: 1.15rem; border-radius: 4px; }
+.chessdle-guess--empty { border: 2px dashed rgba(232,223,227,.25); }
+.chessdle-streaks { display: flex; gap: 1.4rem; }
+.chessdle-streaks div { display: flex; flex-direction: column; align-items: center; }
+.chessdle-streaks b { font: 900 1.5rem Georgia, serif; color: #facc15; }
+.chessdle-streaks span { font-size: .55rem; font-weight: 900; letter-spacing: 1.5px; color: rgba(232,223,227,.7); }
+.town-minis { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: 1.2rem 0 0; }
+.town-minis a { display: flex; flex-direction: column; gap: .15rem; padding: .7rem .8rem; border: 1px solid rgba(34,211,238,.4); border-radius: 8px; background: rgba(9,4,14,.7); text-decoration: none; color: inherit; }
+.town-minis a b { font-size: .72rem; font-weight: 900; letter-spacing: 1.2px; color: #a5f3fc; }
+.town-minis a span { font-size: .62rem; line-height: 1.35; color: rgba(232,223,227,.7); }
+@media (max-width: 560px) { .town-minis { grid-template-columns: 1fr; } .minigame-board { width: min(92vw, calc(100dvh - 300px)); } }

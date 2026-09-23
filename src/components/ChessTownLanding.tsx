@@ -34,6 +34,12 @@ const destinations = [
   },
 ];
 
+const miniGames = [
+  { href: '/chessdle', title: 'CHESSDLE', copy: 'One mate-in-1 a day, shared with the whole world. Keep the streak alive, flex the emoji grid.' },
+  { href: '/pawn-wars', title: 'PAWN WARS', copy: 'Eight pawns, one king, total war. Queen a pawn first or wipe the enemy out.' },
+  { href: '/mate-sprint', title: 'MATE SPRINT', copy: 'Sixty seconds. Every position is mate in one. How many can you find?' },
+];
+
 const howItWorks = [
   { icon: '🎮', title: 'PLAY SOMETHING FUN', copy: 'A guided game, a mini-game, today’s challenge - every visit starts with a game, not a lecture.' },
   { icon: '♞', title: 'CHESTER COACHES LIVE', copy: 'Real Stockfish analysis translated into plain English while you play. You learn without noticing.' },
@@ -103,13 +109,17 @@ export default function ChessTownLanding() {
       </Link>)}
     </section>
 
+    <section className="town-minis" aria-label="Mini games">
+      {miniGames.map((game) => <Link href={game.href} key={game.title}><b>{game.title}</b><span>{game.copy}</span></Link>)}
+    </section>
+
     <section className="town-how" aria-label="How Chess Town works">
       {howItWorks.map((step) => <div key={step.title}><b><i>{step.icon}</i>{step.title}</b><p>{step.copy}</p></div>)}
     </section>
 
     <footer className="town-footer">
       <p><b>Tonight in town:</b> the dojo lights are on, the arena is loud, and Joseph just checked the leaderboard again.</p>
-      <nav><Link href="/daily-challenge">Daily challenge</Link><Link href="/boss-map">Boss map</Link><Link href="/meet-chester">Meet Chester</Link></nav>
+      <nav><Link href="/chessdle">Chessdle</Link><Link href="/daily-challenge">Daily challenge</Link><Link href="/boss-map">Boss map</Link><Link href="/meet-chester">Meet Chester</Link></nav>
     </footer>
   </main>;
 }
