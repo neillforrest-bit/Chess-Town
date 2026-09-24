@@ -1634,7 +1634,7 @@ body {
 .bossmap-ladder p { margin: 0; color: rgba(232,223,227,.7); font-size: .64rem; line-height: 1.35; }
 
 /* Batch 27: challenge-a-friend herald overlay - strip the admin, keep the theatre */
-.duel-await { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 1rem; background: radial-gradient(circle at 50% 30%, rgba(255,216,77,.1), transparent 45%), rgba(4,3,6,.96); }
+.duel-await { position: fixed; inset: 0; z-index: 600; display: grid; place-items: center; padding: 1rem; background: radial-gradient(circle at 50% 30%, rgba(255,216,77,.1), transparent 45%), rgba(4,3,6,.96); }
 .duel-await__card { width: min(100%, 430px); display: flex; flex-direction: column; align-items: center; gap: .55rem; padding: 1.4rem 1.2rem; border: 2px solid rgba(255,216,77,.65); border-radius: 14px; background: linear-gradient(180deg, rgba(24,16,6,.97), rgba(8,6,10,.98)); box-shadow: 0 0 50px rgba(255,216,77,.25); text-align: center; }
 .duel-await__avatar { width: 64px; height: 64px; display: grid; place-items: center; border: 2px solid #ffd84d; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255,216,77,.3), #0b0508 72%); color: #ffd84d; font-size: 2rem; box-shadow: 0 0 24px rgba(255,216,77,.5); animation: townFloat 4s ease-in-out infinite; }
 .duel-await__kicker { color: #ff8c00; font: 900 .62rem Arial,sans-serif; letter-spacing: 2.5px; }
