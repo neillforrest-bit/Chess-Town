@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { askChesterChat } from '@/app/actions';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
@@ -34,6 +34,8 @@ function PlayChesterGame() {
   const requestedLevel = searchParams.get('level');
   const bossNode = searchParams.get('boss');
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
+  const [howlerAside, setHowlerAside] = useState<string | null>(null);
+  const coachPromptRef = useRef<CoachPrompt | null>(null);
   const [ladder, setLadder] = useState<LadderState>({ unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null });
   useEffect(() => { setLadder(getLadder()); }, []);
   const [difficulty, setDifficulty] = useState<Difficulty>(requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
@@ -83,11 +85,13 @@ function PlayChesterGame() {
         if (bossNode) completeBossNode(bossNode);
       }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (detail.kind === 'howler') { setCoachPrompt(detail); return; } setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (detail.kind === 'howler') { if (coachPromptRef.current?.kind === 'move') { setHowlerAside(chesterHowlerLine(detail.ply || 1)); } else { setCoachPrompt(detail); } return; } setHowlerAside(null); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     window.addEventListener('piece-captured', capture); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help);
     return () => { window.clearTimeout(timer); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); };
   }, [mode, started]);
+
+  useEffect(() => { coachPromptRef.current = coachPrompt; }, [coachPrompt]);
 
   useEffect(() => {
     if (!coachPrompt) return;
@@ -155,7 +159,7 @@ function PlayChesterGame() {
       <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} /></div>
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined}>
         <div className="chester-live-line__avatar" key={coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle'} aria-hidden="true">{coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : '♞'}</div>
-        <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">{getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p></div>
+        <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">{getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
         {!isThinking && coachPrompt && <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{difficulty === 'BEGINNER' && coachPrompt.kind === 'move' && <button type="button" className="chester-why-btn" onClick={() => setWhyOpen(true)}>📖 WHY?</button>}<em>YOUR MOVE CONTINUES →</em></span>}
       </div>
       <div className="chester-game__actions"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>

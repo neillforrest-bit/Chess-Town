@@ -365,7 +365,7 @@ function LegacyArena() {
     setActiveMatchup('Live Challenge: Green vs. Black');
     setCapturedPieces([]);
     setDrawerOpen(true);
-    setArenaView('CHESTER');
+    setArenaView('PLAY');
     setScene('GAME');
   };
 

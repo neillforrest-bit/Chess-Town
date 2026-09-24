@@ -1688,3 +1688,6 @@ body {
 /* Batch 29: gated level grid + ladder chip */
 .chester-level-grid button.is-locked { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }
 .town-rank--ladder { border-color: rgba(255,216,77,.6) !important; color: #ffd84d !important; }
+
+/* Batch 30: Chester howler aside (never displaces the user's own move review) */
+.chester-howler-aside { margin: .3rem 0 0; color: #ffc53d; font-size: .8rem; font-style: italic; line-height: 1.35; }
