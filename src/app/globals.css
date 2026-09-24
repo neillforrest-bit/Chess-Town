@@ -1645,3 +1645,13 @@ body {
 .duel-await__share { width: 100%; min-height: 52px; margin-top: .4rem; border: 2px solid #ffd84d; border-radius: 8px; background: linear-gradient(180deg, rgba(255,216,77,.25), rgba(255,216,77,.12)); color: #ffe89a; font: 900 .9rem Arial,sans-serif; letter-spacing: 1.2px; cursor: pointer; }
 .duel-await__copy { width: 100%; min-height: 44px; border: 1px solid rgba(34,211,238,.55); border-radius: 8px; background: rgba(34,211,238,.08); color: #a5f3fc; font: 900 .74rem Arial,sans-serif; letter-spacing: 1px; cursor: pointer; }
 .duel-await__cancel { border: 0; background: none; color: rgba(232,223,227,.55); font: 900 .66rem Arial,sans-serif; letter-spacing: 1.6px; cursor: pointer; padding: .3rem; }
+@media (max-width: 560px) {
+  .arcade-page .town-arcade__head h2 { font-size: 1.05rem; }
+  .arcade-page .town-arcade__head p { font-size: .72rem; }
+  .arcade-page .town-cabinet { gap: .35rem; padding: .5rem .7rem; }
+  .arcade-page .town-cabinet i { font-size: 1.7rem; }
+  .arcade-page .town-cabinet b { font-size: .9rem; }
+  .arcade-page .town-cabinet span { font-size: .72rem; }
+  .arcade-page .town-cabinet strong { font-size: .68rem; padding: .3rem .9rem; margin-top: .2rem; }
+  .arcade-page .town-arcade__head { margin-bottom: .5rem; }
+}
