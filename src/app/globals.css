@@ -1617,7 +1617,7 @@ body {
 @keyframes lessonIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Arcade hub page */
-.arcade-page { min-height: calc(100dvh - 64px); display: grid; place-items: center; padding: 1rem .8rem 2rem; background: radial-gradient(circle at 18% 10%, rgba(255,78,177,.14), transparent 34%), #050708; }
+.arcade-page { min-height: calc(100dvh - 64px); box-sizing: border-box; display: grid; place-items: center; padding: 1rem .8rem 2rem; background: radial-gradient(circle at 18% 10%, rgba(255,78,177,.14), transparent 34%), #050708; }
 .arcade-page .town-arcade { margin: 0; }
 
 /* Community ladder placeholder */
