@@ -9,6 +9,7 @@ import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import MiniChester from '@/components/MiniChester';
 import { MATE_PUZZLES } from '@/lib/mate-puzzles';
+import { awardPoints } from '@/lib/rating';
 
 const SPRINT_SECONDS = 60;
 const MISS_PENALTY = 5;
@@ -77,7 +78,10 @@ export default function MateSprintPage() {
   };
 
   useEffect(() => {
-    if (phase === 'over') setChesterEvent({ type: scoreRef.current >= 4 ? 'win' : 'lose', seed: scoreRef.current + misses + 1 });
+    if (phase === 'over') {
+      setChesterEvent({ type: scoreRef.current >= 4 ? 'win' : 'lose', seed: scoreRef.current + misses + 1 });
+      if (scoreRef.current > 0) awardPoints('mini', `Mate Sprint - ${scoreRef.current} mates`, scoreRef.current * 10);
+    }
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const puzzle = MATE_PUZZLES[order[cursor % order.length]];

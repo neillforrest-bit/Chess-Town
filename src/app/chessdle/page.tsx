@@ -8,6 +8,7 @@ import Link from 'next/link';
 import TapBoard from '@/components/TapBoard';
 import MiniChester from '@/components/MiniChester';
 import { describeMove } from '@/lib/move-words';
+import { awardPoints } from '@/lib/rating';
 import {
   MAX_GUESSES, buildShareText, classifyGuess, feedbackEmoji,
   getChessdleState, recordChessdleResult, todaysChessdle, type GuessFeedback,
@@ -47,7 +48,7 @@ export default function ChessdlePage() {
     setGuesses(next);
     const nowDone = classified.feedback === 'mate' || next.length >= MAX_GUESSES;
     if (nowDone) recordChessdleResult(day, next.map((g) => g.uci), classified.feedback === 'mate');
-    if (classified.feedback === 'mate') { setMessage(`CHECKMATE in ${next.length}! ${next.length === 1 ? 'First guess - are you Joseph in disguise?' : 'The town salutes you.'}`); setChesterEvent({ type: 'win', seed: next.length }); }
+    if (classified.feedback === 'mate') { awardPoints('mini', `Chessdle #${number} solved`, 40); setMessage(`CHECKMATE in ${next.length}! ${next.length === 1 ? 'First guess - are you Joseph in disguise?' : 'The town salutes you.'}`); setChesterEvent({ type: 'win', seed: next.length }); }
     else if (next.length >= MAX_GUESSES) { setMessage(`Out of guesses. The mate was ${describeMove(puzzle.fen, puzzle.solution) || 'there all along'}. Tomorrow is a new puzzle.`); setChesterEvent({ type: 'lose', seed: next.length }); }
     else { setMessage(FEEDBACK_LINES[classified.feedback]); setChesterEvent({ type: classified.feedback === 'other' ? 'miss' : 'close', seed: next.length }); }
   };

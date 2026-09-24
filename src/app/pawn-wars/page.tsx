@@ -10,6 +10,7 @@ import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import MiniChester from '@/components/MiniChester';
 import { describeMove } from '@/lib/move-words';
+import { awardPoints } from '@/lib/rating';
 
 const START_FEN = '4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1';
 const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
@@ -80,6 +81,7 @@ export default function PawnWarsPage() {
 
   const finish = useCallback((result: NonNullable<Outcome>) => {
     setOutcome(result);
+    if (result.winner === 'w') awardPoints('mini', 'Pawn Wars win', 40);
     setChesterEvent({ type: result.winner === 'w' ? 'win' : result.winner === 'b' ? 'lose' : 'lose', seed: plyRef.current + 1 });
     setScore((current) => {
       const next: Score = result.winner === 'w'
