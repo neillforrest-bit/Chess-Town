@@ -1697,3 +1697,9 @@ body {
 .match-countdown__word { font: 900 clamp(3.2rem, 16vw, 7rem)/1 Georgia, serif; letter-spacing: .06em; animation: countdown-beat .9s cubic-bezier(.2,1.6,.4,1) both; }
 .match-countdown__sub { color: rgba(255,255,255,.55); font-size: .68rem; font-weight: 900; letter-spacing: 3px; }
 @keyframes countdown-beat { 0% { transform: scale(2.6); opacity: 0; } 35% { transform: scale(1); opacity: 1; } 80% { transform: scale(.96); opacity: 1; } 100% { transform: scale(.94); opacity: .92; } }
+
+/* Batch 30: grade POP - the verdict lands big, then settles */
+.grade-pop { display: inline-block; animation: grade-pop .9s cubic-bezier(.2,1.7,.4,1) both; transform-origin: center; }
+@keyframes grade-pop { 0% { transform: scale(2.8) rotate(-6deg); opacity: 0; } 45% { transform: scale(1) rotate(0deg); opacity: 1; } 65% { transform: scale(1.22); } 100% { transform: scale(1); } }
+.arena-grade-row { display: flex; align-items: center; gap: .6rem; margin: .35rem 0; flex-wrap: wrap; }
+.arena-grade-chip { padding: .32rem .7rem; border: 2px solid; border-radius: 999px; background: rgba(0,0,0,.6); font-size: .78rem; font-weight: 900; letter-spacing: 1px; }

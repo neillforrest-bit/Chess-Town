@@ -8,7 +8,7 @@ export type ChaosEvent = 'NEON_BLINDNESS' | 'MULLIGAN' | 'TROJAN_PAWN' | null;
 export type EngineEvaluation = {
   fen: string;
   evalScore: number | string | null;
-  bestMove: { uci: string | null; san: string | null };
+  bestMove: { uci: string | null; san: string | null; phrase?: string | null };
   evalDelta: number | null;
   moveQuality: 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder' | null;
 };

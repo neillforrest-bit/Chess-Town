@@ -47,20 +47,15 @@ export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b',
   ctx.fillRect(0, 0, size, size);
   ctx.globalCompositeOperation = 'source-over';
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  // Bishop: carve the mitre slit deep so it reads at any size.
+  // Bishop: whisper the mitre slit - the batch-27 heavy black slash read as a
+  // stray stroke on his iPad. One fine bright line keeps the silhouette cue.
   if (type === 'b') {
-    ctx.strokeStyle = pal.stroke;
-    ctx.lineWidth = size * 0.055;
     ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,.5)';
+    ctx.lineWidth = size * 0.02;
     ctx.beginPath();
-    ctx.moveTo(size * 0.42, size * 0.24);
-    ctx.lineTo(size * 0.6, size * 0.42);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,.55)';
-    ctx.lineWidth = size * 0.018;
-    ctx.beginPath();
-    ctx.moveTo(size * 0.435, size * 0.245);
-    ctx.lineTo(size * 0.585, size * 0.405);
+    ctx.moveTo(size * 0.455, size * 0.26);
+    ctx.lineTo(size * 0.545, size * 0.38);
     ctx.stroke();
   }
 }

@@ -10,6 +10,8 @@ type CommentaryPayload = {
   matchup?: string;
   quality?: 'BRILLIANT' | 'BEST' | 'GREAT' | 'GOOD' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER' | null;
   evalDelta?: number | null;
+  movePhrase?: string | null;
+  bestMovePhrase?: string | null;
   engineTelemetry?: {
     classification?: 'BRILLIANT' | 'BEST' | 'GREAT' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER';
     evalDelta?: number | null;
@@ -31,7 +33,7 @@ export function detectUserIntent(input: string): ChesterIntent {
 
 export function getFallbackRoast(payload: CommentaryPayload) {
   const classification = payload.engineTelemetry?.classification || payload.quality || 'GOOD';
-  const move = payload.move ? `${payload.move} ` : 'That move ';
+  const move = payload.movePhrase ? `${payload.movePhrase} ` : payload.move ? `${payload.move} ` : 'That move ';
 
   switch (classification) {
     case 'BRILLIANT':

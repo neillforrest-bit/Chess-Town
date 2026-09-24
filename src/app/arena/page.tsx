@@ -11,6 +11,7 @@ import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import { recordGame, recordMiniGame } from '@/lib/profile';
 import Teleprompter from '@/components/Teleprompter';
 import MatchCountdown from '@/components/MatchCountdown';
+import { buildWhyLesson } from '@/lib/chester-voice';
 import { getStockfishClient, type ChesterDifficulty, type EngineTelemetry } from '@/lib/stockfish';
 import ChessTownLanding from '@/components/ChessTownLanding';
 
@@ -251,6 +252,7 @@ function LegacyArena() {
 
   const [scene, setScene] = useState<SceneState>('HOME');
   const [matchCountdown, setMatchCountdown] = useState(0);
+  const [whyOpen, setWhyOpen] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [displayedIntro, setDisplayedIntro] = useState('');
   
@@ -369,7 +371,6 @@ function LegacyArena() {
     setDrawerOpen(true);
     setArenaView('PLAY');
     setScene('GAME');
-    setMatchCountdown((n) => n + 1);
   };
 
   const createRemoteChallenge = async () => {
@@ -431,6 +432,13 @@ function LegacyArena() {
     });
     return () => { cancelled = true; peerRef.current?.destroy?.(); };
   }, []);
+
+  const remoteConnectedRef = useRef(false);
+  // Friend challenges: the bell rings when BOTH players are seated, on both screens.
+  useEffect(() => {
+    if (gameMode === 'PVP_REMOTE' && remoteConnected && !remoteConnectedRef.current) setMatchCountdown((n) => n + 1);
+    remoteConnectedRef.current = remoteConnected;
+  }, [remoteConnected, gameMode]);
 
   useEffect(() => {
     const sendMove = (event: Event) => connectionRef.current?.send?.({ type: 'move', ...(event as CustomEvent).detail });
@@ -503,6 +511,8 @@ function LegacyArena() {
           const richPayload = JSON.stringify({
             // Move-specific data
             move: payload?.move || 'unknown',
+            movePhrase: payload?.movePhrase || null,
+            bestMovePhrase: payload?.bestMovePhrase || null,
             piece: payload?.piece || '?',
             from: payload?.from || '',
             to: payload?.to || '',
@@ -548,7 +558,7 @@ function LegacyArena() {
               ? 'Generate a quick, 2-sentence summary of the game based on the PGN highlighting the defining blunder or brilliant move. Use a punchy, witty, dry British sense of humour.'
               : (payload?.openingName && ['Trompowsky Attack', 'Halloween Gambit', 'Bongcloud Attack', 'Bongcloud'].some(spicy => payload.openingName.includes(spicy)))
                 ? `You detected the '${payload.openingName}'. Drop a punchy, witty, dry British comment about this chaotic opening.`
-                : 'Generate punchy, witty, strategic chess commentary on this move with a dry British sense of humour, grounded in the engine move-quality grade provided'),
+                : 'Generate punchy, witty, strategic chess commentary on this move with a dry British sense of humour, grounded in the engine move-quality grade provided. NEVER use chess notation or coordinates - describe the move in plain words using the movePhrase provided, like "knight to the kingside".'),
           });
           
           const aiResponse = payload?.type === 'move'
@@ -1167,6 +1177,10 @@ function LegacyArena() {
                 </div>
              </div>
              <CapturedPieceJail capturedPieces={capturedPieces} color="w" label="WHITE CAPTURED" />
+             {currentGameState?.type === 'move' && currentGameState?.quality && (() => { const v = getVerdict(currentGameState.quality); return <div className="arena-grade-row">
+               <span key={`${currentGameState.ply}-${currentGameState.move}`} className="arena-grade-chip grade-pop" style={{ borderColor: v.color, color: v.color }}>{v.emoji} {currentGameState.player === 'You' ? 'YOUR MOVE' : 'THEIR MOVE'}: {v.word}</span>
+               <button type="button" className="chester-why-btn" onClick={() => setWhyOpen(true)}>📖 WHY?</button>
+             </div>; })()}
              {(teleprompterText || teleprompterLoading) && (
                <Teleprompter text={teleprompterText} isLoading={teleprompterLoading} />
              )}
@@ -1203,6 +1217,20 @@ function LegacyArena() {
               </div>
             </div>
           )}
+          {whyOpen && currentGameState?.type === 'move' && currentGameState?.quality && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Why this verdict">
+            <div className="chess-game-sheet__backdrop" onClick={() => setWhyOpen(false)} />
+            <section className="chess-game-sheet__content">
+              <header><b>WHY {getVerdict(currentGameState.quality).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
+              <div style={{ padding: '1rem 1.1rem', color: '#e8f6ff', lineHeight: 1.6, fontSize: '0.95rem' }}>
+                {(() => { const why = buildWhyLesson({ fen: currentGameState.fen || '', classification: currentGameState.quality, movePhrase: currentGameState.movePhrase, bestMovePhrase: currentGameState.bestMovePhrase, captured: currentGameState.captured || null, check: String(currentGameState.move || '').includes('+'), mate: String(currentGameState.move || '').includes('#'), evalDelta: currentGameState.evalDelta ?? null, ply: currentGameState.ply || 0 }); return <>
+                  <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#c084fc' }}>THE {why.phase} RULE:</b> {why.phaseTip}</p>
+                  <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>{currentGameState.player === 'You' ? 'YOUR MOVE' : 'THEIR MOVE'}:</b> {why.moveLine}</p>
+                  <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: getVerdict(currentGameState.quality).color }}>WHY {getVerdict(currentGameState.quality).word}:</b> {why.gradeLine}</p>
+                  <p style={{ margin: 0 }}><b style={{ color: '#ffd84d' }}>{why.considerHeading}:</b> {why.considerLine}</p>
+                </>; })()}
+              </div>
+            </section>
+          </div>}
           {drawerOpen && arenaView === 'CHESTER' && (
             <div style={{ 
               position: (isMobile && arenaView === 'CHESTER') ? 'absolute' : 'static',

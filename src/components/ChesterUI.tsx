@@ -107,7 +107,7 @@ export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: stri
       }}>
         <span aria-label={emotion}>{CHESTER_EMOTIONS[emotion].emoji}</span>{' '}
         {isThinking ? <span style={{ color: 'var(--arena-pink)', fontStyle: 'italic' }}>Chester is calculating<span className="chester-typing-indicator" aria-label="Chester is typing">...</span></span> : message}
-        {engineEvaluation && <div style={{ color: 'var(--arena-cyan)', fontSize: '0.75em', marginTop: '0.35rem' }}>ENGINE {engineEvaluation.evalScore ?? '...'} · BEST {engineEvaluation.bestMove.san || engineEvaluation.bestMove.uci || '...'}</div>}
+        {engineEvaluation && <div style={{ color: 'var(--arena-cyan)', fontSize: '0.75em', marginTop: '0.35rem' }}>ENGINE {engineEvaluation.evalScore ?? '...'} · BEST {engineEvaluation.bestMove.phrase || engineEvaluation.bestMove.san || '...'}</div>}
       </div>
     </div>
   );

@@ -682,7 +682,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 detail: {
                   fen,
                   evalScore: absMate === null ? (absScore === null ? null : absScore / 100) : `M${absMate}`,
-                  bestMove: { uci: analysis.bestMove, san: analysis.pv[0] || null },
+                  bestMove: { uci: analysis.bestMove, san: (() => { try { return new Chess(fen).move(analysis.bestMove, { sloppy: true } as any)?.san || null; } catch { return null; } })(), phrase: describeMove(fen, analysis.bestMove) },
                   evalDelta: null,
                   moveQuality: null,
                 },
