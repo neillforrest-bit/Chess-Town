@@ -6,30 +6,20 @@ import { useSearchParams } from 'next/navigation';
 import { askChesterChat } from '@/app/actions';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
-import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC } from '@/lib/chester-voice';
+import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, chesterHowlerLine } from '@/lib/chester-voice';
 import { phrasesFromPgn } from '@/lib/move-words';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 type GameReport = { gradeHistory: GradedMove[]; pgn?: string };
-type CoachPrompt = { kind: 'move' | 'help'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean };
+type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
   { value: 'ADVANCED', label: 'MASTER', note: 'Punishes loose pieces' },
   { value: 'EXPERT', label: 'NIGHTMARE', note: 'No mercy, no refunds' },
 ];
-const WHY_TIPS: Record<string, string> = {
-  BRILLIANT: 'Moves like this ask a question your opponent cannot answer. Hunt checks, captures and threats first - brilliance lives there.',
-  BEST: 'You found the strongest option. The habit that gets you here again: compare your top two candidate moves before committing.',
-  GREAT: 'Strong moves improve a piece AND limit the opponent. Before moving, ask what your move takes away.',
-  GOOD: 'Solid moves win slow games. Keep developing, keep the king safe, and the chances will come to you.',
-  INACCURACY: 'Small leaks sink positions. Before your next move, ask what it leaves undefended.',
-  MISTAKE: 'Most mistakes hang something. Count what your opponent can capture after your move - before you play it.',
-  BLUNDER: 'Blunders are tuition, not failure. One breath before every move: what changed, what is loose, what is their threat?',
-};
-const whyTip = (classification?: string | null) => WHY_TIPS[(classification || '').toUpperCase()] || WHY_TIPS.GOOD;
 const LESSONS = [
   { title: 'Take the centre', body: 'Tap a pawn in front of your king or queen, then tap a glowing square. That opens the road for your other pieces.' },
   { title: 'Develop with purpose', body: 'Tap a horse-shaped knight or a bishop, then choose a glowing square. Bring one new teammate into the game.' },
@@ -82,8 +72,13 @@ function PlayChesterGame() {
 
   useEffect(() => {
     if (!coachPrompt) return;
+    if (coachPrompt.kind === 'howler') {
+      setIsThinking(false);
+      setCoachReply(chesterHowlerLine(coachPrompt.ply || 1));
+      return;
+    }
     setIsThinking(true); setCoachReply('');
-    const grounded = personaCoaching(coachPrompt, difficulty);
+    const grounded = personaCoaching({ ...coachPrompt, kind: coachPrompt.kind as 'move' | 'help' }, difficulty);
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 sentences. Use this Stockfish evidence only. Move: ${coachPrompt.move || 'help request'}. Classification: ${coachPrompt.classification || 'unknown'}. Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Best move: ${coachPrompt.bestMove || 'unknown'}. Principal variation: ${(coachPrompt.continuation || []).slice(0, 4).join(' ') || 'unknown'}. Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts. NEVER use chess notation or coordinates - describe moves in words, like 'knight to the kingside' or 'pawn two squares up'.`;
     void askChesterChat(JSON.stringify({ type: 'coach', message: coachPrompt.kind === 'help' ? 'Give me a strategic hint.' : `Review ${coachPrompt.move}.`, context }))
       .then((reply) => { const text = reply && !/messenger|delayed|unavailable/i.test(reply) ? reply : grounded; setCoachReply(text); })
@@ -138,10 +133,10 @@ function PlayChesterGame() {
     <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button></header>
     <section className="chester-game__board">
       <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} /></div>
-      <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined}>
-        <div className="chester-live-line__avatar" key={coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle'} aria-hidden="true">{coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : '♞'}</div>
-        <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <>On {coachPrompt.move} <i className="chester-verdict">{getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p></div>
-        {!isThinking && coachPrompt && <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{difficulty === 'BEGINNER' && coachPrompt.kind === 'move' && <button type="button" onClick={() => setWhyOpen(true)} style={{ background: 'transparent', border: '1px solid #22d3ee', color: '#a5f3fc', borderRadius: '999px', padding: '0.2rem 0.7rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer' }}>📖 WHY?</button>}<em>YOUR MOVE CONTINUES →</em></span>}
+      <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined}>
+        <div className="chester-live-line__avatar" key={coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle'} aria-hidden="true">{coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : '♞'}</div>
+        <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">{getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p></div>
+        {!isThinking && coachPrompt && <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{difficulty === 'BEGINNER' && coachPrompt.kind === 'move' && <button type="button" className="chester-why-btn" onClick={() => setWhyOpen(true)}>📖 WHY?</button>}<em>YOUR MOVE CONTINUES →</em></span>}
       </div>
       <div className="chester-game__actions"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
     </section>
@@ -164,10 +159,12 @@ function PlayChesterGame() {
       <section className="chess-game-sheet__content">
         <header><b>WHY {getVerdict(coachPrompt.classification).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
         <div style={{ padding: '1rem 1.1rem', color: '#e8f6ff', lineHeight: 1.6, fontSize: '0.95rem' }}>
-          <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>What you played:</b> {coachPrompt.movePhrase ? `${coachPrompt.movePhrase}.` : 'Your last move.'}</p>
-          <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>Chester’s read:</b> {coachReply || 'Still thinking…'}</p>
-          {coachPrompt.bestMovePhrase && coachPrompt.bestMovePhrase !== coachPrompt.movePhrase && <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>The move the engine liked:</b> {coachPrompt.bestMovePhrase}.</p>}
-          <p style={{ margin: 0 }}><b style={{ color: '#22d3ee' }}>Rule of thumb:</b> {whyTip(coachPrompt.classification)}</p>
+          {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply }); return <>
+            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#c084fc' }}>THE {why.phase} RULE:</b> {why.phaseTip}</p>
+            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>YOUR MOVE:</b> {why.moveLine}</p>
+            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: getVerdict(coachPrompt.classification).color }}>WHY {getVerdict(coachPrompt.classification).word}:</b> {why.gradeLine}</p>
+            <p style={{ margin: 0 }}><b style={{ color: '#ffd84d' }}>{why.considerHeading}:</b> {why.considerLine}</p>
+          </>; })()}
         </div>
       </section>
     </div>}

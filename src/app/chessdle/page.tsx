@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import TapBoard from '@/components/TapBoard';
+import MiniChester from '@/components/MiniChester';
 import { describeMove } from '@/lib/move-words';
 import {
   MAX_GUESSES, buildShareText, classifyGuess, feedbackEmoji,
@@ -32,6 +33,7 @@ export default function ChessdlePage() {
   });
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [chesterEvent, setChesterEvent] = useState<{ type: string; seed: number } | null>(null);
 
   const won = guesses.some((g) => g.feedback === 'mate');
   const done = won || guesses.length >= MAX_GUESSES;
@@ -45,9 +47,9 @@ export default function ChessdlePage() {
     setGuesses(next);
     const nowDone = classified.feedback === 'mate' || next.length >= MAX_GUESSES;
     if (nowDone) recordChessdleResult(day, next.map((g) => g.uci), classified.feedback === 'mate');
-    if (classified.feedback === 'mate') setMessage(`CHECKMATE in ${next.length}! ${next.length === 1 ? 'First guess - are you Joseph in disguise?' : 'The town salutes you.'}`);
-    else if (next.length >= MAX_GUESSES) setMessage(`Out of guesses. The mate was ${describeMove(puzzle.fen, puzzle.solution) || 'there all along'}. Tomorrow is a new puzzle.`);
-    else setMessage(FEEDBACK_LINES[classified.feedback]);
+    if (classified.feedback === 'mate') { setMessage(`CHECKMATE in ${next.length}! ${next.length === 1 ? 'First guess - are you Joseph in disguise?' : 'The town salutes you.'}`); setChesterEvent({ type: 'win', seed: next.length }); }
+    else if (next.length >= MAX_GUESSES) { setMessage(`Out of guesses. The mate was ${describeMove(puzzle.fen, puzzle.solution) || 'there all along'}. Tomorrow is a new puzzle.`); setChesterEvent({ type: 'lose', seed: next.length }); }
+    else { setMessage(FEEDBACK_LINES[classified.feedback]); setChesterEvent({ type: classified.feedback === 'other' ? 'miss' : 'close', seed: next.length }); }
   };
 
   const share = async () => {
@@ -96,5 +98,6 @@ export default function ChessdlePage() {
 
     {!done && guesses.length > 0 && <p className="minigame-sub">{MAX_GUESSES - guesses.length} {MAX_GUESSES - guesses.length === 1 ? 'guess' : 'guesses'} left. Tap a white piece, then tap where it goes.</p>}
     {!done && guesses.length === 0 && <p className="minigame-sub">Tap a white piece, then tap where it goes.</p>}
+    <MiniChester game="chessdle" label="PUZZLE CORNER" event={chesterEvent} />
   </main>;
 }

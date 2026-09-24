@@ -275,7 +275,7 @@ function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: str
 
   const centipawnLoss = Math.max(0, Math.round(bestScore - playedScore));
   let label = 'GOOD';
-  if (centipawnLoss <= 5) label = 'BEST';
+  if (centipawnLoss <= 5) label = playedScore === bestScore ? 'BRILLIANT' : 'BEST';
   else if (centipawnLoss <= 25) label = 'GREAT';
   else if (centipawnLoss <= 60) label = 'GOOD';
   else if (centipawnLoss <= 120) label = 'INACCURACY';
@@ -283,6 +283,32 @@ function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: str
   else label = 'BLUNDER';
 
   return { label, centipawnLoss };
+}
+
+// Material reality check: winning an undefended rook/queen must dominate the grade,
+// whatever shallow search or engine noise says. Only ever upgrades a label.
+const FLOOR_RANK: Record<string, number> = { BLUNDER: 0, MISTAKE: 1, INACCURACY: 2, GOOD: 3, GREAT: 4, BEST: 5, BRILLIANT: 6 };
+function applyMaterialFloor(fenBeforeMove: string, move: any, label: string): string {
+  try {
+    if (!move?.captured) return label;
+    const values: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    const capturedValue = values[move.captured] || 0;
+    if (capturedValue < 5) return label; // minors and pawns keep normal grading
+    const board = new Chess(fenBeforeMove);
+    board.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
+    const moverValue = move.promotion ? 9 : (values[move.piece] || 0);
+    // A recapture exists only if the opponent has a legal capture landing on the moved piece's square.
+    const recaptured = board.moves({ verbose: true }).some((candidate: any) => candidate.to === move.to && Boolean(candidate.captured));
+    const net = capturedValue - (recaptured ? moverValue : 0);
+    let floor: string | null = null;
+    if (net >= 8) floor = 'BRILLIANT'; // took a queen (or better) for nothing
+    else if (net >= 6) floor = 'BEST'; // queen for a minor piece, still a rout
+    else if (net >= 3) floor = 'GREAT'; // clear material profit
+    if (floor && (FLOOR_RANK[floor] || 0) > (FLOOR_RANK[label] || 0)) return floor;
+    return label;
+  } catch {
+    return label;
+  }
 }
 
 function getLetterGrade(centipawnLoss: number | null | undefined) {
@@ -586,7 +612,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => renderBoard());
           };
 
-          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null } = {}) => {
+          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null } = {}, fenBeforeMove: string | null = null) => {
             // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
             const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
@@ -625,9 +651,24 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
                 evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
                 captured: move.captured || null,
+                check: move.san.includes('+'),
+                mate: move.san.includes('#'),
+                ply: gameRef.current.ply,
                 player,
                 movePhrase: phrases.movePhrase || null,
                 bestMovePhrase: phrases.bestMovePhrase || null,
+              },
+            }));
+            // Chester owns his howlers: rookie mode hangs pieces on purpose, so he admits them out loud.
+            if (isAiMover && (quality?.label === 'MISTAKE' || quality?.label === 'BLUNDER')) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
+              detail: {
+                kind: 'howler',
+                move: move.san,
+                classification: quality.label,
+                captured: move.captured || null,
+                ply: gameRef.current.ply,
+                player,
+                movePhrase: phrases.movePhrase || (fenBeforeMove ? describeMove(fenBeforeMove, move.san) : null),
               },
             }));
           };
@@ -662,7 +703,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             return candidates.sort()[0] || null;
           };
 
-          const evaluateAndPublishMove = (move: any, player: string, fenBeforeMove: string, localQuality: { label: string; centipawnLoss: number } | null) => {
+          const evaluateAndPublishMove = (move: any, player: string, fenBeforeMove: string, rawLocalQuality: { label: string; centipawnLoss: number } | null) => {
+            const localQuality = rawLocalQuality ? { ...rawLocalQuality, label: applyMaterialFloor(fenBeforeMove, move, rawLocalQuality.label) } : rawLocalQuality;
             const fenAfterMove = gameRef.current.chess.fen();
             const uci = `${move.from}${move.to}${move.promotion || ''}`;
             void getStockfishClient().evaluateMove({
@@ -673,7 +715,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               playerColor: move.color,
               difficulty: getChesterDifficulty(difficulty),
             }).then((telemetry) => {
-              const quality = { label: telemetry.classification === 'BRILLIANT' ? 'BEST' : telemetry.classification, centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
+              const quality = { label: applyMaterialFloor(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
               const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
               const triggeredChaos = isBrawl
                 ? checkChaosTriggers(telemetry.fenAfter, telemetry.evalScore, telemetry.moveQuality, p1Difficulty, p2Difficulty)
@@ -730,14 +772,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               }
               const movePhrase = describeMove(fenBeforeMove, move.san);
               const bestMovePhrase = telemetry?.bestMove ? describeMove(fenBeforeMove, telemetry.bestMove) : null;
-              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase });
+              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase }, fenBeforeMove);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
                   detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },
                 }));
               }
             }).catch(() => {
-              publishMove(move, player, localQuality);
+              publishMove(move, player, localQuality, null, { movePhrase: describeMove(fenBeforeMove, move.san) }, fenBeforeMove);
             });
           };
 

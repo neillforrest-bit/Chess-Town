@@ -10,7 +10,7 @@ export type Verdict = {
 };
 
 const VERDICTS: Record<string, Verdict> = {
-  BRILLIANT: { word: 'BRILLIANT', emoji: '🔥', color: '#ffd84d' },
+  BRILLIANT: { word: 'TOP DOG', emoji: '👑', color: '#c084fc' },
   BEST: { word: 'SPOT ON', emoji: '🔥', color: '#ffd84d' },
   GREAT: { word: 'STRONG', emoji: '😎', color: '#22d3ee' },
   GOOD: { word: 'SOLID', emoji: '🙂', color: '#2563eb' },
@@ -503,4 +503,210 @@ export function chesterOfflineChat(message: string, state: OfflineChatState): st
     ],
   };
   return pickFrom(generic[state.persona]);
+}
+
+/* ---------- Batch 25: phase-aware WHY lessons, howler banter, mini-game commentary ---------- */
+
+export type GamePhase = 'OPENING' | 'MIDDLEGAME' | 'ENDGAME';
+
+export function gamePhaseFromFen(fen: string): GamePhase {
+  const parts = fen.split(/\s+/);
+  const placement = parts[0] || '';
+  const fullmove = Number(parts[5]) || 1;
+  const pieces = (placement.match(/[qrbnQRBN]/g) || []).length;
+  const queens = (placement.match(/[qQ]/g) || []).length;
+  if (queens === 0 || pieces <= 6) return 'ENDGAME';
+  if (fullmove <= 10 && pieces >= 12) return 'OPENING';
+  return 'MIDDLEGAME';
+}
+
+const PHASE_TIPS: Record<GamePhase, string[]> = {
+  OPENING: [
+    'Fight for the centre with pawns, then point your pieces at it. The centre is the high ground of Chesterville.',
+    'Bring a new piece out before moving the same one twice. Every piece still at home is a teammate benched.',
+    'Castle early. A king stuck in the middle is a mayor without bodyguards.',
+  ],
+  MIDDLEGAME: [
+    'Before every move ask "what changed?" - what does my move attack, and what did it stop defending?',
+    'Your worst-placed piece is your next project. Improve it and the tactics start appearing by themselves.',
+    'Loose pieces drop off. Count attackers and defenders on anything unprotected - yours and theirs.',
+  ],
+  ENDGAME: [
+    'The king becomes a fighter in the endgame. March him toward the action - he is worth four pawns now.',
+    'Passed pawns must be pushed. A free-running pawn is a promotion counting down.',
+    'When ahead, trade pieces not pawns. Every swap brings the winning position closer.',
+  ],
+};
+
+const CAPTURE_NAME: Record<string, string> = { q: 'the queen', r: 'a rook', b: 'a bishop', n: 'a knight', p: 'a pawn' };
+
+function pawnCost(evalDelta: number | null | undefined): string {
+  if (evalDelta === null || evalDelta === undefined) return 'ground';
+  const pawns = Math.abs(evalDelta) / 100;
+  if (pawns < 1.2) return 'about a pawn';
+  if (pawns < 2.2) return 'about two pawns';
+  if (pawns < 4.5) return 'a whole piece';
+  return 'a huge chunk of your position';
+}
+
+export type WhyLessonInput = {
+  fen: string;
+  classification?: string | null;
+  movePhrase?: string | null;
+  bestMovePhrase?: string | null;
+  captured?: string | null;
+  check?: boolean;
+  mate?: boolean;
+  evalDelta?: number | null;
+  ply?: number;
+};
+
+export type WhyLesson = {
+  phase: GamePhase;
+  phaseTip: string;
+  moveLine: string;
+  gradeLine: string;
+  considerHeading: string;
+  considerLine: string;
+};
+
+export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
+  const phase = gamePhaseFromFen(input.fen);
+  const seed = (input.ply || 0) + ((input.movePhrase || '').length);
+  const phaseTip = pick(PHASE_TIPS[phase], seed);
+  const label = (input.classification || 'GOOD').toUpperCase();
+  const move = input.movePhrase ? `${input.movePhrase}.` : 'That move.';
+  const taken = input.captured ? CAPTURE_NAME[input.captured] || 'a piece' : null;
+  const good = label === 'BRILLIANT' || label === 'BEST' || label === 'GREAT' || label === 'GOOD';
+  const top = label === 'BRILLIANT' || label === 'BEST';
+
+  let gradeLine = '';
+  if (label === 'BRILLIANT') {
+    gradeLine = taken
+      ? `You took ${taken} with the engine's own first choice - maximum damage, nothing left hanging. That is board vision, not luck.`
+      : input.mate
+        ? 'You found the move that ends the argument on the spot. The engine agrees: nothing better existed.'
+        : input.check
+          ? 'You found the most forcing move on the board - check limits the replies to almost none, and you spent that power perfectly.'
+          : 'Out of every legal move you picked the engine\'s favourite - often the quiet one everyone else skips. That is the habit that separates club players from spectators.';
+  } else if (label === 'BEST') {
+    gradeLine = taken
+      ? `Winning ${taken} while keeping your own camp tidy is exactly how games are actually won. The engine would have done the same.`
+      : 'The strongest option on the board, played like it was obvious. Compare two candidate moves before touching a piece and you will find this spot again.';
+  } else if (label === 'GREAT') {
+    gradeLine = taken
+      ? `Good business: you won ${taken} and gave nothing back. Trades that profit you are how small leads become big ones.`
+      : 'Nearly the top choice - it improves your position and gives away nothing. Strong players live on moves like this.';
+  } else if (label === 'GOOD') {
+    gradeLine = 'Solid and safe. It keeps your structure intact - the engine saw a punchier option, but nothing about yours leaks.';
+  } else {
+    gradeLine = `It let ${pawnCost(input.evalDelta)} slip. The usual cause: moving before checking what the move leaves undefended, or ignoring a more forcing option.`;
+  }
+
+  let considerHeading = 'WHY CHESTER LOVES IT';
+  let considerLine = '';
+  if (good) {
+    considerLine = taken
+      ? `Celebrate this one: winning ${taken} without giving anything back is not luck - you saw a loose piece and punished it. Hunt loose pieces every single move.`
+      : input.mate
+        ? 'You ended the argument. Pattern-spotting like that is a tournament weapon - remember what the king\'s cage looked like.'
+        : input.check
+          ? 'Celebrate the forcing move: check means the opponent\'s next move is chosen by you. Free turns like that are where plans become wins.'
+          : 'Celebrate the quiet ones most of all: anyone can spot a capture, but choosing the strongest calm move is real chess.';
+  } else {
+    considerHeading = 'WHAT YOU COULD CONSIDER';
+    considerLine = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
+      ? `The risk it created: after ${input.movePhrase || 'that move'}, Chester has fresh targets. The engine's calmer idea was ${input.bestMovePhrase} - same ambition, no door left open.`
+      : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.';
+  }
+
+  return { phase, phaseTip, moveLine: `You played: ${move}`, gradeLine, considerHeading, considerLine };
+}
+
+/* Chester acknowledges his own howlers (rookie mode hangs pieces on purpose - own it). */
+const HOWLER_LINES = [
+  'Forget you saw that. Even mayors drop their crown sometimes.',
+  'I meant to do that. It is called a teaching moment. The free piece is yours - take it.',
+  'Ahem. That was not in the script. Your move, vulture.',
+  'That move was brought to you by overconfidence. Punish it. Please do not tell Joseph.',
+  'I hang pieces so you can practise punishing hung pieces. You are welcome. Definitely on purpose.',
+  'My lawyers describe that move as "generous". Their invoice is in the post.',
+];
+
+export function chesterHowlerLine(ply: number): string {
+  return pick(HOWLER_LINES, Math.max(1, ply));
+}
+
+/* Mini-game commentary banks - commentary only, no chat, voice tuned per game. */
+export type MiniGameKey = 'mate-sprint' | 'pawn-wars' | 'chessdle';
+
+const MINI_LINES: Record<MiniGameKey, Record<string, string[]>> = {
+  'mate-sprint': {
+    start: ['Sixty seconds, endless mates. Breathe, then hunt checks first - mate always arrives wearing a check.'],
+    hit: [
+      'Mate! That pattern is yours forever now.',
+      'Dead on arrival. You saw the killing square before the pieces did.',
+      'Checkmate! Your pattern library just grew a shelf.',
+      'Clinical. The king never stood a chance.',
+    ],
+    miss: [
+      'Not mate - the king had a back door. Cover the escape squares first.',
+      'Checks, captures, threats - in that order. That one was none of the three.',
+      'The clock bites harder than I do. Shake it off, next pattern.',
+    ],
+    win: [
+      'That is pattern recognition doing push-ups. Run it back and go faster.',
+      'The town clock is still smoking. Again - chase the record.',
+    ],
+    lose: [
+      'Every sprint makes the next one faster. The patterns are loading, trust the reps.',
+      'The clock won this round. Rematch - the mates are not going to find themselves.',
+    ],
+    idle: [
+      'Tip: every puzzle ends in one move, and the answer is almost always a check.',
+      'Rooks mate from a distance, queens mate from anywhere, knights mate rudely.',
+      'Speed comes from patterns, not panic.',
+    ],
+  },
+  'pawn-wars': {
+    start: ['Eight pawns, no mercy. Remember: a passed pawn is a queen-in-waiting.'],
+    capture: [
+      'Chomp. Pawn takes pawn is still profit.',
+      'Trade when you are ahead - the arithmetic loves you.',
+      'One less enemy. Endgames are won by pawns with clear roads.',
+    ],
+    queen: [
+      'PROMOTION! The pawn becomes royalty. The whole town salutes.',
+      'That is a queen now. Chess is a simple game, really.',
+    ],
+    win: ['Out-pawned, outplayed, outclassed. I taught you everything you know.'],
+    lose: ['The pawns got you this time. Rematch - I insist.'],
+    idle: [
+      'Tip: push the pawn your opponent cannot catch.',
+      'Kings are fighters in pawn wars - march yours up the board.',
+      'Two pawns side by side are a wall. A wall with teeth.',
+    ],
+  },
+  chessdle: {
+    start: ['One puzzle, one day, one planet. No pressure.'],
+    close: [
+      'So close - a check, but the king wriggles. Cover his escape squares.',
+      'A capture! But mate is the only currency accepted here.',
+    ],
+    miss: [
+      'Nothing forcing there. In a mate-in-1, the answer is almost always a check.',
+      'Look at every checking move first. One of them ends it.',
+    ],
+    win: ['CHECKMATE! The whole planet got the same puzzle today - you solved yours with style.'],
+    lose: ['It was there all along. Tomorrow, same time, a brand new mate.'],
+    idle: [
+      'Streaks are built on days exactly like today.',
+      'Tip: look for the move that gives the king zero squares, not the move that looks scary.',
+    ],
+  },
+};
+
+export function miniChesterLine(game: MiniGameKey, event: string, seed: number): string {
+  const bank = MINI_LINES[game][event] || MINI_LINES[game].idle;
+  return pick(bank, Math.max(1, seed));
 }

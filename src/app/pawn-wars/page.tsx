@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
+import MiniChester from '@/components/MiniChester';
 import { describeMove } from '@/lib/move-words';
 
 const START_FEN = '4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1';
@@ -72,11 +73,14 @@ export default function PawnWarsPage() {
   const [score, setScore] = useState<Score>({ wins: 0, losses: 0, streak: 0, bestStreak: 0 });
   const [copied, setCopied] = useState(false);
   const chessRef = useRef(new Chess(START_FEN));
+  const [chesterEvent, setChesterEvent] = useState<{ type: string; seed: number } | null>(null);
+  const plyRef = useRef(0);
 
   useEffect(() => { setScore(readScore()); }, []);
 
   const finish = useCallback((result: NonNullable<Outcome>) => {
     setOutcome(result);
+    setChesterEvent({ type: result.winner === 'w' ? 'win' : result.winner === 'b' ? 'lose' : 'lose', seed: plyRef.current + 1 });
     setScore((current) => {
       const next: Score = result.winner === 'w'
         ? { ...current, wins: current.wins + 1, streak: current.streak + 1, bestStreak: Math.max(current.bestStreak, current.streak + 1) }
@@ -95,6 +99,9 @@ export default function PawnWarsPage() {
     const before = chess.fen();
     const move = chess.move({ from, to, promotion: promotion || 'q' });
     if (!move) return;
+    plyRef.current += 1;
+    if (move.promotion) setChesterEvent({ type: 'queen', seed: plyRef.current });
+    else if (move.captured) setChesterEvent({ type: 'capture', seed: plyRef.current });
     setFen(chess.fen());
     setLastMove({ from, to });
     const judged = judge(chess, 'w');
@@ -169,5 +176,6 @@ export default function PawnWarsPage() {
         <Link href="/">← Back to Chesterville</Link>
       </div>
     </section>}
+    <MiniChester game="pawn-wars" label="TRENCH COACH" event={chesterEvent} />
   </main>;
 }

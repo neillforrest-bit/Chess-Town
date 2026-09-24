@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
+import MiniChester from '@/components/MiniChester';
 import { MATE_PUZZLES } from '@/lib/mate-puzzles';
 
 const SPRINT_SECONDS = 60;
@@ -34,6 +35,7 @@ export default function MateSprintPage() {
   const [newBest, setNewBest] = useState(false);
   const [copied, setCopied] = useState(false);
   const endAtRef = useRef(0);
+  const [chesterEvent, setChesterEvent] = useState<{ type: string; seed: number } | null>(null);
 
   useEffect(() => {
     try { setBest(Number(window.localStorage.getItem(BEST_KEY)) || 0); } catch { /* private browsing */ }
@@ -71,7 +73,12 @@ export default function MateSprintPage() {
     setSecondsLeft(SPRINT_SECONDS);
     endAtRef.current = Date.now() + SPRINT_SECONDS * 1000;
     setPhase('running');
+    setChesterEvent({ type: 'start', seed: 1 });
   };
+
+  useEffect(() => {
+    if (phase === 'over') setChesterEvent({ type: scoreRef.current >= 4 ? 'win' : 'lose', seed: scoreRef.current + misses + 1 });
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const puzzle = MATE_PUZZLES[order[cursor % order.length]];
 
@@ -84,10 +91,12 @@ export default function MateSprintPage() {
         setScore((s) => s + 1);
         setCursor((c) => c + 1);
         setFlash('hit');
+        setChesterEvent({ type: 'hit', seed: scoreRef.current + 1 });
       } else {
         endAtRef.current = Math.max(Date.now(), endAtRef.current - MISS_PENALTY * 1000);
         setMisses((m) => m + 1);
         setFlash('miss');
+        setChesterEvent({ type: 'miss', seed: misses + 1 });
       }
       window.setTimeout(() => setFlash(null), 450);
     } catch { /* illegal taps are ignored by the board anyway */ }
@@ -146,5 +155,6 @@ export default function MateSprintPage() {
         <Link href="/">← Back to Chesterville</Link>
       </div>
     </section>}
+    <MiniChester game="mate-sprint" label="SPRINT COACH" event={chesterEvent} />
   </main>;
 }
