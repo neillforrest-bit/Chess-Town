@@ -293,6 +293,8 @@ function LegacyArena() {
   const [remoteDiag, setRemoteDiag] = useState('');
   const [challengeUrl, setChallengeUrl] = useState('');
   const peerRef = useRef<any>(null);
+  const hostRoomRef = useRef<string | null>(null);
+  const joinAsGuestRef = useRef<null | (() => void)>(null);
   const connectionRef = useRef<any>(null);
   const commentaryRequestRef = useRef(0);
   const teleprompterRequestRef = useRef(0);
@@ -381,21 +383,55 @@ function LegacyArena() {
     setScene('GAME');
   };
 
-  const createRemoteChallenge = async () => {
-    playShockSound();
-    peerRef.current?.destroy?.();
-    const room = Math.random().toString(36).slice(2, 10);
+  const startHostRoom = async (room: string, mode: 'fresh' | 'reload' | 'resume', resumeAttempt = 0) => {
     const { default: Peer } = await import('peerjs');
+    peerRef.current?.destroy?.();
     const peer = new Peer(`chess-town-${room}`, PEER_CONFIG as any);
     peerRef.current = peer;
-    peer.on('disconnected', () => { setRemoteDiag('Herald network dropped - reconnecting...'); try { peer.reconnect(); } catch { /* broker dropped */ } });
-    openRemoteArena('w', room);
-    setRemoteDiag('Opening the herald network...');
-    // Put the room in the visible URL so ANY share path (browser UI, copy, herald) carries it.
-    window.history.replaceState(null, '', `${window.location.pathname}?room=${room}&host=1`);
+    peer.on('disconnected', () => {
+      if (remoteConnectedRef.current) return;
+      setRemoteDiag('Herald network dropped - reconnecting...');
+      try { peer.reconnect(); } catch { /* broker dropped */ }
+    });
+    if (mode === 'fresh') {
+      openRemoteArena('w', room);
+      setRemoteDiag('Opening the herald network...');
+      // Put the room in the visible URL so ANY share path (browser UI, copy, herald) carries it.
+      window.history.replaceState(null, '', `${window.location.pathname}?room=${room}&host=1`);
+    } else {
+      setRemoteDiag('Reopening the challenge room...');
+    }
     peer.on('open', () => setRemoteDiag(`Challenge room open (${room}). Waiting for your rival.`));
     peer.on('connection', (conn) => { setRemoteDiag('A challenger is knocking...'); configureConnection(conn); });
-    peer.on('error', (peerError: any) => { setRemoteStatus('Could not open the challenge room. Try again.'); setRemoteDiag(`Herald error: ${peerError?.type || 'unknown'}`); });
+    peer.on('error', (peerError: any) => {
+      if (peerError?.type === 'unavailable-id') {
+        if (mode === 'reload') {
+          // Someone already hosts this room (the real host's phone). Any shared link
+          // shape must just work - take the challenger's seat instead of dying here.
+          hostRoomRef.current = null;
+          setRemoteStatus('That room already has a host - taking the challenger seat...');
+          peer.destroy();
+          joinAsGuestRef.current?.();
+          return;
+        }
+        // Our own stale registration can linger at the broker for a few seconds after
+        // an iOS tab suspend. Keep retrying - this is OUR room, never flip seats.
+        if (resumeAttempt < 8) {
+          setRemoteDiag('Reopening the challenge room...');
+          window.setTimeout(() => { if (hostRoomRef.current === room && !remoteConnectedRef.current) void startHostRoom(room, 'resume', resumeAttempt + 1); }, 3500);
+        }
+        return;
+      }
+      setRemoteStatus('Could not open the challenge room. Try again.');
+      setRemoteDiag(`Herald error: ${peerError?.type || 'unknown'}`);
+    });
+  };
+
+  const createRemoteChallenge = async () => {
+    playShockSound();
+    const room = Math.random().toString(36).slice(2, 10);
+    hostRoomRef.current = room;
+    await startHostRoom(room, 'fresh');
   };
 
   const copyChallengeLink = async () => {
@@ -425,63 +461,70 @@ function LegacyArena() {
 
     const joinAsGuest = async () => {
       attempts += 1;
+      const my = attempts;
+      hostRoomRef.current = null;
       const { default: Peer } = await import('peerjs');
       if (cancelled) return;
       peerRef.current?.destroy?.();
       const peer = new Peer(PEER_CONFIG as any);
       peerRef.current = peer;
       openRemoteArena('b', room);
-      setRemoteDiag(attempts > 1 ? `Knocking on the arena gates (try ${attempts})...` : 'Finding the herald network...');
+      setRemoteDiag(my > 1 ? `Knocking on the arena gates (try ${my})...` : 'Finding the herald network...');
       peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
       peer.on('open', () => {
         setRemoteDiag('Network found - knocking on the challenge room...');
-        configureConnection(peer.connect(`chess-town-${room}`, { reliable: true }));
-        window.setTimeout(() => { if (!remoteConnectedRef.current && !cancelled) setRemoteStatus('Still connecting - keep both screens open on a decent network.'); }, 12000);
+        const conn = peer.connect(`chess-town-${room}`, { reliable: true });
+        configureConnection(conn);
+        // A knock can vanish silently when the host's tab was asleep as it arrived -
+        // the broker forwards the offer into a dead socket and no error comes back.
+        // Never wait forever on one knock: close it and knock again.
+        window.setTimeout(() => {
+          if (cancelled || remoteConnectedRef.current || attempts !== my) return;
+          try { conn.close(); } catch { /* best effort */ }
+          setRemoteStatus('The knock went unanswered - knocking again...');
+          void joinAsGuest();
+        }, 9000);
+        window.setTimeout(() => { if (!remoteConnectedRef.current && !cancelled) setRemoteStatus('Still connecting - keep both screens open on a decent network.'); }, 20000);
       });
       peer.on('error', (peerError: any) => {
-        if (cancelled) return;
-        if (peerError?.type === 'peer-unavailable' && attempts < 6) {
+        if (cancelled || attempts !== my) return;
+        if (peerError?.type === 'peer-unavailable' && my < 10) {
           setRemoteStatus('The arena gates are still closed - the host may still be opening them. Knocking again...');
-          window.setTimeout(() => { if (!cancelled && !remoteConnectedRef.current) void joinAsGuest(); }, 4000);
+          window.setTimeout(() => { if (!cancelled && !remoteConnectedRef.current && attempts === my) void joinAsGuest(); }, 3000);
         } else {
           setRemoteStatus(peerError?.type === 'peer-unavailable' ? 'That challenge room is not open right now. Ask the host for a fresh link.' : 'Challenge unavailable. Ask the host for a fresh link.');
           setRemoteDiag(`Join error: ${peerError?.type || 'unknown'}`);
         }
       });
     };
-
-    const onVisible = () => { if (document.visibilityState === 'visible') { const live = peerRef.current as any; if (live && live.disconnected && !live.destroyed) { try { live.reconnect(); } catch { /* resume best effort */ } } } };
-    document.addEventListener('visibilitychange', onVisible);
+    joinAsGuestRef.current = () => { void joinAsGuest(); };
 
     if (params.get('host') === '1') {
       // Host reload: re-establish the room instead of self-joining.
-      import('peerjs').then(({ default: Peer }) => {
-        if (cancelled) return;
-        const peer = new Peer(`chess-town-${room}`, PEER_CONFIG as any);
-        peerRef.current = peer;
-        peer.on('disconnected', () => { setRemoteDiag('Herald network dropped - reconnecting...'); try { peer.reconnect(); } catch { /* broker dropped */ } });
-        openRemoteArena('w', room);
-        setRemoteDiag('Reopening the challenge room...');
-        peer.on('open', () => setRemoteDiag(`Challenge room open (${room}). Waiting for your rival.`));
-        peer.on('connection', (conn) => { setRemoteDiag('A challenger is knocking...'); configureConnection(conn); });
-        peer.on('error', (peerError: any) => {
-          if (cancelled) return;
-          if (peerError?.type === 'unavailable-id') {
-            // Someone already hosts this room (the real host's phone). Any shared link
-            // shape must just work - take the challenger's seat instead of dying here.
-            setRemoteStatus('That room already has a host - taking the challenger seat...');
-            peer.destroy();
-            void joinAsGuest();
-            return;
-          }
-          setRemoteStatus('Could not reopen the challenge room. Send a fresh link.');
-          setRemoteDiag(`Herald error: ${peerError?.type || 'unknown'}`);
-        });
-      });
-      return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); peerRef.current?.destroy?.(); };
+      hostRoomRef.current = room;
+      openRemoteArena('w', room);
+      void startHostRoom(room, 'reload');
+      return () => { cancelled = true; peerRef.current?.destroy?.(); };
     }
     void joinAsGuest();
-    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); peerRef.current?.destroy?.(); };
+    return () => { cancelled = true; peerRef.current?.destroy?.(); };
+  }, []);
+
+  // iOS suspends background tabs and can silently kill the broker socket while the
+  // host is off in iMessage/WhatsApp sending the link - the broker then forwards
+  // knocks into a dead socket and the guest waits forever. On resume, re-register
+  // the room from scratch (same ID) so the next knock lands.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || remoteConnectedRef.current) return;
+      const room = hostRoomRef.current;
+      if (room) { setRemoteDiag('Waking the herald network...'); void startHostRoom(room, 'resume'); return; }
+      const live = peerRef.current as any;
+      if (live && live.disconnected && !live.destroyed) { try { live.reconnect(); } catch { /* resume best effort */ } }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const remoteConnectedRef = useRef(false);

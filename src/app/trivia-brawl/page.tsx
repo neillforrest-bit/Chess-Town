@@ -40,6 +40,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linked, setLinked] = useState(false);
+  const linkedRef = useRef(false);
   const announcedRoundRef = useRef(-1);
   const fullRoomRef = useRef<TriviaRoom | null>(null);
   const guestLinkRef = useRef<any>(null);
@@ -96,22 +97,43 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       if (!cancelled) setCategories(categoryPayload.trivia_categories || []);
       const { default: Peer } = await import('peerjs');
       if (cancelled) return;
+      let hosting = role === 'p1';
+      let joinAttempts = 0;
       const joinGuest = () => {
+        joinAttempts += 1;
+        const my = joinAttempts;
+        try { peer?.destroy?.(); } catch { /* teardown */ }
         peer = new Peer(PEER_CONFIG as any);
         peer.on('open', () => {
-          if (cancelled) return;
+          if (cancelled || joinAttempts !== my) return;
           const link = peer.connect(`ct-trivia-${id}`, { reliable: true });
           hostLinkRef.current = link;
           link.on('open', () => setLinked(true));
           link.on('data', (message: any) => { if (message?.type === 'room') setRoom(message.room as Room); if (message?.type === 'guest-error') setError(String(message.message || 'The pub table hiccuped - try that again.')); });
           link.on('close', () => { setLinked(false); setError('The host left the pub. Ask for a fresh invite.'); });
           link.on('error', () => { setLinked(false); setError('The pub table link dropped. Ask the host to reopen it.'); });
+          // A knock can vanish silently if the host's tab was asleep when it arrived.
+          // Never wait forever on one knock - close it and knock again.
+          window.setTimeout(() => {
+            if (cancelled || linkedRef.current || joinAttempts !== my) return;
+            try { link.close(); } catch { /* best effort */ }
+            setError('The knock went unanswered - knocking again...');
+            joinGuest();
+          }, 9000);
         });
         peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* dropped */ } });
-        peer.on('error', (peerError: any) => { if (!cancelled) setError(peerError?.type === 'peer-unavailable' ? 'No pub table at that link. Ask the host for a fresh invite.' : 'The pub table connection hiccuped - holding on...'); });
+        peer.on('error', (peerError: any) => {
+          if (cancelled || joinAttempts !== my) return;
+          if (peerError?.type === 'peer-unavailable' && my < 10) {
+            setError('The pub table is still opening - knocking again...');
+            window.setTimeout(() => { if (!cancelled && !linkedRef.current && joinAttempts === my) joinGuest(); }, 3000);
+            return;
+          }
+          setError(peerError?.type === 'peer-unavailable' ? 'No pub table at that link. Ask the host for a fresh invite.' : 'The pub table connection hiccuped - holding on...');
+        });
       };
-      if (role === 'p1') {
-        publishRoom(createRoom());
+      const openHost = (resumeAttempt: number) => {
+        try { peer?.destroy?.(); } catch { /* teardown */ }
         peer = new Peer(`ct-trivia-${id}`, PEER_CONFIG as any);
         peer.on('connection', (link: any) => {
           guestLinkRef.current = link;
@@ -129,15 +151,37 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         peer.on('error', (peerError: any) => {
           if (cancelled) return;
           if (peerError?.type === 'unavailable-id') {
-            // This table is already hosted (a shared link opened on a second device).
-            // Take the guest seat instead of dying on the doorstep.
-            try { peer.destroy(); } catch { /* teardown */ }
-            setPlayer('p2');
-            joinGuest();
+            if (resumeAttempt < 0) {
+              // Fresh open and the table is already hosted (a shared link opened on a
+              // second device). Take the guest seat instead of dying on the doorstep.
+              hosting = false;
+              try { peer.destroy(); } catch { /* teardown */ }
+              setPlayer('p2');
+              joinGuest();
+              return;
+            }
+            // Resume: our own stale registration can linger at the broker for a few
+            // seconds after an iOS tab suspend. Keep retrying - this is OUR table.
+            if (resumeAttempt < 8 && hosting && !linkedRef.current) {
+              window.setTimeout(() => { if (!cancelled && hosting && !linkedRef.current) openHost(resumeAttempt + 1); }, 3500);
+            }
             return;
           }
           setError('The pub table connection hiccuped - holding on...');
         });
+      };
+      // iOS suspends background tabs and can silently kill the broker socket while the
+      // host is off in iMessage/WhatsApp sending the invite. On resume, re-register
+      // the table from scratch (same ID) so the next knock lands.
+      const onVisible = () => {
+        if (document.visibilityState !== 'visible' || cancelled || linkedRef.current) return;
+        if (hosting) { openHost(0); return; }
+        if (peer && peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch { /* dropped */ } }
+      };
+      document.addEventListener('visibilitychange', onVisible);
+      if (role === 'p1') {
+        publishRoom(createRoom());
+        openHost(-1);
       } else {
         joinGuest();
       }
@@ -145,6 +189,8 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     return () => { cancelled = true; try { peer?.destroy?.(); } catch { /* teardown */ } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => { linkedRef.current = linked; }, [linked]);
 
   useEffect(() => {
     if (room.phase !== 'question' || !room.currentQuestion || announcedRoundRef.current === room.round) return;
