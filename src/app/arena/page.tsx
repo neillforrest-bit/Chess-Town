@@ -385,11 +385,16 @@ function LegacyArena() {
 
   const startHostRoom = async (room: string, mode: 'fresh' | 'reload' | 'resume', resumeAttempt = 0) => {
     const { default: Peer } = await import('peerjs');
-    peerRef.current?.destroy?.();
+    // Retire the old peer BEFORE destroying it: a destroy fires 'disconnected', and
+    // a zombie handler that reconnects an old peer re-steals the room ID from the
+    // broker - host and zombie then fight over the ID forever and no knock lands.
+    const retired = peerRef.current;
+    peerRef.current = null;
+    try { retired?.destroy?.(); } catch { /* teardown */ }
     const peer = new Peer(`chess-town-${room}`, PEER_CONFIG as any);
     peerRef.current = peer;
     peer.on('disconnected', () => {
-      if (remoteConnectedRef.current) return;
+      if (remoteConnectedRef.current || peerRef.current !== peer) return;
       setRemoteDiag('Herald network dropped - reconnecting...');
       try { peer.reconnect(); } catch { /* broker dropped */ }
     });
@@ -404,6 +409,7 @@ function LegacyArena() {
     peer.on('open', () => setRemoteDiag(`Challenge room open (${room}). Waiting for your rival.`));
     peer.on('connection', (conn) => { setRemoteDiag('A challenger is knocking...'); configureConnection(conn); });
     peer.on('error', (peerError: any) => {
+      if (peerRef.current !== peer) return;
       if (peerError?.type === 'unavailable-id') {
         if (mode === 'reload') {
           // Someone already hosts this room (the real host's phone). Any shared link
@@ -465,12 +471,14 @@ function LegacyArena() {
       hostRoomRef.current = null;
       const { default: Peer } = await import('peerjs');
       if (cancelled) return;
-      peerRef.current?.destroy?.();
+      const retired = peerRef.current;
+      peerRef.current = null;
+      try { retired?.destroy?.(); } catch { /* teardown */ }
       const peer = new Peer(PEER_CONFIG as any);
       peerRef.current = peer;
       openRemoteArena('b', room);
       setRemoteDiag(my > 1 ? `Knocking on the arena gates (try ${my})...` : 'Finding the herald network...');
-      peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
+      peer.on('disconnected', () => { if (peerRef.current !== peer) return; try { peer.reconnect(); } catch { /* broker dropped */ } });
       peer.on('open', () => {
         setRemoteDiag('Network found - knocking on the challenge room...');
         const conn = peer.connect(`chess-town-${room}`, { reliable: true });
@@ -518,7 +526,9 @@ function LegacyArena() {
     const onVisible = () => {
       if (document.visibilityState !== 'visible' || remoteConnectedRef.current) return;
       const room = hostRoomRef.current;
-      if (room) { setRemoteDiag('Waking the herald network...'); void startHostRoom(room, 'resume'); return; }
+      // Skip when a knock already arrived - the socket is provably alive then, and
+      // recreating would kill an in-flight handshake. The guest re-knocks on failure.
+      if (room && !connectionRef.current) { setRemoteDiag('Waking the herald network...'); void startHostRoom(room, 'resume'); return; }
       const live = peerRef.current as any;
       if (live && live.disconnected && !live.destroyed) { try { live.reconnect(); } catch { /* resume best effort */ } }
     };

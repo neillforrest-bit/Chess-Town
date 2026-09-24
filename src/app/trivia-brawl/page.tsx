@@ -102,10 +102,15 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       const joinGuest = () => {
         joinAttempts += 1;
         const my = joinAttempts;
-        try { peer?.destroy?.(); } catch { /* teardown */ }
+        // Retire the old peer BEFORE destroying it: a destroy fires events, and a
+        // zombie handler acting through the shared 'peer' variable hits the NEW peer.
+        const retired = peer;
+        peer = null;
+        try { retired?.destroy?.(); } catch { /* teardown */ }
         peer = new Peer(PEER_CONFIG as any);
+        const mine = peer;
         peer.on('open', () => {
-          if (cancelled || joinAttempts !== my) return;
+          if (cancelled || joinAttempts !== my || peer !== mine) return;
           const link = peer.connect(`ct-trivia-${id}`, { reliable: true });
           hostLinkRef.current = link;
           link.on('open', () => setLinked(true));
@@ -121,9 +126,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
             joinGuest();
           }, 9000);
         });
-        peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* dropped */ } });
+        peer.on('disconnected', () => { if (peer !== mine) return; try { peer.reconnect(); } catch { /* dropped */ } });
         peer.on('error', (peerError: any) => {
-          if (cancelled || joinAttempts !== my) return;
+          if (cancelled || joinAttempts !== my || peer !== mine) return;
           if (peerError?.type === 'peer-unavailable' && my < 10) {
             setError('The pub table is still opening - knocking again...');
             window.setTimeout(() => { if (!cancelled && !linkedRef.current && joinAttempts === my) joinGuest(); }, 3000);
@@ -133,9 +138,13 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         });
       };
       const openHost = (resumeAttempt: number) => {
-        try { peer?.destroy?.(); } catch { /* teardown */ }
+        const retired = peer;
+        peer = null;
+        try { retired?.destroy?.(); } catch { /* teardown */ }
         peer = new Peer(`ct-trivia-${id}`, PEER_CONFIG as any);
+        const mine = peer;
         peer.on('connection', (link: any) => {
+          if (peer !== mine) { try { link.close(); } catch { /* stray */ } return; }
           guestLinkRef.current = link;
           link.on('open', () => {
             if (cancelled) return;
@@ -147,9 +156,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           link.on('close', () => setLinked(false));
           link.on('error', () => setLinked(false));
         });
-        peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* dropped */ } });
+        peer.on('disconnected', () => { if (peer !== mine) return; try { peer.reconnect(); } catch { /* dropped */ } });
         peer.on('error', (peerError: any) => {
-          if (cancelled) return;
+          if (cancelled || peer !== mine) return;
           if (peerError?.type === 'unavailable-id') {
             if (resumeAttempt < 0) {
               // Fresh open and the table is already hosted (a shared link opened on a
@@ -175,7 +184,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       // the table from scratch (same ID) so the next knock lands.
       const onVisible = () => {
         if (document.visibilityState !== 'visible' || cancelled || linkedRef.current) return;
-        if (hosting) { openHost(0); return; }
+        if (hosting && !guestLinkRef.current) { openHost(0); return; }
         if (peer && peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch { /* dropped */ } }
       };
       document.addEventListener('visibilitychange', onVisible);
