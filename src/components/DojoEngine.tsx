@@ -207,6 +207,34 @@ function pickRookieMove(chess: any): any {
   }
 }
 
+// Rookie "casual human" picker: genuine beginner chess. Mostly sane moves, sometimes
+// tunnel-vision greed, sometimes pure wandering - so ROOKIE is genuinely beatable
+// while still looking like a person learning, not a random mover.
+function pickCasualMove(chess: any): any {
+  try {
+    const moves = chess.moves({ verbose: true });
+    if (!moves.length) return null;
+    const values: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+    const safe: any[] = [];
+    for (const m of moves) {
+      const next = new Chess(chess.fen());
+      next.move({ from: m.from, to: m.to, promotion: 'q' });
+      let worstLoss = 0;
+      for (const r of next.moves({ verbose: true })) if (r.captured) worstLoss = Math.max(worstLoss, values[r.captured] || 0);
+      const gain = (values[m.captured] || 0) + (m.promotion ? 8 : 0);
+      if (worstLoss <= gain) safe.push(m);
+    }
+    const roll = Math.random();
+    if (roll < 0.25) return moves[Math.floor(Math.random() * moves.length)]; // beginner blindness
+    if (roll < 0.7 && safe.length) return safe[Math.floor(Math.random() * safe.length)]; // sensible but unoptimised
+    const greedy = moves.map((m: any) => ({ m, g: (values[m.captured] || 0) + (m.promotion ? 8 : 0) + (m.san.includes('+') ? 0.5 : 0) + Math.random() * 1.5 }));
+    greedy.sort((a, b) => b.g - a.g);
+    return greedy[Math.floor(Math.random() * Math.min(3, greedy.length))].m; // tunnel-vision greed, can hang pieces
+  } catch {
+    return null;
+  }
+}
+
 function pickBestMove(chess: any, searchDepth: number): any {
   const aiIsWhite = chess.turn() === 'w';
   const moves = chess.moves({ verbose: true });
@@ -265,8 +293,9 @@ function getLetterGrade(centipawnLoss: number | null | undefined) {
 }
 
 function getGradeColor(grade: string | undefined) {
-  if (grade === 'A') return 0x2563eb;
-  if (grade === 'B') return 0xffea00;
+  // Traffic-light grading: green good, amber middling, red bad.
+  if (grade === 'A') return 0x2fd17c;
+  if (grade === 'B') return 0xffc53d;
   if (grade === 'C') return 0xff8c00;
   return 0xff1744;
 }
@@ -444,20 +473,35 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             });
           });
 
-          const jailX = 716;
           const jailY = 16;
-          const jailPanel = scene.add.rectangle(jailX, jailY, 136, 24, 0x240019, 0.95)
+          // Jails are wide strips in the top margin: label on the left, captured pieces line up beside it.
+          const jailX = 630;
+          const greenJailX = 170;
+          scene.add.rectangle(jailX, jailY, 300, 24, 0x240019, 0.95)
             .setStrokeStyle(2, 0xf43f7a, 0.9)
             .setDepth(20);
-          const jailLabel = scene.add.text(jailX, jailY, 'PIECE JAIL', {
-            fontFamily: 'sans-serif',
-            fontSize: '12px',
-            fontStyle: 'bold',
-            color: '#fecdd8',
-          }).setOrigin(0.5).setDepth(21);
-          const greenJailX = 84;
-          scene.add.rectangle(greenJailX, jailY, 136, 24, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
-          scene.add.text(greenJailX, jailY, 'GREEN JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#dfffda' }).setOrigin(0.5).setDepth(21);
+          scene.add.text(486, jailY, 'PIECE JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#fecdd8' }).setOrigin(0, 0.5).setDepth(21);
+          scene.add.rectangle(greenJailX, jailY, 300, 24, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
+          scene.add.text(26, jailY, 'GREEN JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#dfffda' }).setOrigin(0, 0.5).setDepth(21);
+          const jailGlyphLayers: Record<'w' | 'b', Phaser.GameObjects.Container> = {
+            w: scene.add.container(0, 0).setDepth(21),
+            b: scene.add.container(0, 0).setDepth(21),
+          };
+          gameRef.current.jailedCounts = { w: 0, b: 0 };
+          const jailCapturedPiece = (color: 'w' | 'b', type: string) => {
+            try {
+              const count = gameRef.current.jailedCounts[color]++;
+              const layer = jailGlyphLayers[color];
+              const startX = color === 'w' ? 108 : 568;
+              const spacing = Math.min(21, 180 / Math.max(1, count + 1));
+              (layer.getAll() as any[]).forEach((child, index) => child.setX(startX + index * spacing));
+              const glyph = scene.add.image(startX + count * spacing, jailY, `piece-${color}-${type}`).setDisplaySize(20, 20);
+              const fullScale = glyph.scaleX;
+              glyph.setScale(0.02);
+              scene.tweens.add({ targets: glyph, scaleX: fullScale, scaleY: fullScale, duration: 260, ease: 'Back.Out' });
+              layer.add(glyph);
+            } catch { /* jail art is decorative - never break the game for it */ }
+          };
 
           // Draw board coordinates (static background)
           for (let col = 0; col < 8; col++) {
@@ -482,6 +526,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const emitCapture = (move: any) => {
             if (!move.captured) return;
+            jailCapturedPiece(move.color === 'w' ? 'b' : 'w', move.captured);
             window.dispatchEvent(new CustomEvent('piece-captured', {
               detail: { color: move.color === 'w' ? 'b' : 'w', type: move.captured },
             }));
@@ -505,7 +550,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const capturedIsWhite = move.color === 'b';
             const targetX = capturedIsWhite ? greenJailX : jailX;
             const targetColor = capturedIsWhite ? 0x2563eb : 0xf43f7a;
-            const targetY = jailY + 28;
+            const targetY = jailY;
             const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0.45).setDepth(29);
             scene.tweens.add({ targets: impact, scale: 1.8, alpha: 0, duration: 420, ease: 'Quad.Out', onComplete: () => impact.destroy() });
             const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2);
@@ -718,9 +763,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               let aiMove = engineMove
                 ? { from: engineMove.slice(0, 2), to: engineMove.slice(2, 4), promotion: engineMove.slice(4, 5) || undefined }
                 : pickBestMove(gameRef.current.chess, searchD);
-              if (difficulty === 'BEGINNER' && Math.random() < 0.45) {
-                const rookie = pickRookieMove(gameRef.current.chess);
-                if (rookie) aiMove = { from: rookie.from, to: rookie.to, promotion: rookie.promotion || undefined };
+              if (difficulty === 'BEGINNER') {
+                const casual = Math.random() < 0.85 ? pickCasualMove(gameRef.current.chess) || pickRookieMove(gameRef.current.chess) : null;
+                if (casual) aiMove = { from: casual.from, to: casual.to, promotion: casual.promotion || undefined };
               }
               const result = gameRef.current.chess.move({ from: aiMove.from, to: aiMove.to, promotion: 'q' });
               const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
@@ -928,7 +973,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // One of each, always replaced - never a spiderweb.
             if (!gameRef.current.isGameOver) {
               if (gameRef.current.lastMove) {
-                drawCoachArrow(gameRef.current.lastMove.from, gameRef.current.lastMove.to, 0xffd84d);
+                drawCoachArrow(gameRef.current.lastMove.from, gameRef.current.lastMove.to, getGradeColor(gameRef.current.lastMove.grade));
                 // Fun trail: a spark rides the path of the move that was just made (both sides).
                 if (gameRef.current.trailPly !== gameRef.current.ply) {
                   gameRef.current.trailPly = gameRef.current.ply;
@@ -937,7 +982,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const tCol = files.indexOf(gameRef.current.lastMove.to[0]);
                   const tRow = ranks.indexOf(gameRef.current.lastMove.to[1]);
                   if (fCol >= 0 && fRow >= 0 && tCol >= 0 && tRow >= 0) {
-                    const spark = scene.add.circle(boardOffset + fCol * tileSize + tileSize / 2, boardOffset + fRow * tileSize + tileSize / 2, tileSize * 0.16, 0xffd84d, 0.95).setDepth(30);
+                    const spark = scene.add.circle(boardOffset + fCol * tileSize + tileSize / 2, boardOffset + fRow * tileSize + tileSize / 2, tileSize * 0.16, getGradeColor(gameRef.current.lastMove?.grade), 0.95).setDepth(30);
                     scene.tweens.add({ targets: spark, x: boardOffset + tCol * tileSize + tileSize / 2, y: boardOffset + tRow * tileSize + tileSize / 2, duration: 420, ease: 'Cubic.Out', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
                   }
                 }
@@ -1079,6 +1124,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.playerQualities = [];
             gameRef.current.gradeHistory = [];
             gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
+            gameRef.current.jailedCounts = { w: 0, b: 0 };
+            Object.values(jailGlyphLayers).forEach((layer) => layer.removeAll(true));
             publishPositionEvaluation(gameRef.current.chess.fen());
 
             const isCoaching = mode.startsWith('COACH_');
@@ -1120,6 +1167,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.playerQualities = [];
             gameRef.current.gradeHistory = [];
             gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
+            gameRef.current.jailedCounts = { w: 0, b: 0 };
+            Object.values(jailGlyphLayers).forEach((layer) => layer.removeAll(true));
 
             const sequence = DEMO_SEQUENCES[mode] || [];
             let step = 0;

@@ -20,6 +20,16 @@ const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'ADVANCED', label: 'MASTER', note: 'Punishes loose pieces' },
   { value: 'EXPERT', label: 'NIGHTMARE', note: 'No mercy, no refunds' },
 ];
+const WHY_TIPS: Record<string, string> = {
+  BRILLIANT: 'Moves like this ask a question your opponent cannot answer. Hunt checks, captures and threats first - brilliance lives there.',
+  BEST: 'You found the strongest option. The habit that gets you here again: compare your top two candidate moves before committing.',
+  GREAT: 'Strong moves improve a piece AND limit the opponent. Before moving, ask what your move takes away.',
+  GOOD: 'Solid moves win slow games. Keep developing, keep the king safe, and the chances will come to you.',
+  INACCURACY: 'Small leaks sink positions. Before your next move, ask what it leaves undefended.',
+  MISTAKE: 'Most mistakes hang something. Count what your opponent can capture after your move - before you play it.',
+  BLUNDER: 'Blunders are tuition, not failure. One breath before every move: what changed, what is loose, what is their threat?',
+};
+const whyTip = (classification?: string | null) => WHY_TIPS[(classification || '').toUpperCase()] || WHY_TIPS.GOOD;
 const LESSONS = [
   { title: 'Take the centre', body: 'Tap a pawn in front of your king or queen, then tap a glowing square. That opens the road for your other pieces.' },
   { title: 'Develop with purpose', body: 'Tap a horse-shaped knight or a bishop, then choose a glowing square. Bring one new teammate into the game.' },
@@ -50,6 +60,9 @@ function PlayChesterGame() {
   const [lastFen, setLastFen] = useState(START_FEN);
   const [moveTrail, setMoveTrail] = useState<{ move: string; classification?: string | null }[]>([]);
   const [lastBest, setLastBest] = useState<string | null>(null);
+  const [lastBestPhrase, setLastBestPhrase] = useState<string | null>(null);
+  const [lastMovePhrase, setLastMovePhrase] = useState<string | null>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
   const selectedLevel = useMemo(() => LEVELS.find((level) => level.value === difficulty)!, [difficulty]);
   const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : 'PLAYING CHESTER';
   const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : selectedLevel.label;
@@ -61,8 +74,8 @@ function PlayChesterGame() {
     const timer = window.setTimeout(() => window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })), 0);
     const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const gameReport = (event: Event) => setReport((event as CustomEvent<GameReport>).detail);
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); };
-    const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     window.addEventListener('piece-captured', capture); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help);
     return () => { window.clearTimeout(timer); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); };
   }, [mode, started]);
@@ -89,16 +102,16 @@ function PlayChesterGame() {
       .catch(() => undefined);
   }, [report, difficulty]);
 
-  const sendChat = async (event: React.FormEvent) => {
+  const sendChat = async (event: React.FormEvent, preset?: string) => {
     event.preventDefault();
-    const message = chatInput.trim();
+    const message = (preset || chatInput).trim();
     if (!message || chatBusy) return;
     setChatInput(''); setChatError('');
     const history = [...chatMessages, { role: 'user' as const, text: message }];
     setChatMessages(history);
     setChatBusy(true);
     const lastMove = moveTrail[moveTrail.length - 1];
-    const fallback = () => chesterOfflineChat(message, { persona: difficulty, fen: lastFen, lastMove: lastMove?.move, classification: lastMove?.classification, bestMove: lastBest, capturedCount: capturedPieces.length, historyCount: history.length });
+    const fallback = () => chesterOfflineChat(message, { persona: difficulty, fen: lastFen, lastMove: lastMove?.move, lastMovePhrase, classification: lastMove?.classification, bestMove: lastBest, bestMovePhrase: lastBestPhrase, capturedCount: capturedPieces.length, historyCount: history.length });
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. You are chatting mid-game with your student. Live board FEN: ${lastFen}. Moves so far: ${moveTrail.map((m) => m.move).join(' ') || 'none yet'}. Last graded student move: ${lastMove ? `${lastMove.move} (${lastMove.classification || 'ungraded'})` : 'none'}. Engine-preferred idea: ${lastBest || 'unknown'}. Answer the student directly in at most 3 sentences. Be funny AND educational: every joke carries a chess lesson, every lesson lands a joke. Use only the FEN and record above for board facts - never invent pieces, squares, or lines. Plain English, no centipawns, no engine jargon.`;
     try {
       const reply = await askChesterChat(JSON.stringify({ type: 'chat', message, context, conversationHistory: history.slice(-8).map((m) => ({ role: m.role, text: m.text })) }));
@@ -128,7 +141,7 @@ function PlayChesterGame() {
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined}>
         <div className="chester-live-line__avatar" key={coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle'} aria-hidden="true">{coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : '♞'}</div>
         <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <>On {coachPrompt.move} <i className="chester-verdict">{getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p></div>
-        {!isThinking && coachPrompt && <em>YOUR MOVE CONTINUES →</em>}
+        {!isThinking && coachPrompt && <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{difficulty === 'BEGINNER' && coachPrompt.kind === 'move' && <button type="button" onClick={() => setWhyOpen(true)} style={{ background: 'transparent', border: '1px solid #22d3ee', color: '#a5f3fc', borderRadius: '999px', padding: '0.2rem 0.7rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer' }}>📖 WHY?</button>}<em>YOUR MOVE CONTINUES →</em></span>}
       </div>
       <div className="chester-game__actions"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
     </section>
@@ -140,7 +153,22 @@ function PlayChesterGame() {
       <div className="chess-game-sheet__backdrop" onClick={() => setChatOpen(false)} />
       <section className="chess-game-sheet__content">
         <header><b>CHAT WITH CHESTER</b><button type="button" onClick={() => setChatOpen(false)} aria-label="Close">×</button></header>
+        {difficulty === 'BEGINNER' && <div style={{ display: 'flex', gap: '0.5rem', padding: '0.6rem 0.75rem 0', flexWrap: 'wrap' }}>
+          {['Why was my last move graded that?', 'What should I play now?', 'Teach me a tactic'].map((q) => <button key={q} type="button" onClick={(e) => { void sendChat(e as unknown as React.FormEvent, q); }} style={{ background: 'rgba(34,211,238,0.12)', border: '1px solid rgba(34,211,238,0.5)', color: '#a5f3fc', borderRadius: '999px', padding: '0.3rem 0.75rem', fontSize: '0.78rem', cursor: 'pointer' }}>{q}</button>)}
+        </div>}
         <ChesterChatOverlay chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} onSendMessage={sendChat} isThinking={chatBusy} chatError={chatError} isMobile defaultExpanded />
+      </section>
+    </div>}
+    {whyOpen && coachPrompt && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Why this verdict">
+      <div className="chess-game-sheet__backdrop" onClick={() => setWhyOpen(false)} />
+      <section className="chess-game-sheet__content">
+        <header><b>WHY {getVerdict(coachPrompt.classification).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
+        <div style={{ padding: '1rem 1.1rem', color: '#e8f6ff', lineHeight: 1.6, fontSize: '0.95rem' }}>
+          <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>What you played:</b> {coachPrompt.movePhrase ? `${coachPrompt.movePhrase}.` : 'Your last move.'}</p>
+          <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>Chester’s read:</b> {coachReply || 'Still thinking…'}</p>
+          {coachPrompt.bestMovePhrase && coachPrompt.bestMovePhrase !== coachPrompt.movePhrase && <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>The move the engine liked:</b> {coachPrompt.bestMovePhrase}.</p>}
+          <p style={{ margin: 0 }}><b style={{ color: '#22d3ee' }}>Rule of thumb:</b> {whyTip(coachPrompt.classification)}</p>
+        </div>
       </section>
     </div>}
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} onClose={() => setReport(null)} />}

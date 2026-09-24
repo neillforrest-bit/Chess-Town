@@ -37,42 +37,49 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'Outstanding. You saw what most players miss: the best move is the one that asks a question your opponent cannot answer.',
       'Wow. If you keep finding moves like that, I am going to start taking notes from YOU.',
       'That move deserves a little parade. The whole position just lit up - enjoy this feeling, then do it again.',
+          'I am officially jealous. That is the kind of move people frame and hang in their chess cave.',
     ],
     BEST: [
       'The best move on the board, and you played it like it was obvious. That confidence is earned.',
       'Perfect choice. The board agreed with you completely - and the board is a harsh critic.',
       'Exactly right. You trusted your read of the position and the position rewarded you.',
       'Spot on. That is the move a coach would circle in green ink. Keep this standard.',
+          'Textbook. If textbooks had taste, they would put a little gold star next to this move.',
     ],
     GREAT: [
       'Strong move. Your pieces are starting to work as a team - and teamwork is how small edges become wins.',
       'I like that. You are thinking like a chess player now: every piece with a job, no square left lonely.',
       'Now that is purposeful chess. Every move with a reason is a brick in a house your opponent has to knock down.',
       'Lovely. You are not just moving pieces, you are improving them - that is the whole secret.',
+          'Strong, simple and smug-free - my favourite kind of move to coach and my least favourite to face.',
     ],
     GOOD: [
       'Solid. A healthy position is like a balanced breakfast - not flashy, but it wins the day.',
       'Good, honest chess. Keep building: centre first, pieces out, king safe.',
       'Sensible. Quiet moves like this are how strong players quietly strangle positions.',
       'That works. Not every move needs fireworks - some moves just keep the story tidy.',
+          'Solid as a Sunday roast. Nothing flashy, everything exactly where it should be.',
     ],
     INACCURACY: [
       'Playable, but something in your camp just got looser - check what I can attack before it introduces itself.',
       'Not wrong, but not tight either. Loose pieces are snacks your opponent did not bring.',
       'Hmm. You got away with that one, but let us tighten up - check every piece you just touched.',
       'A small wobble. Nothing is lost - but do a quick safety count before your next adventure.',
+          'A tiny wobble - the chess version of waving back at someone who was waving at someone else. Totally recoverable.',
     ],
     MISTAKE: [
       'Careful now. That gives me a real chance - find my most forcing reply before it finds you.',
       'That one exposes something. Rescue first, plans later: a piece in danger ignores all your other dreams.',
       'Ouch - that hands me an opportunity. Defence first: what did that move leave unguarded?',
       'That slipped a little. Take a breath, find the loose piece, and patch the wall before decorating.',
+          'Oof. That move walked into traffic. The good news: mistakes you review are mistakes you stop making.',
     ],
     BLUNDER: [
       'Stop. Breathe. Something is hanging - save it before you plan anything else. Even grandmasters blunder; they just rescue faster.',
       'That piece needs help right now. You can still fight back: every great comeback starts with one calm defensive move.',
       'Okay, that one hurt. But games are full of twists - find the danger, steady the ship, and make me earn it.',
       'Big oops. The good news: blunders are the best teachers. What is hanging, and how do we save it?',
+          'That one stung me and it was not even my piece. Shake it off - blunders are tuition, not failure.',
     ],
   },
   INTERMEDIATE: {
@@ -81,42 +88,49 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'Cold-blooded and correct. That move turns the whole game - I felt that from over here.',
       'Brilliant. You found the one move that makes every other piece look clever.',
       'That is highlight-reel chess. Somewhere a commentator just stood up.',
+          'Filthy. Absolutely filthy. I am applauding and sulking at the same time.',
     ],
     BEST: [
       'The engine nods, and so do I. Maximum value, minimum fuss, zero regret.',
       'The engine nods, and so do I. Maximum value, minimum fuss.',
       'Best move on the board. You are reading positions, not guessing them.',
       'Exactly the right call. That is the move that keeps pressure where it belongs.',
+          'Maximum marks. You found the move I was hoping you would not.',
     ],
     GREAT: [
       'Strong. You are playing real chess today - threats first, decoration later.',
       'That has teeth. You keep improving the worst-placed piece, which is annoyingly good strategy.',
       'Nice. You are building something here, and I can feel the squeeze already.',
       'A proper chess move. Purpose, pressure, no wasted motion.',
+          'Crisp. You are starting to make moves that need no apology and no explanation.',
     ],
     GOOD: [
       'Good, honest move. The fight continues - quiet moves win loud games.',
       'Sound. You kept the tension and your options - boring-looking, secretly strong.',
       'Fair enough. Not every move draws blood; some just sharpen the knife.',
       'Decent. The position stays balanced, which means the mistakes will decide it. Avoid them.',
+          'A grown-up move. No drama, just pressure.',
     ],
     INACCURACY: [
       'A little loose. I would not have let that slip - and I charge full price for loose pieces.',
       'Slippery. That gives me a hook I did not have a move ago.',
       'Small leak. At your level, small leaks are how big advantages start.',
       'Playable, sure. But you made my next move easier to find than it should be.',
+          'Slightly off the mark - one pinch too much seasoning on a good idea. The idea was right.',
     ],
     MISTAKE: [
       'That hurts you more than it hurts me. Watch my reply - it will be the forcing kind.',
       'There was a better move in that position, and part of you knew it. Count what changed.',
       'That concedes something real. Your next two moves are damage control.',
       'Oof. You just made my plan easier - forcing moves first, remember?',
+          'That is a present, and I accept gifts graciously. Watch the reply closely.',
     ],
     BLUNDER: [
       'Big swing and a miss. This is where comebacks start. Or funerals. Find what is hanging and choose the comeback.',
       'That just changed the game, and not in your favour. Rescue mode: save the material, keep the king breathing.',
       'A gift, sincerely received. Now make it interesting - complicate everything.',
       'Rough. That is the kind of move you remember at 2am. Recover fast, fight dirty, stay calm.',
+          'Into the vault that one goes. Your best move now is a deep breath and a counter-punch.',
     ],
   },
   ADVANCED: {
@@ -125,42 +139,49 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'Excellent. The tactical justification was there, and you had the nerve to play it.',
       'A genuinely strong blow. That move converts calculation into advantage.',
       'Impressive accuracy. You found the one continuation that punishes the setup.',
+          'Precision of that quality is rare. Noted, and grudgingly respected.',
     ],
     BEST: [
       'Optimal and calm. You took the full point the position offered without over-reaching.',
       'Optimal. You squeezed the maximum from that position without a wasted tempo.',
       'The correct continuation. Calculation and evaluation in agreement - as they should be.',
       'Best available. That is the standard to hold yourself to.',
+          'The engine nods. I nod. Do not let it go to your head.',
     ],
     GREAT: [
       'Good. You are earning this position, one accurate move at a time.',
       'Strong technique. You improved your pieces while asking a question I must answer.',
       'Well judged. The kind of move that wins games without making noise.',
       'Correct instincts. Pressure maintained, structure intact.',
+          'A move with intent. More of these and this becomes a real game.',
     ],
     GOOD: [
       'Correct. Nothing fancy, everything sound - soundness is a strategy, not a personality flaw.',
       'Reasonable. You kept equality and options; the position will offer chances later.',
       'Adequate and safe. At your level, safety is a weapon when the opponent overextends.',
       'Sound. No concessions given, none taken. The battle moves to the next phase.',
+          'Sound. Unspectacular soundness wins more games than brilliance - remember that.',
     ],
     INACCURACY: [
       'Imprecise. At this level, small leaks sink ships - and you just heard water.',
       'Slightly off. You know the principle that move bends, and so do I.',
       'Loose. The evaluation barely moved, but the trend matters more than the number.',
       'Not the cleanest. You left a detail unattended - those details collect interest.',
+          'Loose at the edges. Tighten the screws before the position notices.',
     ],
     MISTAKE: [
       'That is a real concession. Prove you saw my reply, because I assure you there is one.',
       'A genuine error. The forcing continuation is available now - defend accurately or lose material.',
       'Inaccurate at the wrong moment. Your structure just became a target.',
       'That releases pressure you spent moves building. Recovery starts with the most forcing defence.',
+          'A leak. Small ones sink positions slowly - I will demonstrate.',
     ],
     BLUNDER: [
       'Unacceptable. Pick what you just lost, then fight like you mean it. The lesson is free; the piece was not.',
       'A decisive error. Now the discipline: minimize, complicate, and make the conversion difficult.',
       'That is the kind of move that loses games outright. Your only job now is maximum resistance.',
       'Careless. The position was fine a move ago. Rebuild the defence and punish any overconfidence.',
+          'A strategic own goal. Rebuild from the centre and stop donating.',
     ],
   },
   EXPERT: {
@@ -169,42 +190,49 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
       'Annoyingly good. I will pretend I let you have it, but we both know you found it.',
       'That was actually brilliant, which makes me suspicious. Do it again and I might respect you.',
       'Fine. Stunning move. My circuits briefly considered applauding. Briefly.',
+          'Annoyingly good. I will pretend I allowed it.',
     ],
     BEST: [
       'Engine-best. I suppose I have to respect that, out loud, briefly. Do not get comfortable.',
       'The engine agrees with you. Do not let it go to your head - I have beaten the engine too.',
       'Best move. Even my smugness has limits, and you just found one.',
       'Correct. I hate admitting that, so let us move on quickly.',
+          'The correct move. How tedious for me.',
     ],
     GREAT: [
       'Fine. That was actually good. Do not get used to it - compliments are rationed around here.',
       'A real chess move. I will file that under "disturbing competence".',
       'Strong. You are making this less fun for me, which I suppose is the point.',
       'That was almost impressive. Almost. Keep going and I might worry.',
+          'A genuinely strong move. I said it once; do not ask me to repeat it.',
     ],
     GOOD: [
       'Adequate. The bar was underground, but adequate. Even I cannot take that move from you.',
       'Acceptable. You managed not to ruin anything, which is apparently progress.',
       'Tolerable. I have seen worse from players who charge for lessons.',
       'That move is legal and vaguely sensible. Low praise, honestly earned.',
+          'Acceptable. Faint praise is all you get.',
     ],
     INACCURACY: [
       'Sloppy. I can smell the weakness already - loose pieces are my love language.',
       'Imprecise. I noticed. Of course I noticed. Noticing is literally my job.',
       'A little gift-wrapped inaccuracy. Not fatal - just flattering to my position.',
       'You wobbled. Tiny wobble, giant consequences, eventually. Thank you.',
+          'Sloppy. I have already found the punishment.',
     ],
     MISTAKE: [
       'There it is. The gift I ordered. Now watch me take it - this is why we count what changed.',
       'A mistake. I will be sending a thank-you card to whatever distracted you.',
       'Delicious. You worked so hard on that position and then handed me the keys.',
       'Wrong move. I almost feel bad. Almost. Watch what happens next.',
+          'Thank you. Donations to the Chester fund are always welcome.',
     ],
     BLUNDER: [
       'HA. Straight into my highlight reel. Recover from THAT, I dare you - tip: start by finding what still fights.',
       'A blunder of genuine quality. Museums will want it. Your position, meanwhile, wants a doctor.',
       'Magnificent - for me. That move just donated material to the Chester Relief Fund.',
       'Oh, that is spectacularly bad. I am saving this position for my memoirs.',
+          'HA. Straight into the memoirs. Chapter title: The Donation.',
     ],
   },
 };
@@ -344,8 +372,10 @@ export type OfflineChatState = {
   persona: PersonaKey;
   fen?: string;
   lastMove?: string;
+  lastMovePhrase?: string | null;
   classification?: string | null;
   bestMove?: string | null;
+  bestMovePhrase?: string | null;
   evalNote?: string;
   capturedCount?: number;
   historyCount?: number;
@@ -359,8 +389,8 @@ export function chesterOfflineChat(message: string, state: OfflineChatState): st
   const pickFrom = (lines: string[]) => lines[seed % lines.length];
   const verdict = state.classification ? getVerdict(state.classification).word.toLowerCase() : null;
   const facts: string[] = [];
-  if (state.lastMove) facts.push(`your last move ${state.lastMove} read ${verdict || 'interesting'}`);
-  if (state.bestMove) facts.push(`my engine's top idea here is ${state.bestMove}`);
+  if (verdict) facts.push(`your last move${state.lastMovePhrase ? ` (${state.lastMovePhrase})` : ''} was graded ${verdict.toUpperCase()}`);
+  if (state.bestMovePhrase) facts.push(`my engine's top idea here is ${state.bestMovePhrase}`);
   if (state.evalNote) facts.push(`Stockfish scores it ${state.evalNote}`);
   if (state.capturedCount) facts.push(`${state.capturedCount} piece${state.capturedCount === 1 ? ' has' : 's have'} fallen so far`);
   const record = facts.length ? ` Right now: ${facts.join(', ')}.` : '';
@@ -396,7 +426,7 @@ export function chesterOfflineChat(message: string, state: OfflineChatState): st
     ]);
   }
   if (/hint|help|what.*(do|play|move)|should i|worried|safe|danger|threat/.test(m)) {
-    const idea = state.bestMove ? `Try ${state.bestMove}.` : 'Look for checks and captures first, then ask which of your pieces is loose.';
+    const idea = state.bestMovePhrase ? `Try ${state.bestMovePhrase}.` : 'Look for checks and captures first, then ask which of your pieces is loose.';
     const personaSuffix: Record<PersonaKey, string> = {
       BEGINNER: 'That order - checks, captures, loose pieces - is the whole secret to staying safe.',
       INTERMEDIATE: 'Count what changed after every move and the board stops surprising you.',
@@ -406,6 +436,52 @@ export function chesterOfflineChat(message: string, state: OfflineChatState): st
     return pickFrom([
       `${idea} ${personaSuffix[state.persona]}${record}`,
       `Here is the read: ${idea} ${personaSuffix[state.persona]}${record}`,
+    ]);
+  }
+  if (/why.*(blunder|bad|mistake|wrong|shaky|inaccuracy)|what.*(was wrong|did i do wrong)|explain (that|the|your) (verdict|grade|call)|graded|rated/.test(m)) {
+    const played = state.lastMovePhrase ? `You played ${state.lastMovePhrase}` : 'Your last move';
+    const verdictWord = verdict ? verdict.toUpperCase() : 'UNGRADED';
+    const engineIdea = state.bestMovePhrase ? ` The engine's idea in that spot was ${state.bestMovePhrase}.` : '';
+    const lessons: Record<PersonaKey, string> = {
+      BEGINNER: 'No shame in it - every strong player keeps a highlight reel of these. The habit that fixes most of them: before you move, ask what your opponent can take after it.',
+      INTERMEDIATE: 'The fix is a two-second checklist: what did my move leave loose, and what is their most forcing reply?',
+      ADVANCED: 'You already know the answer - count the attackers and defenders around the square you just weakened.',
+      EXPERT: 'Because loose pieces are snacks, and you catered. Count what changed.',
+    };
+    return pickFrom([
+      `${played}, and it graded ${verdictWord}.${engineIdea} ${lessons[state.persona]}`,
+      `Honest review: ${played.charAt(0).toLowerCase()}${played.slice(1)} - ${verdictWord}.${engineIdea} ${lessons[state.persona]}`,
+    ]);
+  }
+  if (/winning|losing|ahead|behind|how am i doing|who is better|the score/.test(m)) {
+    const evalLine = state.evalNote ? `Stockfish scores it ${state.evalNote}.` : 'No engine score on hand right this second.';
+    return pickFrom([
+      `${evalLine} But scores are weather, not climate - one good move changes the forecast. Keep developing, and castle if you have not.`,
+      `${evalLine} My honest advice: stop checking the scoreboard and check your loose pieces instead. That is where games are actually decided.`,
+    ]);
+  }
+  if (/how (does|do) (the )?(knight|bishop|rook|queen|king|pawn)|how .*move/.test(m)) {
+    const piece = /knight/.test(m) ? 'The knight moves in an L - two squares one way, one square sideways - and it is the only piece that jumps over others. Park it near the centre and it attacks eight squares.'
+      : /bishop/.test(m) ? 'Bishops slide along diagonals, any distance, but stay on their starting colour forever. A pair of bishops is a laser tag team - keep both if you can.'
+      : /rook/.test(m) ? 'Rooks slide in straight lines, any distance. They come alive on open files - columns with no pawns in the way - and love invading the seventh rank.'
+      : /queen/.test(m) ? 'The queen moves like a rook and a bishop combined - any direction, any distance. She is your strongest piece, so bring her out after the knights and bishops, not before.'
+      : /king/.test(m) ? 'The king moves one square in any direction, and the whole game is about keeping him safe. Castle early - it tucks him behind pawns and wakes up a rook.'
+      : 'Pawns move forward one square (two from their starting row) but capture diagonally. Every pawn move is permanent, so pawn moves are promises.';
+    return `${piece} Ask me about any other piece, or ask what you should play right now.${record}`;
+  }
+  if (/fork|pin|skewer|discovered|castl|en passant|promot|tactic/.test(m)) {
+    const lesson = /fork/.test(m) ? 'A fork is one piece attacking two things at once - knights are the great forkers. When your knight lands near their king and queen, count the targets twice.'
+      : /pin/.test(m) ? 'A pin freezes a piece because moving it would expose something bigger behind it. A pinned piece only pretends to defend - attack what it is guarding.'
+      : /skewer/.test(m) ? 'A skewer attacks a big piece that must move, exposing the piece behind it. It is a pin with the priorities reversed, and just as rude.'
+      : /en passant/.test(m) ? 'En passant: if an enemy pawn jumps two squares past your pawn, you may capture it as if it moved one - but only on your very next move. Use it or lose it.'
+      : /promot/.test(m) ? 'Promotion: march a pawn to the last rank and it becomes any piece - almost always a queen. Passed pawns are lottery tickets; push them with support.'
+      : 'Castling moves your king two squares toward a rook, and the rook hops over him. You cannot castle out of check, through check, or after moving king or rook. Do it by move ten.';
+    return `${lesson}${record}`;
+  }
+  if (/plan|strategy|aim|goal|improve|get better|practice|learn chess|teach me/.test(m)) {
+    return pickFrom([
+      `The beginner's master plan fits on a stamp: centre pawns, knights and bishops out, castle, connect the rooks - then hunt checks, captures and threats every single move.${record}`,
+      `Improvement is one habit at a time. This game's habit: after every one of my moves, ask "what changed?" before you touch a piece. That alone beats most casual players.${record}`,
     ]);
   }
   const generic: Record<PersonaKey, string[]> = {
