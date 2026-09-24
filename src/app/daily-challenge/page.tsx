@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { getProfile, recordDailyAttempt, type ProfileState } from '@/lib/profile';
-import NeonChessboard from '@/components/NeonChessboard';
+import TapBoard from '@/components/TapBoard';
 import ChessGameBoardShell from '@/components/ChessGameBoardShell';
 
 type Puzzle = { phase: string; title: string; fen: string; line: string[]; choices: string[][]; idea: string; why: string[]; hint: string; takeaway: string };
@@ -60,5 +60,5 @@ export default function DailyChallengePage() {
   };
   const leaderboard = [...seededLeaderboard, ...(profile?.dailyAttempts[date] ? [{ name: profile.username, time: profile.dailyAttempts[date].timeMs, accuracy: profile.dailyAttempts[date].accuracy }] : [])].sort((left, right) => left.time - right.time).slice(0, 10);
   const commentary = result?.message || `${puzzle.idea} Move ${moveIndex + 1} of ${puzzle.line.length}: find the forcing idea.`;
-  return <ChessGameBoardShell commentary={commentary} opponentLabel="CHESTER" opponentStatus={`DAILY CHALLENGE · ${date}`} helpText={puzzle.hint} chatContext={`Daily Challenge: ${puzzle.title}. Move ${moveIndex + 1} of ${puzzle.line.length}. The idea: ${puzzle.idea}`} boardHeader={<div className="daily-board-heading"><span>{puzzle.phase} START · MOVE {moveIndex + 1}/{puzzle.line.length}</span><h2>{puzzle.title}</h2></div>} footer={<div className="daily-puzzle"><div className="daily-choices">{puzzle.choices[moveIndex].map((move) => <button key={move} onClick={() => chooseMove(move)} disabled={result?.correct}>{move}</button>)}</div>{result && <p className={result.correct ? 'daily-success' : 'daily-error'}>{result.message}{result.timeMs ? ` ${formatTime(result.timeMs)} · +${result.points} points.` : ''}</p>}{result?.correct && <p className="daily-success"><Link href="/play-chester">PRACTISE THIS PATTERN VS CHESTER →</Link></p>}</div>}><NeonChessboard fen={puzzle.fen} label={`${puzzle.phase} position`} /></ChessGameBoardShell>;
+  return <ChessGameBoardShell commentary={commentary} opponentLabel="CHESTER" opponentStatus={`DAILY CHALLENGE · ${date}`} helpText={puzzle.hint} chatContext={`Daily Challenge: ${puzzle.title}. Move ${moveIndex + 1} of ${puzzle.line.length}. The idea: ${puzzle.idea}`} boardHeader={<div className="daily-board-heading"><span>{puzzle.phase} START · MOVE {moveIndex + 1}/{puzzle.line.length}</span><h2>{puzzle.title}</h2></div>} footer={<div className="daily-puzzle"><div className="daily-choices">{puzzle.choices[moveIndex].map((move) => <button key={move} onClick={() => chooseMove(move)} disabled={result?.correct}>{move}</button>)}</div>{result && <p className={result.correct ? 'daily-success' : 'daily-error'}>{result.message}{result.timeMs ? ` ${formatTime(result.timeMs)} · +${result.points} points.` : ''}</p>}{result?.correct && <p className="daily-success"><Link href="/play-chester">PRACTISE THIS PATTERN VS CHESTER →</Link></p>}</div>}><TapBoard fen={puzzle.fen} locked label={`${puzzle.phase} position`} /></ChessGameBoardShell>;
 }

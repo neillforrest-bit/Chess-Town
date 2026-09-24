@@ -133,7 +133,8 @@ function PlayChesterGame() {
 
   if (!started) return <main className="chester-start-screen">
     <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
-      {!isFriendMode && <div className="chester-level-grid">{LEVELS.map((level) => <button key={level.value} className={difficulty === level.value ? 'is-active' : ''} onClick={() => setDifficulty(level.value)}><b>{level.label}</b><small>{level.note}</small></button>)}</div>}
+      {!isFriendMode && requestedLevel && <p style={{ margin: '.2rem 0 .6rem', color: '#ffd84d', fontWeight: 900, letterSpacing: '1px' }}>OPPONENT: {selectedLevel.label} · {selectedLevel.note}</p>}
+      {!isFriendMode && !requestedLevel && <div className="chester-level-grid">{LEVELS.map((level) => <button key={level.value} className={difficulty === level.value ? 'is-active' : ''} onClick={() => setDifficulty(level.value)}><b>{level.label}</b><small>{level.note}</small></button>)}</div>}
       <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>
     </section>
   </main>;

@@ -21,7 +21,7 @@ const drillIcons: Record<string, string> = {
   'Daily Breakthrough': '☀️', 'Practice Your Opening': '📖', 'Own the Center': '🎯', 'Bring Out the Squad': '🐎', 'Castle Before Chaos': '🏰', 'Build the Squeeze': '🗜️', 'Convert the Advantage': '🏆', 'The Knightmare': '♞', 'Phantom Threat': '👻',
 };
 const LEVELS = [
-  { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
+  { value: 'BEGINNER', label: 'ROOKIE', note: 'He blunders on purpose and coaches every move' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
   { value: 'ADVANCED', label: 'MASTER', note: 'Punishes loose pieces' },
   { value: 'EXPERT', label: 'NIGHTMARE', note: 'No mercy, no refunds' },
@@ -32,9 +32,11 @@ export default function TrainingPage() {
   const [level, setLevel] = useState('BEGINNER');
   return <main className="training-page lesson-hall">
     <ChesterHost eyebrow="CHESTER'S LESSON HALL" instruction="Pick your difficulty, pick your lesson. Every lesson is a real game - Chester animates, grades and explains every move live." />
+    <span className="lesson-hall__step">STEP 1 · PICK YOUR OPPONENT - this sets how hard Chester fights in every lesson below</span>
     <div className="lesson-hall__levels" role="radiogroup" aria-label="Choose difficulty">
       {LEVELS.map((item) => <button key={item.value} type="button" className={level === item.value ? 'is-active' : ''} onClick={() => setLevel(item.value)}><b>{item.label}</b><small>{item.note}</small></button>)}
     </div>
+    <span className="lesson-hall__step">STEP 2 · PICK A LESSON - it opens straight into a game at your chosen level</span>
     <section className="lesson-hall__grid" aria-label="Choose a lesson">
       {drills.map((drill) => <button key={drill} type="button" className="lesson-card" onClick={() => router.push(`/play-chester?mode=${drillModes[drill]}&level=${level}`)}>
         <i aria-hidden="true">{drillIcons[drill]}</i>

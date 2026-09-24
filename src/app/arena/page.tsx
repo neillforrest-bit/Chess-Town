@@ -344,9 +344,13 @@ function LegacyArena() {
     connection.on('open', () => {
       setRemoteConnected(true);
       setRemoteStatus('Opponent connected. Green moves first.');
+      const welcome = '🎙️ CHESTER: The gates are open - a challenger has entered the arena! Two rivals, one town watching. I grade every move. Both sides. No mercy.';
+      setHostBanter(welcome);
+      try { connection.send({ type: 'greeting', message: welcome }); } catch { /* greeting is theatre - never break the link for it */ }
     });
     connection.on('data', (data: any) => {
       if (data?.type === 'move') window.dispatchEvent(new CustomEvent('remote-chess-move', { detail: data }));
+      if (data?.type === 'greeting') setHostBanter(String(data.message || ''));
     });
     connection.on('close', () => { setRemoteConnected(false); setRemoteStatus('Opponent disconnected.'); });
     connection.on('error', () => { setRemoteConnected(false); setRemoteStatus('Connection interrupted. Reopen the challenge link.'); });
@@ -373,6 +377,8 @@ function LegacyArena() {
     const peer = new Peer(`chess-town-${room}`);
     peerRef.current = peer;
     openRemoteArena('w', room);
+    // Put the room in the visible URL so ANY share path (browser UI, copy, herald) carries it.
+    window.history.replaceState(null, '', `${window.location.pathname}?room=${room}&host=1`);
     peer.on('connection', configureConnection);
     peer.on('error', () => setRemoteStatus('Could not open the challenge room. Try again.'));
   };
@@ -396,9 +402,22 @@ function LegacyArena() {
   };
 
   useEffect(() => {
-    const room = new URLSearchParams(window.location.search).get('room')?.replace(/[^a-z0-9]/gi, '').slice(0, 12);
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')?.replace(/[^a-z0-9]/gi, '').slice(0, 12);
     if (!room) return;
     let cancelled = false;
+    if (params.get('host') === '1') {
+      // Host reload: re-establish the room instead of self-joining.
+      import('peerjs').then(({ default: Peer }) => {
+        if (cancelled) return;
+        const peer = new Peer(`chess-town-${room}`);
+        peerRef.current = peer;
+        openRemoteArena('w', room);
+        peer.on('connection', configureConnection);
+        peer.on('error', () => setRemoteStatus('Could not reopen the challenge room. Send a fresh link.'));
+      });
+      return () => { cancelled = true; peerRef.current?.destroy?.(); };
+    }
     import('peerjs').then(({ default: Peer }) => {
       if (cancelled) return;
       const peer = new Peer();
