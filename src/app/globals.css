@@ -1472,7 +1472,7 @@ body {
 @media (max-width: 860px) {
   .chester-game { grid-template-columns: minmax(0, 1fr); }
   .chester-game__board, .chester-game__coach { min-width: 0; }
-  .chester-board-frame { width: min(calc(100vw - 1rem), calc(100dvh - 200px)); max-width: 100%; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 178px)); max-width: 100%; }
 }
 
 /* Chester live-line: base style (previously only existed >=900px, so mobile showed it raw) */
