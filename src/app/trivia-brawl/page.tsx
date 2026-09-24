@@ -96,7 +96,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
             const current = fullRoomRef.current;
             if (current) { try { link.send({ type: 'room', room: serializeRoom(current) }); } catch { /* next change resyncs */ } }
           });
-          link.on('data', (message: any) => { if (message?.type === 'action') void hostApply('p2', message.body || {}); });
+          link.on('data', (message: any) => { console.log('[brawl] host got', JSON.stringify(message)); if (message?.type === 'action') void hostApply('p2', message.body || {}); });
           link.on('close', () => setLinked(false));
           link.on('error', () => setLinked(false));
         });
@@ -108,6 +108,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           if (cancelled) return;
           const link = peer.connect(`ct-trivia-${id}`, { reliable: true });
           hostLinkRef.current = link;
+          link.on('data', () => undefined);
           link.on('open', () => setLinked(true));
           link.on('data', (message: any) => { if (message?.type === 'room') setRoom(message.room as Room); });
           link.on('close', () => { setLinked(false); setError('The host left the pub. Ask for a fresh invite.'); });
@@ -117,6 +118,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         peer.on('error', (peerError: any) => { if (!cancelled) setError(peerError?.type === 'peer-unavailable' ? 'No pub table at that link. Ask the host for a fresh invite.' : 'Could not reach the pub table.'); });
       }
     })().catch((requestError: unknown) => { if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Could not open Trivia Brawl.'); });
+    if (typeof window !== 'undefined') (window as any).__ct = { guestLinkRef, hostLinkRef, fullRoomRef };
     return () => { cancelled = true; try { peer?.destroy?.(); } catch { /* teardown */ } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
