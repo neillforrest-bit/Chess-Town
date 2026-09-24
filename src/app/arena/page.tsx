@@ -290,6 +290,7 @@ function LegacyArena() {
   const [remoteRole, setRemoteRole] = useState<'w' | 'b' | null>(null);
   const [remoteConnected, setRemoteConnected] = useState(false);
   const [remoteStatus, setRemoteStatus] = useState('');
+  const [remoteDiag, setRemoteDiag] = useState('');
   const [challengeUrl, setChallengeUrl] = useState('');
   const peerRef = useRef<any>(null);
   const connectionRef = useRef<any>(null);
@@ -349,6 +350,7 @@ function LegacyArena() {
     connection.on('open', () => {
       setRemoteConnected(true);
       setRemoteStatus('Opponent connected. Green moves first.');
+      setRemoteDiag('Gates open - the link is live.');
       const welcome = '🎙️ CHESTER: The gates are open - a challenger has entered the arena! Two rivals, one town watching. I grade every move. Both sides. No mercy.';
       setHostBanter(welcome);
       try { connection.send({ type: 'greeting', message: welcome }); } catch { /* greeting is theatre - never break the link for it */ }
@@ -358,6 +360,7 @@ function LegacyArena() {
       if (data?.type === 'greeting') setHostBanter(String(data.message || ''));
     });
     connection.on('iceStateChanged', (state: string) => {
+      setRemoteDiag(`Arena link: ${state}`);
       if (state === 'failed') setRemoteStatus('The arena link hit a network wall. Both players reopen the challenge link.');
       if (state === 'disconnected') setRemoteStatus('The arena link flickered. Holding...');
     });
@@ -385,12 +388,14 @@ function LegacyArena() {
     const { default: Peer } = await import('peerjs');
     const peer = new Peer(`chess-town-${room}`, PEER_CONFIG as any);
     peerRef.current = peer;
-    peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
+    peer.on('disconnected', () => { setRemoteDiag('Herald network dropped - reconnecting...'); try { peer.reconnect(); } catch { /* broker dropped */ } });
     openRemoteArena('w', room);
+    setRemoteDiag('Opening the herald network...');
     // Put the room in the visible URL so ANY share path (browser UI, copy, herald) carries it.
     window.history.replaceState(null, '', `${window.location.pathname}?room=${room}&host=1`);
-    peer.on('connection', configureConnection);
-    peer.on('error', () => setRemoteStatus('Could not open the challenge room. Try again.'));
+    peer.on('open', () => setRemoteDiag(`Challenge room open (${room}). Waiting for your rival.`));
+    peer.on('connection', (conn) => { setRemoteDiag('A challenger is knocking...'); configureConnection(conn); });
+    peer.on('error', (peerError: any) => { setRemoteStatus('Could not open the challenge room. Try again.'); setRemoteDiag(`Herald error: ${peerError?.type || 'unknown'}`); });
   };
 
   const copyChallengeLink = async () => {
@@ -416,32 +421,67 @@ function LegacyArena() {
     const room = params.get('room')?.replace(/[^a-z0-9]/gi, '').slice(0, 12);
     if (!room) return;
     let cancelled = false;
+    let attempts = 0;
+
+    const joinAsGuest = async () => {
+      attempts += 1;
+      const { default: Peer } = await import('peerjs');
+      if (cancelled) return;
+      peerRef.current?.destroy?.();
+      const peer = new Peer(PEER_CONFIG as any);
+      peerRef.current = peer;
+      openRemoteArena('b', room);
+      setRemoteDiag(attempts > 1 ? `Knocking on the arena gates (try ${attempts})...` : 'Finding the herald network...');
+      peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
+      peer.on('open', () => {
+        setRemoteDiag('Network found - knocking on the challenge room...');
+        configureConnection(peer.connect(`chess-town-${room}`, { reliable: true }));
+        window.setTimeout(() => { if (!remoteConnectedRef.current && !cancelled) setRemoteStatus('Still connecting - keep both screens open on a decent network.'); }, 12000);
+      });
+      peer.on('error', (peerError: any) => {
+        if (cancelled) return;
+        if (peerError?.type === 'peer-unavailable' && attempts < 6) {
+          setRemoteStatus('The arena gates are still closed - the host may still be opening them. Knocking again...');
+          window.setTimeout(() => { if (!cancelled && !remoteConnectedRef.current) void joinAsGuest(); }, 4000);
+        } else {
+          setRemoteStatus(peerError?.type === 'peer-unavailable' ? 'That challenge room is not open right now. Ask the host for a fresh link.' : 'Challenge unavailable. Ask the host for a fresh link.');
+          setRemoteDiag(`Join error: ${peerError?.type || 'unknown'}`);
+        }
+      });
+    };
+
+    const onVisible = () => { if (document.visibilityState === 'visible') { const live = peerRef.current as any; if (live && live.disconnected && !live.destroyed) { try { live.reconnect(); } catch { /* resume best effort */ } } } };
+    document.addEventListener('visibilitychange', onVisible);
+
     if (params.get('host') === '1') {
       // Host reload: re-establish the room instead of self-joining.
       import('peerjs').then(({ default: Peer }) => {
         if (cancelled) return;
         const peer = new Peer(`chess-town-${room}`, PEER_CONFIG as any);
         peerRef.current = peer;
-        peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
+        peer.on('disconnected', () => { setRemoteDiag('Herald network dropped - reconnecting...'); try { peer.reconnect(); } catch { /* broker dropped */ } });
         openRemoteArena('w', room);
-        peer.on('connection', configureConnection);
-        peer.on('error', () => setRemoteStatus('Could not reopen the challenge room. Send a fresh link.'));
+        setRemoteDiag('Reopening the challenge room...');
+        peer.on('open', () => setRemoteDiag(`Challenge room open (${room}). Waiting for your rival.`));
+        peer.on('connection', (conn) => { setRemoteDiag('A challenger is knocking...'); configureConnection(conn); });
+        peer.on('error', (peerError: any) => {
+          if (cancelled) return;
+          if (peerError?.type === 'unavailable-id') {
+            // Someone already hosts this room (the real host's phone). Any shared link
+            // shape must just work - take the challenger's seat instead of dying here.
+            setRemoteStatus('That room already has a host - taking the challenger seat...');
+            peer.destroy();
+            void joinAsGuest();
+            return;
+          }
+          setRemoteStatus('Could not reopen the challenge room. Send a fresh link.');
+          setRemoteDiag(`Herald error: ${peerError?.type || 'unknown'}`);
+        });
       });
-      return () => { cancelled = true; peerRef.current?.destroy?.(); };
+      return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); peerRef.current?.destroy?.(); };
     }
-    import('peerjs').then(({ default: Peer }) => {
-      if (cancelled) return;
-      const peer = new Peer(PEER_CONFIG as any);
-      peerRef.current = peer;
-      openRemoteArena('b', room);
-      peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
-      peer.on('open', () => {
-        configureConnection(peer.connect(`chess-town-${room}`, { reliable: true }));
-        window.setTimeout(() => { if (!remoteConnectedRef.current) setRemoteStatus('Still connecting - keep both screens open on a decent network, or ask for a fresh link.'); }, 12000);
-      });
-      peer.on('error', (peerError: any) => setRemoteStatus(peerError?.type === 'peer-unavailable' ? 'That challenge room is not open right now. Ask the host for a fresh link.' : 'Challenge unavailable. Ask the host for a fresh link.'));
-    });
-    return () => { cancelled = true; peerRef.current?.destroy?.(); };
+    void joinAsGuest();
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); peerRef.current?.destroy?.(); };
   }, []);
 
   const remoteConnectedRef = useRef(false);
@@ -1212,6 +1252,7 @@ function LegacyArena() {
                     <h2>CHALLENGE SENT</h2>
                     <p>My herald is riding across Chesterville with your challenge sealed in wax. The moment your rival opens the gates, this board goes live - and I grade every move. Both sides. No mercy.</p>
                     <div className="duel-await__status"><i />AWAITING A CHALLENGER</div>
+                    {remoteDiag && <small className="arena-remote-diag">{remoteDiag}</small>}
                     <button type="button" className="duel-await__share" onClick={() => void shareChallengeLink()}>📮 SEND THE CHALLENGE</button>
                     <button type="button" className="duel-await__copy" onClick={() => void copyChallengeLink()}>COPY LINK</button>
                     <button type="button" className="duel-await__cancel" onClick={() => { peerRef.current?.destroy?.(); window.location.assign('/'); }}>STAND DOWN</button>
@@ -1222,6 +1263,7 @@ function LegacyArena() {
                     <h2>JOINING THE CHALLENGE</h2>
                     <p>You have been called out. I am walking you to the board now - take your seat, and I will grade every move. Both sides. No mercy.</p>
                     <div className="duel-await__status"><i />CONNECTING TO YOUR RIVAL</div>
+                    {remoteDiag && <small className="arena-remote-diag">{remoteDiag}</small>}
                     <button type="button" className="duel-await__cancel" onClick={() => { peerRef.current?.destroy?.(); window.location.assign('/'); }}>STAND DOWN</button>
                   </>
                 )}
@@ -1425,7 +1467,7 @@ function LegacyArena() {
 
                 {gameMode === 'PVP_REMOTE' && (
                   <div style={{ border: '1px solid #b8a2ff', padding: isLandscape ? '0.35rem' : isMobile ? '1rem' : '0.6rem', color: '#ddd', fontSize: isLandscape ? '0.52rem' : isMobile ? '1rem' : '0.72rem', background: 'rgba(184,162,255,.08)' }}>
-                    <b style={{ color: remoteRole === 'w' ? '#2563eb' : '#b8a2ff', display: 'block', fontSize: isMobile ? '1.1rem' : 'inherit', marginBottom: '0.4rem' }}>{remoteRole === 'w' ? 'YOU ARE BLUE (WHITE SIDE)' : 'YOU ARE BLACK'}</b>{remoteStatus}
+                    <b style={{ color: remoteRole === 'w' ? '#2563eb' : '#b8a2ff', display: 'block', fontSize: isMobile ? '1.1rem' : 'inherit', marginBottom: '0.4rem' }}>{remoteRole === 'w' ? 'YOU ARE BLUE (WHITE SIDE)' : 'YOU ARE BLACK'}</b>{remoteStatus}{remoteDiag && <small className="arena-remote-diag" style={{ display: 'block' }}>{remoteDiag}</small>}
                     {remoteRole === 'w' && <>
                       <input readOnly value={challengeUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Challenge URL" style={{ width: '100%', marginTop: '0.75rem', padding: '0.6rem', boxSizing: 'border-box', background: '#08050f', border: '1px solid #b8a2ff', color: '#2563eb', fontSize: isMobile ? '1rem' : 'inherit', fontWeight: 900 }} />
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>

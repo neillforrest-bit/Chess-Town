@@ -1726,3 +1726,5 @@ body {
 
 /* Fix: live-line verdict word must not inherit the scorecard's 240px min-height card style */
 .chester-live-line .chester-verdict { min-height: 0; position: static; border: 0 !important; }
+
+.arena-remote-diag { display: block; margin-top: .45rem; color: #22d3ee; font-size: .62rem; font-weight: 900; letter-spacing: 1px; }
