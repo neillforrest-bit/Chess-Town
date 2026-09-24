@@ -1621,7 +1621,11 @@ body {
 .arcade-page { min-height: calc(100dvh - 64px); box-sizing: border-box; display: flex; flex-direction: column; padding: .8rem; background: radial-gradient(circle at 18% 10%, rgba(255,78,177,.14), transparent 34%), #050708; }
 .arcade-page .town-arcade { margin: auto 0; flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; }
 .arcade-page .town-arcade__row { flex: 1 1 auto; align-content: stretch; grid-auto-rows: 1fr; min-height: 0; }
-.arcade-page .town-cabinet { display: flex; flex-direction: column; justify-content: center; }
+.arcade-page .town-cabinet { display: flex; flex-direction: column; justify-content: center; gap: .7rem; }
+.arcade-page .town-cabinet span { flex: 0 0 auto; font-size: .82rem; max-width: 30ch; }
+.arcade-page .town-cabinet i { font-size: 2.6rem; }
+.arcade-page .town-cabinet b { font-size: 1.05rem; }
+.arcade-page .town-cabinet strong { font-size: .8rem; margin-top: .4rem; padding: .45rem 1.2rem; border: 1.5px solid rgba(255,216,77,.6); border-radius: 999px; }
 
 /* Community ladder placeholder */
 .bossmap-ladder { width: min(100%, 460px); padding: .38rem .8rem; border: 1.5px dashed rgba(184,162,255,.6); border-radius: 12px; background: rgba(20,14,30,.75); text-align: center; }
