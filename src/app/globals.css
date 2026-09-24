@@ -1660,3 +1660,27 @@ body {
 @keyframes chesterTalk { 0%,100% { transform: translateY(0) rotate(0deg); } 25% { transform: translateY(-4px) rotate(-4deg); } 55% { transform: translateY(1px) rotate(3deg); } 80% { transform: translateY(-2px) rotate(-1deg); } }
 .town-greet__avatar--talking { animation: chesterTalk 1.6s ease-in-out infinite; }
 .lesson-hall__step { display: block; margin: 0 0 .45rem; color: rgba(232,223,227,.75); font: 700 .68rem Arial,sans-serif; letter-spacing: .6px; text-align: center; }
+
+/* Batch 29: report card letter grade + readiness ladder */
+.chester-report-card__graderow { display: flex; gap: .6rem; margin: .4rem 0 .8rem; }
+.chester-report-card__letter { flex: 0 0 30%; display: grid; place-items: center; padding: .7rem .5rem; border: 1px solid rgba(255,216,77,.5); border-radius: 6px; background: rgba(255,216,77,.07); text-align: center; }
+.chester-report-card__letter span { color: #ffd84d; font-size: .56rem; font-weight: 900; letter-spacing: 1.6px; }
+.chester-report-card__letter b { color: #fff; font: 900 2.4rem/1.1 Georgia, serif; }
+.chester-report-card__letter small { color: #f2dfa9; font-size: .7rem; }
+.chester-report-card__ladder { flex: 1; display: flex; flex-direction: column; gap: .35rem; padding: .6rem .65rem; border: 1px solid rgba(34,211,238,.4); border-radius: 6px; background: rgba(34,211,238,.05); }
+.chester-report-card__ladder-title { color: var(--arena-cyan); font-size: .56rem; font-weight: 900; letter-spacing: 1.6px; }
+.chester-report-card__ladder-track { display: flex; gap: .25rem; }
+.chester-report-card__rung { position: relative; flex: 1; padding: .3rem .2rem .38rem; border: 1px solid rgba(255,255,255,.14); border-radius: 4px; text-align: center; font-style: normal; }
+.chester-report-card__rung em { color: rgba(255,255,255,.55); font-size: .52rem; font-weight: 900; letter-spacing: .8px; font-style: normal; }
+.chester-report-card__rung.is-passed { border-color: rgba(34,211,238,.55); background: rgba(34,211,238,.12); }
+.chester-report-card__rung.is-passed em { color: #a5f3fc; }
+.chester-report-card__rung.is-current { border-color: #ffd84d; background: rgba(255,216,77,.14); box-shadow: 0 0 10px rgba(255,216,77,.35); }
+.chester-report-card__rung.is-current em { color: #ffd84d; }
+.chester-report-card__rung u { position: absolute; left: 50%; bottom: -0.55rem; transform: translateX(-50%); color: #ffd84d; font-size: .5rem; font-weight: 900; letter-spacing: 1px; text-decoration: none; }
+.chester-report-card__readiness { margin-top: .5rem; }
+.chester-report-card__readiness b { color: #ff8c9e; font-size: .72rem; letter-spacing: .6px; }
+.chester-report-card__readiness.is-ready b { color: #7ef29a; }
+.chester-report-card__readiness p { margin: .2rem 0 0; color: #efdce4; font-size: .78rem; line-height: 1.4; }
+.chester-report-card__focus { margin: .45rem 0; padding: .55rem .65rem; border: 1px solid rgba(126,242,154,.45); border-radius: 6px; background: rgba(126,242,154,.06); }
+.chester-report-card__focus b { color: #7ef29a; font-size: .62rem; letter-spacing: 1.4px; }
+.chester-report-card__focus p { margin: .25rem 0 0; color: #f0fdf4; font-size: .92rem; line-height: 1.4; }

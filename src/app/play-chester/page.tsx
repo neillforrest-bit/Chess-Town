@@ -13,7 +13,7 @@ import { ChesterChatOverlay } from '@/components/ChesterUI';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
-type GameReport = { gradeHistory: GradedMove[]; pgn?: string };
+type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string };
 type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
@@ -74,7 +74,7 @@ function PlayChesterGame() {
         if (bossNode) completeBossNode(bossNode);
       }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (detail.kind === 'howler') { setCoachPrompt(detail); return; } setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     window.addEventListener('piece-captured', capture); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help);
     return () => { window.clearTimeout(timer); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); };
@@ -179,7 +179,7 @@ function PlayChesterGame() {
         </div>
       </section>
     </div>}
-    {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} onClose={() => setReport(null)} />}
+    {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics }} onClose={() => setReport(null)} />}
   </main>;
 }
 

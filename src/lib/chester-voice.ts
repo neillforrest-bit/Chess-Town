@@ -522,9 +522,10 @@ export function gamePhaseFromFen(fen: string): GamePhase {
 
 const PHASE_TIPS: Record<GamePhase, string[]> = {
   OPENING: [
-    'Fight for the centre with pawns, then point your pieces at it. The centre is the high ground of Chesterville.',
-    'Bring a new piece out before moving the same one twice. Every piece still at home is a teammate benched.',
-    'Castle early. A king stuck in the middle is a mayor without bodyguards.',
+    'The opening has one job: build a safe structure and wake your back pieces up. Knights and bishops off the back rank, king castled - then the middlegame can begin.',
+    'Tried-and-tested openings earn their name: centre pawns, pieces out, king safe. Freestyling survives at ROOKIE - against stronger players it loses the game before it starts.',
+    'Bring each piece out once before moving any piece twice. A back-rank piece still asleep at move ten is a soldier who missed the battle.',
+    'Develop with purpose: every opening move should claim centre space or bring a new piece to life, without putting that piece in danger. Pretty pawn moves on the edge do neither.',
   ],
   MIDDLEGAME: [
     'Before every move ask "what changed?" - what does my move attack, and what did it stop defending?',
@@ -618,6 +619,7 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
     considerLine = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
       ? `The risk it created: after ${input.movePhrase || 'that move'}, Chester has fresh targets. The engine's calmer idea was ${input.bestMovePhrase} - same ambition, no door left open.`
       : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.';
+    if (phase === 'OPENING') considerLine = `The opening is not the place to improvise - standard development exists because it survives stronger opponents. ${considerLine}`;
   }
 
   return { phase, phaseTip, moveLine: `You played: ${move}`, gradeLine, considerHeading, considerLine };
