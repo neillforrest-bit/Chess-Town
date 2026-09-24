@@ -1543,3 +1543,79 @@ body {
 .lesson-card p { margin: 0; flex: 1; color: #b9adb1; font-size: .74rem; line-height: 1.45; }
 .lesson-card strong { color: #ffd84d; font: 900 .66rem Arial,sans-serif; letter-spacing: 1px; }
 @media (max-width: 760px) { .lesson-hall__grid { grid-template-columns: 1fr; } }
+
+/* ===== Batch 26: single-screen doors landing, RPG boss map, lesson levels, TapBoard skin ===== */
+
+/* TapBoard: Play Chester parity - coordinates + lively selection states */
+.tapboard__square { position: relative; }
+.tapboard__coord { position: absolute; font-style: normal; font-size: .52rem; font-weight: 900; opacity: .55; pointer-events: none; }
+.tapboard__coord--file { right: 3px; bottom: 1px; }
+.tapboard__coord--rank { left: 3px; top: 1px; }
+.tapboard__square--selected { outline: 3px solid rgba(34,211,238,.95); outline-offset: -3px; box-shadow: inset 0 0 18px rgba(34,211,238,.45); }
+.tapboard__square--last { box-shadow: inset 0 0 0 3px rgba(255,216,77,.65), inset 0 0 16px rgba(255,216,77,.3); }
+.tapboard__square--target::after { content: ''; position: absolute; inset: 38%; border-radius: 50%; background: rgba(74,222,128,.85); box-shadow: 0 0 10px rgba(74,222,128,.8); }
+.tapboard__square--capture::after { content: ''; position: absolute; inset: 6%; border-radius: 50%; border: 3px solid rgba(244,63,63,.9); box-shadow: 0 0 12px rgba(244,63,63,.6); }
+
+/* Landing: single screen of borough doors */
+.town-night--doors { display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+.town-masthead--compact { margin-bottom: .8rem; }
+.town-masthead--compact h1 { margin: .3rem 0 .1rem; font-size: clamp(1.7rem, 6vw, 2.6rem); }
+.town-rank { display: inline-block; margin-top: .3rem; padding: .25rem .8rem; border: 1px solid rgba(255,216,77,.6); border-radius: 999px; color: #ffd84d; font: 900 .68rem Arial,sans-serif; letter-spacing: 1.2px; text-decoration: none; box-shadow: 0 0 14px rgba(255,216,77,.25); }
+.town-doors { position: relative; z-index: 2; width: min(620px, 100%); display: flex; flex-direction: column; gap: .45rem; padding: 0 .8rem; overflow-y: auto; }
+.town-door { display: flex; align-items: center; gap: .7rem; padding: .55rem .8rem; border: 1.5px solid rgba(243,200,214,.2); border-left: 4px solid var(--card-accent, #22d3ee); border-radius: 10px; background: linear-gradient(180deg, rgba(10,8,14,.94), rgba(6,5,9,.97)); text-decoration: none; color: inherit; transition: transform .15s ease, border-color .15s ease; }
+.town-door:hover { transform: translateX(5px); border-color: var(--card-accent, #ffd84d); }
+.town-door i { font-style: normal; font-size: 1.35rem; color: var(--card-accent, #ffd84d); text-shadow: 0 0 12px var(--card-accent, rgba(255,216,77,.6)); flex: 0 0 auto; }
+.town-door div { min-width: 0; flex: 1; }
+.town-door b { display: block; color: #f4f7ff; font: 900 .8rem Arial,sans-serif; letter-spacing: 1px; }
+.town-door span { display: block; color: #b6abb0; font-size: .7rem; line-height: 1.3; }
+.town-door em { color: var(--card-accent, #ffd84d); font-style: normal; font-weight: 900; }
+.town-door--first { padding: .8rem .9rem; border-width: 2px; border-left-width: 5px; box-shadow: 0 0 24px rgba(74,222,128,.18); }
+.town-door--first b { font-size: .95rem; }
+.town-door--first i { font-size: 1.7rem; }
+.town-night--doors .town-live { margin-top: .6rem; }
+@media (max-height: 700px) { .town-masthead--compact .town-greet__bubble p { font-size: .78rem; } }
+
+/* RPG world map */
+.bossmap-page { min-height: calc(100dvh - 64px); box-sizing: border-box; padding: .9rem .8rem 2rem; display: flex; flex-direction: column; align-items: center; gap: .8rem; color: var(--arena-paper, #e8dfe3); background: radial-gradient(circle at 20% 8%, rgba(255,78,177,.12), transparent 34%), radial-gradient(circle at 85% 70%, rgba(34,211,238,.12), transparent 36%), #050708; font-family: Arial, sans-serif; overflow-y: auto; }
+.bossmap-head { text-align: center; }
+.bossmap-head span { color: #ff8c00; font-size: .62rem; font-weight: 900; letter-spacing: 3px; }
+.bossmap-head h1 { margin: .15rem 0; font: 900 clamp(1.6rem, 7vw, 2.2rem) Georgia, serif; color: #fff; }
+.bossmap-head p { margin: 0; max-width: 420px; color: rgba(232,223,227,.75); font-size: .78rem; line-height: 1.45; }
+.bossmap-rating { display: flex; align-items: center; gap: .7rem; width: min(100%, 460px); padding: .6rem .85rem; border: 1.5px solid rgba(255,216,77,.55); border-radius: 12px; background: linear-gradient(180deg, rgba(20,14,6,.95), rgba(8,6,4,.97)); box-shadow: 0 0 26px rgba(255,216,77,.18); }
+.bossmap-rating i { font-style: normal; font-size: 1.9rem; color: #ffd84d; text-shadow: 0 0 14px rgba(255,216,77,.7); }
+.bossmap-rating span { color: #ff8c00; font-size: .54rem; font-weight: 900; letter-spacing: 2px; }
+.bossmap-rating b { display: block; color: #fff; font: 900 .92rem Georgia, serif; }
+.bossmap-rating p { margin: .1rem 0 0; color: rgba(232,223,227,.7); font-size: .68rem; }
+.bossmap-path { position: relative; width: min(100%, 520px); display: flex; flex-direction: column; gap: .55rem; padding: .4rem 0; }
+.bossmap-path::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; transform: translateX(-50%); background: linear-gradient(180deg, rgba(255,78,177,.4), rgba(34,211,238,.4), rgba(255,216,77,.4)); border-radius: 2px; }
+.bossmap-node { position: relative; display: flex; align-items: center; gap: .7rem; width: 88%; }
+.bossmap-node--right { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
+.bossmap-node__badge { flex: 0 0 auto; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; border: 2.5px solid rgba(34,211,238,.7); background: radial-gradient(circle at 35% 30%, rgba(34,211,238,.25), #07090a 72%); font-size: 1.5rem; box-shadow: 0 0 18px rgba(34,211,238,.35); }
+.bossmap-node--done .bossmap-node__badge { border-color: #ffd84d; color: #ffd84d; background: radial-gradient(circle at 35% 30%, rgba(255,216,77,.3), #0b0806 72%); box-shadow: 0 0 20px rgba(255,216,77,.45); }
+.bossmap-node--locked { opacity: .55; }
+.bossmap-node--locked .bossmap-node__badge { border-color: #555; }
+.bossmap-node__card { flex: 1; padding: .55rem .75rem; border: 1px solid rgba(243,200,214,.2); border-radius: 10px; background: rgba(8,6,10,.9); }
+.bossmap-node__card span { color: #ff8c00; font-size: .52rem; font-weight: 900; letter-spacing: 1.6px; }
+.bossmap-node__card b { display: block; color: #f4f7ff; font: 900 .88rem Georgia, serif; margin: .1rem 0; }
+.bossmap-node__card p { margin: 0 0 .35rem; color: #b6abb0; font-size: .7rem; line-height: 1.35; }
+.bossmap-go { display: inline-block; padding: .3rem .8rem; border-radius: 999px; background: rgba(34,211,238,.14); border: 1.5px solid #22d3ee; color: #a5f3fc; font: 900 .68rem Arial,sans-serif; letter-spacing: 1px; text-decoration: none; }
+.bossmap-go--final { background: rgba(255,78,177,.16); border-color: #ff4eb1; color: #ffc2dd; box-shadow: 0 0 16px rgba(255,78,177,.35); }
+.bossmap-replay { color: #ffd84d; font: 900 .64rem Arial,sans-serif; letter-spacing: 1px; text-decoration: none; }
+.bossmap-legend { margin: .4rem 0 0; color: #ffd84d; font-weight: 900; font-size: .85rem; text-align: center; }
+
+/* Lesson Hall difficulty selector */
+.lesson-hall__levels { width: min(980px, 100%); display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: .5rem; }
+.lesson-hall__levels button { display: flex; flex-direction: column; gap: .15rem; padding: .6rem .5rem; border: 1.5px solid #42555a; border-radius: 8px; background: #071012; color: #96aaae; cursor: pointer; text-align: center; }
+.lesson-hall__levels button b { font: 900 .78rem Arial,sans-serif; letter-spacing: 1px; }
+.lesson-hall__levels button small { font-size: .6rem; line-height: 1.25; }
+.lesson-hall__levels button.is-active { border-color: var(--arena-cyan, #22d3ee); color: #fff; background: rgba(34,211,238,.12); box-shadow: 0 0 18px rgba(34,211,238,.25); }
+.lesson-card { animation: lessonIn .4s ease both; }
+.lesson-card:nth-child(2) { animation-delay: .04s; } .lesson-card:nth-child(3) { animation-delay: .08s; }
+.lesson-card:nth-child(4) { animation-delay: .12s; } .lesson-card:nth-child(5) { animation-delay: .16s; }
+.lesson-card:nth-child(6) { animation-delay: .2s; } .lesson-card:nth-child(7) { animation-delay: .24s; }
+.lesson-card:nth-child(8) { animation-delay: .28s; } .lesson-card:nth-child(9) { animation-delay: .32s; }
+@keyframes lessonIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Arcade hub page */
+.arcade-page { min-height: calc(100dvh - 64px); display: grid; place-items: center; padding: 1rem .8rem 2rem; background: radial-gradient(circle at 18% 10%, rgba(255,78,177,.14), transparent 34%), #050708; }
+.arcade-page .town-arcade { margin: 0; }

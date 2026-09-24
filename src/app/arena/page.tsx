@@ -925,6 +925,7 @@ function LegacyArena() {
                 <span className="command-label">1V1 LIVE SHOWDOWN</span>
                 <h2>🍻 PUB TRIVIA BRAWL</h2>
                 <p>Draft categories, challenge a rival, and let Chester keep the score behind the bar.</p>
+                <div className="command-actions"><button className="command-play" onClick={() => window.location.assign('/trivia-brawl')}>PLAY →</button></div>
               </div>
               <div className="command-knight" aria-hidden="true"><span>🍻</span><i /></div>
               <div className="command-metrics">
@@ -932,7 +933,6 @@ function LegacyArena() {
                 <div><b>6</b><span>Trivia rounds</span></div>
                 <div><b>LIVE</b><span>Chester hosts</span></div>
               </div>
-              <div className="command-actions"><button className="command-play" onClick={() => window.location.assign('/trivia-brawl')}>PLAY →</button></div>
             </section>
           </main>
 

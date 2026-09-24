@@ -8,6 +8,7 @@ import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, chesterHowlerLine } from '@/lib/chester-voice';
 import { phrasesFromPgn } from '@/lib/move-words';
+import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
@@ -29,8 +30,10 @@ const LESSONS = [
 function PlayChesterGame() {
   const searchParams = useSearchParams();
   const requestedMode = searchParams.get('mode');
+  const requestedLevel = searchParams.get('level');
+  const bossNode = searchParams.get('boss');
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
-  const [difficulty, setDifficulty] = useState<Difficulty>('BEGINNER');
+  const [difficulty, setDifficulty] = useState<Difficulty>(requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [coachPrompt, setCoachPrompt] = useState<CoachPrompt | null>(null);
@@ -63,7 +66,14 @@ function PlayChesterGame() {
     setHelpRemaining(difficulty === 'BEGINNER' ? 5 : 3); setCoachPrompt(null);
     const timer = window.setTimeout(() => window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })), 0);
     const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
-    const gameReport = (event: Event) => setReport((event as CustomEvent<GameReport>).detail);
+    const gameReport = (event: Event) => {
+      const detail = (event as CustomEvent<GameReport>).detail;
+      setReport(detail);
+      if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
+        awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
+        if (bossNode) completeBossNode(bossNode);
+      }
+    };
     const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     window.addEventListener('piece-captured', capture); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help);

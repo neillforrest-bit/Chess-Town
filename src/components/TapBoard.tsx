@@ -68,7 +68,7 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
   const fileOrder = orientation === 'w' ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
 
   return <div className="neon-chessboard tapboard" aria-label={label || 'Chess board - tap a piece, then tap where it goes'} role="grid">
-    {rankOrder.map((row) => fileOrder.map((col) => {
+    {rankOrder.map((row, ri) => fileOrder.map((col, ci) => {
       const piece = grid[row][col];
       const square = `${FILES[col]}${8 - row}`;
       const isWhite = piece === piece.toUpperCase();
@@ -85,6 +85,8 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
         {piece ? (sprite
           ? <img src={sprite} alt="" draggable={false} style={{ width: '88%', height: '88%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
           : <span data-color={isWhite ? 'white' : 'black'}>{PIECES[piece.toLowerCase()] + '︎'}</span>) : ''}
+        {ri === 7 && <i className="tapboard__coord tapboard__coord--file" aria-hidden="true">{FILES[col]}</i>}
+        {ci === 0 && <i className="tapboard__coord tapboard__coord--rank" aria-hidden="true">{8 - row}</i>}
       </button>;
     }))}
   </div>;
