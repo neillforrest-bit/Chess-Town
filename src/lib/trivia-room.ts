@@ -47,7 +47,7 @@ async function fetchQuestion(categoryId: number): Promise<TriviaQuestion> {
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
     lastQuestionFetch = Date.now();
     try {
-      const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store' });
+      const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
       if (!response.ok) continue;
       const payload = await response.json() as { response_code: number; results: Array<{ category: string; question: string; correct_answer: string; incorrect_answers: string[] }> };
       const source = payload.results?.[0];

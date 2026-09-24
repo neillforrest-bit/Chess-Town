@@ -107,29 +107,27 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
             const current = fullRoomRef.current;
             if (current) { try { link.send({ type: 'room', room: serializeRoom(current) }); } catch { /* next change resyncs */ } }
           });
-          link.on('data', (message: any) => { console.log('[brawl] host got', JSON.stringify(message)); if (message?.type === 'action') void hostApply('p2', message.body || {}); });
+          link.on('data', (message: any) => { if (message?.type === 'action') void hostApply('p2', message.body || {}); });
           link.on('close', () => setLinked(false));
           link.on('error', () => setLinked(false));
         });
         peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* dropped */ } });
-        peer.on('error', () => { if (!cancelled) setError('Could not open the pub table. Reload to host a fresh one.'); });
+        peer.on('error', (peerError: any) => { if (!cancelled) setError(peerError?.type === 'unavailable-id' ? 'Could not open the pub table. Reload to host a fresh one.' : 'The pub table connection hiccuped - holding on...'); });
       } else {
         peer = new Peer(PEER_CONFIG as any);
         peer.on('open', () => {
           if (cancelled) return;
           const link = peer.connect(`ct-trivia-${id}`, { reliable: true });
           hostLinkRef.current = link;
-          link.on('data', () => undefined);
           link.on('open', () => setLinked(true));
           link.on('data', (message: any) => { if (message?.type === 'room') setRoom(message.room as Room); if (message?.type === 'guest-error') setError(String(message.message || 'The pub table hiccuped - try that again.')); });
           link.on('close', () => { setLinked(false); setError('The host left the pub. Ask for a fresh invite.'); });
           link.on('error', () => { setLinked(false); setError('The pub table link dropped. Ask the host to reopen it.'); });
         });
         peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* dropped */ } });
-        peer.on('error', (peerError: any) => { if (!cancelled) setError(peerError?.type === 'peer-unavailable' ? 'No pub table at that link. Ask the host for a fresh invite.' : 'Could not reach the pub table.'); });
+        peer.on('error', (peerError: any) => { if (!cancelled) setError(peerError?.type === 'peer-unavailable' ? 'No pub table at that link. Ask the host for a fresh invite.' : 'The pub table connection hiccuped - holding on...'); });
       }
     })().catch((requestError: unknown) => { if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Could not open Trivia Brawl.'); });
-    if (typeof window !== 'undefined') (window as any).__ct = { guestLinkRef, hostLinkRef, fullRoomRef };
     return () => { cancelled = true; try { peer?.destroy?.(); } catch { /* teardown */ } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
