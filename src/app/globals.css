@@ -1723,3 +1723,6 @@ body {
   .chester-live-line__next .chester-why-btn { min-height: 30px; padding: .15rem .6rem; font-size: .68rem; }
   .chester-game__actions button { min-height: 40px; padding: .4rem .5rem; font-size: .78rem; }
 }
+
+/* Fix: live-line verdict word must not inherit the scorecard's 240px min-height card style */
+.chester-live-line .chester-verdict { min-height: 0; position: static; border: 0 !important; }
