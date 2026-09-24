@@ -72,7 +72,7 @@ export default function BossMapPage() {
           <div className="bossmap-node__card">
             <span>{node.area}</span>
             <b>{node.name}</b>
-            <p>{isDone ? 'Conquered. The town remembers.' : isOpen ? node.blurb : 'Clear the road behind you first.'}</p>
+            {state !== 'locked' && <p>{isDone ? 'Conquered. The town remembers.' : node.blurb}</p>}
             {isOpen && !isDone && <Link href={node.href} className={node.kind === 'final' ? 'bossmap-go bossmap-go--final' : 'bossmap-go'}>{node.action} →</Link>}
             {isDone && <Link href={node.href} className="bossmap-replay">REPLAY →</Link>}
           </div>
