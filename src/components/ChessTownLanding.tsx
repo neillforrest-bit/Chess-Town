@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getProfile } from '@/lib/profile';
-import { getRating, rankFor } from '@/lib/rating';
+import { getRating, rankFor, getLadder, LADDER_LABELS, WEAKNESS_HOMEWORK, type LadderState } from '@/lib/rating';
 
 const doors = [
   { href: '/play-chester', icon: '♞', title: 'PLAY WITH CHESTER', copy: 'Guided games, instant grades, WHY lessons. The front door.', accent: '#4ade80', first: true },
@@ -20,6 +20,7 @@ export default function ChessTownLanding() {
   const [name, setName] = useState('');
   const [lineIndex, setLineIndex] = useState(0);
   const [rank, setRank] = useState<{ name: string; icon: string; points: number } | null>(null);
+  const [ladder, setLadder] = useState<LadderState | null>(null);
 
   useEffect(() => {
     try {
@@ -29,6 +30,8 @@ export default function ChessTownLanding() {
       if (profileName && profileName !== 'Challenger') setName(profileName);
       const rating = getRating();
       if (rating.points > 0) { const r = rankFor(rating.points); setRank({ name: r.name, icon: r.icon, points: rating.points }); }
+      const ladderState = getLadder();
+      if (ladderState.updatedAt) setLadder(ladderState);
     } catch { /* private browsing */ }
   }, []);
 
@@ -40,8 +43,19 @@ export default function ChessTownLanding() {
   const greeting = returning
     ? `Back for more${name ? `, ${name}` : ''}? Joseph is still unbeaten and still smug. Pick a door.`
     : 'Evening. I’m Chester - knight, coach and mayor of Chesterville. Pick a door: I grade the moves, roast the blunders and remember everything.';
+  const ladderLines: string[] = [];
+  if (ladder) {
+    const currentLabel = ladder.grandChester ? 'GRAND CHESTER' : LADDER_LABELS[['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][ladder.unlocked]] || 'ROOKIE';
+    if (ladder.grandChester) ladderLines.push('GRAND CHESTER walks the town. NIGHTMARE beaten, crown collected. Joseph is next, and he knows it.');
+    else if (ladder.unlocked > 0) ladderLines.push(`${currentLabel} unlocked. The ladder remembers every rung - ${ladder.unlocked + 1} of 4 and climbing.`);
+    if (ladder.lastResult === 'win' && ladder.lastLevel) ladderLines.push(`Still thinking about that win at ${LADDER_LABELS[ladder.lastLevel] || 'ROOKIE'}. ${ladder.lastGrade ? `Graded ${ladder.lastGrade}. ` : ''}The ladder noticed.`);
+    if (ladder.lastResult === 'loss' && ladder.lastLevel) ladderLines.push(`That last one at ${LADDER_LABELS[ladder.lastLevel] || 'ROOKIE'} stung - good. Sting is tuition. Run it back when you are ready.`);
+    if (ladder.lastFocus) ladderLines.push(`Your homework from the last scorecard: ${ladder.lastFocus}`);
+    if (ladder.lastWeakness && WEAKNESS_HOMEWORK[ladder.lastWeakness]) ladderLines.push(`Where to practise that: ${WEAKNESS_HOMEWORK[ladder.lastWeakness].text}.`);
+  }
   const chesterLines = [
     greeting,
+    ...ladderLines,
     'New here? PLAY WITH CHESTER is the front door. Live coaching, in words, never homework.',
     'Challenge a friend: one tap and my herald rides out. They get a board, you get glory.',
     'Chessdle lives in the arcade - one puzzle a day, the same one for the whole town.',
@@ -64,6 +78,7 @@ export default function ChessTownLanding() {
       </div>
       <h1>CHESTER<em>VILLE</em></h1>
       {rank && <Link href="/boss-map" className="town-rank">{rank.icon} {rank.name} · {rank.points} PTS</Link>}
+      {ladder && <Link href="/play-chester" className="town-rank town-rank--ladder">{ladder.grandChester ? '👑 GRAND CHESTER' : `♞ ${LADDER_LABELS[['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][ladder.unlocked]] || 'ROOKIE'} · RUNG ${ladder.unlocked + 1}/4`}</Link>}
     </header>
 
     <nav className="town-doors" aria-label="Chesterville destinations">

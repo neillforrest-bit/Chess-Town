@@ -7,6 +7,7 @@ import { askChesterChat } from '@/app/actions';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, chesterHowlerLine } from '@/lib/chester-voice';
+import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
@@ -33,6 +34,8 @@ function PlayChesterGame() {
   const requestedLevel = searchParams.get('level');
   const bossNode = searchParams.get('boss');
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
+  const [ladder, setLadder] = useState<LadderState>({ unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null });
+  useEffect(() => { setLadder(getLadder()); }, []);
   const [difficulty, setDifficulty] = useState<Difficulty>(requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [isThinking, setIsThinking] = useState(false);
@@ -69,6 +72,12 @@ function PlayChesterGame() {
     const gameReport = (event: Event) => {
       const detail = (event as CustomEvent<GameReport>).detail;
       setReport(detail);
+      if (!isFriendMode) {
+        const result = /1-0\s*$/.test(detail.pgn || '') ? 'win' : /0-1\s*$/.test(detail.pgn || '') ? 'loss' : 'draw';
+        const myMoves = detail.gradeHistory.filter((entry) => entry.player === 'You');
+        const habit = weakestHabit(detail, myMoves.filter((entry) => entry.grade === 'F').length);
+        setLadder(recordLadderGame({ level: difficulty, result, grade: detail.grade, focus: habit.focus, weakness: habit.key }));
+      }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);
@@ -134,7 +143,7 @@ function PlayChesterGame() {
   if (!started) return <main className="chester-start-screen">
     <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
       {!isFriendMode && requestedLevel && <p style={{ margin: '.2rem 0 .6rem', color: '#ffd84d', fontWeight: 900, letterSpacing: '1px' }}>OPPONENT: {selectedLevel.label} · {selectedLevel.note}</p>}
-      {!isFriendMode && !requestedLevel && <div className="chester-level-grid">{LEVELS.map((level) => <button key={level.value} className={difficulty === level.value ? 'is-active' : ''} onClick={() => setDifficulty(level.value)}><b>{level.label}</b><small>{level.note}</small></button>)}</div>}
+      {!isFriendMode && !requestedLevel && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? '🔒 ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small></button>; })}</div>}
       <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>
     </section>
   </main>;

@@ -64,3 +64,70 @@ export function completeBossNode(nodeId: string): BossProgress {
   try { window.localStorage.setItem(BOSS_KEY, JSON.stringify(next)); } catch { /* private browsing */ }
   return next;
 }
+
+/* ---- Gated Chester ladder (batch 29) ----
+   Players start at ROOKIE and unlock the next level only by beating the current
+   one. Beating NIGHTMARE crowns GRAND CHESTER. Local-only, same localStorage
+   philosophy as the solo rating above; the landing page reads this to greet,
+   congratulate and assign homework. */
+export const LADDER_LEVELS = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'] as const;
+export const LADDER_LABELS: Record<string, string> = { BEGINNER: 'ROOKIE', INTERMEDIATE: 'CLUB', ADVANCED: 'MASTER', EXPERT: 'NIGHTMARE' };
+
+export type LadderState = {
+  unlocked: number;          // highest unlocked LADDER_LEVELS index (0 = ROOKIE only)
+  grandChester: boolean;     // beaten NIGHTMARE
+  lastLevel: string | null;
+  lastResult: 'win' | 'loss' | 'draw' | null;
+  lastGrade: string | null;
+  lastFocus: string | null;      // the focus point from the last scorecard
+  lastWeakness: string | null;   // weakest-habit key from the last scorecard
+  updatedAt: string | null;
+};
+const LADDER_KEY = 'ct-chester-ladder-v1';
+const LADDER_DEFAULT: LadderState = { unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null };
+
+export function getLadder(): LadderState {
+  if (typeof window === 'undefined') return LADDER_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(LADDER_KEY);
+    if (raw) { const p = JSON.parse(raw); return { ...LADDER_DEFAULT, ...p }; }
+  } catch { /* private browsing */ }
+  return LADDER_DEFAULT;
+}
+
+export function recordLadderGame(input: { level: string; result: 'win' | 'loss' | 'draw'; grade?: string | null; focus?: string | null; weakness?: string | null }): LadderState {
+  const state = getLadder();
+  const idx = LADDER_LEVELS.indexOf(input.level as (typeof LADDER_LEVELS)[number]);
+  let unlocked = state.unlocked;
+  let grandChester = state.grandChester;
+  if (input.result === 'win' && idx >= 0) {
+    if (idx === LADDER_LEVELS.length - 1) grandChester = true;
+    else if (idx >= unlocked) unlocked = Math.min(LADDER_LEVELS.length - 1, idx + 1);
+  }
+  const next: LadderState = { unlocked, grandChester, lastLevel: input.level, lastResult: input.result, lastGrade: input.grade || null, lastFocus: input.focus || null, lastWeakness: input.weakness || null, updatedAt: new Date().toISOString() };
+  try { window.localStorage.setItem(LADDER_KEY, JSON.stringify(next)); } catch { /* private browsing */ }
+  return next;
+}
+
+/* Where Chester sends you to practise each weakness. */
+export const WEAKNESS_HOMEWORK: Record<string, { text: string; href: string }> = {
+  development: { text: 'Lesson Hall - the develop-with-purpose drills', href: '/training' },
+  kingSafety: { text: 'Lesson Hall - castle early, every single game', href: '/training' },
+  tactics: { text: 'Mate Sprint - sixty seconds of checks and captures', href: '/mate-sprint' },
+  accuracy: { text: 'a rematch at your level - one breath before every move', href: '/play-chester' },
+  blunders: { text: 'Pawn Wars - short sharp games, nothing left hanging', href: '/pawn-wars' },
+};
+
+/* Honest weakest-habit read from the scorecard dimensions. Shared by the
+   report card, the ladder record and the landing-page homework line. */
+export function weakestHabit(summary: { development?: number; kingSafety?: number; accuracy?: number; tactics?: number } | undefined, blunders: number): { key: string; reason: string; focus: string } {
+  const dims = [
+    { key: 'development', value: summary?.development ?? 100, reason: 'your back pieces slept too long', focus: 'First ten moves: bring every knight and bishop off the back rank before chasing anything. Soldiers first, plans second.' },
+    { key: 'kingSafety', value: summary?.kingSafety ?? 100, reason: 'your king stayed in the firing line', focus: 'Castle inside your first eight moves. A king in the centre is a target wearing a crown.' },
+    { key: 'accuracy', value: summary?.accuracy ?? 100, reason: 'too many moves gave away ground', focus: 'Pause one breath before every move and ask what it leaves undefended. Loose pieces are where games leak.' },
+    { key: 'tactics', value: summary?.tactics ?? 100, reason: 'loose pieces went unpunished - and unprotected', focus: 'Before every move, scan checks, captures and threats - in that order. The free points live there.' },
+  ];
+  dims.sort((a, b) => a.value - b.value);
+  if (blunders >= 3) return { key: 'blunders', reason: `${blunders} moves dropped serious material`, focus: 'Pause one breath before every move and ask what it leaves undefended. Blunders you review are blunders you stop making.' };
+  return dims[0];
+}

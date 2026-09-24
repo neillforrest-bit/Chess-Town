@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { phrasesFromPgn } from '@/lib/move-words';
+import { weakestHabit } from '@/lib/rating';
 
 export type GradedMove = {
   move: string;
@@ -35,20 +36,6 @@ function overallVerdict(goodRatio: number): { emoji: string; word: string; line:
   if (goodRatio >= 0.6) return { emoji: '😎', word: 'STRONG GAME', line: 'A performance worth a small parade.' };
   if (goodRatio >= 0.4) return { emoji: '🙂', word: 'SCRAPPY', line: 'Real fight in this one. The habits are forming.' };
   return { emoji: '💪', word: 'TOUGH LESSON', line: 'Every strong player has a drawer full of these.' };
-}
-
-/* Honest reason + one concrete focus point, driven by the weakest measured habit. */
-function weakestHabit(summary: Summary | undefined, blunders: number): { key: string; reason: string; focus: string } {
-  const dims = [
-    { key: 'development', value: summary?.development ?? 100, reason: 'your back pieces slept too long', focus: 'First ten moves: bring every knight and bishop off the back rank before chasing anything. Soldiers first, plans second.' },
-    { key: 'kingSafety', value: summary?.kingSafety ?? 100, reason: 'your king stayed in the firing line', focus: 'Castle inside your first eight moves. A king in the centre is a target wearing a crown.' },
-    { key: 'accuracy', value: summary?.accuracy ?? 100, reason: 'too many moves gave away ground', focus: 'Pause one breath before every move and ask what it leaves undefended. Loose pieces are where games leak.' },
-    { key: 'tactics', value: summary?.tactics ?? 100, reason: 'loose pieces went unpunished - and unprotected', focus: 'Before every move, scan checks, captures and threats - in that order. The free points live there.' },
-  ];
-  dims.sort((a, b) => a.value - b.value);
-  const weakest = dims[0];
-  if (blunders >= 3) return { key: 'blunders', reason: `${blunders} moves dropped serious material`, focus: 'Pause one breath before every move and ask what it leaves undefended. Blunders you review are blunders you stop making.' };
-  return weakest;
 }
 
 function moveOfGameWhy(phrase: string | null, centipawnLoss: number | null): string {
@@ -93,13 +80,16 @@ export default function ChesterReportCard({
   const levelLabel = LADDER[levelIndex]?.label || 'ROOKIE';
   const nextLabel = LADDER[levelIndex + 1]?.label || null;
   const habit = weakestHabit(summary, blunderCount);
-  const readyUp = won && goodRatio >= 0.65 && blunderCount <= 1 && Boolean(nextLabel);
+  const readyUp = won && Boolean(nextLabel);
+  const cleanWin = won && goodRatio >= 0.65 && blunderCount <= 1;
   const atTop = !nextLabel;
   const readiness = atTop
-    ? { word: 'TOP OF THE LADDER', detail: won ? 'You beat NIGHTMARE. Only Joseph left to dethrone.' : 'NIGHTMARE still has your number. Keep swinging.' }
+    ? { word: won ? 'GRAND CHESTER' : 'TOP OF THE LADDER', detail: won ? 'You beat NIGHTMARE - the crown is yours. Only Joseph left to dethrone.' : 'NIGHTMARE still has your number. Keep swinging.' }
     : readyUp
-      ? { word: `READY FOR ${nextLabel}`, detail: `You beat ${levelLabel} with ${goodCount} of ${mine.length} moves rated good. Take the promotion - the next level punishes what this one forgives.` }
-      : { word: `HOLD AT ${levelLabel}`, detail: `Not yet - ${habit.reason}. Beat this level clean and the next door opens.` };
+      ? cleanWin
+        ? { word: `${nextLabel} UNLOCKED`, detail: `You beat ${levelLabel} with ${goodCount} of ${mine.length} moves rated good. Take the promotion - the next level punishes what this one forgives.` }
+        : { word: `${nextLabel} UNLOCKED`, detail: `A win is a win - but fair warning: ${habit.reason}. At ${nextLabel} that becomes a rout. Fix it before you climb.` }
+      : { word: `HOLD AT ${levelLabel}`, detail: `Not yet - ${habit.reason}. Beat ${levelLabel} and the next door opens.` };
 
   return <div className="chester-report-modal" role="dialog" aria-modal="true" aria-labelledby="chester-report-title">
     <div className="chester-report-modal__backdrop" onClick={onClose} />

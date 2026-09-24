@@ -1684,3 +1684,7 @@ body {
 .chester-report-card__focus { margin: .45rem 0; padding: .55rem .65rem; border: 1px solid rgba(126,242,154,.45); border-radius: 6px; background: rgba(126,242,154,.06); }
 .chester-report-card__focus b { color: #7ef29a; font-size: .62rem; letter-spacing: 1.4px; }
 .chester-report-card__focus p { margin: .25rem 0 0; color: #f0fdf4; font-size: .92rem; line-height: 1.4; }
+
+/* Batch 29: gated level grid + ladder chip */
+.chester-level-grid button.is-locked { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }
+.town-rank--ladder { border-color: rgba(255,216,77,.6) !important; color: #ffd84d !important; }
