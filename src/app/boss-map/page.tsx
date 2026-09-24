@@ -56,6 +56,12 @@ export default function BossMapPage() {
         <p>{rank.next ? `${rank.next.at - rating.points} pts to ${rank.next.name}` : 'The summit. Joseph is nervous.'} · {rating.wins} {rating.wins === 1 ? 'win' : 'wins'} banked</p></div>
     </div>
 
+    <div className="bossmap-ladder" aria-label="Community ladder - coming soon">
+      <span>COMMUNITY LADDER</span>
+      <b>👥 MORE TO COME - STAY TUNED</b>
+      <p>Your rank is solo for now. The plan: same points, same road, but stacked against your friends. Every win you bank today will count when the ladder opens.</p>
+    </div>
+
     <section className="bossmap-path" aria-label="World map path">
       {NODES.map((node, index) => {
         const isDone = done(node);

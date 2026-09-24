@@ -1619,3 +1619,9 @@ body {
 /* Arcade hub page */
 .arcade-page { min-height: calc(100dvh - 64px); display: grid; place-items: center; padding: 1rem .8rem 2rem; background: radial-gradient(circle at 18% 10%, rgba(255,78,177,.14), transparent 34%), #050708; }
 .arcade-page .town-arcade { margin: 0; }
+
+/* Community ladder placeholder */
+.bossmap-ladder { width: min(100%, 460px); padding: .55rem .85rem; border: 1.5px dashed rgba(184,162,255,.6); border-radius: 12px; background: rgba(20,14,30,.75); text-align: center; }
+.bossmap-ladder span { color: #b8a2ff; font-size: .54rem; font-weight: 900; letter-spacing: 2px; }
+.bossmap-ladder b { display: block; color: #e6dcff; font: 900 .82rem Georgia, serif; margin: .15rem 0; }
+.bossmap-ladder p { margin: 0; color: rgba(232,223,227,.7); font-size: .68rem; line-height: 1.4; }
