@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChesterTeleprompter } from '@/components/ChesterUI';
+import { applyRoomAction, createRoom, serializeRoom, type TriviaRoom } from '@/lib/trivia-room';
+import { PEER_CONFIG } from '@/lib/p2p';
 
 type Player = 'p1' | 'p2';
 type Category = { id: number; name: string };
@@ -28,55 +30,96 @@ function getMatchId(): string {
   return existing && /^[a-z0-9]{6,24}$/i.test(existing) ? existing : Math.random().toString(36).slice(2, 10);
 }
 
-async function updateRoom(matchId: string, player: Player, body: Record<string, unknown>): Promise<Room> {
-  const response = await fetch('/api/trivia-brawl/sync', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId, player, ...body }) });
-  const data = await response.json() as Room & { error?: string };
-  if (!response.ok) throw new Error(data.error || 'Brawl update failed');
-  return data;
-}
-
 function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Player }) {
   const [matchId, setMatchId] = useState('');
-  const [player, setPlayer] = useState<Player>('p1');
+  const [player] = useState<Player>(role);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [room, setRoom] = useState<Room>(EMPTY_ROOM);
   const [hostText, setHostText] = useState('Welcome to Trivia Brawl. Pick three categories and pray your rival chooses badly.');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linked, setLinked] = useState(false);
   const announcedRoundRef = useRef(-1);
+  const fullRoomRef = useRef<TriviaRoom | null>(null);
+  const guestLinkRef = useRef<any>(null);
+  const hostLinkRef = useRef<any>(null);
+  const categoriesRef = useRef<Category[]>([]);
+  categoriesRef.current = categories;
 
-  const syncRoom = async (id: string) => {
-    const response = await fetch(`/api/trivia-brawl/sync?match=${encodeURIComponent(id)}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error('The Trivia Brawl room is unavailable');
-    setRoom(await response.json() as Room);
+  const publishRoom = (next: TriviaRoom) => {
+    fullRoomRef.current = next;
+    setRoom(serializeRoom(next) as Room);
+    try { guestLinkRef.current?.send?.({ type: 'room', room: serializeRoom(next) }); } catch { /* guest resyncs on the next change */ }
+  };
+
+  const hostApply = async (asPlayer: Player, body: Record<string, unknown>) => {
+    const current = fullRoomRef.current;
+    if (!current) return;
+    const result = await applyRoomAction(current, asPlayer, body);
+    if (result.error) { if (asPlayer === 'p1') setError(result.error); return; }
+    publishRoom(result.room);
+    if (result.justLocked) {
+      const nameOf = (categoryId: number) => categoriesRef.current.find((category) => category.id === categoryId)?.name;
+      const p1Categories = result.room.categories.p1.map(nameOf).filter((name): name is string => Boolean(name));
+      const p2Categories = result.room.categories.p2.map(nameOf).filter((name): name is string => Boolean(name));
+      void fetch('/api/trivia-commentary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'brawl-intro', p1Categories, p2Categories }) })
+        .then(async (response) => {
+          const data = await response.json() as { reply?: string };
+          const latest = fullRoomRef.current;
+          if (data.reply && latest && latest.phase === 'intro') publishRoom({ ...latest, hostMessage: data.reply });
+        })
+        .catch(() => undefined);
+    }
   };
 
   useEffect(() => {
     const id = initialMatch;
+    let cancelled = false;
+    let peer: any = null;
+    setMatchId(id);
+    window.history.replaceState(null, '', `/trivia-brawl?match=${id}&role=${role}`);
     void (async () => {
-      setMatchId(id);
-      setPlayer(role);
-      window.history.replaceState(null, '', `/trivia-brawl?match=${id}&role=${role}`);
       const categoryResponse = await fetch('https://opentdb.com/api_category.php');
       const categoryPayload = await categoryResponse.json() as { trivia_categories?: Category[] };
-      setCategories(categoryPayload.trivia_categories || []);
-      const roomResponse = await fetch(`/api/trivia-brawl/sync?match=${encodeURIComponent(id)}`);
-      if (roomResponse.status === 404) {
-        // Either role may create: serverless rooms are per-instance, so a guest
-        // landing on a cold lambda must be able to re-open the room.
-        const created = await fetch('/api/trivia-brawl/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId: id }) });
-        if (!created.ok) throw new Error('Could not create Trivia Brawl room');
+      if (!cancelled) setCategories(categoryPayload.trivia_categories || []);
+      const { default: Peer } = await import('peerjs');
+      if (cancelled) return;
+      if (role === 'p1') {
+        publishRoom(createRoom());
+        peer = new Peer(`ct-trivia-${id}`, PEER_CONFIG as any);
+        peer.on('connection', (link: any) => {
+          guestLinkRef.current = link;
+          link.on('open', () => {
+            if (cancelled) return;
+            setLinked(true);
+            const current = fullRoomRef.current;
+            if (current) { try { link.send({ type: 'room', room: serializeRoom(current) }); } catch { /* next change resyncs */ } }
+          });
+          link.on('data', (message: any) => { if (message?.type === 'action') void hostApply('p2', message.body || {}); });
+          link.on('close', () => setLinked(false));
+          link.on('error', () => setLinked(false));
+        });
+        peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* dropped */ } });
+        peer.on('error', () => { if (!cancelled) setError('Could not open the pub table. Reload to host a fresh one.'); });
+      } else {
+        peer = new Peer(PEER_CONFIG as any);
+        peer.on('open', () => {
+          if (cancelled) return;
+          const link = peer.connect(`ct-trivia-${id}`, { reliable: true });
+          hostLinkRef.current = link;
+          link.on('open', () => setLinked(true));
+          link.on('data', (message: any) => { if (message?.type === 'room') setRoom(message.room as Room); });
+          link.on('close', () => { setLinked(false); setError('The host left the pub. Ask for a fresh invite.'); });
+          link.on('error', () => { setLinked(false); setError('The pub table link dropped. Ask the host to reopen it.'); });
+        });
+        peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* dropped */ } });
+        peer.on('error', (peerError: any) => { if (!cancelled) setError(peerError?.type === 'peer-unavailable' ? 'No pub table at that link. Ask the host for a fresh invite.' : 'Could not reach the pub table.'); });
       }
-      await syncRoom(id);
-    })().catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : 'Could not open Trivia Brawl.'));
+    })().catch((requestError: unknown) => { if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Could not open Trivia Brawl.'); });
+    return () => { cancelled = true; try { peer?.destroy?.(); } catch { /* teardown */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!matchId) return;
-    const interval = window.setInterval(() => void syncRoom(matchId).catch(() => undefined), 1200);
-    return () => window.clearInterval(interval);
-  }, [matchId]);
 
   useEffect(() => {
     if (room.phase !== 'question' || !room.currentQuestion || announcedRoundRef.current === room.round) return;
@@ -94,32 +137,26 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       }),
     }).then(async (response) => {
       const data = await response.json() as { reply?: string };
-      if (data.reply) void updateRoom(matchId, player, { hostMessage: data.reply }).then(setRoom).catch(() => undefined);
-    }).catch(() => void updateRoom(matchId, player, { hostMessage: `The answer was ${room.roundResult?.correctAnswer}. Chester has recorded the carnage.` }).then(setRoom).catch(() => undefined));
-  }, [matchId, player, room.currentQuestion, room.phase, room.roundResult]);
+      if (data.reply) void hostApply('p1', { hostMessage: data.reply });
+    }).catch(() => void hostApply('p1', { hostMessage: `The answer was ${room.roundResult?.correctAnswer}. Chester has recorded the carnage.` }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player, room.currentQuestion, room.phase, room.roundResult]);
 
   const toggleCategory = (categoryId: number) => setSelectedCategories((current) => current.includes(categoryId) ? current.filter((id) => id !== categoryId) : current.length < 3 ? [...current, categoryId] : current);
-  const patchRoom = async (body: Record<string, unknown>): Promise<Room> => {
-    const data = await updateRoom(matchId, player, body);
-    setRoom(data);
-    return data;
+  const patchRoom = async (body: Record<string, unknown>) => {
+    setError('');
+    if (player === 'p1') { await hostApply('p1', body); return; }
+    if (!hostLinkRef.current?.open) { setError('Not connected to the host table yet - hold on, or ask for a fresh invite.'); throw new Error('not linked'); }
+    hostLinkRef.current.send({ type: 'action', body });
   };
   const submitDraft = async () => {
     if (selectedCategories.length !== 3) return;
     setIsSubmitting(true);
     try {
-      const updatedRoom = await patchRoom({ categories: selectedCategories });
+      await patchRoom({ categories: selectedCategories });
       const names = selectedCategories.map((id) => categories.find((category) => category.id === id)?.name).filter(Boolean).join(', ');
-      if (updatedRoom.phase === 'question') {
-        const p1Categories = updatedRoom.categories.p1.map((id) => categories.find((category) => category.id === id)?.name).filter((name): name is string => Boolean(name));
-        const p2Categories = updatedRoom.categories.p2.map((id) => categories.find((category) => category.id === id)?.name).filter((name): name is string => Boolean(name));
-        const response = await fetch('/api/trivia-commentary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'brawl-intro', p1Categories, p2Categories }) });
-        const data = await response.json() as { reply?: string };
-        await patchRoom({ hostMessage: data.reply || 'The categories are locked and the pub is braced for impact.' });
-      } else {
-        setHostText(`Player ${player === 'p1' ? 'One' : 'Two'} has ordered ${names}. A suspiciously ambitious tab.`);
-      }
-    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Could not submit the draft.'); } finally { setIsSubmitting(false); }
+      setHostText(`Player ${player === 'p1' ? 'One' : 'Two'} has ordered ${names}. A suspiciously ambitious tab.`);
+    } catch { /* error already on screen */ } finally { setIsSubmitting(false); }
   };
   const answer = async (selectedAnswer: string) => { try { await patchRoom({ answer: selectedAnswer }); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Could not lock that answer.'); } };
   const sabotage = async () => { try { await patchRoom({ sabotage: true }); setHostText('Sabotage accepted. The next question shall arrive wearing a Shakespearean disguise.'); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Sabotage failed.'); } };
@@ -132,6 +169,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     <div className="trivia-brawl-score"><span>ROUND {Math.min(room.round + 1, 6)}/6</span><b>PLAYER 1 {room.score.p1}</b><b>PLAYER 2 {room.score.p2}</b></div>
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile />
     {error && <p className="trivia-brawl-error">{error}</p>}
+    {!error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? 'Pub table open - send the invite and hold this screen.' : 'Connecting to the host table...'}</p>}
     {room.phase === 'draft' ? <section className="trivia-brawl-draft"><h2>Player {player === 'p1' ? 'One' : 'Two'}: Choose 3 Categories</h2>{player === 'p1' && room.categories.p2.length === 0 && <div style={{ display: 'grid', gap: '.45rem' }}>
           <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. You, me, six rounds.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>📮 SEND THE INVITE</button>
           <input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Invite link for Player 2" />

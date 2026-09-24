@@ -12,6 +12,7 @@ import { recordGame, recordMiniGame } from '@/lib/profile';
 import Teleprompter from '@/components/Teleprompter';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildWhyLesson } from '@/lib/chester-voice';
+import { PEER_CONFIG } from '@/lib/p2p';
 import { getStockfishClient, type ChesterDifficulty, type EngineTelemetry } from '@/lib/stockfish';
 import ChessTownLanding from '@/components/ChessTownLanding';
 
@@ -356,6 +357,10 @@ function LegacyArena() {
       if (data?.type === 'move') window.dispatchEvent(new CustomEvent('remote-chess-move', { detail: data }));
       if (data?.type === 'greeting') setHostBanter(String(data.message || ''));
     });
+    connection.on('iceStateChanged', (state: string) => {
+      if (state === 'failed') setRemoteStatus('The arena link hit a network wall. Both players reopen the challenge link.');
+      if (state === 'disconnected') setRemoteStatus('The arena link flickered. Holding...');
+    });
     connection.on('close', () => { setRemoteConnected(false); setRemoteStatus('Opponent disconnected.'); });
     connection.on('error', () => { setRemoteConnected(false); setRemoteStatus('Connection interrupted. Reopen the challenge link.'); });
   };
@@ -378,8 +383,9 @@ function LegacyArena() {
     peerRef.current?.destroy?.();
     const room = Math.random().toString(36).slice(2, 10);
     const { default: Peer } = await import('peerjs');
-    const peer = new Peer(`chess-town-${room}`);
+    const peer = new Peer(`chess-town-${room}`, PEER_CONFIG as any);
     peerRef.current = peer;
+    peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
     openRemoteArena('w', room);
     // Put the room in the visible URL so ANY share path (browser UI, copy, herald) carries it.
     window.history.replaceState(null, '', `${window.location.pathname}?room=${room}&host=1`);
@@ -414,8 +420,9 @@ function LegacyArena() {
       // Host reload: re-establish the room instead of self-joining.
       import('peerjs').then(({ default: Peer }) => {
         if (cancelled) return;
-        const peer = new Peer(`chess-town-${room}`);
+        const peer = new Peer(`chess-town-${room}`, PEER_CONFIG as any);
         peerRef.current = peer;
+        peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
         openRemoteArena('w', room);
         peer.on('connection', configureConnection);
         peer.on('error', () => setRemoteStatus('Could not reopen the challenge room. Send a fresh link.'));
@@ -424,11 +431,15 @@ function LegacyArena() {
     }
     import('peerjs').then(({ default: Peer }) => {
       if (cancelled) return;
-      const peer = new Peer();
+      const peer = new Peer(PEER_CONFIG as any);
       peerRef.current = peer;
       openRemoteArena('b', room);
-      peer.on('open', () => configureConnection(peer.connect(`chess-town-${room}`, { reliable: true })));
-      peer.on('error', () => setRemoteStatus('Challenge unavailable. Ask the host for a fresh link.'));
+      peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* broker dropped */ } });
+      peer.on('open', () => {
+        configureConnection(peer.connect(`chess-town-${room}`, { reliable: true }));
+        window.setTimeout(() => { if (!remoteConnectedRef.current) setRemoteStatus('Still connecting - keep both screens open on a decent network, or ask for a fresh link.'); }, 12000);
+      });
+      peer.on('error', (peerError: any) => setRemoteStatus(peerError?.type === 'peer-unavailable' ? 'That challenge room is not open right now. Ask the host for a fresh link.' : 'Challenge unavailable. Ask the host for a fresh link.'));
     });
     return () => { cancelled = true; peerRef.current?.destroy?.(); };
   }, []);
