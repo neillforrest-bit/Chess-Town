@@ -10,6 +10,7 @@ import { useBrawlState } from '@/components/EngineEvaluationProvider';
 import { SeasonHub, TownSquare } from '@/components/SocialHub';
 import { recordGame, recordMiniGame } from '@/lib/profile';
 import Teleprompter from '@/components/Teleprompter';
+import MatchCountdown from '@/components/MatchCountdown';
 import { getStockfishClient, type ChesterDifficulty, type EngineTelemetry } from '@/lib/stockfish';
 import ChessTownLanding from '@/components/ChessTownLanding';
 
@@ -249,6 +250,7 @@ function LegacyArena() {
   const isPhonePortrait = isMobile && !isLandscape;
 
   const [scene, setScene] = useState<SceneState>('HOME');
+  const [matchCountdown, setMatchCountdown] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [displayedIntro, setDisplayedIntro] = useState('');
   
@@ -367,6 +369,7 @@ function LegacyArena() {
     setDrawerOpen(true);
     setArenaView('PLAY');
     setScene('GAME');
+    setMatchCountdown((n) => n + 1);
   };
 
   const createRemoteChallenge = async () => {
@@ -676,6 +679,7 @@ function LegacyArena() {
     setActiveMatchup(matchTitle);
     setGameMode(mode);
     setScene('GAME');
+    setMatchCountdown((n) => n + 1);
     
     setTimeout(() => {
       setHostBanter(drill
@@ -1083,6 +1087,7 @@ function LegacyArena() {
         </div>
       )}
 
+      {scene === 'GAME' && matchCountdown > 0 && <MatchCountdown key={matchCountdown} />}
       {scene === 'GAME' && (
         <div className="live-game-layout" style={{ 
           position: 'absolute',

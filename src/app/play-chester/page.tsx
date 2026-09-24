@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { askChesterChat } from '@/app/actions';
 import type { CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
+import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, chesterHowlerLine } from '@/lib/chester-voice';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn } from '@/lib/move-words';
@@ -35,6 +36,7 @@ function PlayChesterGame() {
   const bossNode = searchParams.get('boss');
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
   const [howlerAside, setHowlerAside] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const coachPromptRef = useRef<CoachPrompt | null>(null);
   const [ladder, setLadder] = useState<LadderState>({ unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null });
   useEffect(() => { setLadder(getLadder()); }, []);
@@ -65,6 +67,8 @@ function PlayChesterGame() {
   const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : 'PLAYING CHESTER';
   const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : selectedLevel.label;
   const isFriendMode = mode === 'PVP_LOCAL' || mode === '2V2';
+
+  useEffect(() => { if (started) setCountdown((n) => n + 1); }, [started]);
 
   useEffect(() => {
     if (!started) return;
@@ -154,6 +158,7 @@ function PlayChesterGame() {
 
   const lesson = LESSONS[lessonStep];
   return <main className="chester-game" aria-label="Play Chester guided game">
+    {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button></header>
     <section className="chester-game__board">
       <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} /></div>

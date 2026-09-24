@@ -1691,3 +1691,9 @@ body {
 
 /* Batch 30: Chester howler aside (never displaces the user's own move review) */
 .chester-howler-aside { margin: .3rem 0 0; color: #ffc53d; font-size: .8rem; font-style: italic; line-height: 1.35; }
+
+/* Batch 30: pre-match READY / STEADY / GO countdown */
+.match-countdown { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .8rem; background: radial-gradient(ellipse at center, rgba(2,0,8,.55), rgba(2,0,8,.88)); backdrop-filter: blur(2px); }
+.match-countdown__word { font: 900 clamp(3.2rem, 16vw, 7rem)/1 Georgia, serif; letter-spacing: .06em; animation: countdown-beat .9s cubic-bezier(.2,1.6,.4,1) both; }
+.match-countdown__sub { color: rgba(255,255,255,.55); font-size: .68rem; font-weight: 900; letter-spacing: 3px; }
+@keyframes countdown-beat { 0% { transform: scale(2.6); opacity: 0; } 35% { transform: scale(1); opacity: 1; } 80% { transform: scale(.96); opacity: 1; } 100% { transform: scale(.94); opacity: .92; } }
