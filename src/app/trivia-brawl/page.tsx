@@ -53,11 +53,15 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     try { guestLinkRef.current?.send?.({ type: 'room', room: serializeRoom(next) }); } catch { /* guest resyncs on the next change */ }
   };
 
-  const hostApply = async (asPlayer: Player, body: Record<string, unknown>) => {
+  const hostApplyNow = async (asPlayer: Player, body: Record<string, unknown>) => {
     const current = fullRoomRef.current;
     if (!current) return;
     const result = await applyRoomAction(current, asPlayer, body);
-    if (result.error) { if (asPlayer === 'p1') setError(result.error); return; }
+    if (result.error) {
+      if (asPlayer === 'p1') setError(result.error);
+      else { try { guestLinkRef.current?.send?.({ type: 'guest-error', message: result.error }); } catch { /* best effort */ } }
+      return;
+    }
     publishRoom(result.room);
     if (result.justLocked) {
       const nameOf = (categoryId: number) => categoriesRef.current.find((category) => category.id === categoryId)?.name;
@@ -71,6 +75,13 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         })
         .catch(() => undefined);
     }
+  };
+
+  const applyQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const hostApply = (asPlayer: Player, body: Record<string, unknown>): Promise<void> => {
+    const run = applyQueueRef.current.then(() => hostApplyNow(asPlayer, body));
+    applyQueueRef.current = run.catch(() => undefined);
+    return run;
   };
 
   useEffect(() => {
@@ -110,7 +121,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           hostLinkRef.current = link;
           link.on('data', () => undefined);
           link.on('open', () => setLinked(true));
-          link.on('data', (message: any) => { if (message?.type === 'room') setRoom(message.room as Room); });
+          link.on('data', (message: any) => { if (message?.type === 'room') setRoom(message.room as Room); if (message?.type === 'guest-error') setError(String(message.message || 'The pub table hiccuped - try that again.')); });
           link.on('close', () => { setLinked(false); setError('The host left the pub. Ask for a fresh invite.'); });
           link.on('error', () => { setLinked(false); setError('The pub table link dropped. Ask the host to reopen it.'); });
         });
@@ -157,7 +168,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     try {
       await patchRoom({ categories: selectedCategories });
       const names = selectedCategories.map((id) => categories.find((category) => category.id === id)?.name).filter(Boolean).join(', ');
-      setHostText(`Player ${player === 'p1' ? 'One' : 'Two'} has ordered ${names}. A suspiciously ambitious tab.`);
+      setHostText(`Player ${player === 'p1' ? 'One' : 'Two'} has ordered ${names}. Chester is scribbling the questions on beer mats...`);
     } catch { /* error already on screen */ } finally { setIsSubmitting(false); }
   };
   const answer = async (selectedAnswer: string) => { try { await patchRoom({ answer: selectedAnswer }); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Could not lock that answer.'); } };

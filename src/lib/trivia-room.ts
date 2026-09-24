@@ -6,6 +6,7 @@ export type TriviaQuestion = { category: string; question: string; correctAnswer
 export type RoundResult = { correctAnswer: string; p1Correct: boolean; p2Correct: boolean };
 export type TriviaRoom = {
   categories: Record<Player, number[]>;
+  questionBank: Record<number, TriviaQuestion>;
   questions: TriviaQuestion[];
   answers: Partial<Record<Player, string>>;
   score: Record<Player, number>;
@@ -36,23 +37,30 @@ function shuffle<T>(items: T[]): T[] {
   return result;
 }
 
+// opentdb rate-limits hard per IP (one call per ~5s) - a parallel burst fails,
+// which is exactly what killed the category lock for real players. Fetch
+// sequentially with spacing and retry instead.
+let lastQuestionFetch = 0;
 async function fetchQuestion(categoryId: number): Promise<TriviaQuestion> {
-  const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store' });
-  if (!response.ok) throw new Error('Trivia question request failed');
-  const payload = await response.json() as { response_code: number; results: Array<{ category: string; question: string; correct_answer: string; incorrect_answers: string[] }> };
-  const source = payload.results[0];
-  if (payload.response_code !== 0 || !source || source.incorrect_answers.length !== 3) throw new Error('Trivia category has no question available');
-  const correctAnswer = decodeHtml(source.correct_answer);
-  return { category: decodeHtml(source.category), question: decodeHtml(source.question), correctAnswer, answers: shuffle([correctAnswer, ...source.incorrect_answers.map(decodeHtml)]) };
-}
-
-async function createQuestions(categoryIds: number[]): Promise<TriviaQuestion[]> {
-  const selectedIds = Array.from({ length: TOTAL_ROUNDS }, (_, index) => categoryIds[index % categoryIds.length]);
-  return Promise.all(selectedIds.map(fetchQuestion));
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const wait = Math.max(0, 5300 - (Date.now() - lastQuestionFetch));
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastQuestionFetch = Date.now();
+    try {
+      const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store' });
+      if (!response.ok) continue;
+      const payload = await response.json() as { response_code: number; results: Array<{ category: string; question: string; correct_answer: string; incorrect_answers: string[] }> };
+      const source = payload.results?.[0];
+      if (payload.response_code !== 0 || !source || source.incorrect_answers.length !== 3) continue;
+      const correctAnswer = decodeHtml(source.correct_answer);
+      return { category: decodeHtml(source.category), question: decodeHtml(source.question), correctAnswer, answers: shuffle([correctAnswer, ...source.incorrect_answers.map(decodeHtml)]) };
+    } catch { /* retry below */ }
+  }
+  throw new Error('The quizmaster is overwhelmed - lock your categories again in a moment');
 }
 
 export function createRoom(): TriviaRoom {
-  return { categories: { p1: [], p2: [] }, questions: [], answers: {}, score: { p1: 0, p2: 0 }, sabotage: { p1: false, p2: false }, sabotageTarget: null, sabotageRound: null, hostMessage: 'Choose your categories and Chester will open the Brawl.', phase: 'draft', round: 0, roundResult: null, updatedAt: Date.now() };
+  return { categories: { p1: [], p2: [] }, questionBank: {}, questions: [], answers: {}, score: { p1: 0, p2: 0 }, sabotage: { p1: false, p2: false }, sabotageTarget: null, sabotageRound: null, hostMessage: 'Choose your categories and Chester will open the Brawl.', phase: 'draft', round: 0, roundResult: null, updatedAt: Date.now() };
 }
 
 export function serializeRoom(room: TriviaRoom): PublicRoom {
@@ -70,15 +78,21 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
   if (Array.isArray(body.categories) && next.phase === 'draft') {
     const picked = body.categories.filter((category): category is number => Number.isInteger(category) && (category as number) > 0).slice(0, MAX_CATEGORIES);
     if (picked.length !== MAX_CATEGORIES) return { room, error: 'Choose exactly three categories' };
+    const bank = { ...next.questionBank };
+    try {
+      for (const categoryId of picked) {
+        if (!bank[categoryId]) bank[categoryId] = await fetchQuestion(categoryId);
+      }
+    } catch (error) {
+      return { room, error: error instanceof Error ? error.message : 'Could not prepare questions' };
+    }
+    next.questionBank = bank;
     next.categories[player] = picked;
     if (next.categories.p1.length === MAX_CATEGORIES && next.categories.p2.length === MAX_CATEGORIES && !next.questions.length) {
-      try {
-        next.questions = await createQuestions([...next.categories.p1, ...next.categories.p2]);
-        next.phase = 'intro';
-        justLocked = true;
-      } catch (error) {
-        return { room, error: error instanceof Error ? error.message : 'Could not prepare questions' };
-      }
+      const ids = [...next.categories.p1, ...next.categories.p2];
+      next.questions = Array.from({ length: TOTAL_ROUNDS }, (_, index) => bank[ids[index % ids.length]]);
+      next.phase = 'intro';
+      justLocked = true;
     }
   }
 
