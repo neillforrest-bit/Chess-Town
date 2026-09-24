@@ -10,13 +10,19 @@ const PALETTES: Record<'w' | 'b', { stops: [string, string, string]; stroke: str
   b: { stops: ['#ffe066', '#ff8c1f', '#d4240c'], stroke: '#4a0d02', glow: 'rgba(255,150,40,.65)' },
 };
 
+// Silhouette separation: pawns are chubby and short, bishops tall with a deep
+// mitre slit - at a glance the two can never be confused (his batch-27 note).
+const TYPE_SCALE: Record<string, number> = { p: 0.6, r: 0.78, n: 0.82, b: 0.9, q: 0.88, k: 0.88 };
+
 export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b', type: string, size: number) {
   const pal = PALETTES[color];
   const glyph = (SPRITE_GLYPHS[type] || SPRITE_GLYPHS.p) + TEXT_VS;
   const x = size / 2;
   const y = size * 0.56;
   ctx.clearRect(0, 0, size, size);
-  ctx.font = `900 ${Math.round(size * 0.78)}px Georgia, 'Times New Roman', serif`;
+  const typeScale = TYPE_SCALE[type] || 0.78;
+  if (type === 'p') ctx.setTransform(1.18, 0, 0, 1, -size * 0.09, 0); // chubby pawn
+  ctx.font = `900 ${Math.round(size * 0.78 * typeScale)}px Georgia, 'Times New Roman', serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
@@ -40,6 +46,23 @@ export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b',
   ctx.fillStyle = sheen;
   ctx.fillRect(0, 0, size, size);
   ctx.globalCompositeOperation = 'source-over';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // Bishop: carve the mitre slit deep so it reads at any size.
+  if (type === 'b') {
+    ctx.strokeStyle = pal.stroke;
+    ctx.lineWidth = size * 0.055;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(size * 0.42, size * 0.24);
+    ctx.lineTo(size * 0.6, size * 0.42);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    ctx.lineWidth = size * 0.018;
+    ctx.beginPath();
+    ctx.moveTo(size * 0.435, size * 0.245);
+    ctx.lineTo(size * 0.585, size * 0.405);
+    ctx.stroke();
+  }
 }
 
 const cache: Record<string, string> = {};

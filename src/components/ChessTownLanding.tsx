@@ -9,8 +9,8 @@ const doors = [
   { href: '/play-chester', icon: '♞', title: 'PLAY WITH CHESTER', copy: 'A guided game: instant move grades, WHY lessons, live coaching.', accent: '#4ade80', first: true },
   { href: '/arcade', icon: '🕹️', title: "CHESTER'S ARCADE", copy: 'Three mini-games: Chessdle, Pawn Wars, Mate Sprint.', accent: '#ff4eb1' },
   { href: '/training', icon: '♝', title: 'LESSON HALL', copy: 'Nine coached drills - pick a difficulty, learn by playing.', accent: '#b8a2ff' },
-  { href: '/arena', icon: '♜', title: 'THE ARENA', copy: 'Rivalries, daily battles and the big lights.', accent: '#22d3ee' },
-  { href: '/arena?friend=1', icon: '⚔️', title: 'CHALLENGE A FRIEND', copy: 'Send a link, they get a board. Chester commentates both sides.', accent: '#ffd84d' },
+  { href: '/trivia-brawl', icon: '🍻', title: 'PUB TRIVIA BRAWL', copy: 'Live trivia showdown - Chester hosts, rivals sweat.', accent: '#22d3ee' },
+  { href: '/arena?friend=1', icon: '⚔️', title: 'CHALLENGE A FRIEND', copy: 'One tap sends the herald. They get a board, Chester commentates both sides.', accent: '#ffd84d' },
   { href: '/daily-challenge', icon: '☀️', title: 'DAILY CHALLENGE', copy: 'One town puzzle a day. Solve it, bank the streak.', accent: '#4ade80' },
   { href: '/boss-map', icon: '👑', title: 'THE ROAD TO JOSEPH', copy: 'Mario-style world map: clear areas, beat mini-bosses, dethrone the Big Boss.', accent: '#ff8c00' },
 ];

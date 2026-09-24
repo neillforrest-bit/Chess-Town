@@ -503,11 +503,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           // Jails are wide strips in the top margin: label on the left, captured pieces line up beside it.
           const jailX = 630;
           const greenJailX = 170;
-          scene.add.rectangle(jailX, jailY, 300, 24, 0x240019, 0.95)
+          scene.add.rectangle(jailX, jailY, 310, 30, 0x240019, 0.95)
             .setStrokeStyle(2, 0xf43f7a, 0.9)
             .setDepth(20);
           scene.add.text(486, jailY, 'PIECE JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#fecdd8' }).setOrigin(0, 0.5).setDepth(21);
-          scene.add.rectangle(greenJailX, jailY, 300, 24, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
+          scene.add.rectangle(greenJailX, jailY, 310, 30, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
           scene.add.text(26, jailY, 'GREEN JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#dfffda' }).setOrigin(0, 0.5).setDepth(21);
           const jailGlyphLayers: Record<'w' | 'b', Phaser.GameObjects.Container> = {
             w: scene.add.container(0, 0).setDepth(21),
@@ -518,10 +518,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             try {
               const count = gameRef.current.jailedCounts[color]++;
               const layer = jailGlyphLayers[color];
-              const startX = color === 'w' ? 108 : 568;
-              const spacing = Math.min(21, 180 / Math.max(1, count + 1));
+              const startX = color === 'w' ? 112 : 570;
+              const spacing = Math.min(26, 200 / Math.max(1, count + 1));
               (layer.getAll() as any[]).forEach((child, index) => child.setX(startX + index * spacing));
-              const glyph = scene.add.image(startX + count * spacing, jailY, `piece-${color}-${type}`).setDisplaySize(20, 20);
+              const glyph = scene.add.image(startX + count * spacing, jailY, `piece-${color}-${type}`).setDisplaySize(28, 28);
               const fullScale = glyph.scaleX;
               glyph.setScale(0.02);
               scene.tweens.add({ targets: glyph, scaleX: fullScale, scaleY: fullScale, duration: 260, ease: 'Back.Out' });

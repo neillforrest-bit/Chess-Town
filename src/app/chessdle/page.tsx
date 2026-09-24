@@ -65,7 +65,7 @@ export default function ChessdlePage() {
     window.setTimeout(() => setCopied(false), 2200);
   };
 
-  return <main className="minigame-page">
+  return <main className="minigame-page minigame-page--roomy">
     <header className="minigame-head">
       <span className="minigame-kicker">ONE PUZZLE · ONE DAY · EVERY PLAYER ON EARTH</span>
       <h1>CHESSDLE <em>#{number}</em></h1>

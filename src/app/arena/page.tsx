@@ -1153,6 +1153,20 @@ function LegacyArena() {
           </div>
 
           {/* Chester commentary panel */}
+          {drawerOpen && gameMode === 'PVP_REMOTE' && !remoteConnected && (
+            <div className="duel-await" role="dialog" aria-modal="true" aria-label="Challenge sent - awaiting your rival">
+              <div className="duel-await__card">
+                <div className="duel-await__avatar" aria-hidden="true">♞</div>
+                <span className="duel-await__kicker">📯 THE HERALD IS OUT</span>
+                <h2>CHALLENGE SENT</h2>
+                <p>My herald is riding across Chesterville with your challenge sealed in wax. The moment your rival opens the gates, this board goes live - and I grade every move. Both sides. No mercy.</p>
+                <div className="duel-await__status"><i />AWAITING A CHALLENGER</div>
+                <button type="button" className="duel-await__share" onClick={() => void shareChallengeLink()}>📮 SEND THE CHALLENGE</button>
+                <button type="button" className="duel-await__copy" onClick={() => void copyChallengeLink()}>COPY LINK</button>
+                <button type="button" className="duel-await__cancel" onClick={() => { peerRef.current?.destroy?.(); window.location.assign('/'); }}>STAND DOWN</button>
+              </div>
+            </div>
+          )}
           {drawerOpen && arenaView === 'CHESTER' && (
             <div style={{ 
               position: (isMobile && arenaView === 'CHESTER') ? 'absolute' : 'static',
