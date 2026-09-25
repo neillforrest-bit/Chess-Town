@@ -421,6 +421,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
       parent: containerRef.current,
       backgroundColor: '#05000a',
       input: { activePointers: 2, touch: { capture: true }, dragDistanceThreshold: 14 },
+      // Retina (batch 44, his 'pieces too blurry'): render the backing store at device
+      // pixels instead of upscaling an 800px canvas on a 3x phone.
+      resolution: Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 3),
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 800, height: 800 },
       scene: {
         create: function (this: Phaser.Scene) {
@@ -482,9 +485,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => {
               const key = `piece-${color}-${type}`;
               if (scene.textures.exists(key)) return;
-              const tex = scene.textures.createCanvas(key, 144, 144);
+              // 288px sprites (was 144): headroom so Retina pieces stay crisp (batch 44).
+              const tex = scene.textures.createCanvas(key, 288, 288);
               if (!tex) return;
-              drawPieceSprite(tex.getContext(), color, type, 144);
+              drawPieceSprite(tex.getContext(), color, type, 288);
               tex.refresh();
             });
           });
@@ -1123,6 +1127,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 // Fun trail: a spark rides the path of the move that was just made (both sides).
                 if (gameRef.current.trailPly !== gameRef.current.ply) {
                   gameRef.current.trailPly = gameRef.current.ply;
+                  gameRef.current.glideMove = { from: gameRef.current.lastMove.from, to: gameRef.current.lastMove.to };
                   const fCol = files.indexOf(gameRef.current.lastMove.from[0]);
                   const fRow = ranks.indexOf(gameRef.current.lastMove.from[1]);
                   const tCol = files.indexOf(gameRef.current.lastMove.to[0]);
@@ -1164,7 +1169,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const royalTexture = displayPieceType === piece.type && (piece.type === 'q' || piece.type === 'k') ? royalCatTextures[piece.type] : undefined;
                   const pieceVisual = royalTexture
                     ? scene.add.image(0, 0, royalTexture).setDisplaySize(tileSize * 1.22, tileSize * 1.22).setOrigin(0.5)
-                    : scene.add.image(0, 0, `piece-${piece.color}-${displayPieceType}`).setDisplaySize(tileSize * 0.98, tileSize * 0.98).setOrigin(0.5);
+                    : scene.add.image(0, 0, `piece-${piece.color}-${displayPieceType}`).setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5);
 
                   // No permanent discs, no dimming - the board stays clean. Only the
                   // last move, a hint suggestion, and tapped-piece targets get marks.
@@ -1175,18 +1180,33 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   if (!isInvisible && isMovedPiece) {
                     const spotlight = scene.add.circle(0, 0, tileSize * 0.52, getGradeColor(gameRef.current.lastMove?.grade), 0.28);
                     container.addAt(spotlight, 0);
-                    container.setScale(0.35).setAlpha(1);
-                    scene.tweens.add({
-                      targets: container,
-                      scaleX: 1.22,
-                      scaleY: 1.22,
-                      alpha: 1,
-                      duration: 220,
-                      ease: 'Back.Out',
-                      yoyo: true,
-                      hold: 120,
-                      onComplete: () => container.setScale(1),
-                    });
+                    const glide = gameRef.current.glideMove && gameRef.current.glideMove.to === squareName ? gameRef.current.glideMove : null;
+                    if (glide) {
+                      // Move glide (batch 44, his 'pieces move instantaneously - half speed'):
+                      // the piece visibly travels from its origin square, ~400ms ease-out,
+                      // gated on the position actually changing so selection re-renders
+                      // never replay it. Cleared on use so the next render can't re-glide.
+                      gameRef.current.glideMove = null;
+                      const gCol = files.indexOf(glide.from[0]);
+                      const gRow = ranks.indexOf(glide.from[1]);
+                      if (gCol >= 0 && gRow >= 0) {
+                        container.setPosition(boardOffset + gCol * tileSize + tileSize / 2, boardOffset + gRow * tileSize + tileSize / 2);
+                        scene.tweens.add({ targets: container, x: posX, y: posY, duration: 400, ease: 'Cubic.Out' });
+                      }
+                    } else {
+                      container.setScale(0.35).setAlpha(1);
+                      scene.tweens.add({
+                        targets: container,
+                        scaleX: 1.22,
+                        scaleY: 1.22,
+                        alpha: 1,
+                        duration: 220,
+                        ease: 'Back.Out',
+                        yoyo: true,
+                        hold: 120,
+                        onComplete: () => container.setScale(1),
+                      });
+                    }
                     scene.tweens.add({ targets: spotlight, alpha: 0.05, scale: 1.35, duration: 720, yoyo: true, repeat: 1 });
                   }
                   container.setInteractive(

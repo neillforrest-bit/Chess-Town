@@ -47,6 +47,25 @@ export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b',
   ctx.fillRect(0, 0, size, size);
   ctx.globalCompositeOperation = 'source-over';
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // Chester flair (batch 44, his open creative call): royalty gets a town-gold crown
+  // badge at the base - king and queen read as royal at phone size, on both armies.
+  if (type === 'k' || type === 'q') {
+    const bx = size * 0.76, by = size * 0.8, w = size * 0.17, h = size * 0.13;
+    ctx.beginPath();
+    ctx.moveTo(bx - w / 2, by + h / 2);
+    ctx.lineTo(bx - w / 2, by - h * 0.1);
+    ctx.lineTo(bx - w * 0.25, by + h * 0.05);
+    ctx.lineTo(bx, by - h / 2);
+    ctx.lineTo(bx + w * 0.25, by + h * 0.05);
+    ctx.lineTo(bx + w / 2, by - h * 0.1);
+    ctx.lineTo(bx + w / 2, by + h / 2);
+    ctx.closePath();
+    ctx.fillStyle = '#ffd84d';
+    ctx.strokeStyle = 'rgba(40,24,0,.85)';
+    ctx.lineWidth = size * 0.014;
+    ctx.stroke();
+    ctx.fill();
+  }
   // Bishop: whisper the mitre slit - the batch-27 heavy black slash read as a
   // stray stroke on his iPad. One fine bright line keeps the silhouette cue.
   if (type === 'b') {
