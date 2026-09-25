@@ -658,7 +658,7 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
     ? { lost: input.exchangeLost, won: input.exchangeWon, net: input.exchangeNet || 0 }
     : null;
   if (plannedExchange && good) {
-    gradeLine = `You saw one move deeper than the board: Chester can take your ${plannedExchange.lost}, and your answer wins ${plannedExchange.won} straight back. That is not a lost piece - that is a planned exchange that profits you. This is exactly how strong players think.`;
+    gradeLine = `You saw one move deeper than the board: Chester can take your ${plannedExchange.lost.replace(/^(a|the) /, '')}, and your answer wins ${plannedExchange.won} straight back. That is not a lost piece - that is a planned exchange that profits you. This is exactly how strong players think.`;
   }
   // ROOKIE: when the move knowingly followed an opening principle, the principle IS the lesson.
   const principlePraise = input.principleKey && input.principleFollowed && good ? ROOKIE_PRINCIPLE_PRAISE[input.principleKey] : null;
