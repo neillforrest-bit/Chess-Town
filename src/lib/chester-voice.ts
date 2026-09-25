@@ -595,8 +595,8 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
   let gradeLine = '';
   if (input.sacrificePiece && top) {
     gradeLine = scriptText
-      ? `You offered your ${input.sacrificePiece} and the engine applauds - the script shows the payback: ${scriptText}. That is a sacrifice, not a blunder.`
-      : `You offered your ${input.sacrificePiece} and the engine applauds - giving material for a bigger win is a sacrifice, not a blunder.`;
+      ? `You gave your ${input.sacrificePiece}${taken ? ` for ${taken}` : ' for almost nothing'} on purpose, and the engine applauds: it is the strongest move on the board. Watch how it comes back with interest - ${scriptText}. Material lent, never lost. That is a sacrifice, not a blunder.`
+      : `You gave your ${input.sacrificePiece}${taken ? ` for ${taken}` : ' for almost nothing'} on purpose, and the engine applauds: giving material for a bigger, forced win is a sacrifice, not a blunder.`;
   } else if (label === 'BRILLIANT') {
     gradeLine = taken
       ? `You took ${taken} with the engine's own first choice - maximum damage, nothing left hanging. That is board vision, not luck.`
@@ -623,7 +623,9 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
 
   let considerHeading = 'WHY CHESTER LOVES IT';
   let considerLine = '';
-  if (good) {
+  if (input.sacrificePiece && top) {
+    considerLine = `This is the move strong players frame. A sacrifice only counts when you saw the follow-up before letting go of the piece - and you did. The material was the price of admission, not a mistake.${scriptText ? ` The engine's script from here: ${scriptText}.` : ''}`;
+  } else if (good) {
     const scriptSuffix = scriptText ? ` The engine's script from here: ${scriptText}.` : '';
     considerLine = taken
       ? `Celebrate this one: winning ${taken} without giving anything back is not luck - you saw a loose piece and punished it. Hunt loose pieces every single move.`

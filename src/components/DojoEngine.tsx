@@ -770,6 +770,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               difficulty: getChesterDifficulty(difficulty),
             }).then((telemetry) => {
               const quality = { label: applyMaterialFloor(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
+              // The BRILLIANT bell, chess.com style: a detected sound sacrifice that IS the
+              // engine's own first choice and holds the eval (near-zero loss) claims the top
+              // grade. Depth-12 re-evaluation noise lands these in the GREAT band, so escalate.
+              const earlySacrifice = detectSacrifice(fenBeforeMove, move);
+              if (earlySacrifice && telemetry.bestMove === uci && telemetry.evalDelta !== null && telemetry.evalDelta !== undefined && telemetry.evalDelta <= 30) {
+                quality.label = 'BRILLIANT';
+              }
               const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
               const triggeredChaos = isBrawl
                 ? checkChaosTriggers(telemetry.fenAfter, telemetry.evalScore, telemetry.moveQuality, p1Difficulty, p2Difficulty)
