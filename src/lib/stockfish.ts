@@ -49,9 +49,17 @@ export const ANALYST_DEPTH = 12;
 type AnalysisLine = { score: number | null; mate: number | null; pv: string[] };
 type Analysis = { score: number | null; mate: number | null; pv: string[]; bestMove: string | null; lines: Record<number, AnalysisLine> };
 
-function classify(loss: number | null, isBestMove: boolean): EngineTelemetry['classification'] {
+function classify(loss: number | null, isBestMove: boolean, firstChoiceGap: number | null, foundForcedMate: boolean): EngineTelemetry['classification'] {
   if (loss === null) return 'GREAT';
-  if (loss <= 5) return isBestMove ? 'BRILLIANT' : 'BEST';
+  // TOP DOG stays rare (owner calibration, batch 43): the engine's first choice earns the
+  // crown only when it was a genuine find - a forced mate, or the only strong move with the
+  // second-best line clearly worse. An obvious best move in a wide-open position (or one
+  // among several mates) reads BEST ("SPOT ON") instead. Genuine sound sacrifices keep their
+  // own BRILLIANT bell in DojoEngine.
+  if (loss <= 5) {
+    if (isBestMove && (foundForcedMate || (firstChoiceGap !== null && firstChoiceGap >= 150))) return 'BRILLIANT';
+    return 'BEST';
+  }
   if (loss <= 30) return 'GREAT';
   if (loss <= 100) return 'INACCURACY';
   if (loss <= 250) return 'MISTAKE';
@@ -198,7 +206,16 @@ export class StockfishClient {
       afterScore = after.score;
       afterMate = after.mate;
     }
-    const classification = classify(loss, isBestMove);
+    // Rarity inputs for the crown: the same-search gap to the second line (only meaningful
+    // when the played move IS the first choice), and whether a forced mate was found and the
+    // second line is not an equally fast mate.
+    const secondLine = before.lines[2];
+    const firstChoiceGap = isBestMove && before.score !== null && secondLine?.score !== null && secondLine?.score !== undefined
+      ? Math.max(0, before.score - secondLine.score)
+      : null;
+    const foundForcedMate = isBestMove && before.mate !== null
+      && !(secondLine && secondLine.mate !== null && secondLine.mate <= before.mate + 1);
+    const classification = classify(loss, isBestMove, firstChoiceGap, foundForcedMate);
     const stmAfter = input.fenAfter.split(/\s+/)[1];
     const absAfter = afterScore === null ? null : stmAfter === 'b' ? -afterScore : afterScore;
     const absMateAfter = afterMate === null ? null : stmAfter === 'b' ? -afterMate : afterMate;

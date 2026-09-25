@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
 import { describeMove } from '@/lib/move-words';
-import { detectOpeningPrinciple, detectPlannedExchange, detectTrapSet, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
+import { applyMaterialReality,  detectOpeningPrinciple, detectPlannedExchange, detectTrapSet, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -288,7 +288,10 @@ function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: str
 
   const centipawnLoss = Math.max(0, Math.round(bestScore - playedScore));
   let label = 'GOOD';
-  if (centipawnLoss <= 5) label = playedScore === bestScore ? 'BRILLIANT' : 'BEST';
+  // Toy fallback never mints TOP DOG (owner calibration, batch 43): a provisional crown
+  // from a shallow local search reads as over-rewarding. Real BRILLIANT comes from the
+  // analyst path (only-strong-move gap or forced mate) or the sound-sacrifice bell.
+  if (centipawnLoss <= 5) label = 'BEST';
   else if (centipawnLoss <= 25) label = 'GREAT';
   else if (centipawnLoss <= 60) label = 'GOOD';
   else if (centipawnLoss <= 120) label = 'INACCURACY';
@@ -296,32 +299,6 @@ function classifyMove(fenBeforeMove: string, playedMove: { from: string; to: str
   else label = 'BLUNDER';
 
   return { label, centipawnLoss };
-}
-
-// Material reality check: winning an undefended rook/queen must dominate the grade,
-// whatever shallow search or engine noise says. Only ever upgrades a label.
-const FLOOR_RANK: Record<string, number> = { BLUNDER: 0, MISTAKE: 1, INACCURACY: 2, GOOD: 3, GREAT: 4, BEST: 5, BRILLIANT: 6 };
-function applyMaterialFloor(fenBeforeMove: string, move: any, label: string): string {
-  try {
-    if (!move?.captured) return label;
-    const values: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
-    const capturedValue = values[move.captured] || 0;
-    if (capturedValue < 5) return label; // minors and pawns keep normal grading
-    const board = new Chess(fenBeforeMove);
-    board.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
-    const moverValue = move.promotion ? 9 : (values[move.piece] || 0);
-    // A recapture exists only if the opponent has a legal capture landing on the moved piece's square.
-    const recaptured = board.moves({ verbose: true }).some((candidate: any) => candidate.to === move.to && Boolean(candidate.captured));
-    const net = capturedValue - (recaptured ? moverValue : 0);
-    let floor: string | null = null;
-    if (net >= 8) floor = 'BRILLIANT'; // took a queen (or better) for nothing
-    else if (net >= 6) floor = 'BEST'; // queen for a minor piece, still a rout
-    else if (net >= 3) floor = 'GREAT'; // clear material profit
-    if (floor && (FLOOR_RANK[floor] || 0) > (FLOOR_RANK[label] || 0)) return floor;
-    return label;
-  } catch {
-    return label;
-  }
 }
 
 function getLetterGrade(centipawnLoss: number | null | undefined) {
@@ -774,7 +751,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const evaluateAndPublishMove = (move: any, player: string, fenBeforeMove: string, rawLocalQuality: { label: string; centipawnLoss: number } | null) => {
-            const localQuality = rawLocalQuality ? { ...rawLocalQuality, label: applyMaterialFloor(fenBeforeMove, move, rawLocalQuality.label) } : rawLocalQuality;
+            const localQuality = rawLocalQuality ? { ...rawLocalQuality, label: applyMaterialReality(fenBeforeMove, move, rawLocalQuality.label) } : rawLocalQuality;
             // Capture the ply NOW: telemetry resolves after the opponent replies, and reading
             // gameRef.current.ply inside .then would relabel (or miss) the wrong move.
             const movePly = gameRef.current.ply;
@@ -793,7 +770,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               playerColor: move.color,
               difficulty: getChesterDifficulty(difficulty),
             }).then((telemetry) => {
-              const quality = { label: applyMaterialFloor(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
+              const quality = { label: applyMaterialReality(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
               // Delicate grading for genuine learner moves (ROOKIE only): a move that follows a
               // real opening principle and costs less than a pawn is taught, not scolded.
               if (openingPrinciple?.followed && quality.label === 'INACCURACY') quality.label = 'GOOD';

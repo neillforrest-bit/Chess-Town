@@ -115,3 +115,38 @@ export function detectTrapSet(fen: string, playerColor: 'w' | 'b'): PlannedExcha
     return null;
   }
 }
+
+// Material reality check (moved into the shared core, batch 43): winning a rook/queen must
+// dominate the grade whatever shallow search or engine noise says (floor), and a free-piece
+// grab must never mint the crown (ceiling - owner calibration: hoovering a hanging queen is
+// a good spot, not a TOP DOG moment). Only ever touches rook/queen captures.
+const GRADE_RANK: Record<string, number> = { BLUNDER: 0, MISTAKE: 1, INACCURACY: 2, GOOD: 3, GREAT: 4, BEST: 5, BRILLIANT: 6 };
+export function applyMaterialReality(fenBeforeMove: string, move: any, label: string): string {
+  try {
+    if (!move?.captured) return label;
+    const values: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    const capturedValue = values[move.captured] || 0;
+    if (capturedValue < 5) return label; // minors and pawns keep normal grading
+    const board = new Chess(fenBeforeMove);
+    board.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
+    const moverValue = move.promotion ? 9 : (values[move.piece] || 0);
+    // A recapture exists only if the opponent has a legal capture landing on the moved piece's square.
+    const replies = board.moves({ verbose: true });
+    // No replies at all means the move ended the game (mate/stalemate) - never a "hanging grab".
+    const gameEnder = replies.length === 0;
+    const recaptured = replies.some((candidate: any) => candidate.to === move.to && Boolean(candidate.captured));
+    const net = capturedValue - (recaptured ? moverValue : 0);
+    // Floor: big material wins grade well - but never TOP DOG (owner calibration, batch 43).
+    let floor: string | null = null;
+    if (net >= 6) floor = 'BEST'; // queen for a minor or better, a rout
+    else if (net >= 3) floor = 'GREAT'; // clear material profit
+    if (floor && (GRADE_RANK[floor] || 0) > (GRADE_RANK[label] || 0)) return floor;
+    // Ceiling: a free-piece grab (opponent cannot recapture our piece) is an obvious find,
+    // so it caps the crown even when it was the engine's only-strong-move first choice.
+    // Defended-piece captures keep their BRILLIANT - winning a defended piece takes a real idea.
+    if (label === 'BRILLIANT' && !recaptured && !gameEnder && capturedValue >= 3) return 'BEST';
+    return label;
+  } catch {
+    return label;
+  }
+}
