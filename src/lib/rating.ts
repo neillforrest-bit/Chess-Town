@@ -109,6 +109,27 @@ export function recordLadderGame(input: { level: string; result: 'win' | 'loss' 
   return next;
 }
 
+/* ---- Verdict memory: the mission banked from the last report card ----
+   Next game's card opens with the callback: fixed, or still the leak. */
+export type VerdictMemory = { leakKey: string | null; mission: string | null; at: string | null };
+const VERDICT_KEY = 'ct-verdict-v1';
+const VERDICT_DEFAULT: VerdictMemory = { leakKey: null, mission: null, at: null };
+
+export function getVerdictMemory(): VerdictMemory {
+  if (typeof window === 'undefined') return VERDICT_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(VERDICT_KEY);
+    if (raw) { const p = JSON.parse(raw); return { ...VERDICT_DEFAULT, ...p }; }
+  } catch { /* private browsing */ }
+  return VERDICT_DEFAULT;
+}
+
+export function recordVerdictMemory(leakKey: string, mission: string): VerdictMemory {
+  const next: VerdictMemory = { leakKey, mission, at: new Date().toISOString() };
+  try { window.localStorage.setItem(VERDICT_KEY, JSON.stringify(next)); } catch { /* private browsing */ }
+  return next;
+}
+
 /* Where Chester sends you to practise each weakness. */
 export const WEAKNESS_HOMEWORK: Record<string, { text: string; href: string }> = {
   development: { text: 'Lesson Hall - the develop-with-purpose drills', href: '/training' },

@@ -9,14 +9,14 @@ import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCa
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, chesterHowlerLine } from '@/lib/chester-voice';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
-import { phrasesFromPgn } from '@/lib/move-words';
+import { phrasesFromPgn, fenBeforePly } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
-type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string };
-type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number };
+type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
+type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
@@ -146,6 +146,17 @@ function PlayChesterGame() {
     }
   };
 
+  const retryMistake = () => {
+    if (!report?.pgn || !report.gradeHistory.length) return;
+    const myMoves = report.gradeHistory.filter((entry) => entry.player === 'You');
+    if (!myMoves.length) return;
+    const worstMove = myMoves.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b));
+    const fen = fenBeforePly(report.pgn, worstMove.ply);
+    if (!fen) return;
+    setReport(null);
+    window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode, fen } }));
+  };
+
   const help = () => { if (!helpRemaining || isThinking) return; setHelpRemaining((n) => n - 1); setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
@@ -188,7 +199,7 @@ function PlayChesterGame() {
       <section className="chess-game-sheet__content">
         <header><b>WHY {getVerdict(coachPrompt.classification).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
         <div style={{ padding: '1rem 1.1rem', color: '#e8f6ff', lineHeight: 1.6, fontSize: '0.95rem' }}>
-          {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply }); return <>
+          {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore }); return <>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#c084fc' }}>THE {why.phase} RULE:</b> {why.phaseTip}</p>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>YOUR MOVE:</b> {why.moveLine}</p>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: getVerdict(coachPrompt.classification).color }}>WHY {getVerdict(coachPrompt.classification).word}:</b> {why.gradeLine}</p>
@@ -197,7 +208,7 @@ function PlayChesterGame() {
         </div>
       </section>
     </div>}
-    {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics }} onClose={() => setReport(null)} />}
+    {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
   </main>;
 }
 

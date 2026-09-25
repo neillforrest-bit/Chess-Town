@@ -114,18 +114,27 @@ function getOpeningName(chess: any) {
 }
 
 function getPostGameReport(chess: any, qualities: { label: string; move: string; ply: number }[]) {
+  // Player-side dimensions only (the human plays White against Chester): the old
+  // version counted BOTH sides' minor moves all game, credited king safety when
+  // either side castled, and pinned a typical beginner win to a C by formula.
   const qualityScores: Record<string, number> = { BEST: 100, GREAT: 90, GOOD: 78, INACCURACY: 58, MISTAKE: 35, BLUNDER: 10 };
   const accuracy = qualities.length
     ? Math.round(qualities.reduce((total, quality) => total + (qualityScores[quality.label] || 50), 0) / qualities.length)
     : 50;
-  const checklist = getOpeningChecklist(chess);
-  const development = Math.min(100, checklist.minorsDeveloped * 18 + (checklist.centerClaimed ? 28 : 0));
-  const kingSafety = checklist.castled ? 95 : 48;
-  const tactics = Math.min(100, 45 + chess.history({ verbose: true }).filter((move: any) => move.color === 'w' && move.captured).length * 18);
-  const score = Math.round(accuracy * 0.45 + development * 0.25 + kingSafety * 0.15 + tactics * 0.15);
-  const grade = score >= 90 ? 'A' : score >= 78 ? 'B' : score >= 65 ? 'C' : score >= 50 ? 'D' : 'F';
+  const history = chess.history({ verbose: true }) as any[];
+  const playerMoves = history.filter((move) => move.color === 'w');
+  const developedFroms = new Set(playerMoves.filter((move) => (move.piece === 'n' || move.piece === 'b') && ['b1', 'g1', 'c1', 'f1'].includes(move.from)).map((move) => move.from));
+  const development = Math.min(100, developedFroms.size * 25);
+  const castled = playerMoves.some((move) => move.flags.includes('k') || move.flags.includes('q'));
+  const kingSafety = castled ? 95 : 45;
+  const captures = playerMoves.filter((move) => move.captured).length;
+  const checksGiven = playerMoves.filter((move) => (move.san || '').includes('+')).length;
+  const tactics = Math.min(100, 45 + captures * 15 + checksGiven * 5);
+  const blunders = qualities.filter((quality) => quality.label === 'BLUNDER').length;
+  const score = Math.round(accuracy * 0.5 + development * 0.2 + kingSafety * 0.15 + tactics * 0.15);
+  const grade = score >= 88 ? 'A' : score >= 74 ? 'B' : score >= 60 ? 'C' : score >= 45 ? 'D' : 'F';
   const turningPoint = [...qualities].sort((left, right) => (qualityScores[left.label] || 50) - (qualityScores[right.label] || 50))[0];
-  return { grade, score, accuracy, development, kingSafety, tactics, openingName: getOpeningName(chess), moves: chess.history().length, turningPoint: turningPoint ? `${turningPoint.move} (${turningPoint.label})` : 'No decisive turning point' };
+  return { grade, score, accuracy, development, kingSafety, tactics, openingName: getOpeningName(chess), moves: chess.history().length, turningPoint: turningPoint ? `${turningPoint.move} (${turningPoint.label})` : 'No decisive turning point', habits: { castled, developed: developedFroms.size >= 3, blunders } };
 }
 
 function getMoveFlavor(player: string, move: string, ply: number, mode: string) {
@@ -622,6 +631,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               detail: {
                 type: 'move', ply: gameRef.current.ply, player, move: move.san,
                 from: move.from, to: move.to, piece: move.piece, captured: move.captured || null,
+                fenBefore: fenBeforeMove || null,
                   royalCatMove: move.piece === 'q' || move.piece === 'k',
                   royalCatName: move.piece === 'q' ? 'Marley' : move.piece === 'k' ? 'Dilly' : null,
                 fen: engineTelemetry?.fenAfter || gameRef.current.chess.fen(), matchup: isBrawl ? 'The Backroom Brawl' : AI_TAGS[mode]?.title, context: `${mode} matchup`,
@@ -645,6 +655,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 kind: 'move',
                 move: move.san,
                 fen: engineTelemetry?.fenAfter || gameRef.current.chess.fen(),
+                fenBefore: fenBeforeMove || null,
                 bestMove: engineTelemetry?.bestMoveSan || engineTelemetry?.bestMove || null,
                 classification: quality?.label || null,
                 evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null,
@@ -785,7 +796,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const finishGame = (message: string, result: 'checkmate' | 'draw' | 'resigned' = 'draw') => {
             gameRef.current.isGameOver = true;
-            const pgn = gameRef.current.chess.pgn();
+            // chess.js never stamps the result token (pgn always ends "*"), which made
+            // every /1-0$/ test downstream false: wins read as draws, no ladder unlocks,
+            // no banked points. Stamp it here: checkmate/resign -> the side to move lost.
+            const resultTag = result === 'draw' ? '1/2-1/2' : gameRef.current.chess.turn() === 'w' ? '0-1' : '1-0';
+            const pgn = `${gameRef.current.chess.pgn().replace(/\s*\*?\s*$/, '')} ${resultTag}`;
             window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory, pgn } }));
             window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn } }));
             window.dispatchEvent(new CustomEvent('match-complete', { detail: { result, pgn } }));
@@ -1155,7 +1170,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const handleLoadPuzzle = (e: any) => {
             if (e.detail?.mode !== mode) return;
             const coachingPosition = COACHING_POSITIONS[mode];
-            gameRef.current.chess.load(coachingPosition?.fen || new Chess().fen());
+            gameRef.current.chess.load(e.detail?.fen || coachingPosition?.fen || new Chess().fen());
             gameRef.current.selectedSquare = null;
             gameRef.current.legalTargets = [];
             gameRef.current.lastMove = null;

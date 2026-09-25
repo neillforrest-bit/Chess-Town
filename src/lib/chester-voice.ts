@@ -1,6 +1,8 @@
 // Chester's voice: difficulty-scaled personality verdicts, grounded coaching and story recaps.
 // Deterministic by design - zero per-visit prompt cost, no engine jargon, facts come from Stockfish telemetry.
 
+import { detectWhyPattern } from './why-patterns';
+
 export type PersonaKey = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 
 export type Verdict = {
@@ -560,6 +562,9 @@ export type WhyLessonInput = {
   mate?: boolean;
   evalDelta?: number | null;
   ply?: number;
+  move?: string | null;
+  bestMove?: string | null;
+  fenBefore?: string | null;
 };
 
 export type WhyLesson = {
@@ -573,6 +578,7 @@ export type WhyLesson = {
 
 export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
   const phase = gamePhaseFromFen(input.fen);
+  const pattern = detectWhyPattern({ fenBefore: input.fenBefore, move: input.move, bestMove: input.bestMove, classification: input.classification, movePhrase: input.movePhrase });
   const seed = (input.ply || 0) + ((input.movePhrase || '').length);
   const phaseTip = pick(PHASE_TIPS[phase], seed);
   const label = (input.classification || 'GOOD').toUpperCase();
@@ -601,7 +607,9 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
   } else if (label === 'GOOD') {
     gradeLine = 'Solid and safe. It keeps your structure intact - the engine saw a punchier option, but nothing about yours leaks.';
   } else {
-    gradeLine = `It let ${pawnCost(input.evalDelta)} slip. The usual cause: moving before checking what the move leaves undefended, or ignoring a more forcing option.`;
+    gradeLine = pattern
+      ? `It let ${pawnCost(input.evalDelta)} slip - ${pattern.line}`
+      : `It let ${pawnCost(input.evalDelta)} slip. The usual cause: moving before checking what the move leaves undefended, or ignoring a more forcing option.`;
   }
 
   let considerHeading = 'WHY CHESTER LOVES IT';
@@ -616,9 +624,13 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
           : 'Celebrate the quiet ones most of all: anyone can spot a capture, but choosing the strongest calm move is real chess.';
   } else {
     considerHeading = 'WHAT YOU COULD CONSIDER';
-    considerLine = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
-      ? `The risk it created: after ${input.movePhrase || 'that move'}, Chester has fresh targets. The engine's calmer idea was ${input.bestMovePhrase} - same ambition, no door left open.`
-      : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.';
+    considerLine = pattern
+      ? input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
+        ? `The engine's stronger idea was ${input.bestMovePhrase}. ${pattern.principle}`
+        : pattern.principle
+      : input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
+        ? `The risk it created: after ${input.movePhrase || 'that move'}, Chester has fresh targets. The engine's calmer idea was ${input.bestMovePhrase} - same ambition, no door left open.`
+        : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.';
     if (phase === 'OPENING') considerLine = `The opening is not the place to improvise - standard development exists because it survives stronger opponents. ${considerLine}`;
   }
 

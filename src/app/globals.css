@@ -1753,3 +1753,12 @@ body {
 .verdict-share__url { display: block; color: #a5f3fc; font-size: .72rem; word-break: break-all; cursor: pointer; margin-bottom: .55rem; }
 .verdict-share__row { display: flex; gap: .45rem; flex-wrap: wrap; }
 .verdict-share__row button, .verdict-share__row a { flex: 1; min-width: 96px; text-align: center; padding: .55rem .4rem; border: 1px solid rgba(34,211,238,.6); border-radius: 6px; background: rgba(34,211,238,.12); color: #a5f3fc; font-size: .72rem; font-weight: 900; letter-spacing: .8px; text-decoration: none; cursor: pointer; }
+
+/* Verdict 2.0 habit checks */
+.chester-report-card__habits { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; margin-top: .8rem; }
+.chester-report-card__habit { display: grid; gap: .2rem; padding: .45rem .4rem; border: 1px solid rgba(255,255,255,.14); border-radius: 5px; background: rgba(255,255,255,.04); text-align: center; }
+.chester-report-card__habit b { color: #fcecef; font-size: .58rem; font-weight: 900; letter-spacing: .8px; }
+.chester-report-card__habit em { font-style: normal; font-size: .62rem; font-weight: 900; }
+.chester-report-card__habit.is-pass em { color: #2fd17c; }
+.chester-report-card__habit.is-almost em { color: #ffc53d; }
+.chester-report-card__habit.is-miss em { color: #f43f7a; }
