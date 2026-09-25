@@ -759,6 +759,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const evaluateAndPublishMove = (move: any, player: string, fenBeforeMove: string, rawLocalQuality: { label: string; centipawnLoss: number } | null) => {
             const localQuality = rawLocalQuality ? { ...rawLocalQuality, label: applyMaterialFloor(fenBeforeMove, move, rawLocalQuality.label) } : rawLocalQuality;
+            // Capture the ply NOW: telemetry resolves after the opponent replies, and reading
+            // gameRef.current.ply inside .then would relabel (or miss) the wrong move.
+            const movePly = gameRef.current.ply;
             const fenAfterMove = gameRef.current.chess.fen();
             const uci = `${move.from}${move.to}${move.promotion || ''}`;
             void getStockfishClient().evaluateMove({
@@ -826,7 +829,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   moveQuality: telemetry.moveQuality,
                 },
               }));
-              const gradeEntry = gameRef.current.gradeHistory.find((entry: any) => entry.ply === gameRef.current.ply && entry.move === move.san);
+              const gradeEntry = gameRef.current.gradeHistory.find((entry: any) => entry.ply === movePly && entry.move === move.san);
               if (gradeEntry) {
                 gradeEntry.grade = getLetterGrade(quality.centipawnLoss);
                 gradeEntry.centipawnLoss = quality.centipawnLoss;
@@ -834,7 +837,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               // The report card reads playerQualities, which was seeded with the fast local
               // (depth-1) label before the engine answered. Upgrade it to the real verdict so
               // the card grades moves the way the engine saw them, not the shallow guess.
-              const playerEntry = gameRef.current.playerQualities.find((entry: any) => entry.ply === gameRef.current.ply && entry.move === move.san);
+              const playerEntry = gameRef.current.playerQualities.find((entry: any) => entry.ply === movePly && entry.move === move.san);
               if (playerEntry) playerEntry.label = quality.label;
               const movePhrase = describeMove(fenBeforeMove, move.san);
               const bestMovePhrase = telemetry?.bestMove ? describeMove(fenBeforeMove, telemetry.bestMove) : null;
