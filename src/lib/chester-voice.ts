@@ -267,6 +267,8 @@ export type CoachPromptShape = {
   mate?: boolean;
   ply?: number;
   streak?: number;
+  principleKey?: string | null;
+  principleFollowed?: boolean | null;
 };
 
 export function personaCoaching(prompt: CoachPromptShape, persona: PersonaKey): string {
@@ -286,6 +288,18 @@ export function personaCoaching(prompt: CoachPromptShape, persona: PersonaKey): 
   }
   const voice = pick(LINES[persona][label] || LINES[persona].GOOD, varietySeed(prompt));
   const positive = label === 'BRILLIANT' || label === 'BEST' || label === 'GREAT';
+  // Grounded fallback teaches the same curriculum as the WHY sheets: when the coaching
+  // core tagged an opening principle, a BEGINNER hears it named in Chester's own words.
+  const ROOKIE_PRINCIPLE_VOICE: Record<string, string> = {
+    'centre': 'That pawn fights for the centre - the ground every opening is fought over. ',
+    'development': 'A new piece joins the game - wake them all before you move any twice. ',
+    'king-safety': 'King tucked away, rook in the game - castling does two jobs at once. ',
+    'repeat-move': 'That piece already moved - a new piece every move until the back rank is awake. ',
+    'early-queen': 'The queen is out early - she hunts better once the small pieces are developed. ',
+    'edge-pawn': 'An edge pawn that captures nothing spends a move on nothing - centre first. ',
+    'exposed-piece': 'Careful - that piece can simply be taken. New pieces need safe squares. ',
+  };
+  const principleVoice = persona === 'BEGINNER' && prompt.principleKey ? ROOKIE_PRINCIPLE_VOICE[prompt.principleKey] || '' : '';
   const streakOpeners: Record<PersonaKey, string> = {
     BEGINNER: 'Look at you go - strong moves are becoming a habit. ',
     INTERMEDIATE: 'You are on a roll. Rolls win games. ',
@@ -329,7 +343,7 @@ export function personaCoaching(prompt: CoachPromptShape, persona: PersonaKey): 
   else fact = pick(FACT_QUIET, factSeed);
   const played = moveWords ? `You played: ${moveWords}.` : (prompt.move ? `You played ${prompt.move}.` : '');
   const alternative = bestWords && bestWords !== moveWords ? ` My engine's pick in that spot was ${bestWords}.` : '';
-  return `${streakPrefix}${voice} ${played} ${fact}${alternative}`;
+  return `${streakPrefix}${principleVoice}${voice} ${played} ${fact}${alternative}`;
 }
 
 export type StoryMove = { move: string; player: string; ply: number; grade: 'A' | 'B' | 'C' | 'F'; centipawnLoss: number | null };
