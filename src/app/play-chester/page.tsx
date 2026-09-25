@@ -16,7 +16,7 @@ import { ChesterChatOverlay } from '@/components/ChesterUI';
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
-type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number };
+type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
@@ -199,7 +199,7 @@ function PlayChesterGame() {
       <section className="chess-game-sheet__content">
         <header><b>WHY {getVerdict(coachPrompt.classification).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
         <div style={{ padding: '1rem 1.1rem', color: '#e8f6ff', lineHeight: 1.6, fontSize: '0.95rem' }}>
-          {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore }); return <>
+          {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null, sacrificePiece: coachPrompt.sacrificePiece || null }); return <>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#c084fc' }}>THE {why.phase} RULE:</b> {why.phaseTip}</p>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>YOUR MOVE:</b> {why.moveLine}</p>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: getVerdict(coachPrompt.classification).color }}>WHY {getVerdict(coachPrompt.classification).word}:</b> {why.gradeLine}</p>

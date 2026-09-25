@@ -97,7 +97,7 @@ export class StockfishClient {
     return result;
   }
 
-  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number): Promise<Analysis> {
+  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number, limitStrength = true): Promise<Analysis> {
     return this.enqueue(async () => {
       await this.initialize();
       const worker = this.worker;
@@ -129,9 +129,13 @@ export class StockfishClient {
           }
         };
         worker.addEventListener('message', onMessage);
-        worker.postMessage(`setoption name Skill Level value ${preset.skill}`);
-        worker.postMessage('setoption name UCI_LimitStrength value true');
-        worker.postMessage(`setoption name UCI_Elo value ${preset.elo}`);
+        if (limitStrength) {
+          worker.postMessage(`setoption name Skill Level value ${preset.skill}`);
+          worker.postMessage('setoption name UCI_LimitStrength value true');
+          worker.postMessage(`setoption name UCI_Elo value ${preset.elo}`);
+        } else {
+          worker.postMessage('setoption name UCI_LimitStrength value false');
+        }
         worker.postMessage(`position fen ${fen}`);
         worker.postMessage(`go depth ${depthOverride ?? preset.depth}`);
       });
@@ -140,8 +144,8 @@ export class StockfishClient {
 
   async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty }): Promise<EngineTelemetry> {
     void input.difficulty; // grading always runs at analyst strength for verdict integrity
-    const before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH);
-    const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH);
+    const before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false);
+    const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH, false);
     // Stockfish reports scores relative to the SIDE TO MOVE. Before a move and after it the
     // side to move flips, so the centipawn loss of the played move is before + after
     // (same formula for both colours). The old before-minus-after double-counted the
@@ -177,7 +181,7 @@ export class StockfishClient {
   }
 
   async analyzeForDisplay(fen: string) {
-    return this.analyze(fen, ANALYST_PRESET, ANALYST_DEPTH);
+    return this.analyze(fen, ANALYST_PRESET, ANALYST_DEPTH, false);
   }
 
   async diagnose() {

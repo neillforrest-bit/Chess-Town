@@ -621,7 +621,44 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => renderBoard());
           };
 
-          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null } = {}, fenBeforeMove: string | null = null) => {
+          // Engine line in words: walk the PV from the resulting position and phrase each
+          // half-move, so popups can quote the engine's script instead of generic filler.
+          const buildEngineLine = (fenStart: string, ucis: string[] | undefined, max = 3): string[] => {
+            if (!ucis || !ucis.length) return [];
+            try {
+              const board = new Chess(fenStart);
+              const out: string[] = [];
+              for (const uci of ucis.slice(0, max)) {
+                const fenStep = board.fen();
+                const applied = board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4, 5) || 'q' });
+                if (!applied) break;
+                out.push(describeMove(fenStep, applied.san));
+              }
+              return out;
+            } catch {
+              return [];
+            }
+          };
+
+          // Sacrifice detection: the moved piece can simply be taken back, and what was won
+          // for it does not cover it. Only meaningful alongside a good engine verdict.
+          const detectSacrifice = (fenBeforeMove: string, move: any): string | null => {
+            try {
+              const values: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+              const names: Record<string, string> = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
+              const gaveUp = values[move.piece] || 0;
+              const gained = values[move.captured] || 0;
+              if (gaveUp < 3 || gaveUp - gained < 2) return null;
+              const board = new Chess(fenBeforeMove);
+              board.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
+              const recapturable = board.moves({ verbose: true }).some((candidate: any) => candidate.to === move.to && Boolean(candidate.captured));
+              return recapturable ? names[move.piece] || null : null;
+            } catch {
+              return null;
+            }
+          };
+
+          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null } = {}, fenBeforeMove: string | null = null) => {
             // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
             const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
@@ -646,6 +683,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null,
                 principalVariation: engineTelemetry?.principalVariation ?? [],
                 alternateWinningLines: engineTelemetry?.alternateWinningLines ?? [],
+                continuation: engineTelemetry?.continuation ?? [],
+                engineLine: phrases.engineLine ?? null,
+                sacrificePiece: phrases.sacrificePiece ?? null,
               },
             }));
             // Live-move commentary for the play-chester page (Chester games AND pass & play):
@@ -668,6 +708,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 player,
                 movePhrase: phrases.movePhrase || null,
                 bestMovePhrase: phrases.bestMovePhrase || null,
+                continuation: engineTelemetry?.continuation ?? null,
+                engineLine: phrases.engineLine ?? null,
+                sacrificePiece: phrases.sacrificePiece ?? null,
               },
             }));
             // Chester owns his howlers: rookie mode hangs pieces on purpose, so he admits them out loud.
@@ -781,9 +824,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 gradeEntry.grade = getLetterGrade(quality.centipawnLoss);
                 gradeEntry.centipawnLoss = quality.centipawnLoss;
               }
+              // The report card reads playerQualities, which was seeded with the fast local
+              // (depth-1) label before the engine answered. Upgrade it to the real verdict so
+              // the card grades moves the way the engine saw them, not the shallow guess.
+              const playerEntry = gameRef.current.playerQualities.find((entry: any) => entry.ply === gameRef.current.ply && entry.move === move.san);
+              if (playerEntry) playerEntry.label = quality.label;
               const movePhrase = describeMove(fenBeforeMove, move.san);
               const bestMovePhrase = telemetry?.bestMove ? describeMove(fenBeforeMove, telemetry.bestMove) : null;
-              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase }, fenBeforeMove);
+              const topGrade = quality.label === 'BRILLIANT' || quality.label === 'BEST' || quality.label === 'GREAT';
+              const sacrificePiece = topGrade ? detectSacrifice(fenBeforeMove, move) : null;
+              const engineLine = buildEngineLine(fenAfterMove, telemetry?.continuation);
+              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece }, fenBeforeMove);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
                   detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },

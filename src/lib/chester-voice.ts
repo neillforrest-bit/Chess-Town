@@ -565,6 +565,8 @@ export type WhyLessonInput = {
   move?: string | null;
   bestMove?: string | null;
   fenBefore?: string | null;
+  engineLine?: string[] | null;
+  sacrificePiece?: string | null;
 };
 
 export type WhyLesson = {
@@ -587,8 +589,15 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
   const good = label === 'BRILLIANT' || label === 'BEST' || label === 'GREAT' || label === 'GOOD';
   const top = label === 'BRILLIANT' || label === 'BEST';
 
+  const script = (input.engineLine || []).filter(Boolean).slice(0, 3);
+  const scriptText = script.length ? script.join(', then ') : '';
+
   let gradeLine = '';
-  if (label === 'BRILLIANT') {
+  if (input.sacrificePiece && top) {
+    gradeLine = scriptText
+      ? `You offered your ${input.sacrificePiece} and the engine applauds - the script shows the payback: ${scriptText}. That is a sacrifice, not a blunder.`
+      : `You offered your ${input.sacrificePiece} and the engine applauds - giving material for a bigger win is a sacrifice, not a blunder.`;
+  } else if (label === 'BRILLIANT') {
     gradeLine = taken
       ? `You took ${taken} with the engine's own first choice - maximum damage, nothing left hanging. That is board vision, not luck.`
       : input.mate
@@ -615,6 +624,7 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
   let considerHeading = 'WHY CHESTER LOVES IT';
   let considerLine = '';
   if (good) {
+    const scriptSuffix = scriptText ? ` The engine's script from here: ${scriptText}.` : '';
     considerLine = taken
       ? `Celebrate this one: winning ${taken} without giving anything back is not luck - you saw a loose piece and punished it. Hunt loose pieces every single move.`
       : input.mate
@@ -622,15 +632,17 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
         : input.check
           ? 'Celebrate the forcing move: check means the opponent\'s next move is chosen by you. Free turns like that are where plans become wins.'
           : 'Celebrate the quiet ones most of all: anyone can spot a capture, but choosing the strongest calm move is real chess.';
+    considerLine += scriptSuffix;
   } else {
     considerHeading = 'WHAT YOU COULD CONSIDER';
-    considerLine = pattern
+    const punishmentPrefix = scriptText ? `The engine's punishment: ${scriptText}. ` : '';
+    considerLine = punishmentPrefix + (pattern
       ? input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
         ? `The engine's stronger idea was ${input.bestMovePhrase}. ${pattern.principle}`
         : pattern.principle
       : input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
         ? `The risk it created: after ${input.movePhrase || 'that move'}, Chester has fresh targets. The engine's calmer idea was ${input.bestMovePhrase} - same ambition, no door left open.`
-        : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.';
+        : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.');
     if (phase === 'OPENING') considerLine = `The opening is not the place to improvise - standard development exists because it survives stronger opponents. ${considerLine}`;
   }
 
