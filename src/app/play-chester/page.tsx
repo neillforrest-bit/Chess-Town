@@ -106,7 +106,14 @@ function PlayChesterGame() {
     }
     setIsThinking(true); setCoachReply('');
     const grounded = personaCoaching({ ...coachPrompt, kind: coachPrompt.kind as 'move' | 'help' }, difficulty);
-    const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 sentences. Use this Stockfish evidence only. Move: ${coachPrompt.move || 'help request'}. Classification: ${coachPrompt.classification || 'unknown'}. Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Best move: ${coachPrompt.bestMove || 'unknown'}. Principal variation: ${(coachPrompt.continuation || []).slice(0, 4).join(' ') || 'unknown'}. Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts. NEVER use chess notation or coordinates - describe moves in words, like 'knight to the kingside' or 'pawn two squares up'.`;
+    const FACT_PIECE: Record<string, string> = { p: 'a pawn', n: 'a knight', b: 'a bishop', r: 'a rook', q: 'the queen' };
+    const moveFact = coachPrompt.movePhrase || coachPrompt.move || 'help request';
+    const capturedFact = coachPrompt.captured ? (FACT_PIECE[coachPrompt.captured] || 'a piece') : 'nothing';
+    const sacrificeFact = coachPrompt.sacrificePiece
+      ? `yes - the student deliberately offered their ${coachPrompt.sacrificePiece} and the engine calls the move ${coachPrompt.classification || 'strong'} because the payback is forced. If you mention the sacrifice, name the ${coachPrompt.sacrificePiece} and no other piece`
+      : 'no';
+    const scriptFact = (coachPrompt.engineLine || []).filter(Boolean).slice(0, 3).join(', then ');
+    const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 sentences. FACTS about the move (exact and complete - never contradict them, never name a different piece than these): the student played ${moveFact}. It captured ${capturedFact}. Sacrifice: ${sacrificeFact}. Engine verdict: ${coachPrompt.classification || 'unknown'}. Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Engine-preferred move: ${coachPrompt.bestMovePhrase || 'unknown'}.${scriptFact ? ` The engine's script from here: ${scriptFact}.` : ''} Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts: which piece moved, what was captured and what was sacrificed are exactly as stated above. NEVER use chess notation or coordinates - describe moves in words, like 'knight to the kingside' or 'pawn two squares up'.`;
     void askChesterChat(JSON.stringify({ type: 'coach', message: coachPrompt.kind === 'help' ? 'Give me a strategic hint.' : `Review ${coachPrompt.move}.`, context }))
       .then((reply) => { const text = reply && !/messenger|delayed|unavailable/i.test(reply) ? reply : grounded; setCoachReply(text); })
       .catch(() => { setCoachReply(grounded); })
