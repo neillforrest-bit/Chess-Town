@@ -135,6 +135,11 @@ export class StockfishClient {
           worker.postMessage(`setoption name UCI_Elo value ${preset.elo}`);
         } else {
           worker.postMessage('setoption name UCI_LimitStrength value false');
+          // Worker options persist across calls, and Skill Level applies independently of
+          // UCI_LimitStrength: a prior play-strength selectMove (e.g. ROOKIE skill 0) would
+          // otherwise leave the "full strength" analyst run shuffling root moves, returning a
+          // random bestmove and fictional PVs. Restore full skill for every analyst call.
+          worker.postMessage('setoption name Skill Level value 20');
         }
         worker.postMessage(`position fen ${fen}`);
         worker.postMessage(`go depth ${depthOverride ?? preset.depth}`);
