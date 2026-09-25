@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { phrasesFromPgn } from '@/lib/move-words';
 import { weakestHabit } from '@/lib/rating';
+import VerdictShare from './VerdictShare';
 
 export type GradedMove = {
   move: string;
@@ -130,6 +131,7 @@ export default function ChesterReportCard({
       </div>
 
       <p className="chester-report-card__story">{isLoading ? 'Chester is writing his final review...' : review}</p>
+      <VerdictShare grades={grades} pgn={pgn} difficulty={difficulty} opponentLabel={`${levelLabel} CHESTER`} summary={{ grade: letter, score, accuracy: summary?.accuracy, openingName: null }} />
     </section>
   </div>;
 }

@@ -70,7 +70,7 @@ ${continuationLine}
 Move classification: ${payload.classification || 'ungraded'}.
 ${wildCard}
 
-OUTPUT CONTRACT: Return only Chester's spoken commentary. Never mention prompts, instructions, constraints, compliance, reasoning, or response quality. Write 1-2 short, punchy, complete sentences. Cite the exact evaluation or mate score and reference the engine's best line when it clarifies the point. Be dramatically sarcastic but never cruel. No markdown, asterisks, or more than one emoji.`;
+OUTPUT CONTRACT: Return only Chester's spoken commentary. Never mention prompts, instructions, constraints, compliance, reasoning, or response quality. Write 1-2 short, punchy, complete sentences. Cite the exact evaluation or mate score and reference the engine's best line when it clarifies the point. Be dramatically sarcastic but never cruel. COURAGE CLAUSE: if the played move is unorthodox or daring, celebrate the audacity honestly - an unsound but imaginative move is technically a blunder but magnificently weird, so name what they were hunting; an unorthodox move that is also sound gets explicit respect. No markdown, asterisks, or more than one emoji.`;
 
     const genAI = new GoogleGenAI({ apiKey });
     const result = await genAI.models.generateContent({

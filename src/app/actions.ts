@@ -43,11 +43,11 @@ export function getFallbackRoast(payload: CommentaryPayload) {
     case 'GOOD':
       return `${move}looks steady and purposeful. A fine way to keep the position under control.`;
     case 'INACCURACY':
-      return `${move}was a touch adventurous; that piece may have wandered from the parade route. The position is still very much playable.`;
+      return `${move}was a touch adventurous - Chester salutes the audacity, even if the engine raises one eyebrow. The position is still very much playable.`;
     case 'MISTAKE':
-      return `${move}gave the board a little comic wobble. No panic: regroup the pieces and look for the simplest defense.`;
+      return `${move}was magnificently weird - technically a mistake, but Chester respects the hunt. Regroup the pieces and look for the simplest defense.`;
     case 'BLUNDER':
-      return `${move}has the royal guards checking on that piece. Take a breath: every good chess recovery starts with spotting the threat.`;
+      return `${move}was bold, chaotic and technically a blunder - magnificently weird. Take a breath: every good recovery starts with spotting the threat.`;
     default:
       return `${move}keeps the game moving. Let Spotfish's next evaluation guide the plan.`;
   }

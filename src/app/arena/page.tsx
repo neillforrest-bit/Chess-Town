@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef } from 'react';
 import { askChesterChat, askCommentary, askGrandmaster } from '@/app/actions';
 import { chesterOfflineChat, getVerdict } from '@/lib/chester-voice';
+import VerdictShare from '@/components/VerdictShare';
+import type { GradedMove } from '@/components/ChesterReportCard';
 import { ChesterAvatar, ChesterChatOverlay, ChesterTeleprompter, ChessGameTools } from '@/components/ChesterUI';
 import { CapturedPieceJail, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -285,7 +287,7 @@ function LegacyArena() {
   const [missionProgress, setMissionProgress] = useState('Make your first move');
   const [achievements, setAchievements] = useState<string[]>([]);
   const [dailyScore, setDailyScore] = useState<number | null>(null);
-  const [postGameReport, setPostGameReport] = useState<{ grade: string; score: number; accuracy: number; development: number; kingSafety: number; tactics: number; openingName: string; moves: number; turningPoint: string } | null>(null);
+  const [postGameReport, setPostGameReport] = useState<{ grade: string; score: number; accuracy: number; development: number; kingSafety: number; tactics: number; openingName: string; moves: number; turningPoint: string; gradeHistory?: GradedMove[]; pgn?: string } | null>(null);
   const [replay, setReplay] = useState({ index: 0, total: 1, move: 'Start' });
   const [remoteRole, setRemoteRole] = useState<'w' | 'b' | null>(null);
   const [remoteConnected, setRemoteConnected] = useState(false);
@@ -1444,6 +1446,7 @@ function LegacyArena() {
                     <div style={{ textAlign: 'center', color: '#fff', fontSize: isLandscape ? '0.46rem' : '0.62rem' }}>REPLAY {replay.index}/{replay.total - 1} · {replay.move}</div>
                     <button onClick={() => window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: replay.index + 1 } }))} disabled={replay.index >= replay.total - 1} style={{ padding: '0.35rem 0.55rem', background: '#22d3ee', border: 0, fontWeight: 900, cursor: 'pointer' }}>▶</button>
                   </div>
+                  {postGameReport.gradeHistory && postGameReport.gradeHistory.length > 0 && <VerdictShare grades={postGameReport.gradeHistory} pgn={postGameReport.pgn} opponentLabel="THE ARENA" summary={{ grade: postGameReport.grade, score: postGameReport.score, accuracy: postGameReport.accuracy, openingName: postGameReport.openingName }} />}
                 </div>
               )}
 
