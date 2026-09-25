@@ -1721,7 +1721,8 @@ body {
   .chester-live-line__avatar { width: 34px; height: 34px; font-size: 1.15rem; }
   .chester-live-line > div:nth-child(2) { flex: 1 1 calc(100% - 50px); min-width: 0; }
   .chester-live-line b { font-size: .88rem; }
-  .chester-live-line p { -webkit-line-clamp: 2; font-size: .74rem; line-height: 1.35; }
+  /* Batch 43: 2-line clamp was the 'commentary box too small' he flagged - let the card breathe. */
+  .chester-live-line p { -webkit-line-clamp: 9; font-size: .8rem; line-height: 1.4; }
   .chester-live-line__next { flex: 1 1 100%; justify-content: space-between; }
   .chester-live-line__next .chester-why-btn { min-height: 30px; padding: .15rem .6rem; font-size: .68rem; }
   .chester-game__actions button { min-height: 40px; padding: .4rem .5rem; font-size: .78rem; }
