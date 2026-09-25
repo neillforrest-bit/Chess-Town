@@ -52,3 +52,33 @@ export function detectOpeningPrinciple(fenBeforeMove: string, move: any, gameHis
   }
 }
 
+
+/* Planned-exchange recognition: the feedback gap behind "the grader sees material lost,
+   not the plan". When the engine's own script shows the opponent taking a piece and the
+   player winning bigger material straight back, the move was a winning exchange, not a
+   leak - and the coaching must say so. */
+export type PlannedExchange = {
+  lostPiece: string; // piece the opponent is scripted to win, in words
+  wonPiece: string; // piece the player is scripted to win back, in words
+  net: number; // material profit in pawn units
+};
+
+const EXCHANGE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+const EXCHANGE_NAMES: Record<string, string> = { p: 'a pawn', n: 'a knight', b: 'a bishop', r: 'a rook', q: 'the queen' };
+
+export function detectPlannedExchange(fenAfter: string, continuation: string[] | null | undefined, playerColor: 'w' | 'b'): PlannedExchange | null {
+  try {
+    if (!continuation || continuation.length < 2) return null;
+    const board = new Chess(fenAfter);
+    const first = board.move({ from: continuation[0].slice(0, 2), to: continuation[0].slice(2, 4), promotion: continuation[0][4] || 'q' });
+    if (!first || !first.captured) return null; // opponent's script does not win material
+    const second = board.move({ from: continuation[1].slice(0, 2), to: continuation[1].slice(2, 4), promotion: continuation[1][4] || 'q' });
+    if (!second || !second.captured) return null; // no scripted recapture
+    const lost = EXCHANGE_VALUES[first.captured] || 0;
+    const won = EXCHANGE_VALUES[second.captured] || 0;
+    if (won - lost < 2) return null; // only clear profits count as a plan worth naming
+    return { lostPiece: EXCHANGE_NAMES[first.captured] || 'a piece', wonPiece: EXCHANGE_NAMES[second.captured] || 'a piece', net: won - lost };
+  } catch {
+    return null;
+  }
+}

@@ -63,25 +63,25 @@ const LINES: Record<PersonaKey, Record<string, string[]>> = {
           'Solid as a Sunday roast. Nothing flashy, everything exactly where it should be.',
     ],
     INACCURACY: [
-      'Playable, but something in your camp just got looser - check what I can attack before it introduces itself.',
-      'Not wrong, but not tight either. Loose pieces are snacks your opponent did not bring.',
-      'Hmm. You got away with that one, but let us tighten up - check every piece you just touched.',
-      'A small wobble. Nothing is lost - but do a quick safety count before your next adventure.',
-          'A tiny wobble - the chess version of waving back at someone who was waving at someone else. Totally recoverable.',
+      'A decent idea with a small gap in it - the plan was fine, one detail leaked. Check what the move stopped defending.',
+      'Not a bad thought at all - the direction is right. One quick safety scan before the next adventure: anything loose?',
+      'Small wobble, big picture intact. One question fixes most of these: what did my move leave unprotected?',
+      'The idea deserves credit - the timing just wants one more look. Count attackers and defenders once, then carry on.',
+          'Nearly there. The strong-player habit is one question before every move: what changed about my loose pieces?',
     ],
     MISTAKE: [
-      'Careful now. That gives me a real chance - find my most forcing reply before it finds you.',
-      'That one exposes something. Rescue first, plans later: a piece in danger ignores all your other dreams.',
-      'Ouch - that hands me an opportunity. Defence first: what did that move leave unguarded?',
-      'That slipped a little. Take a breath, find the loose piece, and patch the wall before decorating.',
-          'Oof. That move walked into traffic. The good news: mistakes you review are mistakes you stop making.',
+      'The plan has merit - there is just a hole in it I can see. Rescue the loose piece first, then the plan still works.',
+      'That created a real danger, and spotting it now is exactly how you learn to spot it before. What is hanging?',
+      'Good ambition, one loose brick. Patch the danger first - the attack will still be there once your pieces are safe.',
+      'This is the most useful kind of move to review: a real idea with one overlooked reply. Find the threat, answer it, carry on.',
+          'Every strong player has made this exact move - the skill is seeing the gap one move earlier. What can I take?',
     ],
     BLUNDER: [
-      'Stop. Breathe. Something is hanging - save it before you plan anything else. Even grandmasters blunder; they just rescue faster.',
-      'That piece needs help right now. You can still fight back: every great comeback starts with one calm defensive move.',
-      'Okay, that one hurt. But games are full of twists - find the danger, steady the ship, and make me earn it.',
-      'Big oops. The good news: blunders are the best teachers. What is hanging, and how do we save it?',
-          'That one stung me and it was not even my piece. Shake it off - blunders are tuition, not failure.',
+      'Yes, that one cost material - and no, the game is not over. Comebacks start with one calm move. What needs saving?',
+      'That hurts, and it is also the move you will remember longest - that is how blunders turn into pattern recognition.',
+      'Big swing. Honest truth: even grandmasters do this weekly. Steady the ship - defence first, dreams second.',
+      'Tuition, not failure. Save what is hanging, then make me earn every square from here.',
+          'A rough one - and still only one move of many. Find the danger, calm the position, play the long game.',
     ],
   },
   INTERMEDIATE: {
@@ -585,6 +585,9 @@ export type WhyLessonInput = {
   principleKey?: string | null;
   principleFollowed?: boolean | null;
   provisional?: boolean | null;
+  exchangeLost?: string | null;
+  exchangeWon?: string | null;
+  exchangeNet?: number | null;
 };
 
 export type WhyLesson = {
@@ -649,13 +652,21 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
   } else if (label === 'GOOD') {
     gradeLine = 'Solid and safe. It keeps your structure intact - the engine saw a punchier option, but nothing about yours leaks.';
   }
+  // Plan recognition: a scripted capture-then-bigger-recapture is a winning exchange, and
+  // naming the plan matters more than the raw grade.
+  const plannedExchange = input.exchangeLost && input.exchangeWon && (input.exchangeNet || 0) >= 2
+    ? { lost: input.exchangeLost, won: input.exchangeWon, net: input.exchangeNet || 0 }
+    : null;
+  if (plannedExchange && good) {
+    gradeLine = `You saw one move deeper than the board: Chester can take your ${plannedExchange.lost}, and your answer wins ${plannedExchange.won} straight back. That is not a lost piece - that is a planned exchange that profits you. This is exactly how strong players think.`;
+  }
   // ROOKIE: when the move knowingly followed an opening principle, the principle IS the lesson.
   const principlePraise = input.principleKey && input.principleFollowed && good ? ROOKIE_PRINCIPLE_PRAISE[input.principleKey] : null;
-  if (principlePraise && (label === 'GOOD' || label === 'GREAT')) gradeLine = principlePraise;
+  if (!plannedExchange && principlePraise && (label === 'GOOD' || label === 'GREAT')) gradeLine = principlePraise;
   if (label !== 'BRILLIANT' && label !== 'BEST' && label !== 'GREAT' && label !== 'GOOD') {
     gradeLine = pattern
       ? `It let ${pawnCost(input.evalDelta)} slip - ${pattern.line}`
-      : `It let ${pawnCost(input.evalDelta)} slip. The usual cause: moving before checking what the move leaves undefended, or ignoring a more forcing option.`;
+      : `It let ${pawnCost(input.evalDelta)} slip - the idea was fine, one detail leaked. The habit that catches most of these: before you move, ask what the move stops defending.`;
   }
 
   let considerHeading = 'WHY CHESTER LOVES IT';
@@ -671,11 +682,12 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
         : input.check
           ? 'Celebrate the forcing move: check means the opponent\'s next move is chosen by you. Free turns like that are where plans become wins.'
           : 'Celebrate the quiet ones most of all: anyone can spot a capture, but choosing the strongest calm move is real chess.';
-    if (principlePraise) considerLine = `Opening principles are not decoration - they are how games are won before the real fight starts. Keep playing moves like this and the middlegame becomes yours.`;
+    if (plannedExchange) considerLine = `This is the middlegame skill that wins games on its own: seeing that a capture is only good when the recapture is not bigger. You offered the trade on YOUR terms.`;
+    else if (principlePraise) considerLine = `Opening principles are not decoration - they are how games are won before the real fight starts. Keep playing moves like this and the middlegame becomes yours.`;
     considerLine += scriptSuffix;
   } else {
     considerHeading = 'WHAT YOU COULD CONSIDER';
-    const punishmentPrefix = scriptText ? `The engine's punishment: ${scriptText}. ` : '';
+    const punishmentPrefix = scriptText ? `How Chester can reply: ${scriptText}. ` : '';
     // ROOKIE: a broken opening principle is the whole lesson - lead with it, gently.
     const principleLesson = input.principleKey && !input.principleFollowed ? ROOKIE_PRINCIPLE_LESSON[input.principleKey] : null;
     const betterIdea = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase ? ` The engine's stronger idea was ${input.bestMovePhrase}.` : '';

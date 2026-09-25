@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
 import { describeMove } from '@/lib/move-words';
-import { detectOpeningPrinciple, type OpeningPrinciple } from '@/lib/coaching-core';
+import { detectOpeningPrinciple, detectPlannedExchange, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -662,7 +662,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
           };
 
-          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null; provisional?: boolean; principle?: OpeningPrinciple | null } = {}, fenBeforeMove: string | null = null) => {
+          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null; provisional?: boolean; principle?: OpeningPrinciple | null; exchange?: PlannedExchange | null } = {}, fenBeforeMove: string | null = null) => {
             // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
             const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
@@ -693,6 +693,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 provisional: phrases.provisional === true,
                 principleKey: phrases.principle?.key ?? null,
                 principleFollowed: phrases.principle?.followed ?? null,
+                exchangeLost: phrases.exchange?.lostPiece ?? null,
+                exchangeWon: phrases.exchange?.wonPiece ?? null,
+                exchangeNet: phrases.exchange?.net ?? null,
               },
             }));
             // Live-move commentary for the play-chester page (Chester games AND pass & play):
@@ -721,6 +724,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 provisional: phrases.provisional === true,
                 principleKey: phrases.principle?.key ?? null,
                 principleFollowed: phrases.principle?.followed ?? null,
+                exchangeLost: phrases.exchange?.lostPiece ?? null,
+                exchangeWon: phrases.exchange?.wonPiece ?? null,
+                exchangeNet: phrases.exchange?.net ?? null,
               },
             }));
             // Chester owns his howlers: rookie mode hangs pieces on purpose, so he admits them out loud.
@@ -862,7 +868,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const topGrade = quality.label === 'BRILLIANT' || quality.label === 'BEST' || quality.label === 'GREAT';
               const sacrificePiece = topGrade ? detectSacrifice(fenBeforeMove, move) : null;
               const engineLine = buildEngineLine(fenAfterMove, telemetry?.continuation);
-              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece, principle: openingPrinciple }, fenBeforeMove);
+              // Plan recognition: if the engine's own script shows them taking a piece and the
+              // player winning bigger material straight back, name the plan, never scold the "loss".
+              const plannedExchange = rookieTeaching ? detectPlannedExchange(fenAfterMove, telemetry?.continuation, move.color) : null;
+              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece, principle: openingPrinciple, exchange: plannedExchange }, fenBeforeMove);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
                   detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },
