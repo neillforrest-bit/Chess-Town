@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
 import { describeMove } from '@/lib/move-words';
-import { detectOpeningPrinciple, detectPlannedExchange, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
+import { detectOpeningPrinciple, detectPlannedExchange, detectTrapSet, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -868,9 +868,19 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const topGrade = quality.label === 'BRILLIANT' || quality.label === 'BEST' || quality.label === 'GREAT';
               const sacrificePiece = topGrade ? detectSacrifice(fenBeforeMove, move) : null;
               const engineLine = buildEngineLine(fenAfterMove, telemetry?.continuation);
-              // Plan recognition: if the engine's own script shows them taking a piece and the
-              // player winning bigger material straight back, name the plan, never scold the "loss".
-              const plannedExchange = rookieTeaching ? detectPlannedExchange(fenAfterMove, telemetry?.continuation, move.color) : null;
+              // Plan recognition, two lenses: (a) a NEW poisoned bait created by this move
+              // (his queen/rook trap - the honest engine never plays the bait line, so PV alone
+              // misses it), (b) the engine's own script showing capture then bigger recapture.
+              // The before-check needs the opponent to move in the same position: flip the
+              // turn field. chess.js may reject an impossible flip (king in check) -> null,
+              // which safely treats the trap as new.
+              const fenBeforeOppTurn = fenBeforeMove.replace(/ (w|b) /, (match, turn) => (turn === 'w' ? ' b ' : ' w '));
+              const trapBefore = rookieTeaching && move.color === 'w' ? detectTrapSet(fenBeforeOppTurn, move.color) : null;
+              const trapAfter = rookieTeaching && move.color === 'w' ? detectTrapSet(fenAfterMove, move.color) : null;
+              const trapCreated = trapAfter && (!trapBefore || trapAfter.net > trapBefore.net) ? trapAfter : null;
+              const plannedExchange = rookieTeaching && move.color === 'w'
+                ? trapCreated || detectPlannedExchange(fenAfterMove, telemetry?.continuation, move.color)
+                : null;
               publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece, principle: openingPrinciple, exchange: plannedExchange }, fenBeforeMove);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {

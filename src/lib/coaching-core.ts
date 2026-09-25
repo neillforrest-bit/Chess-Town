@@ -82,3 +82,36 @@ export function detectPlannedExchange(fenAfter: string, continuation: string[] |
     return null;
   }
 }
+
+/* Trap recognition (the real shape of his queen/rook example): the player's move creates a
+   poisoned bait - the opponent CAN win a piece on the spot, but only with a more valuable
+   attacker that gets recaptured straight back. The honest engine never plays the bait-taking
+   line, so a PV-based check misses it; what matters is that the player's move CREATED the
+   trap. Only tags nets of 2+ pawns and only when the trap is new (not already on the board). */
+export function detectTrapSet(fen: string, playerColor: 'w' | 'b'): PlannedExchange | null {
+  // NOTE: the fen must have the OPPONENT of playerColor to move - captures are enumerated
+  // for the side to move. Callers flip the turn field when they need the other side.
+  void playerColor;
+  try {
+    const board = new Chess(fen);
+    const replies = board.moves({ verbose: true }) as any[];
+    let best: PlannedExchange | null = null;
+    for (const capture of replies) {
+      if (!capture.captured) continue;
+      const attacker = EXCHANGE_VALUES[capture.piece] || 0;
+      const bait = EXCHANGE_VALUES[capture.captured] || 0;
+      const net = attacker - bait;
+      if (net < 2) continue; // they must win real material on the spot for the bait to tempt
+      const after = new Chess(board.fen());
+      after.move({ from: capture.from, to: capture.to, promotion: capture.promotion || 'q' });
+      const recapture = (after.moves({ verbose: true }) as any[]).some((m) => m.to === capture.to && m.captured);
+      if (!recapture) continue;
+      if (!best || net > best.net) {
+        best = { lostPiece: EXCHANGE_NAMES[capture.captured] || 'a piece', wonPiece: EXCHANGE_NAMES[capture.piece] || 'a piece', net };
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
