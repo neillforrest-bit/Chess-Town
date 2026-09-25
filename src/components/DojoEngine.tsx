@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
 import { describeMove } from '@/lib/move-words';
+import { detectOpeningPrinciple, type OpeningPrinciple } from '@/lib/coaching-core';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -113,13 +114,16 @@ function getOpeningName(chess: any) {
   return match?.name || (history.length < 2 ? 'Opening book loading' : 'Uncharted Opening');
 }
 
-function getPostGameReport(chess: any, qualities: { label: string; move: string; ply: number }[]) {
+function getPostGameReport(chess: any, qualities: { label: string; move: string; ply: number; provisional?: boolean }[]) {
+  // Provisional entries are depth-1 guesses the analyst engine never confirmed (slow-phone
+  // timeouts): the report card must not grade a guess, so they are excluded from scoring.
+  const confirmed = qualities.filter((quality) => !quality.provisional);
   // Player-side dimensions only (the human plays White against Chester): the old
   // version counted BOTH sides' minor moves all game, credited king safety when
   // either side castled, and pinned a typical beginner win to a C by formula.
   const qualityScores: Record<string, number> = { BEST: 100, GREAT: 90, GOOD: 78, INACCURACY: 58, MISTAKE: 35, BLUNDER: 10 };
-  const accuracy = qualities.length
-    ? Math.round(qualities.reduce((total, quality) => total + (qualityScores[quality.label] || 50), 0) / qualities.length)
+  const accuracy = confirmed.length
+    ? Math.round(confirmed.reduce((total, quality) => total + (qualityScores[quality.label] || 50), 0) / confirmed.length)
     : 50;
   const history = chess.history({ verbose: true }) as any[];
   const playerMoves = history.filter((move) => move.color === 'w');
@@ -130,10 +134,10 @@ function getPostGameReport(chess: any, qualities: { label: string; move: string;
   const captures = playerMoves.filter((move) => move.captured).length;
   const checksGiven = playerMoves.filter((move) => (move.san || '').includes('+')).length;
   const tactics = Math.min(100, 45 + captures * 15 + checksGiven * 5);
-  const blunders = qualities.filter((quality) => quality.label === 'BLUNDER').length;
+  const blunders = confirmed.filter((quality) => quality.label === 'BLUNDER').length;
   const score = Math.round(accuracy * 0.5 + development * 0.2 + kingSafety * 0.15 + tactics * 0.15);
   const grade = score >= 88 ? 'A' : score >= 74 ? 'B' : score >= 60 ? 'C' : score >= 45 ? 'D' : 'F';
-  const turningPoint = [...qualities].sort((left, right) => (qualityScores[left.label] || 50) - (qualityScores[right.label] || 50))[0];
+  const turningPoint = [...confirmed].sort((left, right) => (qualityScores[left.label] || 50) - (qualityScores[right.label] || 50))[0];
   return { grade, score, accuracy, development, kingSafety, tactics, openingName: getOpeningName(chess), moves: chess.history().length, turningPoint: turningPoint ? `${turningPoint.move} (${turningPoint.label})` : 'No decisive turning point', habits: { castled, developed: developedFroms.size >= 3, blunders } };
 }
 
@@ -403,7 +407,7 @@ function getChesterDifficulty(difficulty: string) {
   return 'INTERMEDIATE' as const;
 }
 
-export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE' }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO' }) {
+export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE', rookieTeaching = false }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO'; rookieTeaching?: boolean }) {
   const { p1Difficulty, p2Difficulty, setActiveChaosEvent } = useBrawlState();
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserRef = useRef<Phaser.Game | null>(null);
@@ -658,7 +662,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
           };
 
-          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null } = {}, fenBeforeMove: string | null = null) => {
+          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null; provisional?: boolean; principle?: OpeningPrinciple | null } = {}, fenBeforeMove: string | null = null) => {
             // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
             const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
@@ -686,6 +690,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 continuation: engineTelemetry?.continuation ?? [],
                 engineLine: phrases.engineLine ?? null,
                 sacrificePiece: phrases.sacrificePiece ?? null,
+                provisional: phrases.provisional === true,
+                principleKey: phrases.principle?.key ?? null,
+                principleFollowed: phrases.principle?.followed ?? null,
               },
             }));
             // Live-move commentary for the play-chester page (Chester games AND pass & play):
@@ -711,6 +718,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 continuation: engineTelemetry?.continuation ?? null,
                 engineLine: phrases.engineLine ?? null,
                 sacrificePiece: phrases.sacrificePiece ?? null,
+                provisional: phrases.provisional === true,
+                principleKey: phrases.principle?.key ?? null,
+                principleFollowed: phrases.principle?.followed ?? null,
               },
             }));
             // Chester owns his howlers: rookie mode hangs pieces on purpose, so he admits them out loud.
@@ -764,6 +774,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const movePly = gameRef.current.ply;
             const fenAfterMove = gameRef.current.chess.fen();
             const uci = `${move.from}${move.to}${move.promotion || ''}`;
+            // ROOKIE lens: name the opening principle this move served or broke. Local and
+            // cheap, so it works even when the analyst engine times out on a slow phone.
+            // Scoped by owner decision: the rookie teaching pass lives in the Play Chester
+            // game mode only - other modes (arena, brawl, PvP) keep their existing grading.
+            const openingPrinciple = rookieTeaching && move.color === 'w' ? detectOpeningPrinciple(fenBeforeMove, move, gameRef.current.chess.history({ verbose: true })) : null;
             void getStockfishClient().evaluateMove({
               fenBefore: fenBeforeMove,
               fenAfter: fenAfterMove,
@@ -773,6 +788,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               difficulty: getChesterDifficulty(difficulty),
             }).then((telemetry) => {
               const quality = { label: applyMaterialFloor(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
+              // Delicate grading for genuine learner moves (ROOKIE only): a move that follows a
+              // real opening principle and costs less than a pawn is taught, not scolded.
+              if (openingPrinciple?.followed && quality.label === 'INACCURACY') quality.label = 'GOOD';
               // The BRILLIANT bell, chess.com style: a detected sound sacrifice that IS the
               // engine's own first choice and holds the eval (near-zero loss) claims the top
               // grade. Depth-12 re-evaluation noise lands these in the GREAT band, so escalate.
@@ -844,14 +862,22 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const topGrade = quality.label === 'BRILLIANT' || quality.label === 'BEST' || quality.label === 'GREAT';
               const sacrificePiece = topGrade ? detectSacrifice(fenBeforeMove, move) : null;
               const engineLine = buildEngineLine(fenAfterMove, telemetry?.continuation);
-              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece }, fenBeforeMove);
+              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece, principle: openingPrinciple }, fenBeforeMove);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
                   detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },
                 }));
               }
             }).catch(() => {
-              publishMove(move, player, localQuality, null, { movePhrase: describeMove(fenBeforeMove, move.san) }, fenBeforeMove);
+              // The analyst run failed or timed out (real on a slow phone). The depth-1 toy
+              // label must never reach the user as an unmarked verdict: publish it flagged
+              // provisional so the card says FIRST TAKE instead of a fake grade, and mark the
+              // scorecard entries so the report card doesn't grade a guess.
+              const playerEntry = gameRef.current.playerQualities.find((entry: any) => entry.ply === movePly && entry.move === move.san);
+              if (playerEntry) playerEntry.provisional = true;
+              const gradeEntry = gameRef.current.gradeHistory.find((entry: any) => entry.ply === movePly && entry.move === move.san);
+              if (gradeEntry) gradeEntry.provisional = true;
+              publishMove(move, player, localQuality, null, { movePhrase: describeMove(fenBeforeMove, move.san), provisional: true, principle: openingPrinciple }, fenBeforeMove);
             });
           };
 

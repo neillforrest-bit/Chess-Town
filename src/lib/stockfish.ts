@@ -46,7 +46,8 @@ const PRESETS: Record<ChesterDifficulty, { skill: number; elo: number; depth: nu
 export const ANALYST_PRESET: ChesterDifficulty = 'EXPERT';
 export const ANALYST_DEPTH = 12;
 
-type Analysis = { score: number | null; mate: number | null; pv: string[]; bestMove: string | null };
+type AnalysisLine = { score: number | null; mate: number | null; pv: string[] };
+type Analysis = { score: number | null; mate: number | null; pv: string[]; bestMove: string | null; lines: Record<number, AnalysisLine> };
 
 function classify(loss: number | null, isBestMove: boolean): EngineTelemetry['classification'] {
   if (loss === null) return 'GREAT';
@@ -97,14 +98,14 @@ export class StockfishClient {
     return result;
   }
 
-  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number, limitStrength = true): Promise<Analysis> {
+  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number, limitStrength = true, multiPv = 1): Promise<Analysis> {
     return this.enqueue(async () => {
       await this.initialize();
       const worker = this.worker;
       if (!worker) throw new Error('Stockfish worker is unavailable');
       const preset = PRESETS[difficulty];
       return new Promise<Analysis>((resolve, reject) => {
-        const latest: Analysis = { score: null, mate: null, pv: [], bestMove: null };
+        const latest: Analysis = { score: null, mate: null, pv: [], bestMove: null, lines: {} };
         const timeout = window.setTimeout(() => {
           worker.removeEventListener('message', onMessage);
           worker.postMessage('stop');
@@ -115,11 +116,16 @@ export class StockfishClient {
           if (line.startsWith('info ') && line.includes(' pv ')) {
             const scoreMatch = line.match(/score (cp|mate) (-?\d+)/);
             const pvMatch = line.match(/\bpv (.+)$/);
+            const mpvMatch = line.match(/\bmultipv (\d+)/);
+            const slot = mpvMatch ? Number(mpvMatch[1]) : 1;
+            const entry: AnalysisLine = latest.lines[slot] || { score: null, mate: null, pv: [] };
             if (scoreMatch) {
-              if (scoreMatch[1] === 'mate') latest.mate = Number(scoreMatch[2]);
-              else latest.score = Number(scoreMatch[2]);
+              if (scoreMatch[1] === 'mate') { entry.mate = Number(scoreMatch[2]); entry.score = null; }
+              else { entry.score = Number(scoreMatch[2]); entry.mate = null; }
             }
-            if (pvMatch) latest.pv = pvMatch[1].split(' ');
+            if (pvMatch) entry.pv = pvMatch[1].split(' ');
+            latest.lines[slot] = entry;
+            if (slot === 1) { latest.score = entry.score; latest.mate = entry.mate; latest.pv = entry.pv; }
           }
           if (line.startsWith('bestmove ')) {
             window.clearTimeout(timeout);
@@ -141,6 +147,9 @@ export class StockfishClient {
           // random bestmove and fictional PVs. Restore full skill for every analyst call.
           worker.postMessage('setoption name Skill Level value 20');
         }
+        // Worker options persist across calls (the skill-level lesson): MultiPV must be
+        // reset explicitly on every run, or a grading call's MultiPV 2 leaks into play strength.
+        worker.postMessage(`setoption name MultiPV value ${multiPv}`);
         worker.postMessage(`position fen ${fen}`);
         worker.postMessage(`go depth ${depthOverride ?? preset.depth}`);
       });
@@ -149,18 +158,50 @@ export class StockfishClient {
 
   async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty }): Promise<EngineTelemetry> {
     void input.difficulty; // grading always runs at analyst strength for verdict integrity
-    const before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false);
-    const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH, false);
-    // Stockfish reports scores relative to the SIDE TO MOVE. Before a move and after it the
-    // side to move flips, so the centipawn loss of the played move is before + after
-    // (same formula for both colours). The old before-minus-after double-counted the
-    // standing eval, which is why engine-recommended moves could come back graded bad.
-    const delta = before.score === null || after.score === null ? null : before.score + after.score;
-    const loss = delta === null ? null : Math.max(0, delta);
-    const classification = classify(loss, before.bestMove === input.uci);
+    const before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2);
+    // Loss is computed inside ONE search whenever possible, so two independent searches can
+    // never disagree a good move into a bad grade (cross-search noise lesson). The played
+    // move equal to the engine's first choice is loss 0 by definition; when it is the
+    // MultiPV-2 line, the loss is the same-search gap to the first choice; only moves outside
+    // the top 2 fall back to the before/after two-search delta.
+    const isBestMove = before.bestMove === input.uci;
+    const second = before.lines[2];
+    const playedLine: AnalysisLine | null = isBestMove
+      ? { score: before.score, mate: before.mate, pv: before.pv }
+      : second && second.pv[0] === input.uci
+        ? second
+        : null;
+    let loss: number | null;
+    let continuation: string[];
+    let afterScore: number | null;
+    let afterMate: number | null;
+    if (isBestMove) {
+      loss = 0;
+      continuation = before.pv.slice(1);
+      afterScore = before.score;
+      afterMate = before.mate;
+    } else if (playedLine) {
+      loss = before.score === null || playedLine.score === null
+        ? null
+        : Math.max(0, before.score - playedLine.score);
+      continuation = playedLine.pv.slice(1);
+      afterScore = playedLine.score;
+      afterMate = playedLine.mate;
+    } else {
+      const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH, false);
+      // Stockfish reports scores relative to the SIDE TO MOVE. Before a move and after it the
+      // side to move flips, so the centipawn loss of the played move is before + after
+      // (same formula for both colours).
+      const delta = before.score === null || after.score === null ? null : before.score + after.score;
+      loss = delta === null ? null : Math.max(0, delta);
+      continuation = after.pv;
+      afterScore = after.score;
+      afterMate = after.mate;
+    }
+    const classification = classify(loss, isBestMove);
     const stmAfter = input.fenAfter.split(/\s+/)[1];
-    const absAfter = after.score === null ? null : stmAfter === 'b' ? -after.score : after.score;
-    const absMateAfter = after.mate === null ? null : stmAfter === 'b' ? -after.mate : after.mate;
+    const absAfter = afterScore === null ? null : stmAfter === 'b' ? -afterScore : afterScore;
+    const absMateAfter = afterMate === null ? null : stmAfter === 'b' ? -afterMate : afterMate;
     return {
       evalScore: absMateAfter === null ? (absAfter === null ? null : absAfter / 100) : `M${absMateAfter}`,
       bestMoveSan: before.pv[0] || null,
@@ -170,10 +211,10 @@ export class StockfishClient {
           ? 'good'
           : classification.toLowerCase() as 'inaccuracy' | 'mistake' | 'blunder',
       fenBefore: input.fenBefore, fenAfter: input.fenAfter, san: input.san, uci: input.uci,
-      evaluationBefore: before.score, evaluationAfter: after.score, evalDelta: loss,
+      evaluationBefore: before.score, evaluationAfter: afterScore, evalDelta: loss,
       classification, bestMove: before.bestMove,
       principalVariation: before.pv, alternateWinningLines: before.pv.length ? [before.pv.join(' ')] : [], engine: 'stockfish-18',
-      centipawns: after.score, mateIn: after.mate, continuation: after.pv,
+      centipawns: afterScore, mateIn: afterMate, continuation,
     };
   }
 

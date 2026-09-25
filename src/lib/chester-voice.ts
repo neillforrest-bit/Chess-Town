@@ -277,7 +277,7 @@ export function personaCoaching(prompt: CoachPromptShape, persona: PersonaKey): 
   if (prompt.kind === 'help') {
     const idea = bestWords || 'bringing a new piece into the game';
     const suffix: Record<PersonaKey, string> = {
-      BEGINNER: 'Before you move, check whether Chester can take an unprotected piece or give check.',
+      BEGINNER: 'Before you move, run the opening checklist: does this fight for the centre, wake a new piece, or keep your king safe - and can Chester simply take the piece you are about to move?',
       INTERMEDIATE: 'Before you commit, count what each side can take next.',
       ADVANCED: 'Calculate my most forcing reply first. Then decide.',
       EXPERT: 'Try not to ruin it. I am watching.',
@@ -530,9 +530,10 @@ const PHASE_TIPS: Record<GamePhase, string[]> = {
     'Develop with purpose: every opening move should claim centre space or bring a new piece to life, without putting that piece in danger. Pretty pawn moves on the edge do neither.',
   ],
   MIDDLEGAME: [
-    'Before every move ask "what changed?" - what does my move attack, and what did it stop defending?',
-    'Your worst-placed piece is your next project. Improve it and the tactics start appearing by themselves.',
-    'Loose pieces drop off. Count attackers and defenders on anything unprotected - yours and theirs.',
+    'The opening is over - this is where it pays off or falls apart. Every loose piece and open king is now a real target, for both of you. Before every move ask "what changed?" - what does my move attack, and what did it stop defending?',
+    'Middlegames are won by the side whose pieces woke up better in the opening. A strong opening turns into real attacks here; a sleepy one turns into danger you cannot patch. Your worst-placed piece is your next project.',
+    'This is the danger zone: trades, attacks and real blunders live here, not in the opening. Count attackers and defenders on anything unprotected - yours and theirs - before you commit.',
+    'A lead from the opening is not a win yet - it is the right to attack. Bring pieces toward their king with threats they must answer, and the advantage takes shape by itself.',
   ],
   ENDGAME: [
     'The king becomes a fighter in the endgame. March him toward the action - he is worth four pawns now.',
@@ -567,6 +568,9 @@ export type WhyLessonInput = {
   fenBefore?: string | null;
   engineLine?: string[] | null;
   sacrificePiece?: string | null;
+  principleKey?: string | null;
+  principleFollowed?: boolean | null;
+  provisional?: boolean | null;
 };
 
 export type WhyLesson = {
@@ -576,6 +580,21 @@ export type WhyLesson = {
   gradeLine: string;
   considerHeading: string;
   considerLine: string;
+};
+
+/* ROOKIE opening-principle teaching: named principle lines keyed per level so CLUB/MASTER
+   can diverge later without touching ROOKIE copy. Only BEGINNER games set principleKey. */
+const ROOKIE_PRINCIPLE_PRAISE: Record<string, string> = {
+  'centre': 'You planted a pawn in the centre - the first job of every opening. The centre is the high ground: pieces behind it reach the whole board, and every opening you will ever study starts with this fight.',
+  'development': 'You woke up a new piece - the second job of every opening. Bring every knight and bishop out once before moving any piece twice, and your whole army fights while theirs is still asleep.',
+  'king-safety': 'You castled - king tucked behind pawns, rook joining the game in one move. King safety is the third job of every opening, and you just did it before the fireworks started.',
+};
+
+const ROOKIE_PRINCIPLE_LESSON: Record<string, string> = {
+  'repeat-move': 'This piece had already moved - and moving one piece twice while others sleep hands the opponent free developing moves. Opening rule: a NEW piece every move until the whole back rank is awake, then castle.',
+  'early-queen': 'The queen came out early - in the opening she is a target, not a weapon. Every attack on her is a free move for the opponent. Develop knights and bishops first, castle, THEN let her hunt.',
+  'edge-pawn': 'That edge pawn grabs no centre, wakes no piece and keeps no king safer - it spends a whole move on nothing. Opening moves must fight for the centre or bring a piece to life.',
+  'exposed-piece': 'The piece you brought out can simply be taken for nothing. A new piece\'s first square must be defended or safe - development only counts if the piece stays on the board.',
 };
 
 export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
@@ -615,7 +634,11 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
       : 'Nearly the top choice - it improves your position and gives away nothing. Strong players live on moves like this.';
   } else if (label === 'GOOD') {
     gradeLine = 'Solid and safe. It keeps your structure intact - the engine saw a punchier option, but nothing about yours leaks.';
-  } else {
+  }
+  // ROOKIE: when the move knowingly followed an opening principle, the principle IS the lesson.
+  const principlePraise = input.principleKey && input.principleFollowed && good ? ROOKIE_PRINCIPLE_PRAISE[input.principleKey] : null;
+  if (principlePraise && (label === 'GOOD' || label === 'GREAT')) gradeLine = principlePraise;
+  if (label !== 'BRILLIANT' && label !== 'BEST' && label !== 'GREAT' && label !== 'GOOD') {
     gradeLine = pattern
       ? `It let ${pawnCost(input.evalDelta)} slip - ${pattern.line}`
       : `It let ${pawnCost(input.evalDelta)} slip. The usual cause: moving before checking what the move leaves undefended, or ignoring a more forcing option.`;
@@ -634,18 +657,30 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
         : input.check
           ? 'Celebrate the forcing move: check means the opponent\'s next move is chosen by you. Free turns like that are where plans become wins.'
           : 'Celebrate the quiet ones most of all: anyone can spot a capture, but choosing the strongest calm move is real chess.';
+    if (principlePraise) considerLine = `Opening principles are not decoration - they are how games are won before the real fight starts. Keep playing moves like this and the middlegame becomes yours.`;
     considerLine += scriptSuffix;
   } else {
     considerHeading = 'WHAT YOU COULD CONSIDER';
     const punishmentPrefix = scriptText ? `The engine's punishment: ${scriptText}. ` : '';
-    considerLine = punishmentPrefix + (pattern
-      ? input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
-        ? `The engine's stronger idea was ${input.bestMovePhrase}. ${pattern.principle}`
-        : pattern.principle
-      : input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
-        ? `The risk it created: after ${input.movePhrase || 'that move'}, Chester has fresh targets. The engine's calmer idea was ${input.bestMovePhrase} - same ambition, no door left open.`
-        : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.');
-    if (phase === 'OPENING') considerLine = `The opening is not the place to improvise - standard development exists because it survives stronger opponents. ${considerLine}`;
+    // ROOKIE: a broken opening principle is the whole lesson - lead with it, gently.
+    const principleLesson = input.principleKey && !input.principleFollowed ? ROOKIE_PRINCIPLE_LESSON[input.principleKey] : null;
+    const betterIdea = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase ? ` The engine's stronger idea was ${input.bestMovePhrase}.` : '';
+    considerLine = principleLesson
+      ? `${principleLesson}${betterIdea}`
+      : punishmentPrefix + (pattern
+        ? input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
+          ? `The engine's stronger idea was ${input.bestMovePhrase}. ${pattern.principle}`
+          : pattern.principle
+        : input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
+          ? `The risk it created: after ${input.movePhrase || 'that move'}, Chester has fresh targets. The engine's calmer idea was ${input.bestMovePhrase} - same ambition, no door left open.`
+          : 'The risk it created: something in your camp is looser now. Before your next move, count what Chester can attack - then patch it or hit first with a check, capture or threat.');
+    if (!principleLesson && phase === 'OPENING') considerLine = `The opening is not the place to improvise - standard development exists because it survives stronger opponents. ${considerLine}`;
+    // Middlegame framing: this is where risk becomes real and where a strong opening pays.
+    if (phase === 'MIDDLEGAME') considerLine = `The middlegame is where loose moves become real losses - and where a strong opening turns into real attacks. ${considerLine}`;
+  }
+
+  if (input.provisional) {
+    gradeLine = `The engine is still studying this one - this is a first take, not its final verdict. ${gradeLine}`;
   }
 
   return { phase, phaseTip, moveLine: `You played: ${move}`, gradeLine, considerHeading, considerLine };

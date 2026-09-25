@@ -16,7 +16,7 @@ import { ChesterChatOverlay } from '@/components/ChesterUI';
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
-type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number };
+type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; principleKey?: string | null; principleFollowed?: boolean | null };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
@@ -113,7 +113,25 @@ function PlayChesterGame() {
       ? `yes - the student deliberately offered their ${coachPrompt.sacrificePiece} and the engine calls the move ${coachPrompt.classification || 'strong'} because the payback is forced. If you mention the sacrifice, name the ${coachPrompt.sacrificePiece} and no other piece`
       : 'no';
     const scriptFact = (coachPrompt.engineLine || []).filter(Boolean).slice(0, 3).join(', then ');
-    const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 sentences. FACTS about the move (exact and complete - never contradict them, never name a different piece than these): the student played ${moveFact}. It captured ${capturedFact}. Sacrifice: ${sacrificeFact}. Engine verdict: ${coachPrompt.classification || 'unknown'}. Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Engine-preferred move: ${coachPrompt.bestMovePhrase || 'unknown'}.${scriptFact ? ` The engine's script from here: ${scriptFact}.` : ''} Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts: which piece moved, what was captured and what was sacrificed are exactly as stated above. NEVER use chess notation or coordinates - describe moves in words, like 'knight to the kingside' or 'pawn two squares up'.`;
+    // ROOKIE teaching lens: name the principle at stake so commentary, chat and hints all
+    // teach the same opening curriculum the WHY sheets teach.
+    const PRINCIPLE_FACTS: Record<string, string> = {
+      'centre': 'fighting for the centre with a central pawn',
+      'development': 'bringing a new piece into the game',
+      'king-safety': 'castling the king to safety',
+      'repeat-move': 'moving the same piece twice while other pieces still sleep',
+      'early-queen': 'bringing the queen out too early',
+      'edge-pawn': 'pushing an edge pawn that fights for nothing',
+      'exposed-piece': 'putting a piece where it can be taken for nothing',
+    };
+    const principleFact = coachPrompt.principleKey && PRINCIPLE_FACTS[coachPrompt.principleKey]
+      ? ` This move is an example of ${PRINCIPLE_FACTS[coachPrompt.principleKey]}${coachPrompt.principleFollowed ? ' done RIGHT' : ' done WRONG'} - teach that principle in one plain sentence.`
+      : '';
+    const rookieTeaching = difficulty === 'BEGINNER'
+      ? ' The student is a beginner: teach the opening principles whenever they apply - fight for the centre, bring every piece out once before moving any piece twice, castle early, never put a piece where it can be taken for free. In the middlegame, say plainly where the real danger is or where a strong opening can turn into a real attack.'
+      : '';
+    const provisionalFact = coachPrompt.provisional ? ' IMPORTANT: the deep engine has not confirmed this verdict yet - call it a first impression, never a settled grade.' : '';
+    const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 sentences. FACTS about the move (exact and complete - never contradict them, never name a different piece than these): the student played ${moveFact}. It captured ${capturedFact}. Sacrifice: ${sacrificeFact}. Engine verdict: ${coachPrompt.classification || 'unknown'}.${provisionalFact} Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Engine-preferred move: ${coachPrompt.bestMovePhrase || 'unknown'}.${scriptFact ? ` The engine's script from here: ${scriptFact}.` : ''}${principleFact}${rookieTeaching} Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts: which piece moved, what was captured and what was sacrificed are exactly as stated above. NEVER use chess notation or coordinates - describe moves in words, like 'knight to the kingside' or 'pawn two squares up'.`;
     void askChesterChat(JSON.stringify({ type: 'coach', message: coachPrompt.kind === 'help' ? 'Give me a strategic hint.' : `Review ${coachPrompt.move}.`, context }))
       .then((reply) => { const text = reply && !/messenger|delayed|unavailable/i.test(reply) ? reply : grounded; setCoachReply(text); })
       .catch(() => { setCoachReply(grounded); })
@@ -179,10 +197,10 @@ function PlayChesterGame() {
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button></header>
     <section className="chester-game__board">
-      <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} /></div>
+      <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} /></div>
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined}>
         <div className="chester-live-line__avatar" key={coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle'} aria-hidden="true">{coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : '♞'}</div>
-        <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={`${coachPrompt.move}-${coachPrompt.classification}`} className="chester-verdict grade-pop">{getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
+        <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={`${coachPrompt.move}-${coachPrompt.classification}`} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
         {!isThinking && coachPrompt && <span className="chester-live-line__next" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{difficulty === 'BEGINNER' && coachPrompt.kind === 'move' && <button type="button" className="chester-why-btn" onClick={() => setWhyOpen(true)}>📖 WHY?</button>}<em>YOUR MOVE CONTINUES →</em></span>}
       </div>
       <div className="chester-game__actions"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
@@ -204,12 +222,12 @@ function PlayChesterGame() {
     {whyOpen && coachPrompt && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Why this verdict">
       <div className="chess-game-sheet__backdrop" onClick={() => setWhyOpen(false)} />
       <section className="chess-game-sheet__content">
-        <header><b>WHY {getVerdict(coachPrompt.classification).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
+        <header><b>WHY {coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
         <div style={{ padding: '1rem 1.1rem', color: '#e8f6ff', lineHeight: 1.6, fontSize: '0.95rem' }}>
-          {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null, sacrificePiece: coachPrompt.sacrificePiece || null }); return <>
+          {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null, sacrificePiece: coachPrompt.sacrificePiece || null, principleKey: coachPrompt.principleKey || null, principleFollowed: coachPrompt.principleFollowed ?? null, provisional: coachPrompt.provisional || null }); return <>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#c084fc' }}>THE {why.phase} RULE:</b> {why.phaseTip}</p>
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>YOUR MOVE:</b> {why.moveLine}</p>
-            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: getVerdict(coachPrompt.classification).color }}>WHY {getVerdict(coachPrompt.classification).word}:</b> {why.gradeLine}</p>
+            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: getVerdict(coachPrompt.classification).color }}>WHY {coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}:</b> {why.gradeLine}</p>
             <p style={{ margin: 0 }}><b style={{ color: '#ffd84d' }}>{why.considerHeading}:</b> {why.considerLine}</p>
           </>; })()}
         </div>
