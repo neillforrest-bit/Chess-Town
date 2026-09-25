@@ -88,14 +88,17 @@ export function detectPlannedExchange(fenAfter: string, continuation: string[] |
    attacker that gets recaptured straight back. The honest engine never plays the bait-taking
    line, so a PV-based check misses it; what matters is that the player's move CREATED the
    trap. Only tags nets of 2+ pawns and only when the trap is new (not already on the board). */
-export function detectTrapSet(fen: string, playerColor: 'w' | 'b'): PlannedExchange | null {
-  // NOTE: the fen must have the OPPONENT of playerColor to move - captures are enumerated
-  // for the side to move. Callers flip the turn field when they need the other side.
-  void playerColor;
+export type TrapInfo = PlannedExchange & { baitSquare: string; attackerFrom: string };
+
+export function detectTraps(fen: string): TrapInfo[] {
+  // NOTE: the fen must have the OPPONENT to move - captures are enumerated for the side
+  // to move. Callers flip the turn field when they need the other side. Returns EVERY
+  // poisoned bait, highest net first: a position can hold several (a pre-existing pawn
+  // bait must not mask the rook trap the player's move just set - the batch-43 live miss).
   try {
     const board = new Chess(fen);
     const replies = board.moves({ verbose: true }) as any[];
-    let best: PlannedExchange | null = null;
+    const traps: TrapInfo[] = [];
     for (const capture of replies) {
       if (!capture.captured) continue;
       const attacker = EXCHANGE_VALUES[capture.piece] || 0;
@@ -106,14 +109,21 @@ export function detectTrapSet(fen: string, playerColor: 'w' | 'b'): PlannedExcha
       after.move({ from: capture.from, to: capture.to, promotion: capture.promotion || 'q' });
       const recapture = (after.moves({ verbose: true }) as any[]).some((m) => m.to === capture.to && m.captured);
       if (!recapture) continue;
-      if (!best || net > best.net) {
-        best = { lostPiece: EXCHANGE_NAMES[capture.captured] || 'a piece', wonPiece: EXCHANGE_NAMES[capture.piece] || 'a piece', net };
-      }
+      traps.push({
+        lostPiece: EXCHANGE_NAMES[capture.captured] || 'a piece',
+        wonPiece: EXCHANGE_NAMES[capture.piece] || 'a piece',
+        net, baitSquare: capture.to, attackerFrom: capture.from,
+      });
     }
-    return best;
+    return traps.sort((a, b) => b.net - a.net);
   } catch {
-    return null;
+    return [];
   }
+}
+
+export function detectTrapSet(fen: string, playerColor: 'w' | 'b'): PlannedExchange | null {
+  void playerColor;
+  return detectTraps(fen)[0] || null;
 }
 
 // Material reality check (moved into the shared core, batch 43): winning a rook/queen must

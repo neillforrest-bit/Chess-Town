@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
 import { describeMove } from '@/lib/move-words';
-import { applyMaterialReality,  detectOpeningPrinciple, detectPlannedExchange, detectTrapSet, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
+import { applyMaterialReality,  detectOpeningPrinciple, detectPlannedExchange, detectTraps, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
@@ -852,9 +852,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               // turn field. chess.js may reject an impossible flip (king in check) -> null,
               // which safely treats the trap as new.
               const fenBeforeOppTurn = fenBeforeMove.replace(/ (w|b) /, (match, turn) => (turn === 'w' ? ' b ' : ' w '));
-              const trapBefore = rookieTeaching && move.color === 'w' ? detectTrapSet(fenBeforeOppTurn, move.color) : null;
-              const trapAfter = rookieTeaching && move.color === 'w' ? detectTrapSet(fenAfterMove, move.color) : null;
-              const trapCreated = trapAfter && (!trapBefore || trapAfter.net > trapBefore.net) ? trapAfter : null;
+              const trapsBefore = rookieTeaching && move.color === 'w' ? detectTraps(fenBeforeOppTurn) : [];
+              const trapsAfter = rookieTeaching && move.color === 'w' ? detectTraps(fenAfterMove) : [];
+              // A trap counts when this move created it or made it better: compare per
+              // bait (attacker + square), because a pre-existing bigger trap elsewhere on
+              // the board must not mask the new one (the batch-43 live miss).
+              const trapCreated = trapsAfter.find((trap) => {
+                const prev = trapsBefore.find((b) => b.baitSquare === trap.baitSquare && b.attackerFrom === trap.attackerFrom);
+                return !prev || trap.net > prev.net;
+              }) || null;
               const plannedExchange = rookieTeaching && move.color === 'w'
                 ? trapCreated || detectPlannedExchange(fenAfterMove, telemetry?.continuation, move.color)
                 : null;
