@@ -1785,9 +1785,9 @@ body {
   .chester-game__progress small { display: none; }
   .chester-game__top button { min-height: 24px; padding: 0 .5rem; font-size: .62rem; }
   .chester-game__board { gap: .3rem; }
-  .chester-board-frame { width: min(100cqw, calc(100cqh - 370px)); }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 348px)); }
   .chester-game__board { padding-bottom: env(safe-area-inset-bottom); }
-  .chester-live-line { max-height: 256px; overflow: hidden; }
+  .chester-live-line { max-height: 200px; overflow: hidden; }
   .chester-live-line > div:not(.chester-live-line__avatar) { overflow-y: auto; }
   .chester-live-line p { max-height: none; }
   .chester-game__board { justify-content: flex-start; }
