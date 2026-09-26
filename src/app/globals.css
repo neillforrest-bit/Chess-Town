@@ -1792,7 +1792,6 @@ body {
   .chester-live-line p { max-height: none; }
   .chester-game__board { justify-content: flex-start; }
   .chester-live-line { flex: 1 1 auto; min-height: 96px; }
-  .chester-game__actions { margin-top: auto; }
   .chester-live-line { flex: 0 0 auto; }
   .chester-live-line > div { min-width: 0; }
 }
