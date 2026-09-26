@@ -1841,4 +1841,5 @@ vercel-live-feedback { display: none !important; }
   .material-bar__team b { font-size: 1.3rem; }
   .material-bar__score { min-width: 120px; }
   .chester-game__actions button { min-height: 36px; }
+  .chester-live-line__next em { display: none; }
 }
