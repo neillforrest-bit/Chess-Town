@@ -1785,8 +1785,10 @@ body {
   .chester-game__progress small { display: none; }
   .chester-game__top button { min-height: 24px; padding: 0 .5rem; font-size: .62rem; }
   .chester-game__board { gap: .3rem; }
-  .chester-board-frame { width: min(100cqw, calc(100cqh - 380px)); }
-  .chester-live-line p { max-height: 165px; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 200px)); }
+  .chester-live-line { flex: 0 1 auto; min-height: 58px; }
+  .chester-live-line > div { min-width: 0; }
+  .chester-live-line p { max-height: min(165px, 26cqh); }
 }
 .material-bar { width: min(100%, 680px); display: grid; grid-template-columns: 1fr auto 1fr; gap: .4rem; align-items: stretch; flex: 0 0 auto; }
 .material-bar__jail { position: relative; display: flex; align-items: center; gap: .4rem; min-height: 52px; padding: .28rem .45rem; border-radius: 8px; border: 1.5px solid; overflow: hidden; }
@@ -1812,3 +1814,17 @@ body {
 /* Batch 45: never let Vercel's preview toolbar cover the app for playtesters.
    (Full off-switch lives in the Vercel project settings; this hides the injected host.) */
 vercel-live-feedback { display: none !important; }
+
+
+/* Batch 46: NFL-style scorecard - team panels, big numerals */
+.material-bar__score { display: flex; align-items: stretch; gap: .35rem; min-width: 148px; padding: .25rem .35rem; animation: score-beat .45s cubic-bezier(.2,1.6,.4,1); }
+.material-bar__team { display: grid; place-items: center; gap: 0; padding: .2rem .55rem; border-radius: 6px; border-top: 3px solid; }
+.material-bar__team--you { background: rgba(255,216,77,.13); border-top-color: #ffd84d; }
+.material-bar__team--opp { background: rgba(244,63,122,.13); border-top-color: #f43f7a; }
+.material-bar__team b { font: 900 1.7rem/1 Georgia, serif; }
+.material-bar__team--you b { color: #ffd84d; }
+.material-bar__team--opp b { color: #f43f7a; }
+.material-bar__team span { font-size: .5rem; font-weight: 900; letter-spacing: 1.6px; color: #cfe3e6; }
+.material-bar__mid { display: grid; place-items: center; align-content: center; gap: 1px; padding: 0 .1rem; }
+.material-bar__mid i { font-style: normal; color: #4c6269; font-weight: 900; font-size: 1.1rem; line-height: 1; }
+.material-bar__mid small { font-size: .52rem; font-weight: 900; letter-spacing: 1.2px; color: #22d3ee; white-space: nowrap; }

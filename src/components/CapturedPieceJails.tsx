@@ -83,8 +83,9 @@ export function MaterialJailBar({ capturedPieces, playerColor = 'w', youLabel = 
       <JailSide label={`${oppLabel} TOOK`} pieces={oppTook} tone="opp" />
       <div className="material-bar__score" key={`${yourPts}-${oppPts}`}>
         {lastGain > 0 && <em className="material-bar__gain" key={capturedPieces.length}>+{lastGain}</em>}
-        <div><b>{yourPts}</b><span> : </span><b className="material-bar__score-opp">{oppPts}</b></div>
-        <small>{lead > 0 ? `${youLabel} +${lead}` : lead < 0 ? `${oppLabel} +${-lead}` : 'LEVEL'}</small>
+        <div className="material-bar__team material-bar__team--you"><b>{yourPts}</b><span>{youLabel}</span></div>
+        <div className="material-bar__mid"><i>·</i><small>{lead > 0 ? `${youLabel} +${lead}` : lead < 0 ? `${oppLabel} +${-lead}` : 'LEVEL'}</small></div>
+        <div className="material-bar__team material-bar__team--opp"><b>{oppPts}</b><span>{oppLabel}</span></div>
       </div>
       <JailSide label={`${youLabel} TOOK`} pieces={youTook} tone="you" />
     </section>
