@@ -1785,11 +1785,14 @@ body {
   .chester-game__progress small { display: none; }
   .chester-game__top button { min-height: 24px; padding: 0 .5rem; font-size: .62rem; }
   .chester-game__board { gap: .3rem; }
-  .chester-board-frame { width: min(100cqw, calc(100cqh - 240px)); }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 370px)); }
+  .chester-game__board { padding-bottom: env(safe-area-inset-bottom); }
+  .chester-live-line { max-height: 256px; overflow: hidden; }
+  .chester-live-line > div:not(.chester-live-line__avatar) { overflow-y: auto; }
+  .chester-live-line p { max-height: none; }
   .chester-game__board { justify-content: space-between; }
   .chester-live-line { flex: 0 0 auto; }
   .chester-live-line > div { min-width: 0; }
-  .chester-live-line p { max-height: 160px; }
 }
 .material-bar { width: min(100%, 680px); display: grid; grid-template-columns: 1fr auto 1fr; gap: .4rem; align-items: stretch; flex: 0 0 auto; }
 .material-bar__jail { position: relative; display: flex; align-items: center; gap: .4rem; min-height: 52px; padding: .28rem .45rem; border-radius: 8px; border: 1.5px solid; overflow: hidden; }
@@ -1833,7 +1836,8 @@ vercel-live-feedback { display: none !important; }
 /* Batch 46b: short viewports (in-app browsers) get a tighter commentary cap so
    the actions row always fits; tall screens distribute leftover space. */
 @media (max-width: 860px) and (max-height: 700px) {
-  .chester-live-line p { max-height: 58px; }
+  .chester-live-line { max-height: 144px; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 235px)); }
   .chester-live-line { padding: .4rem .6rem; gap: .5rem; }
   .chester-live-line__avatar { width: 34px; height: 34px; font-size: 1.1rem; }
   .material-bar__jail { min-height: 44px; }
