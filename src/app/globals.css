@@ -1863,3 +1863,7 @@ vercel-live-feedback { display: none !important; }
 .chester-line-sheet__body { padding: 1.1rem 1.2rem; color: #e8f6ff; }
 .chester-line-sheet__body b { display: block; margin-bottom: .7rem; font-size: 1.05rem; color: #fff; }
 .chester-line-sheet__body p { margin: 0; font-size: 1.12rem; line-height: 1.7; }
+
+/* Build watcher pill (batch 48): stale-tab refresh nudge, town gold, above all chrome */
+.build-watcher-pill { position: fixed; top: calc(4.4rem + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 3000; padding: .6rem 1.1rem; border: 2px solid #ffd84d; border-radius: 999px; background: rgba(9,7,4,.96); color: #ffd84d; font: 900 .78rem/1 Arial, sans-serif; letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 24px rgba(255,216,77,.45); white-space: nowrap; }
+.build-watcher-pill:active { transform: translateX(-50%) scale(.97); }
