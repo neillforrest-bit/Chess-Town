@@ -1775,3 +1775,36 @@ body {
 @media (max-width: 860px) {
   .chess-game-sheet__content { width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; border-bottom: 1px solid var(--arena-cyan); padding: max(.75rem, env(safe-area-inset-top)) .75rem max(.75rem, env(safe-area-inset-bottom)); }
 }
+
+/* ===== Batch 45: slim game top, board to the top, DOM jails + live material score ===== */
+@media (max-width: 860px) {
+  .chester-game { gap: .3rem; padding: .3rem .45rem; }
+  .chester-game__top { min-height: 28px; padding: .12rem .5rem; gap: .4rem; }
+  .chester-game__top b { font-size: .78rem; }
+  .chester-game__top > div:first-child span { display: none; }
+  .chester-game__progress small { display: none; }
+  .chester-game__top button { min-height: 24px; padding: 0 .5rem; font-size: .62rem; }
+  .chester-game__board { gap: .3rem; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 380px)); }
+  .chester-live-line p { max-height: 165px; }
+}
+.material-bar { width: min(100%, 680px); display: grid; grid-template-columns: 1fr auto 1fr; gap: .4rem; align-items: stretch; flex: 0 0 auto; }
+.material-bar__jail { position: relative; display: flex; align-items: center; gap: .4rem; min-height: 52px; padding: .28rem .45rem; border-radius: 8px; border: 1.5px solid; overflow: hidden; }
+.material-bar__jail--you { border-color: rgba(255,216,77,.6); background: rgba(255,216,77,.07); box-shadow: inset 0 0 16px rgba(255,216,77,.09); }
+.material-bar__jail--opp { border-color: rgba(244,63,122,.55); background: rgba(244,63,122,.07); box-shadow: inset 0 0 16px rgba(244,63,122,.09); }
+.material-bar__jail > span { display: grid; gap: 1px; font-size: .52rem; font-weight: 900; letter-spacing: 1px; color: #9cb0b5; }
+.material-bar__jail > span i { font-style: normal; color: #ffd84d; font-size: .68rem; }
+.material-bar__pieces { display: flex; flex-wrap: wrap; gap: 1px; align-items: center; justify-content: flex-end; flex: 1; min-width: 0; }
+.material-bar__pieces img { width: 22px; height: 22px; }
+.material-bar__pieces img.material-bar__new { animation: jail-pop .55s cubic-bezier(.2,1.7,.4,1) both; }
+.material-bar__empty { font-size: .6rem; color: #41555a; font-style: normal; letter-spacing: 1px; }
+.material-bar__score { position: relative; display: grid; place-items: center; align-content: center; min-width: 84px; padding: .15rem .55rem; border-radius: 8px; border: 1.5px solid rgba(34,211,238,.55); background: rgba(6,12,14,.95); box-shadow: 0 0 18px rgba(34,211,238,.16); text-align: center; animation: score-beat .45s cubic-bezier(.2,1.6,.4,1); }
+.material-bar__score b { font: 900 1.2rem Georgia, serif; color: #ffd84d; }
+.material-bar__score b.material-bar__score-opp { color: #f43f7a; }
+.material-bar__score span { color: #4c6269; font-weight: 900; }
+.material-bar__score small { font-size: .55rem; font-weight: 900; letter-spacing: 1.2px; color: #22d3ee; }
+.material-bar__gain { position: absolute; top: -9px; right: -7px; font-style: normal; font-weight: 900; font-size: .85rem; color: #39ff14; text-shadow: 0 0 8px rgba(57,255,20,.7); animation: gain-float 1.15s ease-out both; }
+.chester-chat-chip { background: rgba(34,211,238,0.12); border: 1px solid rgba(34,211,238,0.5); color: #a5f3fc; border-radius: 999px; padding: 0.3rem 0.75rem; font-size: 0.78rem; cursor: pointer; }
+@keyframes jail-pop { 0% { transform: scale(0) rotate(-32deg); } 70% { transform: scale(1.4) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes score-beat { 0% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes gain-float { 0% { opacity: 0; transform: translateY(7px) scale(.6); } 25% { opacity: 1; transform: translateY(0) scale(1.18); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-11px) scale(1); } }

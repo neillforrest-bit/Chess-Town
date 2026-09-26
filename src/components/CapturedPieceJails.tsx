@@ -1,3 +1,5 @@
+import { drawPieceSprite } from '@/lib/piece-sprites';
+
 export type CapturedPiece = {
   color: 'w' | 'b';
   type: 'p' | 'r' | 'n' | 'b' | 'q' | 'k';
@@ -33,6 +35,58 @@ export default function CapturedPieceJails({ capturedPieces }: { capturedPieces:
   return (
     <section aria-label="Captured pieces" className="grid h-24 w-full grid-cols-2 gap-2">
       {cells.map(({ color, label }) => <PieceJail key={color} capturedPieces={capturedPieces} color={color} label={label} />)}
+    </section>
+  );
+}
+const MATERIAL_POINTS: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+
+// Mini sprites rendered through the same artist as the board pieces, so the jail
+// matches what you see on the squares (crowns included). Cached per piece kind.
+const spriteCache: Record<string, string> = {};
+function jailSpriteUrl(color: CapturedPiece['color'], type: string): string {
+  const key = `${color}-${type}`;
+  if (spriteCache[key] !== undefined) return spriteCache[key];
+  if (typeof document === 'undefined') return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  spriteCache[key] = ctx ? (drawPieceSprite(ctx, color, type, 64), canvas.toDataURL()) : '';
+  return spriteCache[key];
+}
+
+function JailSide({ label, pieces, tone }: { label: string; pieces: CapturedPiece[]; tone: 'you' | 'opp' }) {
+  const pts = pieces.reduce((total, piece) => total + (MATERIAL_POINTS[piece.type] || 0), 0);
+  return (
+    <div className={`material-bar__jail material-bar__jail--${tone}`} aria-label={label}>
+      <span>{label}<i>{pts > 0 ? `+${pts}` : ''}</i></span>
+      <div className="material-bar__pieces" key={pieces.length}>
+        {pieces.map((piece, index) => (
+          <img key={`${piece.color}-${piece.type}-${index}`} src={jailSpriteUrl(piece.color, piece.type)} alt="" className={index === pieces.length - 1 ? 'material-bar__new' : undefined} />
+        ))}
+        {!pieces.length && <em className="material-bar__empty">empty</em>}
+      </div>
+    </div>
+  );
+}
+
+// Live material scoreboard + jails. Standard values: pawn 1, knight/bishop 3, rook 5, queen 9.
+export function MaterialJailBar({ capturedPieces, playerColor = 'w', youLabel = 'YOU', oppLabel = 'CHESTER' }: { capturedPieces: CapturedPiece[]; playerColor?: 'w' | 'b'; youLabel?: string; oppLabel?: string }) {
+  const youTook = capturedPieces.filter((piece) => piece.color !== playerColor);
+  const oppTook = capturedPieces.filter((piece) => piece.color === playerColor);
+  const yourPts = youTook.reduce((total, piece) => total + (MATERIAL_POINTS[piece.type] || 0), 0);
+  const oppPts = oppTook.reduce((total, piece) => total + (MATERIAL_POINTS[piece.type] || 0), 0);
+  const lead = yourPts - oppPts;
+  const last = capturedPieces[capturedPieces.length - 1];
+  const lastGain = last && last.color !== playerColor ? MATERIAL_POINTS[last.type] || 0 : 0;
+  return (
+    <section className="material-bar" aria-label="Captured pieces and material score">
+      <JailSide label={`${oppLabel} TOOK`} pieces={oppTook} tone="opp" />
+      <div className="material-bar__score" key={`${yourPts}-${oppPts}`}>
+        {lastGain > 0 && <em className="material-bar__gain" key={capturedPieces.length}>+{lastGain}</em>}
+        <div><b>{yourPts}</b><span> : </span><b className="material-bar__score-opp">{oppPts}</b></div>
+        <small>{lead > 0 ? `${youLabel} +${lead}` : lead < 0 ? `${oppLabel} +${-lead}` : 'LEVEL'}</small>
+      </div>
+      <JailSide label={`${youLabel} TOOK`} pieces={youTook} tone="you" />
     </section>
   );
 }

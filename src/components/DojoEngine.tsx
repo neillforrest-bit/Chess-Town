@@ -384,7 +384,7 @@ function getChesterDifficulty(difficulty: string) {
   return 'INTERMEDIATE' as const;
 }
 
-export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE', rookieTeaching = false }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO'; rookieTeaching?: boolean }) {
+export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE', rookieTeaching = false, domJails = false }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO'; rookieTeaching?: boolean; domJails?: boolean }) {
   const { p1Difficulty, p2Difficulty, setActiveChaosEvent } = useBrawlState();
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserRef = useRef<Phaser.Game | null>(null);
@@ -497,18 +497,22 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           // Jails are wide strips in the top margin: label on the left, captured pieces line up beside it.
           const jailX = 630;
           const greenJailX = 170;
-          scene.add.rectangle(jailX, jailY, 310, 30, 0x240019, 0.95)
-            .setStrokeStyle(2, 0xf43f7a, 0.9)
-            .setDepth(20);
-          scene.add.text(486, jailY, 'PIECE JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#fecdd8' }).setOrigin(0, 0.5).setDepth(21);
-          scene.add.rectangle(greenJailX, jailY, 310, 30, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
-          scene.add.text(26, jailY, 'GREEN JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#dfffda' }).setOrigin(0, 0.5).setDepth(21);
+          if (!domJails) {
+            scene.add.rectangle(jailX, jailY, 310, 30, 0x240019, 0.95)
+              .setStrokeStyle(2, 0xf43f7a, 0.9)
+              .setDepth(20);
+            scene.add.text(486, jailY, 'PIECE JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#fecdd8' }).setOrigin(0, 0.5).setDepth(21);
+            scene.add.rectangle(greenJailX, jailY, 310, 30, 0x08200d, 0.95).setStrokeStyle(2, 0x39ff14, 0.9).setDepth(20);
+            scene.add.text(26, jailY, 'GREEN JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#dfffda' }).setOrigin(0, 0.5).setDepth(21);
+          }
           const jailGlyphLayers: Record<'w' | 'b', Phaser.GameObjects.Container> = {
             w: scene.add.container(0, 0).setDepth(21),
             b: scene.add.container(0, 0).setDepth(21),
           };
           gameRef.current.jailedCounts = { w: 0, b: 0 };
           const jailCapturedPiece = (color: 'w' | 'b', type: string) => {
+            // DOM jails (play-chester) own the captured-piece display; the canvas strip stays empty.
+            if (domJails) { gameRef.current.jailedCounts[color]++; return; }
             try {
               const count = gameRef.current.jailedCounts[color]++;
               const layer = jailGlyphLayers[color];
@@ -568,9 +572,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             if (attackingPiece) attackingPiece.setAlpha(0);
             capturedPiece.setDepth(30).setInteractive(false);
             const capturedIsWhite = move.color === 'b';
-            const targetX = capturedIsWhite ? greenJailX : jailX;
+            const targetX = domJails ? (capturedIsWhite ? 64 : 736) : (capturedIsWhite ? greenJailX : jailX);
             const targetColor = capturedIsWhite ? 0x2563eb : 0xf43f7a;
-            const targetY = jailY;
+            const targetY = domJails ? 780 : jailY;
             const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0.45).setDepth(29);
             scene.tweens.add({ targets: impact, scale: 1.8, alpha: 0, duration: 420, ease: 'Quad.Out', onComplete: () => impact.destroy() });
             const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2);
@@ -590,6 +594,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               },
               onComplete: () => {
                 emitCapture(move);
+                if (domJails) return;
                 const lock = scene.add.text(targetX, targetY, '🔒', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
                 scene.tweens.add({
                   targets: lock,
