@@ -212,22 +212,22 @@ function PlayChesterGame() {
   const lesson = LESSONS[lessonStep];
   return <main className="chester-game" aria-label="Play Chester guided game">
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
-    <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button></header>
+    <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button><span className="chester-level-badge">{isFriendMode ? modeTitle : selectedLevel.label}</span><div className="chester-score-actions">
+        <button type="button" className="chester-icon-btn" onClick={() => { if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}>?<small>{helpRemaining}</small></button>
+        <button type="button" className="chester-icon-btn" onClick={() => setChatOpen(true)} aria-label="Chat with Chester">💬</button>
+        <button type="button" className="chester-icon-btn" onClick={() => setMenuOpen(true)} aria-label="More game options">…</button>
+      </div></header>
     <section className="chester-game__board">
       <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails /></div>
-      <div className="chester-score-row">
+      <div className="chester-bottom">
         <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
-        <div className="chester-score-actions">
-          <button type="button" className="chester-icon-btn" onClick={() => { if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}>?<small>{helpRemaining}</small></button>
-          <button type="button" className="chester-icon-btn" onClick={() => setChatOpen(true)} aria-label="Chat with Chester">💬</button>
-          <button type="button" className="chester-icon-btn" onClick={() => setMenuOpen(true)} aria-label="More game options">…</button>
-        </div>
-      </div>
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined}>
         <div className="chester-live-line__avatar" key={coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle'} aria-hidden="true">{coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : '♞'}</div>
         <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={`${coachPrompt.move}-${coachPrompt.classification}`} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
         {!isThinking && coachPrompt && <span className="chester-live-line__next" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{coachPrompt.kind === 'move' && <button type="button" className="chester-why-btn" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}</span>}
       </div>
+      </div>
+      <div className="chester-game__actions chester-game__actions--desktop"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
     </section>
     <aside className="chester-game__coach chester-game__coach--route">
       <span>TONIGHT’S TRAINING ROUTE</span><h2>LEARN WHILE YOU PLAY</h2><p>Chester’s notes arrive beside the live board. No pop-ups, no dismissing, no break in the game.</p>
