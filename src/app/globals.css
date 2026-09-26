@@ -1808,3 +1808,7 @@ body {
 @keyframes jail-pop { 0% { transform: scale(0) rotate(-32deg); } 70% { transform: scale(1.4) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
 @keyframes score-beat { 0% { transform: scale(1.18); } 100% { transform: scale(1); } }
 @keyframes gain-float { 0% { opacity: 0; transform: translateY(7px) scale(.6); } 25% { opacity: 1; transform: translateY(0) scale(1.18); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-11px) scale(1); } }
+
+/* Batch 45: never let Vercel's preview toolbar cover the app for playtesters.
+   (Full off-switch lives in the Vercel project settings; this hides the injected host.) */
+vercel-live-feedback { display: none !important; }
