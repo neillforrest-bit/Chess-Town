@@ -1787,7 +1787,7 @@ body {
   .chester-game__board { gap: .3rem; }
   .chester-board-frame { width: min(100cqw, calc(100cqh - 240px)); }
   .chester-game__board { justify-content: space-between; }
-  .chester-live-line { flex: 0 1 auto; min-height: 58px; }
+  .chester-live-line { flex: 0 0 auto; }
   .chester-live-line > div { min-width: 0; }
   .chester-live-line p { max-height: 165px; }
 }
@@ -1833,5 +1833,12 @@ vercel-live-feedback { display: none !important; }
 /* Batch 46b: short viewports (in-app browsers) get a tighter commentary cap so
    the actions row always fits; tall screens distribute leftover space. */
 @media (max-width: 860px) and (max-height: 700px) {
-  .chester-live-line p { max-height: 92px; }
+  .chester-live-line p { max-height: 58px; }
+  .chester-live-line { padding: .4rem .6rem; gap: .5rem; }
+  .chester-live-line__avatar { width: 34px; height: 34px; font-size: 1.1rem; }
+  .material-bar__jail { min-height: 44px; }
+  .material-bar__pieces img { width: 18px; height: 18px; }
+  .material-bar__team b { font-size: 1.3rem; }
+  .material-bar__score { min-width: 120px; }
+  .chester-game__actions button { min-height: 36px; }
 }
