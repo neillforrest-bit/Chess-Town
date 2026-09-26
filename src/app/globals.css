@@ -1867,3 +1867,12 @@ vercel-live-feedback { display: none !important; }
 /* Build watcher pill (batch 48): stale-tab refresh nudge, town gold, above all chrome */
 .build-watcher-pill { position: fixed; top: calc(4.4rem + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 3000; padding: .6rem 1.1rem; border: 2px solid #ffd84d; border-radius: 999px; background: rgba(9,7,4,.96); color: #ffd84d; font: 900 .78rem/1 Arial, sans-serif; letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 24px rgba(255,216,77,.45); white-space: nowrap; }
 .build-watcher-pill:active { transform: translateX(-50%) scale(.97); }
+
+/* Batch 48g: continuous self-balancing sizing - replaces the stepped 348px/235px reserves.
+   Real iPhone Safari with URL bar lives at ~700-730px usable height, where the tall-phone
+   branch starved the board (270px). Board now claims full width whenever the height allows;
+   the card absorbs exactly what remains (never hollow, never pooling below the buttons). */
+@media (max-width: 860px) {
+  .chester-board-frame { width: min(100cqw, max(160px, calc(100cqh - 225px))); }
+  .chester-live-line { flex: 1 1 auto; min-height: 108px; max-height: clamp(108px, calc(100cqh - 100cqw - 117px), 256px); }
+}
