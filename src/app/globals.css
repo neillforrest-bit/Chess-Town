@@ -1778,7 +1778,7 @@ body {
 
 /* ===== Batch 45: slim game top, board to the top, DOM jails + live material score ===== */
 @media (max-width: 860px) {
-  .chester-game { gap: .3rem; padding: .3rem .45rem; }
+  .chester-game { gap: .3rem; padding: .3rem .2rem; }
   .chester-game__top { min-height: 28px; padding: .12rem .5rem; gap: .4rem; }
   .chester-game__top b { font-size: .78rem; }
   .chester-game__top > div:first-child span { display: none; }
@@ -1790,7 +1790,9 @@ body {
   .chester-live-line { max-height: 256px; overflow: hidden; }
   .chester-live-line > div:not(.chester-live-line__avatar) { overflow-y: auto; }
   .chester-live-line p { max-height: none; }
-  .chester-game__board { justify-content: space-between; }
+  .chester-game__board { justify-content: flex-start; }
+  .chester-live-line { flex: 1 1 auto; min-height: 96px; }
+  .chester-game__actions { margin-top: auto; }
   .chester-live-line { flex: 0 0 auto; }
   .chester-live-line > div { min-width: 0; }
 }
