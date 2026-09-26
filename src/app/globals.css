@@ -1904,7 +1904,7 @@ vercel-live-feedback { display: none !important; }
    dynamic bottom (scoreboard row + grow-upward commentary), colour-chip jail titles */
 .chester-level-badge { display: none; }
 .chester-game__top .chester-score-actions { display: none; }
-.chester-bottom { display: contents; }
+@media (min-width: 861px) { .chester-bottom { display: contents; } }
 @media (max-width: 860px) {
   .chester-game__top { display: flex !important; justify-content: space-between; align-items: center; gap: .5rem; min-height: 40px; padding: .3rem .45rem; }
   .chester-game__top > div:first-child, .chester-game__top .chester-game__progress, .chester-game__top > button { display: none !important; }
