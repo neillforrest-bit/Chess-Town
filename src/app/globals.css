@@ -1854,3 +1854,13 @@ vercel-live-feedback { display: none !important; }
   .chester-howler-aside { font-size: .72rem; }
   .chester-game { overflow-y: auto; }
 }
+
+
+/* Batch 48c: readable commentary + tap-to-read sheet (Jenny: no glasses needed) */
+@media (max-width: 860px) {
+  .chester-live-line p { font-size: 1rem; line-height: 1.5; }
+  .chester-live-line { cursor: pointer; }
+}
+.chester-line-sheet__body { padding: 1.1rem 1.2rem; color: #e8f6ff; }
+.chester-line-sheet__body b { display: block; margin-bottom: .7rem; font-size: 1.05rem; color: #fff; }
+.chester-line-sheet__body p { margin: 0; font-size: 1.12rem; line-height: 1.7; }
