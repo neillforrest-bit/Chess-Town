@@ -63,7 +63,9 @@ function PlayChesterGame() {
   const [lastBestPhrase, setLastBestPhrase] = useState<string | null>(null);
   const [lastMovePhrase, setLastMovePhrase] = useState<string | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
-  const [lineOpen, setLineOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
+  const [lastHintReply, setLastHintReply] = useState('');
   const selectedLevel = useMemo(() => LEVELS.find((level) => level.value === difficulty)!, [difficulty]);
   const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : 'PLAYING CHESTER';
   const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : selectedLevel.label;
@@ -99,6 +101,10 @@ function PlayChesterGame() {
   }, [mode, started]);
 
   useEffect(() => { coachPromptRef.current = coachPrompt; }, [coachPrompt]);
+
+  useEffect(() => {
+    if (coachPrompt?.kind === 'help' && !isThinking && coachReply) setLastHintReply(coachReply);
+  }, [coachPrompt, isThinking, coachReply]);
 
   useEffect(() => {
     if (!coachPrompt) return;
@@ -209,13 +215,19 @@ function PlayChesterGame() {
     <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button></header>
     <section className="chester-game__board">
       <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails /></div>
-      <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
-      <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" onClick={() => { if (coachPrompt && !isThinking) setLineOpen(true); }} role={coachPrompt ? 'button' : undefined} title={coachPrompt ? 'Tap to read' : undefined} style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined}>
+      <div className="chester-score-row">
+        <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
+        <div className="chester-score-actions">
+          <button type="button" className="chester-icon-btn" onClick={() => { if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}>?<small>{helpRemaining}</small></button>
+          <button type="button" className="chester-icon-btn" onClick={() => setChatOpen(true)} aria-label="Chat with Chester">💬</button>
+          <button type="button" className="chester-icon-btn" onClick={() => setMenuOpen(true)} aria-label="More game options">…</button>
+        </div>
+      </div>
+      <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined}>
         <div className="chester-live-line__avatar" key={coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle'} aria-hidden="true">{coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : '♞'}</div>
         <div><span>{isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE'}</span><b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={`${coachPrompt.move}-${coachPrompt.classification}`} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
-        {!isThinking && coachPrompt && <span className="chester-live-line__next" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{coachPrompt.kind === 'move' && <button type="button" className="chester-why-btn" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}<em>TAP TO READ →</em></span>}
+        {!isThinking && coachPrompt && <span className="chester-live-line__next" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{coachPrompt.kind === 'move' && <button type="button" className="chester-why-btn" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}</span>}
       </div>
-      <div className="chester-game__actions"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
     </section>
     <aside className="chester-game__coach chester-game__coach--route">
       <span>TONIGHT’S TRAINING ROUTE</span><h2>LEARN WHILE YOU PLAY</h2><p>Chester’s notes arrive beside the live board. No pop-ups, no dismissing, no break in the game.</p>
@@ -231,13 +243,23 @@ function PlayChesterGame() {
         <ChesterChatOverlay chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} onSendMessage={sendChat} isThinking={chatBusy} chatError={chatError} isMobile defaultExpanded />
       </section>
     </div>}
-    {lineOpen && coachPrompt && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Read Chester's commentary">
-      <div className="chess-game-sheet__backdrop" onClick={() => setLineOpen(false)} />
+    {hintOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Hint from Chester">
+      <div className="chess-game-sheet__backdrop" onClick={() => setHintOpen(false)} />
       <section className="chess-game-sheet__content chester-line-sheet">
-        <header><b>CHESTER / {coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</b><button type="button" onClick={() => setLineOpen(false)} aria-label="Close">×</button></header>
-        <div className="chester-line-sheet__body" onClick={() => setLineOpen(false)}>
-          <b>On {coachPrompt.movePhrase || coachPrompt.move}</b>
-          <p>{coachReply}</p>
+        <header><b>💡 CHESTER / HINT · {helpRemaining} LEFT</b><button type="button" onClick={() => setHintOpen(false)} aria-label="Close">×</button></header>
+        <div className="chester-line-sheet__body" onClick={() => setHintOpen(false)}>
+          <b>{coachPrompt?.kind === 'help' && isThinking ? 'Reading the board…' : 'Try this idea'}</b>
+          <p>{coachPrompt?.kind === 'help' && isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : (coachPrompt?.kind === 'help' && coachReply ? coachReply : (lastHintReply || 'Tap the ? for a hint and Chester’s idea will wait for you here.'))}</p>
+        </div>
+      </section>
+    </div>}
+    {menuOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Game options">
+      <div className="chess-game-sheet__backdrop" onClick={() => setMenuOpen(false)} />
+      <section className="chess-game-sheet__content chester-menu-sheet">
+        <header><b>GAME OPTIONS</b><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close">×</button></header>
+        <div className="chester-menu-list">
+          <button type="button" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('request-resign')); }}>🏳 RESIGN<small>End the match and see your report</small></button>
+          <button type="button" onClick={() => { setMenuOpen(false); setStarted(false); }}>🚪 LEAVE GAME<small>Back to the level select</small></button>
         </div>
       </section>
     </div>}
