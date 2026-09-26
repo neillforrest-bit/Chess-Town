@@ -1844,7 +1844,8 @@ vercel-live-feedback { display: none !important; }
   .chester-live-line__next em { display: none; }
   .chester-live-line { padding: .3rem .55rem; }
   .chester-why-btn { min-height: 24px; font-size: .62rem; padding: 0 .5rem; }
-  .material-bar__jail { min-height: 40px; padding: .2rem .4rem; }
+  .material-bar__jail { min-height: 36px; padding: .15rem .4rem; }
+  .chester-game__board { gap: .2rem; }
   .chester-howler-aside { font-size: .72rem; }
   .chester-game { overflow-y: auto; }
 }
