@@ -4,6 +4,7 @@ import { BUILD_LABEL } from '@/lib/build-info';
 export default function BuildBadge() {
   return (
     <div
+      className="build-badge"
       aria-hidden
       style={{
         position: 'fixed',

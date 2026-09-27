@@ -1989,3 +1989,14 @@ vercel-live-feedback { display: none !important; }
   .chester-top-buttons button { grid-column: auto; grid-row: auto; }
   .chester-verdict-row .chester-verdict { min-height: 0; position: static; border: 0 !important; }
 }
+
+/* Batch 50: owner - the four-button row is the only top chrome in the game; the standalone
+   CHESTERVILLE nav row duplicates BACK TO CHESTERVILLE. Hide the global nav, the floating
+   Chester FAB (chat lives in the button row) and the BUILD badge IN THE GAME SCREEN ONLY on
+   mobile - all three overlapped or crowded the commentary card. Start screen, desktop and
+   every other page keep them. Freed height flows to the card via the flex budget. */
+@media (max-width: 860px) {
+  body:has(.chester-game) .global-nav { display: none; }
+  body:has(.chester-game) .chester-fab { display: none; }
+  body:has(.chester-game) .build-badge { display: none; }
+}
