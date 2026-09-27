@@ -54,6 +54,13 @@ function PlayChesterGame() {
   const [lessonStep, setLessonStep] = useState(0);
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   const [chatOpen, setChatOpen] = useState(false);
+  const [heroTipOpen, setHeroTipOpen] = useState(false);
+  const dismissHeroTip = () => { setHeroTipOpen(false); try { localStorage.setItem('ct-hero-tip-seen', '1'); } catch {} };
+  useEffect(() => {
+    if (!started) return;
+    try { if (!localStorage.getItem('ct-hero-tip-seen')) setHeroTipOpen(true); } catch { setHeroTipOpen(true); }
+  }, [started]);
+
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; kind?: 'chat' }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState('');
@@ -229,11 +236,15 @@ function PlayChesterGame() {
       </div>
       <div className="chester-top-buttons">
         <button type="button" onClick={() => setStarted(false)} aria-label="Change level"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'LEVEL'}</small><b>{isFriendMode ? modeTitle : selectedLevel.label}</b></button>
-        <button type="button" className="chester-top-buttons__hint" onClick={() => { if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><small>{helpRemaining} LEFT</small><b>? HINT</b></button>
-        <button type="button" className="chester-top-buttons__chat" onClick={() => setChatOpen(true)} aria-label="Chat with Chester"><small>TALK TO</small><b>💬 CHESTER</b></button>
-        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Back to Chesterville"><small>BACK TO</small><b>🏠 CHESTERVILLE</b></button>
+        <button type="button" className="chester-top-buttons__hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><small>{helpRemaining} LEFT</small><b>? HINT</b></button>
+        <button type="button" className="chester-top-buttons__chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><small>TALK TO</small><b>💬 CHESTER</b></button>
+        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Back to home"><small>BACK TO</small><b>🏠 HOME</b></button>
       </div></header>
     <section className="chester-game__board">
+      {heroTipOpen && <div className="hero-tip" role="status">
+        <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
+        <button type="button" onClick={dismissHeroTip}>GOT IT</button>
+      </div>}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       <div className="capture-strip-row hero-jail-row"><CaptureStrip pieces={material.youTook} tone="you" label={isFriendMode ? 'P1 TOOK' : 'YOU TOOK'} /><CaptureStrip pieces={material.oppTook} tone="opp" label={isFriendMode ? 'P2 TOOK' : 'CHESTER TOOK'} /></div>
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
