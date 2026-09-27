@@ -580,6 +580,19 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2);
             scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 1250, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
 
+            // The captured-piece moonwalk hid the attacker (alpha 0) and only the onComplete
+            // restored the board - but the domJails path returned BEFORE renderBoard, so every
+            // capture on play-chester left Chester's attacking piece invisible until the next
+            // tap re-rendered ("the opponent move doesn't finish until I click the board").
+            // Settle exactly once from any of: natural completion, premature stop, or a timed
+            // backstop in case the tween never runs at all (throttled RAF).
+            let captureSettled = false;
+            const settleCapture = () => {
+              if (captureSettled) return;
+              captureSettled = true;
+              emitCapture(move);
+              renderBoard();
+            };
             const moonwalk = scene.tweens.add({
               targets: capturedPiece,
               x: targetX,
@@ -593,7 +606,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 target.y += Math.sin(_tween.totalProgress * Math.PI * 6) * 2.4;
               },
               onComplete: () => {
-                emitCapture(move);
+                settleCapture();
                 if (domJails) return;
                 const lock = scene.add.text(targetX, targetY, '🔒', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
                 scene.tweens.add({
@@ -604,11 +617,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   ease: 'Quad.Out',
                   onComplete: () => lock.destroy(),
                 });
-                renderBoard();
               },
             });
 
-            moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => renderBoard());
+            moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => settleCapture());
+            scene.time.delayedCall(1700, settleCapture);
           };
 
           // Engine line in words: walk the PV from the resulting position and phrase each
@@ -1187,16 +1200,21 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                     container.addAt(spotlight, 0);
                     const glide = gameRef.current.glideMove && gameRef.current.glideMove.to === squareName ? gameRef.current.glideMove : null;
                     if (glide) {
-                      // Move glide (batch 44, his 'pieces move instantaneously - half speed'):
-                      // the piece visibly travels from its origin square, ~400ms ease-out,
-                      // gated on the position actually changing so selection re-renders
-                      // never replay it. Cleared on use so the next render can't re-glide.
+                      // Fail-safe glide: the REAL piece is already at its destination (created
+                      // above), so the board is always true even if a tween never runs. The old
+                      // glide tweened the piece container itself from the origin square - any
+                      // killed or throttled tween stranded the piece at its origin until a tap.
+                      // Motion now comes from a translucent echo that slides over and dies.
                       gameRef.current.glideMove = null;
                       const gCol = files.indexOf(glide.from[0]);
                       const gRow = ranks.indexOf(glide.from[1]);
                       if (gCol >= 0 && gRow >= 0) {
-                        container.setPosition(boardOffset + gCol * tileSize + tileSize / 2, boardOffset + gRow * tileSize + tileSize / 2);
-                        scene.tweens.add({ targets: container, x: posX, y: posY, duration: 400, ease: 'Cubic.Out' });
+                        try {
+                          const echo = scene.add.image(boardOffset + gCol * tileSize + tileSize / 2, boardOffset + gRow * tileSize + tileSize / 2, royalTexture || `piece-${piece.color}-${displayPieceType}`)
+                            .setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5).setAlpha(0.55).setDepth(28);
+                          scene.tweens.add({ targets: echo, x: posX, y: posY, duration: 400, ease: 'Cubic.Out', onComplete: () => { try { echo.destroy(); } catch { /* gone */ } } });
+                          scene.time.delayedCall(900, () => { try { echo.destroy(); } catch { /* gone */ } });
+                        } catch { /* the echo is decoration; the real piece is already home */ }
                       }
                     } else {
                       container.setScale(0.35).setAlpha(1);

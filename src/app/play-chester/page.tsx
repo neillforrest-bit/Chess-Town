@@ -213,8 +213,9 @@ function PlayChesterGame() {
   const lesson = LESSONS[lessonStep];
   const material = splitMaterial(capturedPieces, 'w');
   const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined;
-  const verdictKey = coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}` : 'idle';
-  const verdictEmoji = coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : '♞';
+  const moodEmoji = material.lead > 0 ? '😎' : material.lead < 0 ? '😬' : '🙂';
+  const verdictKey = coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}-${isThinking ? 'think' : 'say'}` : `idle-${moodEmoji}`;
+  const verdictEmoji = isThinking && coachPrompt ? '🤔' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : moodEmoji;
   const verdictKicker = isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE';
   const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
   return <main className="chester-game" aria-label="Play Chester guided game">
@@ -232,7 +233,7 @@ function PlayChesterGame() {
       </div></header>
     <section className="chester-game__board">
       <div className="capture-strip-row"><CaptureStrip pieces={material.oppTook} tone="opp" label={isFriendMode ? 'P2 TOOK' : 'CHESTER TOOK'} /></div>
-      <div className="chester-board-frame"><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`} key={coachPrompt?.check || coachPrompt?.mate ? `${coachPrompt.move}-drama` : 'calm'}><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
       <div className="capture-strip-row"><CaptureStrip pieces={material.youTook} tone="you" label={isFriendMode ? 'P1 TOOK' : 'YOU TOOK'} /></div>

@@ -2000,3 +2000,26 @@ vercel-live-feedback { display: none !important; }
   body:has(.chester-game) .chester-fab { display: none; }
   body:has(.chester-game) .build-badge { display: none; }
 }
+
+/* Batch 51 (BUILD A - Chester is alive in-game): mood-reactive verdict avatar (the face pops on
+   every swing via re-key), chomp-slide on freshly captured strip pieces, and a board drama
+   beat when check or mate lands. Decoration only - the one-screen layout budget is untouched. */
+.capture-strip__new { animation: captureChomp .6s cubic-bezier(.2,1.6,.4,1) !important; }
+@keyframes captureChomp {
+  0% { transform: translateY(-14px) scale(.2); opacity: 0; }
+  55% { transform: translateY(2px) scale(1.35); opacity: 1; }
+  75% { transform: translateY(-2px) scale(.92); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.chester-board-frame.is-check { animation: checkBeat .9s ease; }
+.chester-board-frame.is-mate { animation: mateBeat 1.4s ease; }
+@keyframes checkBeat {
+  0%, 100% { box-shadow: 0 0 32px rgba(34,211,238,.32); }
+  20%, 60% { box-shadow: 0 0 46px rgba(244,63,122,.85); border-color: #f43f7a; }
+  40%, 80% { box-shadow: 0 0 20px rgba(244,63,122,.3); }
+}
+@keyframes mateBeat {
+  0%, 100% { box-shadow: 0 0 32px rgba(34,211,238,.32); }
+  15%, 45%, 75% { box-shadow: 0 0 60px rgba(255,216,77,.95); border-color: #ffd84d; }
+  30%, 60%, 90% { box-shadow: 0 0 22px rgba(255,216,77,.3); }
+}
