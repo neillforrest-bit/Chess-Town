@@ -2037,20 +2037,19 @@ vercel-live-feedback { display: none !important; }
    line and buried the WHY button below the fold, and the capture strips read as blobs.
    - Board frame keeps cqw priority; height law relaxes to the leftover band so the board
      fills the width on short Safari viewports instead of shrinking to the worst case.
-   - Live-line card is grid-contained: the commentary paragraph owns the scroll region,
-     WHY is pinned inside the card's grid row, and the card flexes to the leftover band
-     so nothing can ever spill past the fold (kills the top clip and the buried WHY).
+   - Live-line card works WITH the mobile dedup (verdict row owns avatar + verdict, the
+     card owns commentary): column-flex card, commentary region scrolls, WHY pinned in
+     its own flex row, card flexes to the leftover band - nothing can spill past the
+     fold at any viewport height (kills the top clip and the buried WHY).
    - Capture strips: 26px icons on 30px rows with a dark legibility chip, label up to
      .56rem, overflow collapses to a +N counter. */
 @media (max-width: 860px) {
   .chester-board-frame { width: min(100cqw, calc(100cqh - 292px)); height: auto; }
   .material-score-badge { display: none; }
   .chester-bottom { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 100%; }
-  .chester-live-line { flex: 1 1 auto; min-height: 0; max-height: 168px; width: 100%; overflow: hidden; display: grid; grid-template-columns: auto 1fr; grid-template-rows: minmax(0, 1fr) auto; align-items: start; }
-  .chester-live-line__avatar { grid-column: 1; grid-row: 1; align-self: start; }
-  .chester-live-line > div:nth-child(2) { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-  .chester-live-line > div:nth-child(2) > p { flex: 1 1 auto; min-height: 2.6em; overflow-y: auto; }
-  .chester-live-line__next { grid-column: 2; grid-row: 2; }
+  .chester-live-line { flex: 1 1 auto; min-height: 0; max-height: none; width: 100cqw; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; }
+  .chester-live-line > div:nth-child(2) { flex: 1 1 auto; min-height: 0; overflow-y: auto !important; }
+  .chester-live-line__next { flex: 0 0 auto; }
   .capture-strip { height: 30px; }
   .capture-strip > span { font-size: .56rem; }
   .capture-strip__pieces img { width: 26px; height: 26px; margin-left: -2px; background: rgba(3,6,10,.55); border-radius: 50%; }
