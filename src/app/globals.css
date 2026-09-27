@@ -1973,3 +1973,9 @@ vercel-live-feedback { display: none !important; }
 .chester-menu-list a.chester-menu-link:active { transform: scale(.98); }
 @keyframes capturePop { 0% { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.35); } 100% { transform: scale(1); opacity: 1; } }
 @keyframes scorePulse { 0% { transform: translateY(-50%) scale(1); } 35% { transform: translateY(-50%) scale(1.5); } 100% { transform: translateY(-50%) scale(1); } }
+
+/* Batch 49b: the legacy .chester-board-frame>div { width/height:100%!important } rule stretches
+   every direct child div of the frame - the score badge needs to opt out. */
+@media (max-width: 860px) {
+  .chester-board-frame > div.material-score-badge { width: auto !important; height: auto !important; }
+}
