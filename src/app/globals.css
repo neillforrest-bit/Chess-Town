@@ -2185,3 +2185,9 @@ vercel-live-feedback { display: none !important; }
 @media (max-width: 860px) {
   .chess-game-page:has(.daily-puzzle) .daily-choices { grid-template-columns: repeat(3, 1fr) !important; }
 }
+
+/* Batch 59d (BUILD 58): arena's in-game screen is .live-game-layout, not .arena-page -
+   hide the overlapping FAB there too on mobile (the screen has its own Chat/Help). */
+@media (max-width: 860px) {
+  body:has(.live-game-layout) .chester-fab { display: none; }
+}
