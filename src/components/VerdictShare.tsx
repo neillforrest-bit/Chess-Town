@@ -25,6 +25,7 @@ export default function VerdictShare({ grades, pgn, opponentLabel, difficulty, s
   const [url, setUrl] = useState('');
   const [shareText, setShareText] = useState('');
   const [copied, setCopied] = useState(false);
+  const [cardLines, setCardLines] = useState<{ headline: string; turningPoint: string; funniestMoment: string; lesson: string } | null>(null);
 
   const result: VerdictCard['r'] = /1-0\s*$/.test(pgn || '') ? 'won' : /0-1\s*$/.test(pgn || '') ? 'lost' : 'drew';
   const mine = grades.filter((g) => g.player === 'You');
@@ -66,6 +67,7 @@ export default function VerdictShare({ grades, pgn, opponentLabel, difficulty, s
     } catch {
       // Offline or API down: the deterministic card still shares.
     }
+    setCardLines(lines);
     const card: VerdictCard = { v: 1, g: grade, s: score, r: result, o: opponentLabel, m: moves, acc: summary?.accuracy, h: lines.headline, tp: lines.turningPoint, fm: lines.funniestMoment, l: lines.lesson };
     const link = `${window.location.origin}/verdict?c=${encodeVerdict(card)}`;
     setUrl(link);
@@ -81,6 +83,47 @@ export default function VerdictShare({ grades, pgn, opponentLabel, difficulty, s
     } catch {
       window.prompt('Copy your verdict:', shareText);
     }
+  };
+
+  const saveImage = () => {
+    if (!cardLines) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#07090a'; ctx.fillRect(0, 0, 1080, 1080);
+    ctx.strokeStyle = '#ffd84d'; ctx.lineWidth = 10; ctx.strokeRect(24, 24, 1032, 1032);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#22d3ee'; ctx.font = '900 34px Arial';
+    ctx.fillText('C H E S S - T O W N   V E R D I C T', 540, 110);
+    ctx.fillStyle = grade === 'A' ? '#ffd84d' : grade === 'F' ? '#f43f7a' : '#efffff';
+    ctx.font = '900 280px Georgia, serif';
+    ctx.fillText(grade, 540, 400);
+    ctx.fillStyle = '#efffff'; ctx.font = '900 46px Arial';
+    ctx.fillText(`${score}/100 vs ${opponentLabel}`, 540, 478);
+    ctx.fillText(result === 'won' ? 'VICTORY' : result === 'drew' ? 'DRAW' : 'DEFEAT', 540, 536);
+    const wrap = (text: string, y: number, font = '400 30px Arial', color = '#d7e3e5') => {
+      ctx.font = font; ctx.fillStyle = color;
+      let line = ''; let yy = y;
+      for (const w of text.split(' ')) {
+        const test = line ? `${line} ${w}` : w;
+        if (ctx.measureText(test).width > 900 && line) { ctx.fillText(line, 540, yy); yy += 44; line = w; } else line = test;
+      }
+      ctx.fillText(line, 540, yy);
+      return yy + 44;
+    };
+    let yy = wrap(cardLines.headline, 630, '900 34px Georgia, serif', '#efffff');
+    yy = wrap(`STAR MOVE: ${cardLines.turningPoint}`, yy + 26);
+    yy = wrap(`CHESTER'S MOMENT: ${cardLines.funniestMoment}`, yy + 12);
+    yy = wrap(`LESSON: ${cardLines.lesson}`, yy + 12);
+    ctx.fillStyle = '#ffd84d'; ctx.font = 'italic 900 32px Georgia, serif';
+    ctx.fillText('- Chester', 540, Math.min(yy + 34, 990));
+    ctx.fillStyle = '#4b5d62'; ctx.font = '400 24px Arial';
+    ctx.fillText('C H E S S - T O W N', 540, 1032);
+    const a = document.createElement('a');
+    a.download = `chess-town-verdict-${grade}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
   };
 
   const nativeShare = async () => {
@@ -103,6 +146,7 @@ export default function VerdictShare({ grades, pgn, opponentLabel, difficulty, s
     <div className="verdict-share__row">
       {'share' in navigator && <button type="button" onClick={() => void nativeShare()}>📤 SHARE</button>}
       <button type="button" onClick={() => void copy()}>{copied ? '✓ COPIED' : '🔗 COPY LINK'}</button>
+      <button type="button" onClick={saveImage}>🖼 SAVE IMAGE</button>
       <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer">💬 WHATSAPP</a>
     </div>
   </div>;
