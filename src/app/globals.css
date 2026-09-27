@@ -2191,3 +2191,9 @@ vercel-live-feedback { display: none !important; }
 @media (max-width: 860px) {
   body:has(.live-game-layout) .chester-fab { display: none; }
 }
+
+/* Batch 60 (BUILD 59 - mini game fun pass, my call per his 12:36 steering): mate-sprint
+   combo fire badge (gold pulse, re-pops every streak step), chessdle win/loss board
+   drama + third-miss mercy nudge, pawn-wars outcome flash + one-step-from-a-queen
+   tension lines. */
+.minigame-combo { font: 900 1.05rem Georgia, serif; color: #ffd84d; text-shadow: 0 0 12px rgba(255,216,77,.7); animation: minigame-pulse .7s 2; }

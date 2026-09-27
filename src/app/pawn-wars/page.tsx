@@ -35,6 +35,18 @@ function pickRookieMove(chess: Chess) {
 
 type Outcome = { winner: 'w' | 'b' | 'draw'; reason: string } | null;
 
+// Tension read: is anyone one step from a queen?
+function oneStepAway(chess: Chess): string | null {
+  const board = chess.board();
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    const sq = board[r][c];
+    if (!sq || sq.type !== 'p') continue;
+    if (sq.color === 'w' && r === 1) return 'Your pawn is ONE STEP from a queen - push it home!';
+    if (sq.color === 'b' && r === 6) return 'Enemy pawn ONE STEP from a queen - stop it now!';
+  }
+  return null;
+}
+
 function judge(chess: Chess, lastMover: 'w' | 'b'): Outcome {
   const board = chess.board().flat();
   const whitePawns = board.filter((s) => s && s.color === 'w' && s.type === 'p').length;
@@ -109,6 +121,7 @@ export default function PawnWarsPage() {
     const judged = judge(chess, 'w');
     if (judged) { finish(judged); return; }
     setNote(`${describeMove(before, `${from}${to}`) || move.san}. Enemy thinking…`);
+    const tensionAfterYou = oneStepAway(chess);
     setThinking(true);
     window.setTimeout(() => {
       const game = chessRef.current;
@@ -121,7 +134,8 @@ export default function PawnWarsPage() {
       setThinking(false);
       const judgedReply = judge(game, 'b');
       if (judgedReply) { finish(judgedReply); return; }
-      setNote(`Enemy: ${describeMove(replyBefore, `${reply.from}${reply.to}`) || 'moved'}. Your move.`);
+      const tension = oneStepAway(game);
+      setNote(tension || `Enemy: ${describeMove(replyBefore, `${reply.from}${reply.to}`) || 'moved'}. Your move.`);
     }, 550 + Math.floor(Math.random() * 500));
   }, [finish, outcome]);
 
@@ -160,7 +174,7 @@ export default function PawnWarsPage() {
       <span>W {score.wins}</span><span>L {score.losses}</span><span>STREAK {score.streak}</span><span>BEST {score.bestStreak}</span>
     </div>
 
-    <div className="minigame-board">
+    <div className={`minigame-board ${outcome ? (outcome.winner === 'w' ? 'minigame-board--hit' : 'minigame-board--miss') : ''}`}>
       <TapBoard fen={fen} locked={Boolean(outcome) || thinking} lastMove={lastMove} onMove={playMove} label="Pawn Wars board - you are the blue pieces at the bottom" />
     </div>
 

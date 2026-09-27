@@ -5,6 +5,7 @@
 // Fully offline: the puzzle bank ships with the app and chess.js checks mates.
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import MiniChester from '@/components/MiniChester';
 import { describeMove } from '@/lib/move-words';
@@ -20,6 +21,9 @@ const FEEDBACK_LINES: Record<GuessFeedback, string> = {
   capture: 'A capture! Good instinct - not the killer blow though.',
   other: 'Nothing forcing there. Look for checks, captures and threats.',
 };
+
+const PIECE_NAMES: Record<string, string> = { q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn', k: 'king' };
+const NUDGE_AT = 3;
 
 export default function ChessdlePage() {
   const { puzzle, number, day } = useMemo(() => todaysChessdle(), []);
@@ -50,7 +54,18 @@ export default function ChessdlePage() {
     if (nowDone) recordChessdleResult(day, next.map((g) => g.uci), classified.feedback === 'mate');
     if (classified.feedback === 'mate') { awardPoints('mini', `Chessdle #${number} solved`, 40); setMessage(`CHECKMATE in ${next.length}! ${next.length === 1 ? 'First guess - are you Joseph in disguise?' : 'The town salutes you.'}`); setChesterEvent({ type: 'win', seed: next.length }); }
     else if (next.length >= MAX_GUESSES) { setMessage(`Out of guesses. The mate was ${describeMove(puzzle.fen, puzzle.solution) || 'there all along'}. Tomorrow is a new puzzle.`); setChesterEvent({ type: 'lose', seed: next.length }); }
-    else { setMessage(FEEDBACK_LINES[classified.feedback]); setChesterEvent({ type: classified.feedback === 'other' ? 'miss' : 'close', seed: next.length }); }
+    else {
+      let line = FEEDBACK_LINES[classified.feedback];
+      if (next.length === NUDGE_AT) {
+        try {
+          const helper = new Chess(puzzle.fen);
+          const hero = helper.get(puzzle.solution.slice(0, 2) as never);
+          if (hero) line += ` The town whispers: the killer blow comes from your ${PIECE_NAMES[hero.type] || 'army'}.`;
+        } catch { /* nudge is a bonus, never a blocker */ }
+      }
+      setMessage(line);
+      setChesterEvent({ type: classified.feedback === 'other' ? 'miss' : 'close', seed: next.length });
+    }
   };
 
   const share = async () => {
@@ -73,7 +88,7 @@ export default function ChessdlePage() {
       <p>White to play. Find checkmate in one move - you have {MAX_GUESSES} guesses. 🟩 mate · 🟨 check or capture · ⬛ nothing forcing</p>
     </header>
 
-    <div className="minigame-board">
+    <div className={`minigame-board ${won ? 'minigame-board--hit' : done ? 'minigame-board--miss' : ''}`}>
       <TapBoard fen={puzzle.fen} locked={done} onMove={guess} label={`Chessdle #${number}: white to play and mate in one`} />
     </div>
 

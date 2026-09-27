@@ -37,6 +37,9 @@ export default function MateSprintPage() {
   const [copied, setCopied] = useState(false);
   const endAtRef = useRef(0);
   const [chesterEvent, setChesterEvent] = useState<{ type: string; seed: number } | null>(null);
+  const [combo, setCombo] = useState(0);
+  const [bonusTick, setBonusTick] = useState(0);
+  const comboRef = useRef(0);
 
   useEffect(() => {
     try { setBest(Number(window.localStorage.getItem(BEST_KEY)) || 0); } catch { /* private browsing */ }
@@ -70,6 +73,8 @@ export default function MateSprintPage() {
     setScore(0);
     setMisses(0);
     setFlash(null);
+    setCombo(0);
+    comboRef.current = 0;
     setNewBest(false);
     setSecondsLeft(SPRINT_SECONDS);
     endAtRef.current = Date.now() + SPRINT_SECONDS * 1000;
@@ -95,11 +100,19 @@ export default function MateSprintPage() {
         setScore((s) => s + 1);
         setCursor((c) => c + 1);
         setFlash('hit');
+        comboRef.current += 1;
+        setCombo(comboRef.current);
+        if (comboRef.current % 4 === 0) {
+          endAtRef.current += 2000;
+          setBonusTick(comboRef.current);
+        }
         setChesterEvent({ type: 'hit', seed: scoreRef.current + 1 });
       } else {
         endAtRef.current = Math.max(Date.now(), endAtRef.current - MISS_PENALTY * 1000);
         setMisses((m) => m + 1);
         setFlash('miss');
+        comboRef.current = 0;
+        setCombo(0);
         setChesterEvent({ type: 'miss', seed: misses + 1 });
       }
       window.setTimeout(() => setFlash(null), 450);
@@ -131,6 +144,7 @@ export default function MateSprintPage() {
     {phase !== 'ready' && <div className="minigame-hud">
       <span className={`minigame-clock ${clockTone}`}>⏱ {secondsLeft}s</span>
       <span className="minigame-score">🏆 {score}</span>
+      {combo >= 2 && <span className="minigame-combo" key={combo}>🔥 x{combo}</span>}
       <span className="minigame-best">BEST {Math.max(best, score)}</span>
     </div>}
 
@@ -144,7 +158,7 @@ export default function MateSprintPage() {
       <div className={`minigame-board ${flash === 'hit' ? 'minigame-board--hit' : ''} ${flash === 'miss' ? 'minigame-board--miss' : ''}`}>
         <TapBoard key={`${cursor}`} fen={puzzle.fen} onMove={attempt} label="Mate Sprint puzzle - white to play and mate in one" />
       </div>
-      <p className="minigame-message" aria-live="polite">{flash === 'hit' ? '✅ Mate! Next…' : flash === 'miss' ? `❌ Not mate - minus ${MISS_PENALTY} seconds!` : 'White to play and mate in one.'}</p>
+      <p className="minigame-message" aria-live="polite">{flash === 'hit' ? (bonusTick === combo && combo % 4 === 0 ? '✅ Mate! 🔥 STREAK BONUS: +2s on the clock!' : '✅ Mate! Next…') : flash === 'miss' ? `❌ Not mate - minus ${MISS_PENALTY} seconds, streak gone!` : 'White to play and mate in one.'}</p>
     </>}
 
     {phase === 'over' && <section className="minigame-result">
