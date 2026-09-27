@@ -2023,3 +2023,11 @@ vercel-live-feedback { display: none !important; }
   15%, 45%, 75% { box-shadow: 0 0 60px rgba(255,216,77,.95); border-color: #ffd84d; }
   30%, 60%, 90% { box-shadow: 0 0 22px rgba(255,216,77,.3); }
 }
+
+/* Batch 52 (BUILD B - progression soul): per-level stars + best grade on the level grid,
+   and Chester's signed verdict on the report card. */
+.chester-level-stars { display: block; margin-top: 3px; color: #ffd84d; font: 400 .68rem/1 Arial, sans-serif; font-style: normal; letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,216,77,.5); }
+.chester-report-signature { margin: .9rem 0 0; padding: .7rem .8rem; border-top: 1px dashed rgba(255,216,77,.35); color: #d7e3e5; font: italic 400 .88rem/1.45 Georgia, serif; }
+.chester-report-signature b { display: block; margin-top: .25rem; color: #ffd84d; font: 900 .8rem/1 Georgia, serif; font-style: normal; text-align: right; }
+.chester-remembers { margin: .35rem 0 .5rem; color: #9db2b7; font: 400 .78rem/1.4 Arial, sans-serif; }
+.chester-remembers::first-letter { font-style: normal; }

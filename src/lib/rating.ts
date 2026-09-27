@@ -82,9 +82,12 @@ export type LadderState = {
   lastFocus: string | null;      // the focus point from the last scorecard
   lastWeakness: string | null;   // weakest-habit key from the last scorecard
   updatedAt: string | null;
+  levels?: Record<string, LevelRecord>;
 };
 const LADDER_KEY = 'ct-chester-ladder-v1';
-const LADDER_DEFAULT: LadderState = { unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null };
+export type LevelRecord = { wins: number; games: number; bestGrade: string | null; lastGrade: string | null };
+const GRADE_RANK: Record<string, number> = { 'A+': 7, A: 6, 'A-': 5, B: 4, C: 3, D: 2, F: 1 };
+const LADDER_DEFAULT: LadderState = { unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null, levels: {} };
 
 export function getLadder(): LadderState {
   if (typeof window === 'undefined') return LADDER_DEFAULT;
@@ -104,7 +107,10 @@ export function recordLadderGame(input: { level: string; result: 'win' | 'loss' 
     if (idx === LADDER_LEVELS.length - 1) grandChester = true;
     else if (idx >= unlocked) unlocked = Math.min(LADDER_LEVELS.length - 1, idx + 1);
   }
-  const next: LadderState = { unlocked, grandChester, lastLevel: input.level, lastResult: input.result, lastGrade: input.grade || null, lastFocus: input.focus || null, lastWeakness: input.weakness || null, updatedAt: new Date().toISOString() };
+  const prev = state.levels?.[input.level] || { wins: 0, games: 0, bestGrade: null, lastGrade: null };
+  const rec: LevelRecord = { wins: prev.wins + (input.result === 'win' ? 1 : 0), games: prev.games + 1, bestGrade: prev.bestGrade, lastGrade: input.grade || prev.lastGrade };
+  if (input.grade && (!rec.bestGrade || (GRADE_RANK[input.grade] || 0) > (GRADE_RANK[rec.bestGrade] || 0))) rec.bestGrade = input.grade;
+  const next: LadderState = { unlocked, grandChester, lastLevel: input.level, lastResult: input.result, lastGrade: input.grade || null, lastFocus: input.focus || null, lastWeakness: input.weakness || null, updatedAt: new Date().toISOString(), levels: { ...state.levels, [input.level]: rec } };
   try { window.localStorage.setItem(LADDER_KEY, JSON.stringify(next)); } catch { /* private browsing */ }
   return next;
 }
