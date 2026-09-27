@@ -2047,7 +2047,7 @@ vercel-live-feedback { display: none !important; }
   .chester-board-frame { width: min(100cqw, calc(100cqh - 292px)); height: auto; }
   .material-score-badge { display: none; }
   .chester-bottom { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 100%; }
-  .chester-live-line { flex: 1 1 auto; min-height: 0; max-height: none; width: 100cqw; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; }
+  .chester-live-line { flex: 1 1 auto; min-height: 0; max-height: none; width: 100cqw; overflow: hidden; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
   .chester-live-line > div:nth-child(2) { flex: 1 1 auto; min-height: 0; overflow-y: auto !important; }
   .chester-live-line__next { flex: 0 0 auto; }
   .capture-strip { height: 30px; }
