@@ -235,7 +235,8 @@ function PlayChesterGame() {
       </div></header>
     <section className="chester-game__board">
       <div className="capture-strip-row"><CaptureStrip pieces={material.oppTook} tone="opp" label={isFriendMode ? 'P2 TOOK' : 'CHESTER TOOK'} /></div>
-      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`} key={coachPrompt?.check || coachPrompt?.mate ? `${coachPrompt.move}-drama` : 'calm'}><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+        {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
       <div className="capture-strip-row"><CaptureStrip pieces={material.youTook} tone="you" label={isFriendMode ? 'P1 TOOK' : 'YOU TOOK'} /></div>

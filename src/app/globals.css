@@ -2003,7 +2003,7 @@ vercel-live-feedback { display: none !important; }
 
 /* Batch 51 (BUILD A - Chester is alive in-game): mood-reactive verdict avatar (the face pops on
    every swing via re-key), chomp-slide on freshly captured strip pieces, and a board drama
-   beat when check or mate lands. Decoration only - the one-screen layout budget is untouched. */
+   beat when check or mate lands (overlay-only re-key so the live board never remounts). Decoration only - the one-screen layout budget is untouched. */
 .capture-strip__new { animation: captureChomp .6s cubic-bezier(.2,1.6,.4,1) !important; }
 @keyframes captureChomp {
   0% { transform: translateY(-14px) scale(.2); opacity: 0; }
@@ -2011,8 +2011,9 @@ vercel-live-feedback { display: none !important; }
   75% { transform: translateY(-2px) scale(.92); }
   100% { transform: translateY(0) scale(1); opacity: 1; }
 }
-.chester-board-frame.is-check { animation: checkBeat .9s ease; }
-.chester-board-frame.is-mate { animation: mateBeat 1.4s ease; }
+.chester-board-frame__drama { position: absolute; inset: 0; pointer-events: none; border: 2px solid transparent; border-radius: 8px; }
+.chester-board-frame.is-check .chester-board-frame__drama { animation: checkBeat .9s ease; }
+.chester-board-frame.is-mate .chester-board-frame__drama { animation: mateBeat 1.4s ease; }
 @keyframes checkBeat {
   0%, 100% { box-shadow: 0 0 32px rgba(34,211,238,.32); }
   20%, 60% { box-shadow: 0 0 46px rgba(244,63,122,.85); border-color: #f43f7a; }
