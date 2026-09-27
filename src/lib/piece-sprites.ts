@@ -14,8 +14,9 @@ const PALETTES: Record<'w' | 'b', { stops: [string, string, string]; stroke: str
 // mitre slit - at a glance the two can never be confused (his batch-27 note).
 const TYPE_SCALE: Record<string, number> = { p: 0.6, r: 0.78, n: 0.82, b: 0.9, q: 0.88, k: 0.88 };
 
-export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b', type: string, size: number) {
+export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b', type: string, size: number, opts?: { small?: boolean }) {
   const pal = PALETTES[color];
+  const small = Boolean(opts?.small);
   const glyph = (SPRITE_GLYPHS[type] || SPRITE_GLYPHS.p) + TEXT_VS;
   const x = size / 2;
   const y = size * 0.56;
@@ -27,9 +28,9 @@ export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b',
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
   ctx.shadowColor = pal.glow;
-  ctx.shadowBlur = size * 0.09;
+  ctx.shadowBlur = small ? size * 0.05 : size * 0.09;
   ctx.strokeStyle = pal.stroke;
-  ctx.lineWidth = size * 0.07;
+  ctx.lineWidth = small ? size * 0.055 : size * 0.07;
   ctx.strokeText(glyph, x, y);
   const grad = ctx.createLinearGradient(0, size * 0.1, 0, size * 0.98);
   grad.addColorStop(0, pal.stops[0]);
@@ -39,13 +40,15 @@ export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b',
   ctx.fillText(glyph, x, y);
   ctx.shadowBlur = 0;
   // glossy sheen clipped to the glyph pixels
-  ctx.globalCompositeOperation = 'source-atop';
-  const sheen = ctx.createRadialGradient(size * 0.38, size * 0.22, 2, size * 0.38, size * 0.22, size * 0.5);
-  sheen.addColorStop(0, 'rgba(255,255,255,.6)');
-  sheen.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = sheen;
-  ctx.fillRect(0, 0, size, size);
-  ctx.globalCompositeOperation = 'source-over';
+  if (!small) {
+    ctx.globalCompositeOperation = 'source-atop';
+    const sheen = ctx.createRadialGradient(size * 0.38, size * 0.22, 2, size * 0.38, size * 0.22, size * 0.5);
+    sheen.addColorStop(0, 'rgba(255,255,255,.6)');
+    sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, size, size);
+    ctx.globalCompositeOperation = 'source-over';
+  }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   // Chester flair (batch 44, his open creative call): royalty gets a town-gold crown
   // badge at the base - king and queen read as royal at phone size, on both armies.

@@ -48,9 +48,9 @@ function jailSpriteUrl(color: CapturedPiece['color'], type: string): string {
   if (spriteCache[key] !== undefined) return spriteCache[key];
   if (typeof document === 'undefined') return '';
   const canvas = document.createElement('canvas');
-  canvas.width = 64; canvas.height = 64;
+  canvas.width = 96; canvas.height = 96;
   const ctx = canvas.getContext('2d');
-  spriteCache[key] = ctx ? (drawPieceSprite(ctx, color, type, 64), canvas.toDataURL()) : '';
+  spriteCache[key] = ctx ? (drawPieceSprite(ctx, color, type, 96, { small: true }), canvas.toDataURL()) : '';
   return spriteCache[key];
 }
 
@@ -105,7 +105,7 @@ export function CaptureStrip({ pieces, tone, label }: { pieces: CapturedPiece[];
   return (
     <div className={`capture-strip capture-strip--${tone}`} aria-label={label}>
       <span>{label}</span>
-      <div className="capture-strip__pieces" key={pieces.length}>
+      <div className="capture-strip__pieces" key={pieces.length} data-more={pieces.length > 9 ? `+${pieces.length - 9}` : undefined}>
         {pieces.map((piece, index) => (
           <img key={`${piece.color}-${piece.type}-${index}`} src={jailSpriteUrl(piece.color, piece.type)} alt="" className={index === pieces.length - 1 ? 'capture-strip__new' : undefined} />
         ))}

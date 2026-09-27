@@ -2032,3 +2032,24 @@ vercel-live-feedback { display: none !important; }
 .chester-report-signature b { display: block; margin-top: .25rem; color: #ffd84d; font: 900 .8rem/1 Georgia, serif; font-style: normal; text-align: right; }
 .chester-remembers { margin: .35rem 0 .5rem; color: #9db2b7; font: 400 .78rem/1.4 Arial, sans-serif; }
 .chester-remembers::first-letter { font-style: normal; }
+
+/* Batch 55 (BUILD 54 - his iPhone report 27 Sep): coach commentary card clipped its first
+   line and buried the WHY button below the fold, and the capture strips read as blobs.
+   - Board frame keeps cqw priority; height law relaxes to the leftover band so the board
+     fills the width on short Safari viewports instead of shrinking to the worst case.
+   - Live-line card is hard-contained with its own scroll region: text can never push WHY
+     off screen; the avatar no longer vertical-centres against tall text (the top clip).
+   - Capture strips: 26px icons on 30px rows with a dark legibility chip, label up to
+     .56rem, overflow collapses to a +N counter. */
+@media (max-width: 860px) {
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 230px)); height: auto; }
+  .chester-live-line { flex: 0 1 auto; max-height: 168px; min-height: 0; overflow: hidden auto; align-items: flex-start; }
+  .chester-live-line__avatar { align-self: flex-start; }
+  .chester-live-line__next { flex: 0 0 100%; }
+  .capture-strip { height: 30px; }
+  .capture-strip > span { font-size: .56rem; }
+  .capture-strip__pieces img { width: 26px; height: 26px; margin-left: -2px; background: rgba(3,6,10,.55); border-radius: 50%; }
+  .capture-strip__pieces img:nth-child(n+10) { display: none; }
+  .capture-strip__pieces { position: relative; }
+  .capture-strip__pieces[data-more]::after { content: attr(data-more); color: #9fb7bb; font: 900 .6rem/1 Arial, sans-serif; margin-left: 4px; }
+}
