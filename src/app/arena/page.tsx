@@ -155,7 +155,7 @@ const LEAGUE_TIERS = [
 ];
 
 function LeagueLeaderboard() {
-  return <section className="league-dashboard" aria-labelledby="league-title">
+  return <section className="league-dashboard arena-page" aria-labelledby="league-title">
     <header className="league-dashboard__header"><div><span>CHESS TOWN / SEASON ONE</span><h1 id="league-title">LEAGUE PLAY</h1></div><p><i /> LIVE LADDER</p></header>
     <div className="league-dashboard__tiers grid grid-cols-1 lg:grid-cols-3 gap-4">
       {LEAGUE_TIERS.map((tier) => <article key={tier.title} className={`league-tier ${tier.className}`} style={{ '--tier-accent': tier.accent } as React.CSSProperties}>
