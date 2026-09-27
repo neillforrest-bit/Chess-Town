@@ -114,3 +114,43 @@ export function CaptureStrip({ pieces, tone, label }: { pieces: CapturedPiece[];
     </div>
   );
 }
+
+// Batch 56 (BUILD 55, his hero feature): NFL-style live material scoreboard above the
+// board. Two big stadium score boxes (points captured per side, bigger than anything
+// else on the page), capturer's number pops green, the loser's box flashes red, and
+// side commentary boxes call the latest take in words. Mobile band only - desktop keeps
+// the floating badge.
+const TAKE_QUIPS: Record<string, string> = { p: 'pawn pocketed', n: 'knight snatched!', b: 'bishop bagged!', r: 'rook robbed!', q: 'QUEEN HUNTED!', k: 'royal scandal!' };
+const LOSE_QUIPS: Record<string, string> = { p: 'pawn falls', n: 'knight down!', b: 'bishop lost!', r: 'rook taken!', q: 'QUEEN LOST!', k: 'king hunted!' };
+
+export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER' }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string }) {
+  const { youTook, oppTook, yourPts, oppPts } = material;
+  const lastYou = youTook.at(-1);
+  const lastOpp = oppTook.at(-1);
+  return (
+    <div className="hero-score" aria-label={`Live material score: ${youLabel} ${yourPts}, ${oppLabel} ${oppPts}`}>
+      <div className="hero-score__side hero-score__side--you">
+        <span>{youLabel} TOOK</span>
+        {lastYou
+          ? <div className="hero-score__event" key={youTook.length}><img src={jailSpriteUrl(lastYou.color, lastYou.type)} alt="" /><em>{TAKE_QUIPS[lastYou.type] || 'piece taken'}</em></div>
+          : <em className="hero-score__idle">no blood yet</em>}
+      </div>
+      <div className={`hero-score__box hero-score__box--you ${yourPts > oppPts ? 'is-leading' : ''}`}>
+        <small>{youLabel}</small>
+        <b key={yourPts} className={yourPts > 0 ? 'pop' : undefined}>{yourPts}</b>
+        {oppPts > 0 && <i key={`hurt-${oppPts}`} className="hurt" aria-hidden="true" />}
+      </div>
+      <div className={`hero-score__box hero-score__box--opp ${oppPts > yourPts ? 'is-leading' : ''}`}>
+        <small>{oppLabel}</small>
+        <b key={oppPts} className={oppPts > 0 ? 'pop' : undefined}>{oppPts}</b>
+        {yourPts > 0 && <i key={`hurt-${yourPts}`} className="hurt" aria-hidden="true" />}
+      </div>
+      <div className="hero-score__side hero-score__side--opp">
+        <span>{oppLabel} TOOK</span>
+        {lastOpp
+          ? <div className="hero-score__event" key={oppTook.length}><img src={jailSpriteUrl(lastOpp.color, lastOpp.type)} alt="" /><em>{LOSE_QUIPS[lastOpp.type] || 'piece falls'}</em></div>
+          : <em className="hero-score__idle">circling&hellip;</em>}
+      </div>
+    </div>
+  );
+}

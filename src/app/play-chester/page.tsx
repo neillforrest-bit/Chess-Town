@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { askChesterChat } from '@/app/actions';
-import { MaterialJailBar, CaptureStrip, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, chesterHowlerLine } from '@/lib/chester-voice';
@@ -234,12 +234,12 @@ function PlayChesterGame() {
         <button type="button" onClick={() => setMenuOpen(true)} aria-label="Back to Chesterville"><small>BACK TO</small><b>🏠 CHESTERVILLE</b></button>
       </div></header>
     <section className="chester-game__board">
-      <div className="capture-strip-row"><CaptureStrip pieces={material.oppTook} tone="opp" label={isFriendMode ? 'P2 TOOK' : 'CHESTER TOOK'} /></div>
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
+      <div className="capture-strip-row hero-jail-row"><CaptureStrip pieces={material.youTook} tone="you" label={isFriendMode ? 'P1 TOOK' : 'YOU TOOK'} /><CaptureStrip pieces={material.oppTook} tone="opp" label={isFriendMode ? 'P2 TOOK' : 'CHESTER TOOK'} /></div>
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
-      <div className="capture-strip-row"><CaptureStrip pieces={material.youTook} tone="you" label={isFriendMode ? 'P1 TOOK' : 'YOU TOOK'} /></div>
       <div className="chester-bottom">
         <div className="chester-verdict-row" style={verdictStyle} aria-hidden="true">
           <div className="chester-live-line__avatar" key={verdictKey}>{verdictEmoji}</div>

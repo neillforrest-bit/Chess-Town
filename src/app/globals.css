@@ -2043,7 +2043,8 @@ vercel-live-feedback { display: none !important; }
    - Capture strips: 26px icons on 30px rows with a dark legibility chip, label up to
      .56rem, overflow collapses to a +N counter. */
 @media (max-width: 860px) {
-  .chester-board-frame { width: min(100cqw, calc(100cqh - 230px)); height: auto; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 292px)); height: auto; }
+  .material-score-badge { display: none; }
   .chester-bottom { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 100%; }
   .chester-live-line { flex: 1 1 auto; min-height: 0; max-height: 168px; width: 100%; overflow: hidden; display: grid; grid-template-columns: auto 1fr; grid-template-rows: minmax(0, 1fr) auto; align-items: start; }
   .chester-live-line__avatar { grid-column: 1; grid-row: 1; align-self: start; }
@@ -2056,4 +2057,37 @@ vercel-live-feedback { display: none !important; }
   .capture-strip__pieces img:nth-child(n+10) { display: none; }
   .capture-strip__pieces { position: relative; }
   .capture-strip__pieces[data-more]::after { content: attr(data-more); color: #9fb7bb; font: 900 .6rem/1 Arial, sans-serif; margin-left: 4px; }
+}
+
+/* Batch 56 (BUILD 55 - hero scoreboard, his call): stadium score row above the board,
+   jail strips tucked under it, all capture info in one glance. Mobile band only. */
+@media (max-width: 860px) {
+  .hero-score { display: grid; grid-template-columns: 1fr auto auto 1fr; gap: 6px; width: 100cqw; flex: 0 0 auto; align-items: stretch; }
+  .hero-score__side { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 7px; border: 1px solid rgba(34,211,238,.18); border-radius: 8px; background: rgba(6,10,14,.75); overflow: hidden; }
+  .hero-score__side > span { font: 900 .5rem/1 Arial, sans-serif; letter-spacing: 1.2px; color: #71878b; }
+  .hero-score__side--you > span { color: #ffd84d; }
+  .hero-score__side--opp > span { color: #f43f7a; }
+  .hero-score__side--opp { text-align: right; align-items: flex-end; }
+  .hero-score__event { display: flex; align-items: center; gap: 5px; min-width: 0; animation: heroEventIn .6s cubic-bezier(.2,1.4,.4,1); }
+  .hero-score__event img { width: 20px; height: 20px; flex: 0 0 auto; }
+  .hero-score__event em, .hero-score__idle { font: italic 400 .6rem/1.15 Georgia, serif; color: #c7d6d8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-score__side--you .hero-score__event em { color: #a7f3c9; }
+  .hero-score__side--opp .hero-score__event em { color: #f6b8c9; }
+  .hero-score__idle { color: #4c5e63; }
+  .hero-score__box { position: relative; min-width: 64px; padding: 3px 10px 5px; border: 1.5px solid rgba(150,170,175,.35); border-radius: 8px; background: linear-gradient(180deg,#0a1218,#04070a); text-align: center; }
+  .hero-score__box small { display: block; font: 900 .5rem/1 Arial, sans-serif; letter-spacing: 1.6px; color: #8ba0a4; }
+  .hero-score__box b { display: block; font: 900 1.85rem/1.05 'Arial Black', Arial, sans-serif; font-variant-numeric: tabular-nums; color: #e8f4f6; text-shadow: 0 0 14px rgba(34,211,238,.35); }
+  .hero-score__box--you b { color: #ffd84d; text-shadow: 0 0 16px rgba(255,216,77,.4); }
+  .hero-score__box--opp b { color: #ff8fb0; text-shadow: 0 0 16px rgba(244,63,122,.4); }
+  .hero-score__box.is-leading { border-color: #ffd84d; box-shadow: 0 0 16px rgba(255,216,77,.25); }
+  .hero-score__box.is-leading::after { content: 'LEAD'; position: absolute; top: -7px; left: 50%; transform: translateX(-50%); padding: 1px 5px; border-radius: 3px; background: #ffd84d; color: #131006; font: 900 .44rem/1 Arial, sans-serif; letter-spacing: 1px; }
+  .hero-score__box b.pop { animation: heroScorePop .75s cubic-bezier(.2,1.5,.35,1); }
+  .hero-score__box i.hurt { position: absolute; inset: 0; border-radius: 8px; pointer-events: none; animation: heroHurt .7s ease; }
+  .hero-jail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100cqw; flex: 0 0 auto; }
+}
+@keyframes heroScorePop { 0% { transform: scale(1); } 35% { transform: scale(1.7); color: #4ade80; text-shadow: 0 0 22px rgba(74,222,128,.9); } 65% { transform: scale(.9); } 100% { transform: scale(1); } }
+@keyframes heroHurt { 0% { box-shadow: inset 0 0 0 2px rgba(244,63,122,0); background: rgba(244,63,122,0); transform: scale(1); } 30% { box-shadow: inset 0 0 0 2px rgba(244,63,122,.9); background: rgba(244,63,122,.22); transform: scale(1.12); } 60% { transform: scale(.96); } 100% { box-shadow: inset 0 0 0 2px rgba(244,63,122,0); background: rgba(244,63,122,0); transform: scale(1); } }
+@keyframes heroEventIn { 0% { transform: translateY(-8px) scale(.6); opacity: 0; } 60% { transform: translateY(1px) scale(1.12); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@media (min-width: 861px) {
+  .hero-score, .hero-jail-row { display: none; }
 }
