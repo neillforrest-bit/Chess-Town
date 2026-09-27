@@ -2179,3 +2179,9 @@ vercel-live-feedback { display: none !important; }
   .chess-game-page:has(.daily-puzzle) .daily-choices { gap: .3rem; margin-top: .3rem; }
   .chess-game-page:has(.daily-puzzle) .daily-choices button { padding: .45rem .2rem; font-size: .82rem; }
 }
+
+/* Batch 59c (BUILD 58): daily answer buttons computed to one stacked column - force
+   one row of three so they fit above the viewport edge on small phones. */
+@media (max-width: 860px) {
+  .chess-game-page:has(.daily-puzzle) .daily-choices { grid-template-columns: repeat(3, 1fr) !important; }
+}
