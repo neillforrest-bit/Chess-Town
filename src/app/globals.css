@@ -1918,3 +1918,58 @@ vercel-live-feedback { display: none !important; }
   .material-bar__jail--you > span::before { background: #ffd84d; box-shadow: 0 0 8px rgba(255,216,77,.6); }
   .material-bar__jail--opp > span::before { background: #f43f7a; box-shadow: 0 0 8px rgba(244,63,122,.6); }
 }
+
+/* Batch 49: owner's reshuffle - four even top buttons, slim capture strips above/below the board,
+   chess.com-style +/- score badge boxed at the board's left midpoint (pulse on every capture),
+   avatar + verdict lifted above the commentary card, and a pure-flex vertical budget:
+   fixed strips + full-width board, card takes exactly what remains and scrolls internally
+   instead of ever clipping. Safe-area padding now applies at EVERY mobile height -
+   previously only the <=700px band had it, which is why the card bottom slid under the
+   home indicator on real iPhones (the clipped-card bug). */
+@media (max-width: 860px) {
+  .chester-game__top { padding: .3rem .35rem !important; }
+  .chester-game__top .chester-score-actions, .chester-game__top .chester-level-badge { display: none !important; }
+  .chester-top-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; width: 100%; }
+  .chester-top-buttons button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 40px; padding: .3rem .1rem; border: 1px solid #3a4c52; border-radius: 8px; background: rgba(7,14,16,.92); cursor: pointer; box-sizing: border-box; }
+  .chester-top-buttons button small { color: #8fa6ab; font: 900 .5rem/1 Arial, sans-serif; letter-spacing: 1.2px; }
+  .chester-top-buttons button b { color: #ffd84d; font: 900 .62rem/1.1 Georgia, serif; letter-spacing: .3px; white-space: nowrap; }
+  .chester-top-buttons button:disabled { opacity: .38; }
+  .chester-top-buttons button:active { transform: scale(.96); }
+  .chester-game__board { gap: .3rem; padding-bottom: max(.3rem, env(safe-area-inset-bottom)); }
+  .capture-strip-row { width: 100cqw; flex: 0 0 auto; }
+  .capture-strip { display: flex; align-items: center; gap: .4rem; height: 24px; padding: 1px .4rem; border-radius: 6px; box-sizing: border-box; }
+  .capture-strip--opp { background: rgba(244,63,122,.08); border: 1px solid rgba(244,63,122,.3); }
+  .capture-strip--you { background: rgba(255,216,77,.07); border: 1px solid rgba(255,216,77,.28); }
+  .capture-strip > span { flex: 0 0 auto; font: 900 .5rem/1 Arial, sans-serif; letter-spacing: 1.2px; }
+  .capture-strip--opp > span { color: #f43f7a; }
+  .capture-strip--you > span { color: #ffd84d; }
+  .capture-strip__pieces { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+  .capture-strip__pieces img { width: 20px; height: 20px; flex: 0 0 auto; margin-left: -4px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  .capture-strip__pieces img:first-child { margin-left: 0; }
+  .capture-strip__new { animation: capturePop .55s ease; }
+  .capture-strip__pieces em { color: #48585d; font: 400 .58rem/1 Arial, sans-serif; }
+  .chester-board-frame { position: relative; }
+  .material-score-badge { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); z-index: 5; min-width: 30px; padding: 3px 5px; border-radius: 6px; text-align: center; font: 900 .72rem/1 Arial, sans-serif; background: rgba(5,8,9,.88); border: 1.5px solid #55676d; color: #9db2b7; pointer-events: none; animation: scorePulse .7s ease; }
+  .material-score-badge.is-ahead { border-color: #ffd84d; color: #ffd84d; box-shadow: 0 0 12px rgba(255,216,77,.4); }
+  .material-score-badge.is-behind { border-color: #f43f7a; color: #f43f7a; box-shadow: 0 0 12px rgba(244,63,122,.4); }
+  .chester-bottom { gap: .3rem; }
+  .chester-bottom .material-bar { display: none; }
+  .chester-verdict-row { display: flex; align-items: center; gap: .5rem; width: 100cqw; flex: 0 0 auto; }
+  .chester-verdict-row .chester-live-line__avatar { width: 34px; height: 34px; font-size: 1.15rem; }
+  .chester-verdict-row span { display: block; color: var(--arena-pink, #f43f7a); font-size: .54rem; font-weight: 900; letter-spacing: 2px; }
+  .chester-verdict-row b { display: block; margin: .05rem 0 0; color: #f4f7ff; font: 900 .9rem Georgia, serif; letter-spacing: .3px; }
+  .chester-verdict-row b .chester-verdict { font-style: italic; color: var(--verdict-color, #ffd84d); text-shadow: 0 0 12px var(--verdict-color, rgba(255,216,77,.6)); }
+  .chester-live-line { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; width: 100cqw; padding: .5rem .7rem; gap: .5rem; align-items: flex-start; }
+  .chester-live-line .chester-live-line__avatar { display: none; }
+  .chester-live-line > div > span, .chester-live-line > div > b { display: none; }
+  .chester-live-line > div { overflow: visible !important; }
+  .chester-live-line p { font-size: .9rem; line-height: 1.42; display: block; -webkit-line-clamp: unset; overflow: visible; }
+}
+@media (min-width: 861px) {
+  .chester-top-buttons, .capture-strip-row, .material-score-badge, .chester-verdict-row { display: none; }
+}
+.chester-menu-list a.chester-menu-link { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; padding: .7rem .8rem; border: 1px solid #3a4c52; border-radius: 8px; background: rgba(9,13,16,.96); color: #efffff; font: 900 .82rem/1.1 Arial, sans-serif; letter-spacing: .5px; cursor: pointer; text-align: left; text-decoration: none; }
+.chester-menu-list a.chester-menu-link small { color: #8fa6ab; font: 400 .68rem/1.3 Arial, sans-serif; letter-spacing: 0; }
+.chester-menu-list a.chester-menu-link:active { transform: scale(.98); }
+@keyframes capturePop { 0% { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.35); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes scorePulse { 0% { transform: translateY(-50%) scale(1); } 35% { transform: translateY(-50%) scale(1.5); } 100% { transform: translateY(-50%) scale(1); } }

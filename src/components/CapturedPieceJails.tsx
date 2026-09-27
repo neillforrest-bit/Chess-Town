@@ -91,3 +91,26 @@ export function MaterialJailBar({ capturedPieces, playerColor = 'w', youLabel = 
     </section>
   );
 }
+
+// Batch 49: shared material split + slim board-edge capture strips.
+export function splitMaterial(capturedPieces: CapturedPiece[], playerColor: 'w' | 'b' = 'w') {
+  const youTook = capturedPieces.filter((piece) => piece.color !== playerColor);
+  const oppTook = capturedPieces.filter((piece) => piece.color === playerColor);
+  const yourPts = youTook.reduce((total, piece) => total + (MATERIAL_POINTS[piece.type] || 0), 0);
+  const oppPts = oppTook.reduce((total, piece) => total + (MATERIAL_POINTS[piece.type] || 0), 0);
+  return { youTook, oppTook, yourPts, oppPts, lead: yourPts - oppPts };
+}
+
+export function CaptureStrip({ pieces, tone, label }: { pieces: CapturedPiece[]; tone: 'you' | 'opp'; label: string }) {
+  return (
+    <div className={`capture-strip capture-strip--${tone}`} aria-label={label}>
+      <span>{label}</span>
+      <div className="capture-strip__pieces" key={pieces.length}>
+        {pieces.map((piece, index) => (
+          <img key={`${piece.color}-${piece.type}-${index}`} src={jailSpriteUrl(piece.color, piece.type)} alt="" className={index === pieces.length - 1 ? 'capture-strip__new' : undefined} />
+        ))}
+        {!pieces.length && <em>none yet</em>}
+      </div>
+    </div>
+  );
+}
