@@ -229,8 +229,8 @@ function PlayChesterGame() {
       </div>
       <div className="chester-top-buttons">
         <button type="button" onClick={() => setStarted(false)} aria-label="Change level"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'LEVEL'}</small><b>{isFriendMode ? modeTitle : selectedLevel.label}</b></button>
-        <button type="button" onClick={() => { if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><small>{helpRemaining} LEFT</small><b>? HINT</b></button>
-        <button type="button" onClick={() => setChatOpen(true)} aria-label="Chat with Chester"><small>TALK TO</small><b>💬 CHESTER</b></button>
+        <button type="button" className="chester-top-buttons__hint" onClick={() => { if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><small>{helpRemaining} LEFT</small><b>? HINT</b></button>
+        <button type="button" className="chester-top-buttons__chat" onClick={() => setChatOpen(true)} aria-label="Chat with Chester"><small>TALK TO</small><b>💬 CHESTER</b></button>
         <button type="button" onClick={() => setMenuOpen(true)} aria-label="Back to Chesterville"><small>BACK TO</small><b>🏠 CHESTERVILLE</b></button>
       </div></header>
     <section className="chester-game__board">

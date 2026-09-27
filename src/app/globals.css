@@ -2090,3 +2090,38 @@ vercel-live-feedback { display: none !important; }
 @media (min-width: 861px) {
   .hero-score, .hero-jail-row { display: none; }
 }
+
+/* Batch 57 (BUILD 56 - friend-testing feedback, his steering): HINT + TALK TO CHESTER
+   were going unnoticed in the ghost-button top row. They are now filled, glowing,
+   nearly 2x the label type of the row (true 3x cannot fit a 4-button row), LEVEL and
+   BACK stay quiet. Below 690px tall the jail row folds (its info already lives in the
+   hero side boxes), hero/verdict/top rows slim down, and the saved pixels go back to
+   the board so small iPhones stay playable. */
+@media (max-width: 860px) {
+  .chester-top-buttons { grid-template-columns: .78fr 1.25fr 1.25fr .85fr; }
+  .chester-top-buttons__hint, .chester-top-buttons__chat { min-height: 52px; border-width: 2px; }
+  .chester-top-buttons__hint b, .chester-top-buttons__chat b { font-size: 1.12rem; line-height: 1; }
+  .chester-top-buttons__hint small, .chester-top-buttons__chat small { font-size: .55rem; }
+  .chester-top-buttons__hint { background: linear-gradient(180deg, #ffd84d, #e2ac1f); border-color: #fff0b3; box-shadow: 0 0 16px rgba(255,216,77,.5); animation: heroBtnPulse 2.6s ease-in-out infinite; }
+  .chester-top-buttons__hint b, .chester-top-buttons__hint small { color: #241a02; }
+  .chester-top-buttons__chat { background: linear-gradient(180deg, #22d3ee, #0e9db8); border-color: #b5f3ff; box-shadow: 0 0 16px rgba(34,211,238,.5); animation: heroBtnPulse 2.6s ease-in-out .9s infinite; }
+  .chester-top-buttons__chat b, .chester-top-buttons__chat small { color: #03262e; }
+  .chester-top-buttons__hint:disabled { opacity: .55; }
+}
+@keyframes heroBtnPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.22); }
+}
+@media (max-width: 860px) and (max-height: 690px) {
+  .hero-jail-row { display: none; }
+  .hero-score__box { min-width: 56px; padding: 2px 8px 4px; }
+  .hero-score__box b { font-size: 1.5rem; }
+  .hero-score__side { padding: 2px 6px; }
+  .chester-top-buttons button { min-height: 36px; }
+  .chester-top-buttons__hint, .chester-top-buttons__chat { min-height: 46px; }
+  .chester-top-buttons__hint b, .chester-top-buttons__chat b { font-size: .98rem; }
+  .chester-verdict-row .chester-live-line__avatar { width: 28px; height: 28px; font-size: .95rem; }
+  .chester-verdict-row b { font-size: .8rem; }
+  .chester-game__board { gap: .25rem; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 236px)); height: auto; }
+}
