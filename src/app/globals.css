@@ -1979,3 +1979,13 @@ vercel-live-feedback { display: none !important; }
 @media (max-width: 860px) {
   .chester-board-frame > div.material-score-badge { width: auto !important; height: auto !important; }
 }
+
+/* Batch 49c: two cascade collisions found on live measurement.
+   1) Legacy .chester-game__top button { grid-column:2; grid-row:1 } stacked all four
+      top buttons in one grid cell - reset their placement inside the buttons row.
+   2) Legacy .chester-verdict { min-height:240px } (old verdict-card design) inflated the
+      verdict word above the card to 268px - the same reset the card interior already had. */
+@media (max-width: 860px) {
+  .chester-top-buttons button { grid-column: auto; grid-row: auto; }
+  .chester-verdict-row .chester-verdict { min-height: 0; position: static; border: 0 !important; }
+}
