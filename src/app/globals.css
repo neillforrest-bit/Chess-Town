@@ -2166,3 +2166,16 @@ vercel-live-feedback { display: none !important; }
   .minigame-board { width: min(94cqw, calc(100cqh - 238px)); }
   .minigame-page--roomy .minigame-board { width: min(94cqw, calc(100cqh - 262px)); }
 }
+
+/* Batch 59b (BUILD 58 continuation - daily challenge was unplayable on small phones):
+   the daily page reuses the play-chester board law, so at 375x667 the answer buttons
+   sat 120px past the viewport, unreachable, and the coach text clipped mid-word.
+   Daily now gets its own law: board reserve 348px, teleprompter capped with internal
+   scroll, compact one-row choices, FAB hidden (page has its own Chat/Help buttons). */
+@media (max-width: 860px) {
+  body:has(.daily-puzzle) .chester-fab { display: none; }
+  .chess-game-page:has(.daily-puzzle) .play-chester-board { width: min(100%, calc(100dvh - 348px), calc(100vw - 1.1rem)); }
+  .chess-game-page:has(.daily-puzzle) .chester-teleprompter { max-height: 84px; overflow-y: auto; }
+  .chess-game-page:has(.daily-puzzle) .daily-choices { gap: .3rem; margin-top: .3rem; }
+  .chess-game-page:has(.daily-puzzle) .daily-choices button { padding: .45rem .2rem; font-size: .82rem; }
+}
