@@ -615,6 +615,69 @@ const ROOKIE_PRINCIPLE_LESSON: Record<string, string> = {
   'exposed-piece': 'The piece you brought out can simply be taken for nothing. A new piece\'s first square must be defended or safe - development only counts if the piece stays on the board.',
 };
 
+
+/* COACH BULLETS: the punchy 3-bullet verdict card (verdict / WWCD / RISK) that
+   mirrors the WHY sheet. All local - zero LLM cost per move. Colors follow the
+   owner's spec: green good, orange shaky, red bad. */
+export type CoachBullets = {
+  verdictWord: string;
+  verdictColor: string;
+  why: string;
+  wwcd: string;
+  risk: string;
+  patternName: string | null;
+};
+
+const CAPTURE_WORD: Record<string, string> = { p: 'a pawn', n: 'a knight', b: 'a bishop', r: 'a rook', q: 'the queen' };
+
+export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
+  const label = (input.classification || 'GOOD').toUpperCase();
+  const good = label === 'BRILLIANT' || label === 'BEST' || label === 'GREAT' || label === 'GOOD';
+  const verdict = getVerdict(input.classification);
+  const verdictColor = good ? '#4ade80' : label === 'INACCURACY' ? '#ff8c00' : '#f43f7a';
+  const taken = input.captured ? CAPTURE_WORD[input.captured] || 'a piece' : null;
+  const pattern = detectWhyPattern({ fenBefore: input.fenBefore, move: input.move, bestMove: input.bestMove, classification: input.classification, movePhrase: input.movePhrase });
+  const script = (input.engineLine || []).filter(Boolean);
+
+  let why: string;
+  if (good) {
+    why = input.mate
+      ? 'you ended the argument on the spot.'
+      : input.check
+        ? 'a forcing move - their reply is chosen for them.'
+        : taken
+          ? `you won ${taken} and gave nothing back.`
+          : label === 'BRILLIANT' || label === 'BEST'
+            ? "the engine's own first choice - maximum value, nothing left hanging."
+            : 'solid and safe - your structure stays intact.';
+  } else {
+    why = pattern ? pattern.line : 'the idea was fine, one detail leaked - check what the move stopped defending.';
+  }
+
+  const wwcd = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
+    ? `the engine preferred ${input.bestMovePhrase}.`
+    : good
+      ? "exactly that - the engine's own first choice."
+      : 'rebuild the defence first, then hunt.';
+
+  let risk: string;
+  if (!good) {
+    risk = script.length
+      ? `Chester can reply ${script[0]}.`
+      : pattern && pattern.name === 'LOOSE PIECE'
+        ? 'the loose piece - defend it or move it before they take it.'
+        : pattern && pattern.name === 'MISSED MATE'
+          ? 'forcing moves first: always scan checks, captures, threats.'
+          : 'the leak is still on the board - fix it before pushing on.';
+  } else {
+    risk = script.length
+      ? `watch for ${script[0]}.`
+      : 'nothing immediate - keep developing and castle early.';
+  }
+
+  return { verdictWord: verdict.word, verdictColor, why, wwcd, risk, patternName: pattern ? pattern.name : null };
+}
+
 export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
   const phase = gamePhaseFromFen(input.fen);
   const pattern = detectWhyPattern({ fenBefore: input.fenBefore, move: input.move, bestMove: input.bestMove, classification: input.classification, movePhrase: input.movePhrase });

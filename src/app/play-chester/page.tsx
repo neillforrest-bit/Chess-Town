@@ -8,7 +8,7 @@ import { askChesterChat } from '@/app/actions';
 import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
-import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, chesterHowlerLine } from '@/lib/chester-voice';
+import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, chesterHowlerLine } from '@/lib/chester-voice';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
@@ -121,6 +121,11 @@ function PlayChesterGame() {
       setCoachReply(chesterHowlerLine(coachPrompt.ply || 1));
       return;
     }
+    if (coachPrompt.kind === 'move') {
+      // Verdict bullets are fully local now - no per-move LLM call, no waiting.
+      setIsThinking(false); setCoachReply('');
+      return;
+    }
     setIsThinking(true); setCoachReply('');
     const grounded = personaCoaching({ ...coachPrompt, kind: coachPrompt.kind as 'move' | 'help' }, difficulty);
     const FACT_PIECE: Record<string, string> = { p: 'a pawn', n: 'a knight', b: 'a bishop', r: 'a rook', q: 'the queen' };
@@ -154,11 +159,11 @@ function PlayChesterGame() {
     const toneInstruction = difficulty === 'BEGINNER' ? ' TONE: warm and encouraging, never scolding, never tell them to take a breath - frame every mistake as a useful discovery and acknowledge the plan behind the move before the flaw.' : '';
     // WHY-card de-dup: the student can open the WHY sheet for the same move, so the
     // spoken commentary must add something new rather than recite the card.
-    const whyCard = coachPrompt.kind === 'move' ? buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null, sacrificePiece: coachPrompt.sacrificePiece || null, principleKey: coachPrompt.principleKey || null, principleFollowed: coachPrompt.principleFollowed ?? null, provisional: coachPrompt.provisional || null, exchangeLost: coachPrompt.exchangeLost || null, exchangeWon: coachPrompt.exchangeWon || null, exchangeNet: coachPrompt.exchangeNet ?? null }) : null;
-    const whyDedupeFact = whyCard ? ` The student can tap a WHY card that already says: "${whyCard.gradeLine}" and "${whyCard.considerLine}". Do NOT repeat those sentences or their ideas - add a fresh angle instead (the story, the danger, or the next plan).` : '';
+    const whyCard = null;
+    const whyDedupeFact = '';
     const ladderMemory = (() => { try { const lad = getLadder(); if (!lad.lastLevel) return ''; return ` HISTORY WITH THIS STUDENT (reference at most once, only when genuinely relevant - e.g. they repeat an old mistake or finally fix it): last visit they earned ${lad.lastGrade || 'an ungraded game'} at ${LADDER_LABELS[lad.lastLevel] || lad.lastLevel}${lad.lastFocus ? ` and you told them to work on: ${lad.lastFocus}` : ''}.`; } catch { return ''; } })();
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. Stay in that voice, at most 3 short sentences (up to 480 characters). SPECIFICITY IS THE WHOLE JOB: name the piece in the facts and the concrete danger or idea - never say a move was just 'risky' or 'loose' when the facts say why.${ladderMemory} FACTS about the move (exact and complete - never contradict them, never name a different piece than these): the student played ${moveFact}. It captured ${capturedFact}. Sacrifice: ${sacrificeFact}. Engine verdict: ${coachPrompt.classification || 'unknown'}.${provisionalFact} Eval swing: ${coachPrompt.evalDelta ?? 'unknown'} centipawns. Engine-preferred move: ${coachPrompt.bestMovePhrase || 'unknown'}.${scriptFact ? ` The engine's script from here: ${scriptFact}.` : ''}${principleFact}${exchangeFact}${toneInstruction}${rookieTeaching}${whyDedupeFact} Explain the threat, plan and why in plain English (no centipawns, no engine jargon). Give one concrete next action. Never invent board facts: which piece moved, what was captured and what was sacrificed are exactly as stated above. NEVER use chess notation or coordinates - describe moves in words, like 'knight to the kingside' or 'pawn two squares up'.`;
-    void askChesterChat(JSON.stringify({ type: 'coach', message: coachPrompt.kind === 'help' ? 'Give me a strategic hint.' : `Review ${coachPrompt.move}.`, context, fen: coachPrompt.fen || lastFen }))
+    void askChesterChat(JSON.stringify({ type: 'coach', message: 'Give me a strategic hint.', context, fen: coachPrompt.fen || lastFen }))
       .then((reply) => { const text = reply && !/messenger|delayed|unavailable/i.test(reply) ? reply : grounded; setCoachReply(text); })
       .catch(() => { setCoachReply(grounded); })
       .finally(() => setIsThinking(false));
@@ -259,8 +264,13 @@ function PlayChesterGame() {
         <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={verdictStyle}>
         <div className="chester-live-line__avatar" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
-        <div><span>{verdictKicker}</span><b>{verdictTitle}</b><p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
-        {!isThinking && coachPrompt && <span className="chester-live-line__next" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>{coachPrompt.kind === 'move' && <button type="button" className="chester-why-btn" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}</span>}
+        <div><span>{verdictKicker}</span><b>{verdictTitle}</b>{coachPrompt?.kind === 'move' && !isThinking ? (() => { const b = buildCoachBullets({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null }); return <div className="chester-coach-bullets">
+          <p><b style={{ color: b.verdictColor }}>{b.verdictWord}:</b> {b.why}</p>
+          <p><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {b.wwcd}</p>
+          <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {b.risk}</p>
+          <p><button type="button" className="chester-why-link" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 want to know why →</button></p>
+        </div>; })() : <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
+
       </div>
       </div>
       <div className="chester-game__actions chester-game__actions--desktop"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
