@@ -2044,7 +2044,7 @@ vercel-live-feedback { display: none !important; }
    - Capture strips: 26px icons on 30px rows with a dark legibility chip, label up to
      .56rem, overflow collapses to a +N counter. */
 @media (max-width: 860px) {
-  .chester-board-frame { width: min(100cqw, calc(100cqh - 292px)); height: auto; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 60px)); height: auto; }
   .material-score-badge { display: none; }
   .chester-bottom { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 100%; }
   .chester-live-line { flex: 1 1 auto; min-height: 0; max-height: none; width: 100cqw; overflow: hidden; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
