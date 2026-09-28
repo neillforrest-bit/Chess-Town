@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat } from '@/app/actions';
 import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
@@ -35,7 +36,9 @@ function PlayChesterGame() {
   const requestedMode = searchParams.get('mode');
   const requestedLevel = searchParams.get('level');
   const bossNode = searchParams.get('boss');
-  const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
+  const requestedRoom = (searchParams.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
+  const requestedSeat: 'w' | 'b' = searchParams.get('host') === '1' ? 'w' : 'b';
+  const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode === 'duel' ? 'PVP_REMOTE' : requestedMode || 'COACH_OPENING';
   const [howlerAside, setHowlerAside] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const coachPromptRef = useRef<CoachPrompt | null>(null);
@@ -61,6 +64,46 @@ function PlayChesterGame() {
     try { if (!localStorage.getItem('ct-hero-tip-seen')) setHeroTipOpen(true); } catch { setHeroTipOpen(true); }
   }, [started]);
 
+  const [duelStatus, setDuelStatus] = useState<'idle' | 'waiting' | 'connected' | 'failed'>('idle');
+  const duelConnRef = useRef<{ send: (d: unknown) => void } | null>(null);
+  useEffect(() => {
+    if (mode !== 'PVP_REMOTE' || !requestedRoom) return;
+    let dead = false;
+    type Conn = { on: (e: string, cb: (a?: unknown) => void) => void; send: (d: unknown) => void };
+    type DuelPeer = { on: (e: string, cb: (a?: unknown) => void) => void; destroy: () => void; connect: (id: string) => Conn };
+    let peer: DuelPeer | null = null;
+    const wireConn = (conn: Conn) => {
+      duelConnRef.current = conn;
+      conn.on('open', () => { if (!dead) { setDuelStatus('connected'); setStarted(true); } });
+      conn.on('data', (data?: unknown) => {
+        const d = data as { type?: string; from?: string; to?: string; fen?: string } | undefined;
+        if (d && d.type === 'move' && d.from && d.to) window.dispatchEvent(new CustomEvent('remote-chess-move', { detail: { from: d.from, to: d.to, fen: d.fen } }));
+      });
+      conn.on('close', () => { if (!dead) setDuelStatus('failed'); });
+    };
+    const localMoveRelay = (event: Event) => {
+      const d = (event as CustomEvent<{ from: string; to: string; fen: string }>).detail;
+      try { duelConnRef.current?.send({ type: 'move', from: d.from, to: d.to, fen: d.fen }); } catch {}
+    };
+    window.addEventListener('local-chess-move', localMoveRelay);
+    setDuelStatus('waiting');
+    void import('peerjs').then(({ default: Peer }) => {
+      if (dead) return;
+      const roomId = `chess-town-duel-${requestedRoom}`;
+      if (requestedSeat === 'w') {
+        peer = new Peer(roomId, PEER_CONFIG as never) as unknown as DuelPeer;
+        peer!.on('connection', (conn?: unknown) => wireConn(conn as Conn));
+        peer!.on('error', () => { if (!dead) setDuelStatus('failed'); });
+      } else {
+        peer = new Peer(PEER_CONFIG as never) as unknown as DuelPeer;
+        peer!.on('open', () => { const conn = peer!.connect(roomId); wireConn(conn); });
+        peer!.on('error', () => { if (!dead) setDuelStatus('failed'); });
+      }
+    }).catch(() => { if (!dead) setDuelStatus('failed'); });
+    return () => { dead = true; window.removeEventListener('local-chess-move', localMoveRelay); try { peer?.destroy(); } catch {} };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, requestedRoom, requestedSeat]);
+
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; kind?: 'chat' }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState('');
@@ -75,9 +118,9 @@ function PlayChesterGame() {
   const [hintOpen, setHintOpen] = useState(false);
   const [lastHintReply, setLastHintReply] = useState('');
   const selectedLevel = useMemo(() => LEVELS.find((level) => level.value === difficulty)!, [difficulty]);
-  const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : 'PLAYING CHESTER';
-  const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : selectedLevel.label;
-  const isFriendMode = mode === 'PVP_LOCAL' || mode === '2V2';
+  const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : mode === 'PVP_REMOTE' ? 'LIVE DUEL' : 'PLAYING CHESTER';
+  const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : mode === 'PVP_REMOTE' ? (requestedSeat === 'w' ? 'YOU ARE WHITE' : 'YOU ARE BLACK') : selectedLevel.label;
+  const isFriendMode = mode === 'PVP_LOCAL' || mode === '2V2' || mode === 'PVP_REMOTE';
 
   useEffect(() => { if (started) setCountdown((n) => n + 1); }, [started]);
 
@@ -220,7 +263,12 @@ function PlayChesterGame() {
       {!isFriendMode && ladder.lastLevel && <p className="chester-remembers">🧠 CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
       {!isFriendMode && requestedLevel && <p style={{ margin: '.2rem 0 .6rem', color: '#ffd84d', fontWeight: 900, letterSpacing: '1px' }}>OPPONENT: {selectedLevel.label} · {selectedLevel.note}</p>}
       {!isFriendMode && !requestedLevel && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? '🔒 ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small>{!locked && (() => { const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return rec?.games ? <i className="chester-level-stars">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}{rec.bestGrade ? ` · best ${rec.bestGrade}` : ''}</i> : null; })()}</button>; })}</div>}
-      <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>
+      {mode === 'PVP_REMOTE' ? (
+        <div style={{ margin: '.6rem 0', padding: '.7rem .9rem', border: '1px solid #ffd84d', borderRadius: 8, background: 'rgba(255,216,77,.08)' }}>
+          <b style={{ color: '#ffd84d', letterSpacing: '1px' }}>{duelStatus === 'connected' ? 'FRIEND CONNECTED - FIGHT!' : duelStatus === 'failed' ? 'CONNECTION DROPPED - BOTH REOPEN THE LINK' : requestedSeat === 'w' ? `ROOM ${requestedRoom} - WAITING FOR YOUR FRIEND...` : `KNOCKING ON ROOM ${requestedRoom}...`}</b>
+          <p style={{ margin: '.35rem 0 0', fontSize: '.72rem', color: '#c7d5da' }}>{requestedSeat === 'w' ? 'Share your link (without the host flag). The game starts the moment they join. You are White.' : 'Connecting you to the host. You are Black - the game starts on its own.'}</p>
+        </div>
+      ) : <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>}
     </section>
   </main>;
 
@@ -252,7 +300,7 @@ function PlayChesterGame() {
       </div>}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       <div className="capture-strip-row hero-jail-row"><CaptureStrip pieces={material.youTook} tone="you" label={isFriendMode ? 'P1 TOOK' : 'YOU TOOK'} /><CaptureStrip pieces={material.oppTook} tone="opp" label={isFriendMode ? 'P2 TOOK' : 'CHESTER TOOK'} /></div>
-      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>

@@ -22,7 +22,11 @@ export default function ChallengeLinkGenerator() {
 
   const roomToken = room.trim().replace(/[^a-z0-9-]/gi, '').slice(0, 24);
   const activeRoom = roomToken || autoRoom;
-  const shareUrl = typeof window === 'undefined' || !activeRoom ? '' : `${window.location.origin}/play-chester?mode=${mode}&room=${activeRoom}`;
+  // mode=duel is the live two-phone game (PeerJS relay, full Chester coaching on both
+  // devices). The friend link carries no host flag - the creator opens as host below.
+  const remoteMode = mode === '1v1' ? 'duel' : '2v2';
+  const shareUrl = typeof window === 'undefined' || !activeRoom ? '' : `${window.location.origin}/play-chester?mode=${remoteMode}&room=${activeRoom}`;
+  const hostUrl = shareUrl ? `${shareUrl}&host=1` : '';
 
   const openModal = () => {
     setAutoRoom((current) => current || makeRoomId());
@@ -60,7 +64,7 @@ export default function ChallengeLinkGenerator() {
     if (!shareUrl) return;
     if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: 'Chess Town duel', text: 'Fight me in Chess Town - pass-and-play duel, Chester commentates:', url: shareUrl });
+        await navigator.share({ title: 'Chess Town duel', text: 'Fight me in Chess Town - live duel on your own phone, Chester commentates every move:', url: shareUrl });
         return;
       } catch { /* user dismissed or share unsupported - fall back to copy */ }
     }
@@ -77,6 +81,7 @@ export default function ChallengeLinkGenerator() {
         <label>ROOM NAME <input value={room} onChange={(event) => { setRoom(event.target.value); setCopied(false); setCopyFailed(false); }} placeholder="Auto-generate a room" maxLength={24} /></label>
         <label>SHARE LINK <input ref={linkInputRef} readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} /></label>
         <div className="portal-challenge-actions">
+          <a className="portal-challenge-copy" href={hostUrl} style={{ textAlign: 'center', textDecoration: 'none' }}>OPEN YOUR ROOM (HOST)</a>
           <button type="button" className="portal-challenge-copy" onClick={() => void shareLink()}>SHARE TO A FRIEND</button>
           <button type="button" className="portal-challenge-copy portal-challenge-copy--secondary" onClick={() => void copyLink()}>{copied ? 'COPIED' : 'COPY LINK'}</button>
         </div>
