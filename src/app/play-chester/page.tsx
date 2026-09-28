@@ -339,7 +339,6 @@ function PlayChesterGame() {
       </div>
       {coachBullets && <div className="chester-detail-line">
         <div className="chester-detail-line__scroll"><div className="chester-coach-bullets">
-          <p><b style={{ color: coachBullets.verdictColor }}>{coachBullets.verdictWord}:</b> {coachBullets.why}</p>
           <p><button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button></p>
           <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
           <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>
