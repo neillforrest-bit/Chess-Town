@@ -2130,7 +2130,7 @@ vercel-live-feedback { display: none !important; }
   .chester-verdict-row .chester-live-line__avatar { width: 28px; height: 28px; font-size: .95rem; }
   .chester-verdict-row b { font-size: .8rem; }
   .chester-game__board { gap: .25rem; }
-  .chester-board-frame { width: min(100cqw, calc(100cqh - 160px)); height: auto; }
+  .chester-board-frame { width: min(100cqw, calc(100cqh - 60px)); height: auto; }
 }
 
 /* Batch 58 (BUILD 57 - his steering: every player is a first-timer): top-right button
