@@ -2266,7 +2266,8 @@ vercel-live-feedback { display: none !important; }
 .chester-detail-line .chester-coach-bullets p { font-size: .9rem; line-height: 1.26; margin: 0 0 .1rem; display: block; -webkit-line-clamp: unset; max-height: none; overflow: visible; }
 @media (max-width: 860px) {
   .chester-stack { max-height: calc(100cqh - 100cqw - 78px); width: 100cqw; }
-  .chester-live-line { width: 100%; flex: 0 0 auto; max-height: none !important; overflow: visible !important; }
+  .chester-live-line { width: 100%; flex: 0 0 auto !important; flex-flow: row !important; align-items: flex-start !important; max-height: none !important; overflow: visible !important; }
+  .chester-live-line__main { overflow: visible !important; max-height: none !important; }
   .chester-live-line .chester-live-line__avatar { display: grid !important; width: 46px; height: 46px; font-size: 1.7rem; }
   .chester-live-line__head, .chester-live-line__head span, .chester-live-line__head b { display: block !important; }
   .chester-live-line__head b { font-size: 1.4rem; }
