@@ -2209,8 +2209,8 @@ vercel-live-feedback { display: none !important; }
 .chester-report-card__promo-checks li u { text-decoration: none; }
 
 /* batch 64 - punchy coach bullets */
-.chester-coach-bullets { display: grid; gap: 3px; margin-top: 2px; }
-.chester-coach-bullets p { margin: 0; line-height: 1.4; font-size: .9rem; }
+.chester-coach-bullets { display: grid; gap: 2px; margin-top: 2px; }
+.chester-coach-bullets p { margin: 0; line-height: 1.3; font-size: .84rem; }
 .chester-coach-bullets b { letter-spacing: .02em; }
 .chester-why-link { background: none; border: none; padding: 0; color: #ffd84d; font-size: .82rem; letter-spacing: .04em; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; opacity: .9; }
 .chester-why-link:hover { opacity: 1; }

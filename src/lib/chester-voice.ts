@@ -657,7 +657,7 @@ export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
   const wwcd = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
     ? `the engine preferred ${input.bestMovePhrase}.`
     : good
-      ? "exactly that - the engine's own first choice."
+      ? 'same move. Chester approves.'
       : 'rebuild the defence first, then hunt.';
 
   let risk: string;
