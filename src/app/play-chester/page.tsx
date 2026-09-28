@@ -10,6 +10,7 @@ import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type Capt
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, chesterHowlerLine } from '@/lib/chester-voice';
+import PawnWarDuel from '@/components/PawnWarDuel';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
@@ -38,6 +39,8 @@ function PlayChesterGame() {
   const bossNode = searchParams.get('boss');
   const requestedRoom = (searchParams.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
   const requestedSeat: 'w' | 'b' = searchParams.get('host') === '1' ? 'w' : 'b';
+  const warMode = requestedMode === 'duel' && searchParams.get('war') === '1';
+  const clockSeconds = Math.min(3600, Math.max(0, parseInt(searchParams.get('clock') || '0', 10) || 0));
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode === 'duel' ? 'PVP_REMOTE' : requestedMode || 'COACH_OPENING';
   const [howlerAside, setHowlerAside] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
@@ -80,6 +83,7 @@ function PlayChesterGame() {
       conn.on('data', (data?: unknown) => {
         const d = data as { type?: string; from?: string; to?: string; fen?: string } | undefined;
         if (d && d.type === 'move' && d.from && d.to) window.dispatchEvent(new CustomEvent('remote-chess-move', { detail: { from: d.from, to: d.to, fen: d.fen } }));
+        if (d && d.type === 'flag') { setFlagResult('won'); setMatchOver(true); }
       });
       conn.on('close', () => { if (!dead) setDuelStatus('failed'); });
     };
@@ -278,6 +282,39 @@ function PlayChesterGame() {
     window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode, fen } }));
   };
 
+  // Duel blitz clock: each client runs both clocks and flags itself; a flag relay tells the rival they won on time.
+  const [clocks, setClocks] = useState({ w: clockSeconds, b: clockSeconds });
+  const [flagResult, setFlagResult] = useState<'won' | 'lost' | null>(null);
+  const [matchOver, setMatchOver] = useState(false);
+  const turnColor: 'w' | 'b' = lastFen.split(' ')[1] === 'b' ? 'b' : 'w';
+  useEffect(() => {
+    const over = () => setMatchOver(true);
+    const turn = (event: Event) => { const f = (event as CustomEvent<{ fen?: string }>).detail?.fen; if (f) setLastFen(f); };
+    window.addEventListener('match-complete', over);
+    window.addEventListener('duel-turn', turn);
+    return () => { window.removeEventListener('match-complete', over); window.removeEventListener('duel-turn', turn); };
+  }, []);
+  useEffect(() => {
+    if (mode !== 'PVP_REMOTE' || !clockSeconds || duelStatus !== 'connected' || !started || matchOver || flagResult) return;
+    const timer = setInterval(() => { setClocks((c) => ({ ...c, [turnColor]: Math.max(0, c[turnColor] - 0.25) })); }, 250);
+    return () => clearInterval(timer);
+  }, [mode, clockSeconds, duelStatus, started, matchOver, flagResult, turnColor]);
+  useEffect(() => {
+    if (flagResult || !clockSeconds || !started || matchOver) return;
+    if (clocks.w > 0 && clocks.b > 0) return;
+    setMatchOver(true);
+    const flagged = clocks.w <= 0 ? 'w' : 'b';
+    if (flagged === requestedSeat) { setFlagResult('lost'); try { duelConnRef.current?.send({ type: 'flag' }); } catch {} }
+    else setFlagResult('won');
+  }, [clocks, clockSeconds, flagResult, started, matchOver, requestedSeat]);
+  const fmtClock = (secs: number) => { const t = Math.max(0, Math.ceil(secs)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+  const rivalSeat: 'w' | 'b' = requestedSeat === 'w' ? 'b' : 'w';
+  const clockBar = clockSeconds > 0 ? <div className="duel-clock-bar" aria-live="off">
+    <span className={`duel-clock-chip ${turnColor === requestedSeat && !matchOver ? 'is-active' : ''} ${clocks[requestedSeat] <= 30 ? 'is-low' : ''}`}>YOU {fmtClock(clocks[requestedSeat])}</span>
+    <span className={`duel-clock-chip ${turnColor !== requestedSeat && !matchOver ? 'is-active' : ''} ${clocks[rivalSeat] <= 30 ? 'is-low' : ''}`}>RIVAL {fmtClock(clocks[rivalSeat])}</span>
+  </div> : null;
+  const flagBanner = flagResult ? <div className={`duel-flag-banner ${flagResult === 'won' ? 'is-won' : 'is-lost'}`} role="status">{flagResult === 'won' ? '⚡ FLAG FALL - rival ran out of time. You win on the clock!' : '⏱ FLAG FALL - your clock hit zero. Rival wins on time.'}</div> : null;
+
   const help = () => { if (!helpRemaining || isThinking) return; setHelpRemaining((n) => n - 1); setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
@@ -293,6 +330,8 @@ function PlayChesterGame() {
       ) : <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>}
     </section>
   </main>;
+
+  if (warMode) return <PawnWarDuel playerColor={requestedSeat} clockBar={clockBar} flagBanner={flagBanner} onTurn={(f) => setLastFen(f)} onGameOver={() => setMatchOver(true)} />;
 
   const lesson = LESSONS[lessonStep];
   const material = splitMaterial(capturedPieces, 'w');
@@ -323,6 +362,8 @@ function PlayChesterGame() {
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
+      {clockBar}
+      {flagBanner}
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
