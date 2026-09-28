@@ -375,12 +375,14 @@ function PlayChesterGame() {
         <div className="chester-live-line__avatar" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
         <div className="chester-live-line__main">
         <div className="chester-live-line__head"><span>{verdictKicker}</span><b>{verdictTitle}</b></div>
-        {!(coachBullets && coachMovePrompt) && <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}{howlerAside && <p className="chester-howler-aside">🐴💥 MY BAD - {howlerAside}</p>}
+        {!(coachBullets && coachMovePrompt) && <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}
         </div>
+        {coachBullets && <button type="button" className="chester-why-button chester-why-button--hero" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}
       </div>
       {coachBullets && <div className="chester-detail-line">
         <div className="chester-detail-line__scroll"><div className="chester-coach-bullets">
-          <p className="chester-detail-toprow"><button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>{coachBullets.odds ? <span className="chester-detail-odds"><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</span> : null}</p>
+          {howlerAside && <p className="chester-howler-aside">🐴💥 MY BAD - {howlerAside}</p>}
+          {coachBullets.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</p> : null}
           <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
           <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>
         </div></div>

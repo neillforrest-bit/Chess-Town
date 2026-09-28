@@ -2294,3 +2294,11 @@ vercel-live-feedback { display: none !important; }
 .duel-flag-banner.is-lost { border: 1.5px solid #f43f7a; color: #f43f7a; background: rgba(244,63,122,.1); }
 .minigame-page .duel-clock-bar { max-width: 480px; margin: 0 auto .5rem; }
 .minigame-page .duel-flag-banner { max-width: 480px; margin: 0 auto .6rem; }
+
+/* Batch 85: iPad steering - WHY hero button glows at the right of the verdict box; equal HINT/CHAT */
+.chester-why-button--hero { flex: 0 0 auto; align-self: center; font: 900 .95rem Georgia, serif !important; letter-spacing: 1px; color: #171106 !important; background: linear-gradient(180deg, #ffe27a, #ffd84d) !important; border: 2px solid #fff3c4 !important; border-radius: 10px; padding: .6rem .9rem !important; box-shadow: 0 0 18px rgba(255,216,77,.65), 0 0 4px rgba(255,216,77,.9); cursor: pointer; }
+.chester-why-button--hero:active { transform: scale(.95); }
+@media (max-width: 860px) {
+  .chester-top-buttons { grid-template-columns: .85fr 1.2fr 1.2fr .85fr !important; }
+  .chester-why-button--hero { font-size: .85rem !important; padding: .5rem .7rem !important; }
+}
