@@ -169,7 +169,7 @@ export class StockfishClient {
 
   async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty }): Promise<EngineTelemetry> {
     void input.difficulty; // grading always runs at analyst strength for verdict integrity
-    const before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2);
+    let before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2);
     // Loss is computed inside ONE search whenever possible, so two independent searches can
     // never disagree a good move into a bad grade (cross-search noise lesson). The played
     // move equal to the engine's first choice is loss 0 by definition; when it is the
@@ -218,7 +218,41 @@ export class StockfishClient {
       : null;
     const foundForcedMate = isBestMove && before.mate !== null
       && !(secondLine && secondLine.mate !== null && secondLine.mate <= before.mate + 1);
-    const classification = classify(loss, isBestMove, firstChoiceGap, foundForcedMate);
+    let afterIsMoverRelative = isBestMove || playedLine !== null;
+    let classification = classify(loss, isBestMove, firstChoiceGap, foundForcedMate);
+    // Sound-sacrifice confirmation (batch 90, his steering): a planned sacrifice reads as
+    // MISTAKE/BLUNDER at grading depth because the compensation lives past the horizon.
+    // Before scolding, re-search the position at depth 18 - if the engine now endorses the
+    // move (first or second choice), the shallow grade was the horizon, not the truth.
+    // Costs one deeper search, only on apparent bad moves; the verdict card shows its
+    // thinking state meanwhile.
+    if ((classification === 'MISTAKE' || classification === 'BLUNDER') && before.mate === null) {
+      try {
+        const deep = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 2);
+        const deepBest = deep.bestMove === input.uci;
+        const deepSecond = deep.lines[2];
+        const deepLine: AnalysisLine | null = deepBest
+          ? { score: deep.score, mate: deep.mate, pv: deep.pv }
+          : deepSecond && deepSecond.pv[0] === input.uci
+            ? deepSecond
+            : null;
+        if (deepLine) {
+          const deepLoss = deepBest ? 0 : deep.score === null || deepLine.score === null ? null : Math.max(0, deep.score - deepLine.score);
+          const deepGap = deepBest && deep.score !== null && deepSecond && deepSecond.score !== null && deepSecond.score !== undefined
+            ? Math.max(0, deep.score - deepSecond.score)
+            : null;
+          const deepMate = deepBest && deep.mate !== null
+            && !(deepSecond && deepSecond.mate !== null && deep.mate !== null && deepSecond.mate <= deep.mate + 1);
+          classification = classify(deepLoss, deepBest, deepGap, deepMate);
+          loss = deepLoss;
+          continuation = deepLine.pv.slice(1);
+          afterScore = deepLine.score;
+          afterMate = deepLine.mate;
+          afterIsMoverRelative = true; // the deep line is fenBefore-relative
+          before = deep; // WWCD and the eval read speak from the deeper, truer search
+        }
+      } catch { /* the sac check is best-effort - the shallow grade stands */ }
+    }
     const stmAfter = input.fenAfter.split(/\s+/)[1];
     // Sign discipline: scores from the fenBefore MultiPV search (best-move and played-line
     // branches) are MOVER-relative; a fresh fenAfter search is relative to the side to move
@@ -226,7 +260,7 @@ export class StockfishClient {
     // reads them - the old code assumed the second convention for all branches and inverted
     // the eval exactly when the played move was in the top two (his 22-7 lead read 2%).
     const stmBefore = input.fenBefore.split(/\s+/)[1];
-    const afterIsMoverRelative = isBestMove || playedLine !== null;
+
     const absAfter = afterScore === null ? null : afterIsMoverRelative ? (stmBefore === 'w' ? afterScore : -afterScore) : (stmAfter === 'w' ? afterScore : -afterScore);
     const absMateAfter = afterMate === null ? null : afterIsMoverRelative ? (stmBefore === 'w' ? afterMate : -afterMate) : (stmAfter === 'w' ? afterMate : -afterMate);
     return {
