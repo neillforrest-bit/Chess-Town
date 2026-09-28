@@ -432,6 +432,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const boardOffset = 30;
           const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
           const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+          // Board orientation: in a live duel each player sees their own pieces on the
+          // bottom row (chess.com-style). flip remaps board indices to screen indices.
+          const flipBoard = mode === 'PVP_REMOTE' && playerColor === 'b';
+          const sx = (c: number) => (flipBoard ? 7 - c : c);
+          const sy = (r: number) => (flipBoard ? 7 - r : r);
 
           const graphics = scene.add.graphics();
           let pieceContainers: Record<string, any> = {};
@@ -456,8 +461,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               spotlight.className = 'square-spotlight';
               spotlight.dataset.grade = lastMove.grade || 'A';
               spotlight.dataset.square = squareName === lastMove.to ? 'to' : 'from';
-              spotlight.style.left = `${((boardOffset + col * tileSize) / 800) * 100}%`;
-              spotlight.style.top = `${((boardOffset + row * tileSize) / 800) * 100}%`;
+              spotlight.style.left = `${((boardOffset + sx(col) * tileSize) / 800) * 100}%`;
+              spotlight.style.top = `${((boardOffset + sy(row) * tileSize) / 800) * 100}%`;
               spotlight.style.width = `${(tileSize / 800) * 100}%`;
               spotlight.style.height = `${(tileSize / 800) * 100}%`;
               spotlightLayer.appendChild(spotlight);
@@ -530,7 +535,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           // Draw board coordinates (static background)
           for (let col = 0; col < 8; col++) {
             // File letters (a-h)
-            scene.add.text(boardOffset + col * tileSize + tileSize / 2, boardOffset + 8 * tileSize + 8, files[col], {
+            scene.add.text(boardOffset + sx(col) * tileSize + tileSize / 2, boardOffset + 8 * tileSize + 8, files[sx(col)], {
               fontFamily: 'sans-serif',
               fontSize: '16px',
               fontStyle: 'bold',
@@ -540,7 +545,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           
           for (let row = 0; row < 8; row++) {
             // Rank numbers (1-8)
-            scene.add.text(boardOffset - 12, boardOffset + row * tileSize + tileSize / 2, ranks[row], {
+            scene.add.text(boardOffset - 12, boardOffset + sy(row) * tileSize + tileSize / 2, ranks[sy(row)], {
               fontFamily: 'sans-serif',
               fontSize: '16px',
               fontStyle: 'bold',
@@ -1044,7 +1049,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             legalTargetMarkers = gameRef.current.legalTargets.map((target: string) => {
               const col = files.indexOf(target[0]);
               const row = ranks.indexOf(target[1]);
-              return scene.add.circle(boardOffset + col * tileSize + tileSize / 2, boardOffset + row * tileSize + tileSize / 2, 14, 0x39ff14, 0.8);
+              return scene.add.circle(boardOffset + sx(col) * tileSize + tileSize / 2, boardOffset + sy(row) * tileSize + tileSize / 2, 14, 0x39ff14, 0.8);
             });
           };
 
@@ -1092,15 +1097,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 const squareColor = (row + col) % 2 === 0 ? lightSquare : darkSquare;
                 graphics.fillStyle(squareColor, 1);
                 graphics.fillRect(
-                  boardOffset + col * tileSize,
-                  boardOffset + row * tileSize,
+                  boardOffset + sx(col) * tileSize,
+                  boardOffset + sy(row) * tileSize,
                   tileSize,
                   tileSize
                 );
                 graphics.lineStyle(1.2, 0x7a3047, 0.16);
                 graphics.strokeRect(
-                  boardOffset + col * tileSize,
-                  boardOffset + row * tileSize,
+                  boardOffset + sx(col) * tileSize,
+                  boardOffset + sy(row) * tileSize,
                   tileSize,
                   tileSize
                 );
@@ -1108,8 +1113,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const isDestination = squareName === gameRef.current.lastMove.to;
                   const gradeColor = getGradeColor(gameRef.current.lastMove.grade);
                   const spotlight = scene.add.circle(
-                    boardOffset + col * tileSize + tileSize / 2,
-                    boardOffset + row * tileSize + tileSize / 2,
+                    boardOffset + sx(col) * tileSize + tileSize / 2,
+                    boardOffset + sy(row) * tileSize + tileSize / 2,
                     tileSize * 0.55,
                     gradeColor,
                     isDestination ? 0.38 : 0.1
@@ -1117,12 +1122,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(spotlight);
                   scene.tweens.add({ targets: spotlight, alpha: isDestination ? 0.14 : 0.04, scale: 1.18, duration: 620, ease: 'Sine.InOut', yoyo: true, repeat: 1, onComplete: () => { try { spotlight.destroy(); } catch { /* wiped by redraw */ } } });
                   graphics.lineStyle(isDestination ? 3 : 1, gradeColor, isDestination ? 0.9 : 0.22);
-                  graphics.strokeRect(boardOffset + col * tileSize + 4, boardOffset + row * tileSize + 4, tileSize - 8, tileSize - 8);
+                  graphics.strokeRect(boardOffset + sx(col) * tileSize + 4, boardOffset + sy(row) * tileSize + 4, tileSize - 8, tileSize - 8);
                 }
 
                 const zone = scene.add.zone(
-                  boardOffset + col * tileSize + tileSize / 2,
-                  boardOffset + row * tileSize + tileSize / 2,
+                  boardOffset + sx(col) * tileSize + tileSize / 2,
+                  boardOffset + sy(row) * tileSize + tileSize / 2,
                   tileSize,
                   tileSize
                 ).setInteractive();
@@ -1142,10 +1147,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const toCol = files.indexOf(toSquare[0]);
               const toRow = ranks.indexOf(toSquare[1]);
               if (fromCol < 0 || fromRow < 0 || toCol < 0 || toRow < 0) return;
-              const x1 = boardOffset + fromCol * tileSize + tileSize / 2;
-              const y1 = boardOffset + fromRow * tileSize + tileSize / 2;
-              const x2 = boardOffset + toCol * tileSize + tileSize / 2;
-              const y2 = boardOffset + toRow * tileSize + tileSize / 2;
+              const x1 = boardOffset + sx(fromCol) * tileSize + tileSize / 2;
+              const y1 = boardOffset + sy(fromRow) * tileSize + tileSize / 2;
+              const x2 = boardOffset + sx(toCol) * tileSize + tileSize / 2;
+              const y2 = boardOffset + sy(toRow) * tileSize + tileSize / 2;
               const arrow = scene.add.graphics().setDepth(16);
               arrow.lineStyle(7, color, 0.28);
               arrow.strokeLineShape(new Phaser.Geom.Line(x1, y1, x2, y2));
@@ -1178,8 +1183,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const tCol = files.indexOf(gameRef.current.lastMove.to[0]);
                   const tRow = ranks.indexOf(gameRef.current.lastMove.to[1]);
                   if (fCol >= 0 && fRow >= 0 && tCol >= 0 && tRow >= 0) {
-                    const spark = scene.add.circle(boardOffset + fCol * tileSize + tileSize / 2, boardOffset + fRow * tileSize + tileSize / 2, tileSize * 0.16, getGradeColor(gameRef.current.lastMove?.grade), 0.95).setDepth(30);
-                    scene.tweens.add({ targets: spark, x: boardOffset + tCol * tileSize + tileSize / 2, y: boardOffset + tRow * tileSize + tileSize / 2, duration: 420, ease: 'Cubic.Out', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
+                    const spark = scene.add.circle(boardOffset + sx(fCol) * tileSize + tileSize / 2, boardOffset + sy(fRow) * tileSize + tileSize / 2, tileSize * 0.16, getGradeColor(gameRef.current.lastMove?.grade), 0.95).setDepth(30);
+                    scene.tweens.add({ targets: spark, x: boardOffset + sx(tCol) * tileSize + tileSize / 2, y: boardOffset + sy(tRow) * tileSize + tileSize / 2, duration: 420, ease: 'Cubic.Out', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
                   }
                 }
               }
@@ -1195,8 +1200,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
                 if (piece) {
                   const isInvisible = mode === 'COACH_INVISIBLE' && piece.color === 'b' && ['q', 'r', 'n'].includes(piece.type);
-                  const posX = boardOffset + col * tileSize + tileSize / 2;
-                  const posY = boardOffset + row * tileSize + tileSize / 2;
+                  const posX = boardOffset + sx(col) * tileSize + tileSize / 2;
+                  const posY = boardOffset + sy(row) * tileSize + tileSize / 2;
                   const container = scene.add.container(posX, posY);
 
                   // Highlight last move
@@ -1237,7 +1242,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                       const gRow = ranks.indexOf(glide.from[1]);
                       if (gCol >= 0 && gRow >= 0) {
                         try {
-                          const echo = scene.add.image(boardOffset + gCol * tileSize + tileSize / 2, boardOffset + gRow * tileSize + tileSize / 2, royalTexture || `piece-${piece.color}-${displayPieceType}`)
+                          const echo = scene.add.image(boardOffset + sx(gCol) * tileSize + tileSize / 2, boardOffset + sy(gRow) * tileSize + tileSize / 2, royalTexture || `piece-${piece.color}-${displayPieceType}`)
                             .setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5).setAlpha(0.55).setDepth(28);
                           scene.tweens.add({ targets: echo, x: posX, y: posY, duration: 400, ease: 'Cubic.Out', onComplete: () => { try { echo.destroy(); } catch { /* gone */ } } });
                           scene.time.delayedCall(900, () => { try { echo.destroy(); } catch { /* gone */ } });
@@ -1276,8 +1281,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
                   container.on('dragend', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
                     if (gameRef.current.selectedSquare !== squareName) return;
-                    const col = Math.floor((dragX - boardOffset) / tileSize);
-                    const row = Math.floor((dragY - boardOffset) / tileSize);
+                    const col = sx(Math.floor((dragX - boardOffset) / tileSize));
+                    const row = sy(Math.floor((dragY - boardOffset) / tileSize));
                     const target = col >= 0 && col < 8 && row >= 0 && row < 8 ? files[col] + ranks[row] : '';
                     if (gameRef.current.legalTargets.includes(target)) playUserMove(squareName, target);
                     else {
@@ -1310,8 +1315,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
             const travel = Math.hypot(pointer.x - pointer.downX, pointer.y - pointer.downY);
             if (travel > 14) return;
-            const col = Math.floor((pointer.worldX - boardOffset) / tileSize);
-            const row = Math.floor((pointer.worldY - boardOffset) / tileSize);
+            const col = sx(Math.floor((pointer.worldX - boardOffset) / tileSize));
+            const row = sy(Math.floor((pointer.worldY - boardOffset) / tileSize));
             if (col < 0 || col > 7 || row < 0 || row > 7) return;
             const target = files[col] + ranks[row];
             if (gameRef.current.selectedSquare && gameRef.current.legalTargets.includes(target)) {
