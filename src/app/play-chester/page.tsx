@@ -297,11 +297,13 @@ function PlayChesterGame() {
   const lesson = LESSONS[lessonStep];
   const material = splitMaterial(capturedPieces, 'w');
   const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined;
-  const moodEmoji = material.lead > 0 ? '😎' : material.lead < 0 ? '😬' : '🙂';
+  const moodEmoji = material.lead > 0 ? '🦄' : material.lead < 0 ? '🐴💦' : '🐴';
   const verdictKey = coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}-${isThinking ? 'think' : 'say'}` : `idle-${moodEmoji}`;
-  const verdictEmoji = isThinking && coachPrompt ? '🤔' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : moodEmoji;
+  const verdictEmoji = isThinking && coachPrompt ? '🐴💭' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '🐴💥' : moodEmoji;
   const verdictKicker = isThinking ? 'CHESTER LIVE - READING THE BOARD…' : 'CHESTER LIVE';
   const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
+  const coachMovePrompt = coachPrompt?.kind === 'move' && !isThinking ? coachPrompt : null;
+  const coachBullets = coachMovePrompt ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
   return <main className="chester-game" aria-label="Play Chester guided game">
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button><span className="chester-level-badge">{isFriendMode ? modeTitle : selectedLevel.label}</span><div className="chester-score-actions">
@@ -327,20 +329,23 @@ function PlayChesterGame() {
       </div>
       <div className="chester-bottom">
         <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
+      <div className="chester-stack">
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={verdictStyle}>
         <div className="chester-live-line__avatar" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
         <div className="chester-live-line__main">
         <div className="chester-live-line__head"><span>{verdictKicker}</span><b>{verdictTitle}</b></div>
-        <div className="chester-live-line__scroll">{coachPrompt?.kind === 'move' && !isThinking ? (() => { const b = buildCoachBullets({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, evaluationAfter: coachPrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null }); return <div className="chester-coach-bullets">
-          <p><b style={{ color: '#ffd84d' }}>{getVerdict(coachPrompt.classification).emoji} CHESTER:</b> {b.reaction}</p>
-          <p><b style={{ color: b.verdictColor }}>{b.verdictWord}:</b> {b.why}</p>
-          <p><button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button></p>
-          <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {b.wwcd}</p>
-          <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {b.risk}</p>
-          {b.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {b.odds}</p> : null}
-        </div>; })() : <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
+        {coachBullets && coachMovePrompt ? <p className="chester-live-line__reaction"><b style={{ color: '#ffd84d' }}>{getVerdict(coachMovePrompt.classification).emoji} CHESTER:</b> {coachBullets.reaction}</p> : <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}{howlerAside && <p className="chester-howler-aside">🐴💥 MY BAD - {howlerAside}</p>}
         </div>
-
+      </div>
+      {coachBullets && <div className="chester-detail-line">
+        <div className="chester-detail-line__scroll"><div className="chester-coach-bullets">
+          <p><b style={{ color: coachBullets.verdictColor }}>{coachBullets.verdictWord}:</b> {coachBullets.why}</p>
+          <p><button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button></p>
+          <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
+          <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>
+          {coachBullets.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</p> : null}
+        </div></div>
+      </div>}
       </div>
       </div>
       <div className="chester-game__actions chester-game__actions--desktop"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
