@@ -535,7 +535,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           // Draw board coordinates (static background)
           for (let col = 0; col < 8; col++) {
             // File letters (a-h)
-            scene.add.text(boardOffset + sx(col) * tileSize + tileSize / 2, boardOffset + 8 * tileSize + 8, files[sx(col)], {
+            scene.add.text(boardOffset + col * tileSize + tileSize / 2, boardOffset + 8 * tileSize + 8, files[sx(col)], {
               fontFamily: 'sans-serif',
               fontSize: '16px',
               fontStyle: 'bold',
@@ -545,7 +545,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           
           for (let row = 0; row < 8; row++) {
             // Rank numbers (1-8)
-            scene.add.text(boardOffset - 12, boardOffset + sy(row) * tileSize + tileSize / 2, ranks[sy(row)], {
+            scene.add.text(boardOffset - 12, boardOffset + row * tileSize + tileSize / 2, ranks[sy(row)], {
               fontFamily: 'sans-serif',
               fontSize: '16px',
               fontStyle: 'bold',
