@@ -69,12 +69,14 @@ function PlayChesterGame() {
   useEffect(() => {
     if (mode !== 'PVP_REMOTE' || !requestedRoom) return;
     let dead = false;
+    const cleanupRef: Array<() => void> = [];
     type Conn = { on: (e: string, cb: (a?: unknown) => void) => void; send: (d: unknown) => void };
     type DuelPeer = { on: (e: string, cb: (a?: unknown) => void) => void; destroy: () => void; connect: (id: string) => Conn };
     let peer: DuelPeer | null = null;
+    let duelConnected = false;
     const wireConn = (conn: Conn) => {
       duelConnRef.current = conn;
-      conn.on('open', () => { if (!dead) { setDuelStatus('connected'); setStarted(true); } });
+      conn.on('open', () => { if (!dead) { duelConnected = true; setDuelStatus('connected'); setStarted(true); } });
       conn.on('data', (data?: unknown) => {
         const d = data as { type?: string; from?: string; to?: string; fen?: string } | undefined;
         if (d && d.type === 'move' && d.from && d.to) window.dispatchEvent(new CustomEvent('remote-chess-move', { detail: { from: d.from, to: d.to, fen: d.fen } }));
@@ -95,12 +97,32 @@ function PlayChesterGame() {
         peer!.on('connection', (conn?: unknown) => wireConn(conn as Conn));
         peer!.on('error', () => { if (!dead) setDuelStatus('failed'); });
       } else {
+        // Guest. The friend often opens the link BEFORE the host opens their room, so a
+        // peer-unavailable must retry - that was the real-world failure (one shot, then a
+        // dead "connection dropped" panel). Retry every 3s for ~3 minutes.
+        let tries = 0;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        const knock = () => {
+          if (dead || !peer || duelConnected) return;
+          tries += 1;
+          try {
+            const conn = peer.connect(roomId);
+            wireConn(conn);
+          } catch { /* fall through to the retry */ }
+          timer = setTimeout(knock, 3000);
+        };
         peer = new Peer(PEER_CONFIG as never) as unknown as DuelPeer;
-        peer!.on('open', () => { const conn = peer!.connect(roomId); wireConn(conn); });
-        peer!.on('error', () => { if (!dead) setDuelStatus('failed'); });
+        peer!.on('open', knock);
+        peer!.on('error', (err?: unknown) => {
+          if (dead) return;
+          const t = (err as { type?: string })?.type || '';
+          if (t === 'peer-unavailable' && tries < 60) return; // the retry loop owns this case
+          if (tries >= 60 || (t && t !== 'peer-unavailable')) setDuelStatus('failed');
+        });
+        cleanupRef.push(() => { if (timer) clearTimeout(timer); });
       }
     }).catch(() => { if (!dead) setDuelStatus('failed'); });
-    return () => { dead = true; window.removeEventListener('local-chess-move', localMoveRelay); try { peer?.destroy(); } catch {} };
+    return () => { dead = true; cleanupRef.forEach((fn) => fn()); window.removeEventListener('local-chess-move', localMoveRelay); try { peer?.destroy(); } catch {} };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, requestedRoom, requestedSeat]);
 
@@ -266,7 +288,7 @@ function PlayChesterGame() {
       {mode === 'PVP_REMOTE' ? (
         <div style={{ margin: '.6rem 0', padding: '.7rem .9rem', border: '1px solid #ffd84d', borderRadius: 8, background: 'rgba(255,216,77,.08)' }}>
           <b style={{ color: '#ffd84d', letterSpacing: '1px' }}>{duelStatus === 'connected' ? 'FRIEND CONNECTED - FIGHT!' : duelStatus === 'failed' ? 'CONNECTION DROPPED - BOTH REOPEN THE LINK' : requestedSeat === 'w' ? `ROOM ${requestedRoom} - WAITING FOR YOUR FRIEND...` : `KNOCKING ON ROOM ${requestedRoom}...`}</b>
-          <p style={{ margin: '.35rem 0 0', fontSize: '.72rem', color: '#c7d5da' }}>{requestedSeat === 'w' ? 'Share your link (without the host flag). The game starts the moment they join. You are White.' : 'Connecting you to the host. You are Black - the game starts on its own.'}</p>
+          <p style={{ margin: '.35rem 0 0', fontSize: '.72rem', color: '#c7d5da' }}>{requestedSeat === 'w' ? 'Share your link (without the host flag). The game starts the moment they join. You are White.' : 'Knocking on the room - if the host has not opened their side yet, we keep knocking until they do. You are Black.'}</p>
         </div>
       ) : <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>}
     </section>
