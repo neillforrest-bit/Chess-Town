@@ -1,4 +1,4 @@
-import { drawPieceSprite } from '@/lib/piece-sprites';
+import { getPieceSpriteDataUrl } from '@/lib/piece-sprites';
 
 export type CapturedPiece = {
   color: 'w' | 'b';
@@ -46,11 +46,7 @@ const spriteCache: Record<string, string> = {};
 function jailSpriteUrl(color: CapturedPiece['color'], type: string): string {
   const key = `${color}-${type}`;
   if (spriteCache[key] !== undefined) return spriteCache[key];
-  if (typeof document === 'undefined') return '';
-  const canvas = document.createElement('canvas');
-  canvas.width = 96; canvas.height = 96;
-  const ctx = canvas.getContext('2d');
-  spriteCache[key] = ctx ? (drawPieceSprite(ctx, color, type, 96, { small: true }), canvas.toDataURL()) : '';
+  spriteCache[key] = getPieceSpriteDataUrl(color, type) || '';
   return spriteCache[key];
 }
 

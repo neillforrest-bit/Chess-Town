@@ -10,7 +10,7 @@ import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
 
-import { drawPieceSprite } from '@/lib/piece-sprites';
+import { getPieceSpriteDataUrl } from '@/lib/piece-sprites';
 
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
@@ -484,18 +484,18 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             });
           };
 
-          // Glossy sprite piece textures: bitmaps, so iOS emoji presentation can never
-          // override the piece colors. Generated once per scene.
+          // Piece textures: the SVG set rasterized at 288px - bitmaps once decoded, so
+          // iOS emoji presentation can never override the art (batch 88).
           (['w', 'b'] as const).forEach((color) => {
             ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => {
               const key = `piece-${color}-${type}`;
               if (scene.textures.exists(key)) return;
-              // 288px sprites (was 144): headroom so Retina pieces stay crisp (batch 44).
-              const tex = scene.textures.createCanvas(key, 288, 288);
-              if (!tex) return;
-              drawPieceSprite(tex.getContext(), color, type, 288);
-              tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
-              tex.refresh();
+              const image = new Image();
+              image.onload = () => {
+                if (!scene.textures.exists(key)) scene.textures.addImage(key, image);
+                renderBoard?.();
+              };
+              image.src = getPieceSpriteDataUrl(color, type) || '';
             });
           });
 

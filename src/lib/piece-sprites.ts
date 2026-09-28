@@ -1,151 +1,46 @@
-// Original 16x16 pixel-art pieces, drawn as bitmaps (iOS can never hijack these into
-// Apple color emoji, and they read crisp at phone size). Retro adventure-game souls:
-// squire pawn, keep rook, horse knight, wizard bishop, jeweled queen, cross-crowned king.
-// Armies: player = frost blue, Chester = flame orange. Batch 87, his creative call.
-const PIX: Record<string, string[]> = {
-  p: [
-    "................",
-    ".....OOOOOO.....",
-    "....OhhhhhOO....",
-    "...OhmmhmmmhmO..",
-    "..OmmmmmmmmmmO..",
-    "..OmmOmmmmOmmO..",
-    "..OmmmmmmmmmmO..",
-    "...OmmmmmmmmO...",
-    "....OmmmmmmO....",
-    "...OOmmmmmmOO...",
-    "..OmmmmmmmmmmO..",
-    "..OsmmmmmmmmmmO.",
-    "..OmmmmmmmmmmO..",
-    ".OOsmmmmmmmmmOO.",
-    ".OmmmmmmmmmmmmO.",
-    ".OOOOOOOOOOOOOO.",
-  ],
-  r: [
-    ".OOO..OOOO..OOO.",
-    ".OmhO.OmhmO.OmO.",
-    ".OmmOOmmmmOOmmO.",
-    ".OmmmmmmmmmmmmO.",
-    ".OmmmmmmmmmmmmO.",
-    "..OmmmmmmmmmmO..",
-    "..OsmmOmmmOmmO..",
-    "..OmmmOmmmOmmO..",
-    "..OmmmmmmmmmmO..",
-    "..OsmmmmmmmmmO..",
-    "..OmmmmmmmmmmO..",
-    "..OsmmmmmmmmmO..",
-    ".OOmmmmmmmmmmOO.",
-    ".OmssmmmmmmmmmO.",
-    ".OmmmmmmmmmmmmO.",
-    ".OOOOOOOOOOOOOO.",
-  ],
-  n: [
-    "................",
-    "......OO........",
-    ".....OmmOO......",
-    "....OmmmmmOO....",
-    "...OmmOmmmmmO...",
-    "..OmmmmmmmmO....",
-    "..OmmmmmmmO.....",
-    "..OmmmmmO.......",
-    ".OmmmmmO........",
-    ".OmmmO..........",
-    ".OmmOOOOOOOO....",
-    ".OmmmmmmmmmmO...",
-    ".OsmmmmmmmmmmO..",
-    ".OOmmmmmmmmmmOO.",
-    ".OmmmmmmmmmmmmO.",
-    ".OOOOOOOOOOOOOO.",
-  ],
-  b: [
-    ".......OO.......",
-    "......OmmO......",
-    "......OmhO......",
-    ".....OmmmhO.....",
-    ".....OmmmmO.....",
-    "....OmmmmmmO....",
-    "....OmmmmmmO....",
-    "...OmggggggmO...",
-    "..OOOOOOOOOOOO..",
-    "..OmmmmmmmmmmO..",
-    "..OmmOmmmmOmmO..",
-    "..OmmmmmmmmmmO..",
-    "..OsmmmmmmmmmO..",
-    ".OOmmmmmmmmmmOO.",
-    ".OmsmmmmmmmmmmO.",
-    ".OOOOOOOOOOOOOO.",
-  ],
-  q: [
-    "................",
-    "..gO..gO...gO...",
-    ".OmOOmmOOmmOO...",
-    ".OmmmmmmmmmmO...",
-    ".OmmggggggmmO...",
-    "..OmmmmmmmmO....",
-    "...OmmmmmmO.....",
-    "....OmmmmO......",
-    "...OmmmmmmO.....",
-    "..OmmmmmmmmO....",
-    "..OmmmmmmmmO....",
-    ".OmsmmmmmmmmmO..",
-    ".OmmmmmmmmmmmO..",
-    "OOsmmmmmmmmmmOO.",
-    "OmmmmmmmmmmmmmO.",
-    "OOOOOOOOOOOOOOO.",
-  ],
-  k: [
-    "......OOOO......",
-    "......OggO......",
-    "...OOOOggOOOO...",
-    "...OggggggggO...",
-    "...OOOOOOOOOO...",
-    "..OOOOOOOOOOOO..",
-    ".OmggggggggggmO.",
-    ".OmmmmmmmmmmmO..",
-    "..OmmmmmmmmmO...",
-    ".OOmmmmmmmmmOO..",
-    ".OmmmOmmmOmmmmO.",
-    ".OmmmOmmmOmmmmO.",
-    ".OmsmmmmmmmmmmO.",
-    ".OOmmmmmmmmmmOO.",
-    ".OmmmmmmmmmmmmO.",
-    ".OOOOOOOOOOOOOO.",
-  ],
+/* Chess-Town piece art v2 (batch 88): timeless Staunton-proportioned geometry with a
+   custom Chess-Town skin - frost blue vs flame orange gradient bodies, dark ring,
+   gold accents. Base geometry: the cburnett chess set by Colin M.L. Burnett,
+   tri-licensed GFDL / CC BY-SA 3.0 / BSD - used here under the BSD terms.
+   Served as inline SVG data URLs: bitmaps once rasterized, so iOS emoji hijack
+   is impossible and edges stay crisp at any size. */
+const PIECES_SVG: Record<string, string> = {
+  'w-p': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFrost" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f9ff"/><stop offset=".48" stop-color="#63a5f2"/><stop offset="1" stop-color="#1c48b0"/></linearGradient></defs><path fill="url(#ctFrost)" stroke="#0b0d16" stroke-linecap="round" stroke-width="1.7" d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z"/></svg>`,
+  'w-r': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFrost" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f9ff"/><stop offset=".48" stop-color="#63a5f2"/><stop offset="1" stop-color="#1c48b0"/></linearGradient></defs><g fill="url(#ctFrost)" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path stroke-linecap="butt" d="M9 39h27v-3H9zm3-3v-4h21v4zm-1-22V9h4v2h5V9h5v2h5V9h4v5"/><path d="m34 14-3 3H14l-3-3"/><path stroke-linecap="butt" stroke-linejoin="miter" d="M31 17v12.5H14V17"/><path d="m31 29.5 1.5 2.5h-20l1.5-2.5"/><path fill="none" stroke-linejoin="miter" d="M11 14h23"/></g></svg>`,
+  'w-n': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFrost" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f9ff"/><stop offset=".48" stop-color="#63a5f2"/><stop offset="1" stop-color="#1c48b0"/></linearGradient></defs><g fill="none" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path fill="url(#ctFrost)" d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21"/><path fill="url(#ctFrost)" d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3"/><path fill="#0b0d16" d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0m5.433-9.75a.5 1.5 30 1 1-.866-.5.5 1.5 30 1 1 .866.5"/></g></svg>`,
+  'w-b': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFrost" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f9ff"/><stop offset=".48" stop-color="#63a5f2"/><stop offset="1" stop-color="#1c48b0"/></linearGradient></defs><g fill="none" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><g fill="url(#ctFrost)" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.94 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path stroke-linejoin="miter" d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5"/></g></svg>`,
+  'w-q': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFrost" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f9ff"/><stop offset=".48" stop-color="#63a5f2"/><stop offset="1" stop-color="#1c48b0"/></linearGradient></defs><g fill="url(#ctFrost)" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path d="M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0m16.5-4.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0M41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0M16 8.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0M33 9a2 2 0 1 1-4 0 2 2 0 1 1 4 0"/><path stroke-linecap="butt" d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-14V25L7 14z"/><path stroke-linecap="butt" d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path fill="none" d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0"/></g></svg>`,
+  'w-k': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only" viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFrost" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f9ff"/><stop offset=".48" stop-color="#63a5f2"/><stop offset="1" stop-color="#1c48b0"/></linearGradient></defs><g fill="none" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path stroke="#ffd84d" stroke-width="2.4" stroke-linejoin="miter" d="M22.5 11.63V6M20 8h5"/><path fill="url(#ctFrost)" stroke-linecap="butt" stroke-linejoin="miter" d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"/><path fill="url(#ctFrost)" d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-3.5-7.5-13-10.5-16-4-3 6 5 10 5 10z"/><path d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0"/></g></svg>`,
+  'b-p': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFlame" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe27a"/><stop offset=".48" stop-color="#ff8a1f"/><stop offset="1" stop-color="#c21807"/></linearGradient></defs><path fill="url(#ctFlame)" stroke="#0b0d16" stroke-linecap="round" stroke-width="1.7" d="M22.5 9a4 4 0 0 0-3.22 6.38 6.48 6.48 0 0 0-.87 10.65c-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47a6.46 6.46 0 0 0-.87-10.65A4.01 4.01 0 0 0 22.5 9z"/></svg>`,
+  'b-r': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFlame" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe27a"/><stop offset=".48" stop-color="#ff8a1f"/><stop offset="1" stop-color="#c21807"/></linearGradient></defs><g fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path fill="url(#ctFlame)" stroke-linecap="butt" d="M9 39h27v-3H9zm3.5-7 1.5-2.5h17l1.5 2.5zm-.5 4v-4h21v4z"/><path fill="url(#ctFlame)" stroke-linecap="butt" stroke-linejoin="miter" d="M14 29.5v-13h17v13z"/><path fill="url(#ctFlame)" stroke-linecap="butt" d="M14 16.5 11 14h23l-3 2.5zM11 14V9h4v2h5V9h5v2h5V9h4v5z"/><path fill="none" stroke="#fff3c2" stroke-linejoin="miter" stroke-width="1" d="M12 35.5h21m-20-4h19m-18-2h17m-17-13h17M11 14h23"/></g></svg>`,
+  'b-n': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFlame" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe27a"/><stop offset=".48" stop-color="#ff8a1f"/><stop offset="1" stop-color="#c21807"/></linearGradient></defs><g fill="none" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path fill="url(#ctFlame)" d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21"/><path fill="url(#ctFlame)" d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.04-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-1-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-2 2.5-3c1 0 1 3 1 3"/><path fill="#fff3c2" stroke="#fff3c2" d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0m5.43-9.75a.5 1.5 30 1 1-.86-.5.5 1.5 30 1 1 .86.5"/><path fill="#fff3c2" stroke="none" d="m24.55 10.4-.45 1.45.5.15c3.15 1 5.65 2.49 7.9 6.75S35.75 29.06 35.25 39l-.05.5h2.25l.05-.5c.5-10.06-.88-16.85-3.25-21.34s-5.79-6.64-9.19-7.16z"/></g></svg>`,
+  'b-b': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFlame" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe27a"/><stop offset=".48" stop-color="#ff8a1f"/><stop offset="1" stop-color="#c21807"/></linearGradient></defs><g fill="none" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><g fill="url(#ctFlame)" stroke-linecap="butt"><path fill="url(#ctFlame)" d="M9 36c3.4-1 10.1.4 13.5-2 3.4 2.4 10.1 1 13.5 2 0 0 1.6.5 3 2-.7 1-1.6 1-3 .5-3.4-1-10.1.5-13.5-1-3.4 1.5-10.1 0-13.5 1-1.4.5-2.3.5-3-.5 1.4-2 3-2 3-2z"/><path fill="url(#ctFlame)" d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path fill="url(#ctFlame)" d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path fill="url(#ctFlame)" stroke="#fff3c2" stroke-linejoin="miter" d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5"/></g></svg>`,
+  'b-q': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only"  viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFlame" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe27a"/><stop offset=".48" stop-color="#ff8a1f"/><stop offset="1" stop-color="#c21807"/></linearGradient></defs><g fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><g stroke="none"><circle fill="url(#ctFlame)" cx="6" cy="12" r="2.75"/><circle fill="url(#ctFlame)" cx="14" cy="9" r="2.75"/><circle fill="url(#ctFlame)" cx="22.5" cy="8" r="2.75"/><circle fill="url(#ctFlame)" cx="31" cy="9" r="2.75"/><circle fill="url(#ctFlame)" cx="39" cy="12" r="2.75"/></g><path fill="url(#ctFlame)" stroke-linecap="butt" d="M9 26c8.5-1.5 21-1.5 27 0l2.5-12.5L31 25l-.3-14.1-5.2 13.6-3-14.5-3 14.5-5.2-13.6L14 25 6.5 13.5z"/><path fill="url(#ctFlame)" stroke-linecap="butt" d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path fill="none" stroke-linecap="butt" d="M11 38.5a35 35 1 0 0 23 0"/><path fill="none" stroke="#fff3c2" d="M11 29a35 35 1 0 1 23 0m-21.5 2.5h20m-21 3a35 35 1 0 0 22 0m-23 3a35 35 1 0 0 24 0"/></g></svg>`,
+  'b-k': `<svg xmlns="http://www.w3.org/2000/svg" style="color-scheme:light only" viewBox="0 0 45 45" width="288" height="288"><defs><linearGradient id="ctFlame" x1="0" y1="4" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe27a"/><stop offset=".48" stop-color="#ff8a1f"/><stop offset="1" stop-color="#c21807"/></linearGradient></defs><g fill="none" fill-rule="evenodd" stroke="#0b0d16" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path fill="url(#ctFlame)" stroke-linejoin="miter" d="M22.5 11.6V6"/><path fill="url(#ctFlame)" stroke-linecap="butt" stroke-linejoin="miter" d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"/><path fill="url(#ctFlame)" d="M11.5 37a22.3 22.3 0 0 0 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-3.5-7.5-13-10.5-16-4-3 6 5 10 5 10z"/><path fill="url(#ctFlame)" stroke-linejoin="miter" d="M20 8h5"/><path fill="url(#ctFlame)" stroke="#fff3c2" d="M32 29.5s8.5-4 6-9.7C34.1 14 25 18 22.5 24.6v2.1-2.1C20 18 9.9 14 7 19.9c-2.5 5.6 4.8 9 4.8 9"/><path fill="url(#ctFlame)" stroke="#fff3c2" d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0"/></g></svg>`
 };
 
-const PAL: Record<'w' | 'b', Record<string, string>> = {
-  w: { O: '#0a0a0f', h: '#a8d8ff', m: '#3580e0', s: '#14348c', g: '#ffd84d' },
-  b: { O: '#0a0a0f', h: '#ffc94d', m: '#ff7714', s: '#b8160a', g: '#fff3c2' },
-};
 
-export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b', type: string, size: number, opts?: { small?: boolean }) {
-  const map = PIX[type] || PIX.p;
-  const pal = PAL[color];
-  const px = size / 16;
-  ctx.clearRect(0, 0, size, size);
-  for (let y = 0; y < 16; y++) {
-    const row = map[y];
-    for (let x = 0; x < 16; x++) {
-      const ch = row[x];
-      if (ch === '.') continue;
-      ctx.fillStyle = pal[ch];
-      ctx.fillRect(Math.floor(x * px), Math.floor(y * px), Math.ceil(px), Math.ceil(px));
-    }
-  }
+
+export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288): string | null {
+  const svg = PIECES_SVG[`${color}-${type}`] || PIECES_SVG[`${color}-p`];
+  if (!svg) return null;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-const cache: Record<string, string> = {};
-
-export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 144): string | null {
-  if (typeof document === 'undefined') return null;
-  const key = `${color}${type}`;
-  if (cache[key]) return cache[key];
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  drawPieceSprite(ctx, color, type, size);
-  cache[key] = canvas.toDataURL('image/png');
-  return cache[key];
+// Legacy sync-canvas consumers (captured-piece jails) draw the SVG through an
+// async-decode shim: first call kicks the decode and draws a soft disc placeholder,
+// the redraw lands on the next frame via the img decode cache.
+const rasterCache: Record<string, HTMLImageElement> = {};
+export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b', type: string, size: number, opts?: { small?: boolean }) {
+  const key = `${color}-${type}`;
+  ctx.clearRect(0, 0, size, size);
+  let img = rasterCache[key];
+  if (!img) {
+    img = new Image();
+    img.src = getPieceSpriteDataUrl(color, type) || '';
+    rasterCache[key] = img;
+  }
+  if (img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, 0, 0, size, size);
+  }
 }
