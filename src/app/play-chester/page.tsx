@@ -307,10 +307,10 @@ function PlayChesterGame() {
         <header><b>WHY {coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}?</b><button type="button" onClick={() => setWhyOpen(false)} aria-label="Close">×</button></header>
         <div className="chester-why-body" style={{ padding: '1rem 1.1rem', color: '#e8f6ff', lineHeight: 1.6, fontSize: '0.95rem' }}>
           {(() => { const why = buildWhyLesson({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null, sacrificePiece: coachPrompt.sacrificePiece || null, principleKey: coachPrompt.principleKey || null, principleFollowed: coachPrompt.principleFollowed ?? null, provisional: coachPrompt.provisional || null, exchangeLost: coachPrompt.exchangeLost || null, exchangeWon: coachPrompt.exchangeWon || null, exchangeNet: coachPrompt.exchangeNet ?? null }); return <>
-            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#c084fc' }}>THE {why.phase} RULE:</b> {why.phaseTip}</p>
-            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#22d3ee' }}>YOUR MOVE:</b> {why.moveLine}</p>
+            {why.patternName && <p style={{ margin: '0 0 0.8rem' }}><span style={{ display: 'inline-block', padding: '0.15rem 0.6rem', borderRadius: '999px', border: '1px solid rgba(255,216,77,.5)', color: '#ffd84d', fontSize: '0.72rem', letterSpacing: '0.12em', fontWeight: 700 }}>PATTERN: {why.patternName}</span></p>}
             <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: getVerdict(coachPrompt.classification).color }}>WHY {coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}:</b> {why.gradeLine}</p>
-            <p style={{ margin: 0 }}><b style={{ color: '#ffd84d' }}>{why.considerHeading}:</b> {why.considerLine}</p>
+            <p style={{ margin: '0 0 0.8rem' }}><b style={{ color: '#ffd84d' }}>{why.considerHeading}:</b> {why.considerLine}</p>
+            <p style={{ margin: 0, opacity: 0.72, fontSize: '0.85rem' }}><b style={{ color: '#c084fc' }}>THE {why.phase} RULE:</b> {why.phaseTip}</p>
           </>; })()}
         </div>
       </section>

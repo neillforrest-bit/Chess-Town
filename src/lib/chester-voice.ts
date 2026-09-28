@@ -597,6 +597,7 @@ export type WhyLesson = {
   gradeLine: string;
   considerHeading: string;
   considerLine: string;
+  patternName: string | null;
 };
 
 /* ROOKIE opening-principle teaching: named principle lines keyed per level so CLUB/MASTER
@@ -709,7 +710,7 @@ export function buildWhyLesson(input: WhyLessonInput): WhyLesson {
     gradeLine = `The engine is still studying this one - this is a first take, not its final verdict. ${gradeLine}`;
   }
 
-  return { phase, phaseTip, moveLine: `You played: ${move}`, gradeLine, considerHeading, considerLine };
+  return { phase, phaseTip, moveLine: `You played: ${move}`, gradeLine, considerHeading, considerLine, patternName: pattern ? pattern.name : null };
 }
 
 /* Chester acknowledges his own howlers (rookie mode hangs pieces on purpose - own it). */
