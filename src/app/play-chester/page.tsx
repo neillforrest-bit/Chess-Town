@@ -264,10 +264,12 @@ function PlayChesterGame() {
         <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={verdictStyle}>
         <div className="chester-live-line__avatar" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
-        <div><span>{verdictKicker}</span><b>{verdictTitle}</b>{coachPrompt?.kind === 'move' && !isThinking ? (() => { const b = buildCoachBullets({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null }); return <div className="chester-coach-bullets">
+        <div><span>{verdictKicker}</span><b>{verdictTitle}</b>{coachPrompt?.kind === 'move' && !isThinking ? (() => { const b = buildCoachBullets({ fen: coachPrompt.fen, classification: coachPrompt.classification, movePhrase: coachPrompt.movePhrase, bestMovePhrase: coachPrompt.bestMovePhrase, captured: coachPrompt.captured, check: coachPrompt.check, mate: coachPrompt.mate, evalDelta: coachPrompt.evalDelta, evaluationAfter: coachPrompt.evaluationAfter, ply: coachPrompt.ply, move: coachPrompt.move, bestMove: coachPrompt.bestMove, fenBefore: coachPrompt.fenBefore, engineLine: coachPrompt.engineLine || null }); return <div className="chester-coach-bullets">
+          <p><b style={{ color: '#ffd84d' }}>😺 CHESTER:</b> {b.reaction}</p>
           <p><b style={{ color: b.verdictColor }}>{b.verdictWord}:</b> {b.why}</p>
           <p><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {b.wwcd}</p>
           <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {b.risk}</p>
+          {b.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {b.odds}</p> : null}
           <p><button type="button" className="chester-why-link" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 want to know why →</button></p>
         </div>; })() : <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}{howlerAside && <p className="chester-howler-aside">😳 MY BAD - {howlerAside}</p>}</div>
 
