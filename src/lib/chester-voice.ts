@@ -11,14 +11,15 @@ export type Verdict = {
   color: string;
 };
 
+// Chester is a knight: every grade emoji is a horse reacting to the moment.
 const VERDICTS: Record<string, Verdict> = {
-  BRILLIANT: { word: 'TOP DOG', emoji: '👑', color: '#c084fc' },
-  BEST: { word: 'SPOT ON', emoji: '🔥', color: '#ffd84d' },
-  GREAT: { word: 'STRONG', emoji: '😎', color: '#22d3ee' },
-  GOOD: { word: 'SOLID', emoji: '🙂', color: '#2563eb' },
-  INACCURACY: { word: 'SHAKY', emoji: '🤨', color: '#f3c8d6' },
-  MISTAKE: { word: 'DANGER', emoji: '😬', color: '#ff8c00' },
-  BLUNDER: { word: 'BLUNDER', emoji: '💀', color: '#f43f7a' },
+  BRILLIANT: { word: 'TOP DOG', emoji: '🦄', color: '#c084fc' },
+  BEST: { word: 'SPOT ON', emoji: '🏇', color: '#ffd84d' },
+  GREAT: { word: 'STRONG', emoji: '🐎', color: '#22d3ee' },
+  GOOD: { word: 'SOLID', emoji: '🐴', color: '#2563eb' },
+  INACCURACY: { word: 'SHAKY', emoji: '🐴💨', color: '#f3c8d6' },
+  MISTAKE: { word: 'DANGER', emoji: '🐴💦', color: '#ff8c00' },
+  BLUNDER: { word: 'BLUNDER', emoji: '🐴💥', color: '#f43f7a' },
 };
 
 export function getVerdict(classification: string | null | undefined): Verdict {

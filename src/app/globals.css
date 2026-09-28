@@ -2242,3 +2242,17 @@ vercel-live-feedback { display: none !important; }
   .chester-live-line__avatar { width: 42px; height: 42px; font-size: 1.5rem; }
   .chester-coach-bullets p { line-height: 1.32; }
 }
+
+/* Batch 78 (BUILD 78 - his 11:06 steering): bigger bullets, horse verdict emojis,
+   WHY back as an obvious button right after Chester's comment + assessment with a
+   line break before WWCD/RISK/ODDS, and the header (CHESTER LIVE + instant grade
+   reaction) pinned outside the scroll area so the SHAKY/TOP DOG banner never hides. */
+.chester-live-line__main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.chester-live-line__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.chester-coach-bullets p { font-size: .95rem; line-height: 1.35; }
+.chester-why-button { display: inline-block; margin: 2px 0; padding: .42rem .9rem; border: 1.5px solid #ffd84d; border-radius: 6px; background: rgba(255,216,77,.14); color: #ffd84d; font-weight: 900; font-size: .8rem; letter-spacing: 1px; cursor: pointer; }
+.chester-why-button:hover { background: rgba(255,216,77,.24); }
+.chester-coach-break { margin-top: 6px !important; }
+@media (max-width: 860px) {
+  .chester-live-line__avatar { width: 46px; height: 46px; font-size: 1.7rem; }
+}
