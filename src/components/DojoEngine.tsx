@@ -688,9 +688,65 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
           };
 
+          // Arena pulse (his idea): after a graded human move the mover's whole army
+          // flashes the verdict color and settles - brilliant = neon green, spot on =
+          // light green, shaky = amber, blunder = red. Pieces keep their own sprites.
+          const armyTintFor = (label: string | null | undefined): number | null => {
+            switch (label) {
+              case 'BRILLIANT': return 0x39ff14;
+              case 'BEST': return 0x86efac;
+              case 'GREAT': return 0x4ade80;
+              case 'GOOD': return 0xbbf7d0;
+              case 'INACCURACY': return 0xfbbf24;
+              case 'MISTAKE': return 0xf97316;
+              case 'BLUNDER': return 0xef4444;
+              default: return null;
+            }
+          };
+          const flashArmyTint = (armyColor: 'w' | 'b', tintColor: number | null) => {
+            if (tintColor === null) return;
+            try {
+              const board = gameRef.current.chess.board();
+              const targets: any[] = [];
+              for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+                const sq = board[r][c];
+                if (!sq || sq.color !== armyColor) continue;
+                const cont = pieceContainers[files[c] + ranks[r]];
+                cont?.list?.forEach((child: any) => { if (child && typeof child.setTint === 'function') targets.push(child); });
+              }
+              if (!targets.length) return;
+              const tint = Phaser.Display.Color.ValueToColor(tintColor);
+              const white = { r: 255, g: 255, b: 255 };
+              const mix = (v: number) => {
+                const m = Phaser.Display.Color.Interpolate.ColorWithColor(white, tint, 100, v);
+                return Phaser.Display.Color.GetColor(Math.round(m.r), Math.round(m.g), Math.round(m.b));
+              };
+              targets.forEach((t) => t.setTint(tintColor));
+              const counter = { v: 100 };
+              scene.tweens.add({
+                targets: counter,
+                v: 0,
+                duration: 950,
+                ease: 'Cubic.Out',
+                onUpdate: () => { const val = mix(counter.v); targets.forEach((t) => { try { t.setTint(val); } catch { /* gone in a redraw */ } }); },
+                onComplete: () => targets.forEach((t) => { try { t.clearTint(); } catch { /* gone */ } }),
+              });
+            } catch { /* the pulse is decoration - never break the game for it */ }
+          };
+
           const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null; provisional?: boolean; principle?: OpeningPrinciple | null; exchange?: PlannedExchange | null } = {}, fenBeforeMove: string | null = null) => {
             // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
             const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
+            // Army verdict pulse - Play Chester coach games only for now (his test
+            // environment). Deduped per ply+label so the provisional/final pair never
+            // double-fires, but a revised grade upgrades the color.
+            if (!isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && quality?.label) {
+              const flashKey = `${gameRef.current.ply}:${quality.label}`;
+              if ((gameRef.current as any).lastArmyFlash !== flashKey) {
+                (gameRef.current as any).lastArmyFlash = flashKey;
+                flashArmyTint(move.color, armyTintFor(quality.label));
+              }
+            }
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
             gameRef.current.lastMove = { ...gameRef.current.lastMove, grade };
             const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
