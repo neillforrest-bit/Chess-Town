@@ -577,6 +577,8 @@ export type WhyLessonInput = {
   mate?: boolean;
   evalDelta?: number | null;
   evaluationAfter?: number | null;
+  opponentName?: string | null;
+  viewerColor?: 'w' | 'b' | null;
   ply?: number;
   move?: string | null;
   bestMove?: string | null;
@@ -686,13 +688,17 @@ function shortReaction(label: string, seed: number): string {
 
 // Lichess-style win odds from a centipawn score (side-to-move relative after the move,
 // which is always Chester - so negate for the player, who is white in Play Chester).
-function winOdds(evaluationAfter: number | null | undefined): string | null {
+function winOdds(evaluationAfter: number | null | undefined, opponentName?: string | null, viewerColor?: 'w' | 'b' | null, moverColor?: 'w' | 'b' | null): string | null {
   if (evaluationAfter === null || evaluationAfter === undefined) return null;
-  const playerCp = -evaluationAfter;
+  const opp = opponentName || 'Chester';
+  // Stockfish scores are side-to-move relative. After white moves, black is to move, so
+  // white-perspective flips the sign; after black moves it is already white-perspective.
+  const whiteCp = (moverColor || 'w') === 'w' ? -evaluationAfter : evaluationAfter;
+  const playerCp = (viewerColor || 'w') === 'w' ? whiteCp : -whiteCp;
   const w = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * playerCp)) - 1);
   const p = Math.max(1, Math.min(99, Math.round(w)));
-  const tag = p >= 70 ? 'you are winning' : p >= 56 ? 'you are ahead' : p >= 45 ? 'dead even' : p >= 30 ? 'Chester is ahead' : 'Chester is winning';
-  return `you ${p}% · Chester ${100 - p}% - ${tag}.`;
+  const tag = p >= 70 ? 'you are winning' : p >= 56 ? 'you are ahead' : p >= 45 ? 'dead even' : p >= 30 ? `${opp} is ahead` : `${opp} is winning`;
+  return `you ${p}% · ${opp} ${100 - p}% - ${tag}.`;
 }
 
 const CAPTURE_WORD: Record<string, string> = { p: 'a pawn', n: 'a knight', b: 'a bishop', r: 'a rook', q: 'the queen' };
@@ -752,7 +758,8 @@ export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
   const reaction = input.mate
     ? 'CHECKMATE. Game, set and match - beautiful.'
     : shortReaction(label, seed);
-  const odds = input.mate ? 'you 100% - mate on the board.' : winOdds(input.evaluationAfter);
+  const moverColor: 'w' | 'b' = (input.ply || 1) % 2 === 1 ? 'w' : 'b';
+  const odds = input.mate ? 'you 100% - mate on the board.' : winOdds(input.evaluationAfter, input.opponentName, input.viewerColor, moverColor);
 
   return { reaction, odds, verdictWord: verdict.word, verdictColor, why, wwcd, risk, patternName: pattern ? pattern.name : null };
 }
