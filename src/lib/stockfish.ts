@@ -35,9 +35,12 @@ const PRESETS: Record<ChesterDifficulty, { skill: number; elo: number; depth: nu
   // Play strength (how Chester moves). BEGINNER is deliberately soft - see the rookie
   // move picker in DojoEngine, which adds human mistakes on top.
   BEGINNER: { skill: 0, elo: 1320, depth: 4 },
-  INTERMEDIATE: { skill: 5, elo: 1350, depth: 8 },
-  ADVANCED: { skill: 12, elo: 1750, depth: 12 },
-  EXPERT: { skill: 20, elo: 2400, depth: 15 },
+  // CLUB should beat a casual player who knows the moves; MASTER must punish real club
+  // players (Stockfish's limited-Elo plays well below its nominal number, so the ladder
+  // is calibrated high); NIGHTMARE is effectively full strength.
+  INTERMEDIATE: { skill: 8, elo: 1550, depth: 10 },
+  ADVANCED: { skill: 16, elo: 2100, depth: 14 },
+  EXPERT: { skill: 20, elo: 2600, depth: 16 },
 };
 
 // Grading strength (how moves are judged, hinted and scored). Always full power so the

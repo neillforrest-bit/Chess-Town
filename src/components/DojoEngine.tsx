@@ -926,8 +926,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const moves = gameRef.current.chess.moves({ verbose: true });
               if (!moves.length) return;
               const fenBeforeMove = gameRef.current.chess.fen();
-              const searchD = difficulty === 'PRO' ? 2 : 1;
-              const engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty)).catch(() => null);
+              const searchD = difficulty === 'PRO' || difficulty === 'EXPERT' || difficulty === 'ADVANCED' ? 2 : 1;
+              let engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty)).catch(() => null);
+              // Strong levels must never silently collapse to a shallow search: if the
+              // full-strength call fails, retry at CLUB strength before any fallback.
+              if (!engineMove && (difficulty === 'ADVANCED' || difficulty === 'EXPERT' || difficulty === 'PRO')) {
+                engineMove = await getStockfishClient().selectMove(fenBeforeMove, 'INTERMEDIATE').catch(() => null);
+              }
               let aiMove = engineMove
                 ? { from: engineMove.slice(0, 2), to: engineMove.slice(2, 4), promotion: engineMove.slice(4, 5) || undefined }
                 : pickBestMove(gameRef.current.chess, searchD);

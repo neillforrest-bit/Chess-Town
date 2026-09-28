@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
+import { boardFactsSummary } from '@/lib/board-facts';
 
 // CHESTER CHAT - the one route behind every conversational surface (arena chat,
 // Play Chester chat + coach line, post-game story, scenario intros, meet-chester).
@@ -26,7 +27,7 @@ type ChatPayload = {
   evaluationAfter?: number | null;
   evalDelta?: number | null;
   openingAssessment?: string;
-  gradeHistory?: { player?: string; move?: string; grade?: string }[];
+  gradeHistory?: { player?: string; move?: string; grade?: string; phrase?: string }[];
   conversationHistory?: HistoryEntry[];
 };
 
@@ -54,8 +55,8 @@ const VOICE = `You are Chester, Chess Town's knight-jester: warm, quick-witted a
 
 const TYPE_CONTRACTS: Record<string, string> = {
   chat: `TASK: The player asked a question mid-game. Answer it directly from the evidence: "how am I doing" gets the real grades and eval trend; "what should I play" gets the engine's idea translated into a plan; "teach me a tactic" gets one tactic that fits THIS position if the evidence offers one, otherwise the most useful pattern for their level; "why was my move graded that" gets the real reason from the grade and the engine's preferred idea.`,
-  coach: `TASK: You are reviewing one graded move (or a hint request) mid-lesson. Explain the threat, the plan and the why in at most 3 sentences, then one concrete next action. If it is a hint, point at the idea, not the exact move - teach the player to find it. Apply the courage clause: creative-but-unsound gets the magnificently-weird treatment with what they were hunting; creative-and-sound gets explicit respect.`,
-  'post-game-report': `TASK: Tell the story of this finished match in your voice: the turning point, what the player did well, one lesson, one concrete thing to try next game. At most 4 sentences.`,
+  coach: `TASK: You are reviewing one graded move (or a hint request) mid-lesson. SPECIFICITY IS THE WHOLE JOB: name the exact piece the fact sheet names, the concrete danger or idea behind the verdict (a loose piece, a fork, a pin, an exposed king, a wasted tempo - whatever the evidence supports), and what the engine-preferred idea accomplishes. Never say a move was simply 'risky' or 'imprecise' when the evidence says what the risk was. Explain the threat, the plan and the why in at most 3 sentences, then one concrete next action. If it is a hint, point at the idea, not the exact move - teach the player to find it. Apply the courage clause: creative-but-unsound gets the magnificently-weird treatment with what they were hunting; creative-and-sound gets explicit respect.`,
+  'post-game-report': `TASK: Tell the story of this finished match in your voice. Use the plain-English move phrases in the move list to name REAL moves (e.g. the actual blunder that turned the game, the actual brilliant save) - a story with no named moves is generic and fails. Identify the single true turning point from the grades, what the player did well, one lesson, one concrete thing to try next game. At most 4 sentences.`,
   scenario: `TASK: Introduce this coaching scenario with hype energy: what the learning environment is and what the challenge asks, in 2-3 punchy sentences.`,
 };
 
@@ -64,7 +65,11 @@ function buildEvidence(payload: ChatPayload): string {
   if (payload.persona) lines.push(`Persona briefing: ${payload.persona}`);
   if (payload.context) lines.push(`Client briefing (treat as ground truth for voice and board facts): ${payload.context}`);
   if (payload.matchup || payload.mode) lines.push(`Game: ${payload.matchup || payload.mode}`);
-  if (payload.fen) lines.push(`Live board FEN: ${payload.fen}`);
+  if (payload.fen) {
+    lines.push(`Live board FEN: ${payload.fen}`);
+    const boardFacts = boardFactsSummary(payload.fen);
+    if (boardFacts) lines.push(`VERIFIED BOARD FACTS (derived from the position - treat as ground truth, name these when relevant): ${boardFacts}`);
+  }
   if (payload.openingAssessment) lines.push(`Opening assessment: ${payload.openingAssessment}`);
   const t = payload.engineTelemetry;
   if (t && typeof t === 'object') {
@@ -77,7 +82,7 @@ function buildEvidence(payload: ChatPayload): string {
   if (payload.principalVariation?.length) lines.push(`Engine's top line: ${payload.principalVariation.slice(0, 6).join(' ')}`);
   if (payload.objective) lines.push(`Challenge objective: ${payload.objective}`);
   if (payload.gradeHistory?.length) {
-    const recent = payload.gradeHistory.slice(-12).map((g) => `${g.player || 'player'}: ${g.move || '?'} graded ${g.grade || '?'}`).join('; ');
+    const recent = payload.gradeHistory.slice(-14).map((g) => `${g.player || 'player'}: ${g.phrase || g.move || '?'} graded ${g.grade || '?'}`).join('; ');
     lines.push(`Recent graded moves: ${recent}`);
   }
   return lines.length ? `EVIDENCE FROM THE LIVE GAME:\n${lines.join('\n')}` : 'No live game evidence was supplied for this question - answer generally and say the board is not in view.';
