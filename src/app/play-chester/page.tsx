@@ -278,7 +278,7 @@ function PlayChesterGame() {
   const moodEmoji = material.lead > 0 ? '😎' : material.lead < 0 ? '😬' : '🙂';
   const verdictKey = coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}-${isThinking ? 'think' : 'say'}` : `idle-${moodEmoji}`;
   const verdictEmoji = isThinking && coachPrompt ? '🤔' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '😳' : moodEmoji;
-  const verdictKicker = isThinking ? 'CHESTER IS READING THE BOARD…' : coachPrompt ? 'CHESTER / LIVE MOVE' : 'CHESTER / YOUR GUIDE';
+  const verdictKicker = isThinking ? 'CHESTER LIVE - READING THE BOARD…' : 'CHESTER LIVE';
   const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
   return <main className="chester-game" aria-label="Play Chester guided game">
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
@@ -299,16 +299,11 @@ function PlayChesterGame() {
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
-      <div className="capture-strip-row hero-jail-row"><CaptureStrip pieces={material.youTook} tone="you" label={isFriendMode ? 'P1 TOOK' : 'YOU TOOK'} /><CaptureStrip pieces={material.oppTook} tone="opp" label={isFriendMode ? 'P2 TOOK' : 'CHESTER TOOK'} /></div>
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
       <div className="chester-bottom">
-        <div className="chester-verdict-row" style={verdictStyle} aria-hidden="true">
-          <div className="chester-live-line__avatar" key={verdictKey}>{verdictEmoji}</div>
-          <div><span>{verdictKicker}</span><b>{verdictTitle}</b></div>
-        </div>
         <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={verdictStyle}>
         <div className="chester-live-line__avatar" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>

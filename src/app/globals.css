@@ -2233,3 +2233,12 @@ vercel-live-feedback { display: none !important; }
   .chester-game__board .chester-bottom { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column; }
   .chester-game__board .chester-live-line { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 }
+
+/* Batch 74 (BUILD 74 - his 10:26pm commentary-box steering): bullet labels inline so the
+   text follows the colon on the SAME ROW (the card-level b rule made them block), the
+   avatar grows a touch for fun, and the card breathes without page scroll. */
+.chester-live-line .chester-coach-bullets b { display: inline; margin: 0; font-family: inherit; font-size: inherit; letter-spacing: .02em; }
+@media (max-width: 860px) {
+  .chester-live-line__avatar { width: 42px; height: 42px; font-size: 1.5rem; }
+  .chester-coach-bullets p { line-height: 1.32; }
+}
