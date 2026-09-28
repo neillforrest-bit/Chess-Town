@@ -11,6 +11,7 @@ import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
 
 import { getPieceSpriteDataUrl } from '@/lib/piece-sprites';
+import { playSfx } from '@/lib/sounds';
 
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
@@ -570,13 +571,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (!attacker) return;
               const raw = CAPTURE_BUBBLE_NAMES[m.captured] || 'piece';
               const name = raw.charAt(0).toUpperCase() + raw.slice(1);
-              const text = scene.add.text(0, 0, `I took your ${name}!`, { fontFamily: 'sans-serif', fontSize: '15px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
+              const text = scene.add.text(0, 0, `I took your ${name}!`, { fontFamily: 'Georgia, serif', fontSize: '27px', fontStyle: 'bold', color: '#ffffff', stroke: '#171106', strokeThickness: 5 }).setOrigin(0.5);
               const bg = scene.add.rectangle(0, 0, text.width + 22, text.height + 14, 0x101418, 0.96).setStrokeStyle(1.5, 0xffd84d, 0.9);
               const bx = Math.min(Math.max(attacker.x, boardOffset + text.width / 2 + 14), boardOffset + 8 * tileSize - text.width / 2 - 14);
               const by = Math.max(boardOffset + 20, attacker.y - tileSize * 0.66);
               const bubble = scene.add.container(bx, by, [bg, text]).setDepth(34).setScale(0.01);
-              scene.tweens.add({ targets: bubble, scaleX: 1, scaleY: 1, duration: 240, ease: 'Back.Out' });
-              scene.tweens.add({ targets: bubble, alpha: 0, y: by - 12, delay: 1500, duration: 300, ease: 'Quad.In', onComplete: () => bubble.destroy() });
+              scene.tweens.add({ targets: bubble, scaleX: 1.12, scaleY: 1.12, duration: 300, ease: 'Back.Out' });
+              scene.tweens.add({ targets: bubble, scaleX: 1, scaleY: 1, delay: 300, duration: 140, ease: 'Quad.Out' });
+              scene.tweens.add({ targets: bubble, alpha: 0, y: by - 26, delay: 2300, duration: 340, ease: 'Quad.In', onComplete: () => bubble.destroy() });
             } catch { /* bubble is decorative - never break the game for it */ }
           };
 
@@ -727,11 +729,16 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               scene.tweens.add({
                 targets: counter,
                 v: 0,
-                duration: 950,
+                delay: 420,
+                duration: 1250,
                 ease: 'Cubic.Out',
                 onUpdate: () => { const val = mix(counter.v); targets.forEach((t) => { try { t.setTint(val); } catch { /* gone in a redraw */ } }); },
                 onComplete: () => targets.forEach((t) => { try { t.clearTint(); } catch { /* gone */ } }),
               });
+              // Arena rim flash: the whole board edge burns the verdict color, then dies.
+              const rimOuter = scene.add.rectangle(398, 398, 756, 756).setStrokeStyle(14, tintColor, 0.5).setDepth(33);
+              const rimInner = scene.add.rectangle(398, 398, 740, 740).setStrokeStyle(6, tintColor, 0.95).setDepth(33);
+              scene.tweens.add({ targets: [rimOuter, rimInner], alpha: 0, delay: 300, duration: 1000, ease: 'Cubic.Out', onComplete: () => { rimOuter.destroy(); rimInner.destroy(); } });
             } catch { /* the pulse is decoration - never break the game for it */ }
           };
 
@@ -746,8 +753,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if ((gameRef.current as any).lastArmyFlash !== flashKey) {
                 (gameRef.current as any).lastArmyFlash = flashKey;
                 flashArmyTint(move.color, armyTintFor(quality.label));
+                playSfx(quality.label === 'BRILLIANT' ? 'brilliant' : quality.label === 'BEST' || quality.label === 'GREAT' || quality.label === 'GOOD' ? 'good' : quality.label === 'INACCURACY' ? 'shaky' : 'bad');
               }
             }
+            playSfx(move.captured ? 'capture' : 'move');
+            if (move.san.includes('#')) playSfx('win');
+            else if (move.san.includes('+')) playSfx('check');
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
             gameRef.current.lastMove = { ...gameRef.current.lastMove, grade };
             const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
@@ -1106,6 +1117,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const selectSquare = (squareName: string, pieceColor: string) => {
+            playSfx('select');
             if (!canControlPiece(pieceColor)) return false;
             gameRef.current.selectedSquare = squareName;
             gameRef.current.legalTargets = gameRef.current.chess.moves({ square: squareName, verbose: true }).map((move: any) => move.to);

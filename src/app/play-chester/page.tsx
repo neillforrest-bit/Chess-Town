@@ -10,6 +10,7 @@ import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type Capt
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets } from '@/lib/chester-voice';
+import { isMuted, setMuted, playSfx } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly } from '@/lib/move-words';
@@ -50,6 +51,8 @@ function PlayChesterGame() {
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [coachPrompt, setCoachPrompt] = useState<CoachPrompt | null>(null);
+  const [muted, setMutedState] = useState(false);
+  useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
   const [helpRemaining, setHelpRemaining] = useState(3);
   const [report, setReport] = useState<GameReport | null>(null);
@@ -321,7 +324,7 @@ function PlayChesterGame() {
           <b style={{ color: '#ffd84d', letterSpacing: '1px' }}>{duelStatus === 'connected' ? 'FRIEND CONNECTED - FIGHT!' : duelStatus === 'failed' ? 'CONNECTION DROPPED - BOTH REOPEN THE LINK' : requestedSeat === 'w' ? `ROOM ${requestedRoom} - WAITING FOR YOUR FRIEND...` : `KNOCKING ON ROOM ${requestedRoom}...`}</b>
           <p style={{ margin: '.35rem 0 0', fontSize: '.72rem', color: '#c7d5da' }}>{requestedSeat === 'w' ? 'Share your link (without the host flag). The game starts the moment they join. You are White.' : 'Knocking on the room - if the host has not opened their side yet, we keep knocking until they do. You are Black.'}</p>
         </div>
-      ) : <button className="chester-start-button" onClick={() => setStarted(true)}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>}
+      ) : <button className="chester-start-button" onClick={() => { playSfx('start'); setStarted(true); }}>{isFriendMode ? 'START FRIEND GAME' : 'START GUIDED GAME'} <i>→</i></button>}
     </section>
   </main>;
 
@@ -358,7 +361,7 @@ function PlayChesterGame() {
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       {clockBar}
       {flagBanner}
-      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><button type="button" className="chester-mute-btn" aria-label={muted ? 'Unmute sounds' : 'Mute sounds'} onClick={(e) => { e.stopPropagation(); const next = !muted; setMuted(next); setMutedState(next); if (!next) playSfx('select'); }}>{muted ? '🔇' : '🔊'}</button><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
