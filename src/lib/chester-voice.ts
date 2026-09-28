@@ -2,6 +2,7 @@
 // Deterministic by design - zero per-visit prompt cost, no engine jargon, facts come from Stockfish telemetry.
 
 import { detectWhyPattern } from './why-patterns';
+import { explainEngineChoice } from './move-words';
 
 export type PersonaKey = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 
@@ -733,11 +734,15 @@ export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
           : 'the idea was fine, one detail leaked - check what the move stopped defending.';
   }
 
-  const wwcd = input.bestMovePhrase && input.bestMovePhrase !== input.movePhrase
-    ? `the engine preferred ${input.bestMovePhrase}.`
-    : good
-      ? 'same move. Chester approves.'
-      : 'rebuild the defence first, then hunt.';
+  const engineChoice = input.fenBefore && input.bestMove ? explainEngineChoice(input.fenBefore, input.bestMove) : null;
+  const playedBest = input.bestMove && input.move ? input.bestMove === input.move : input.bestMovePhrase === input.movePhrase;
+  const wwcd = !playedBest && engineChoice
+    ? `best was ${engineChoice}.`
+    : !playedBest && input.bestMovePhrase
+      ? `the engine preferred ${input.bestMovePhrase}.`
+      : good
+        ? 'same move. Chester approves.'
+        : 'rebuild the defence first, then hunt.';
 
   let risk: string;
   if (!good) {

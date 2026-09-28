@@ -494,6 +494,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const tex = scene.textures.createCanvas(key, 288, 288);
               if (!tex) return;
               drawPieceSprite(tex.getContext(), color, type, 288);
+              tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
               tex.refresh();
             });
           });
