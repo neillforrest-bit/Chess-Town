@@ -220,8 +220,15 @@ export class StockfishClient {
       && !(secondLine && secondLine.mate !== null && secondLine.mate <= before.mate + 1);
     const classification = classify(loss, isBestMove, firstChoiceGap, foundForcedMate);
     const stmAfter = input.fenAfter.split(/\s+/)[1];
-    const absAfter = afterScore === null ? null : stmAfter === 'b' ? -afterScore : afterScore;
-    const absMateAfter = afterMate === null ? null : stmAfter === 'b' ? -afterMate : afterMate;
+    // Sign discipline: scores from the fenBefore MultiPV search (best-move and played-line
+    // branches) are MOVER-relative; a fresh fenAfter search is relative to the side to move
+    // AFTER (the opponent). Normalise both to white-absolute before anything downstream
+    // reads them - the old code assumed the second convention for all branches and inverted
+    // the eval exactly when the played move was in the top two (his 22-7 lead read 2%).
+    const stmBefore = input.fenBefore.split(/\s+/)[1];
+    const afterIsMoverRelative = isBestMove || playedLine !== null;
+    const absAfter = afterScore === null ? null : afterIsMoverRelative ? (stmBefore === 'w' ? afterScore : -afterScore) : (stmAfter === 'w' ? afterScore : -afterScore);
+    const absMateAfter = afterMate === null ? null : afterIsMoverRelative ? (stmBefore === 'w' ? afterMate : -afterMate) : (stmAfter === 'w' ? afterMate : -afterMate);
     return {
       evalScore: absMateAfter === null ? (absAfter === null ? null : absAfter / 100) : `M${absMateAfter}`,
       bestMoveSan: before.pv[0] || null,
@@ -231,7 +238,8 @@ export class StockfishClient {
           ? 'good'
           : classification.toLowerCase() as 'inaccuracy' | 'mistake' | 'blunder',
       fenBefore: input.fenBefore, fenAfter: input.fenAfter, san: input.san, uci: input.uci,
-      evaluationBefore: before.score, evaluationAfter: afterScore, evalDelta: loss,
+      // evaluationAfter is now WHITE-ABSOLUTE centipawns (positive = white better).
+      evaluationBefore: before.score, evaluationAfter: absAfter, evalDelta: loss,
       classification, bestMove: before.bestMove,
       principalVariation: before.pv, alternateWinningLines: before.pv.length ? [before.pv.join(' ')] : [], engine: 'stockfish-18',
       centipawns: afterScore, mateIn: afterMate, continuation,

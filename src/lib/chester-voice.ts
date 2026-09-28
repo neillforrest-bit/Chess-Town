@@ -688,13 +688,12 @@ function shortReaction(label: string, seed: number): string {
 
 // Lichess-style win odds from a centipawn score (side-to-move relative after the move,
 // which is always Chester - so negate for the player, who is white in Play Chester).
-function winOdds(evaluationAfter: number | null | undefined, opponentName?: string | null, viewerColor?: 'w' | 'b' | null, moverColor?: 'w' | 'b' | null): string | null {
+function winOdds(evaluationAfter: number | null | undefined, opponentName?: string | null, viewerColor?: 'w' | 'b' | null): string | null {
   if (evaluationAfter === null || evaluationAfter === undefined) return null;
   const opp = opponentName || 'Chester';
-  // Stockfish scores are side-to-move relative. After white moves, black is to move, so
-  // white-perspective flips the sign; after black moves it is already white-perspective.
-  const whiteCp = (moverColor || 'w') === 'w' ? -evaluationAfter : evaluationAfter;
-  const playerCp = (viewerColor || 'w') === 'w' ? whiteCp : -whiteCp;
+  // evaluationAfter is white-absolute centipawns (normalised in stockfish.ts); flip for
+  // a black-seat viewer (duel mode). Single-player is always the white seat.
+  const playerCp = (viewerColor || 'w') === 'w' ? evaluationAfter : -evaluationAfter;
   const w = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * playerCp)) - 1);
   const p = Math.max(1, Math.min(99, Math.round(w)));
   const tag = p >= 70 ? 'you are winning' : p >= 56 ? 'you are ahead' : p >= 45 ? 'dead even' : p >= 30 ? `${opp} is ahead` : `${opp} is winning`;
@@ -758,8 +757,7 @@ export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
   const reaction = input.mate
     ? 'CHECKMATE. Game, set and match - beautiful.'
     : shortReaction(label, seed);
-  const moverColor: 'w' | 'b' = (input.ply || 1) % 2 === 1 ? 'w' : 'b';
-  const odds = input.mate ? 'you 100% - mate on the board.' : winOdds(input.evaluationAfter, input.opponentName, input.viewerColor, moverColor);
+  const odds = input.mate ? 'you 100% - mate on the board.' : winOdds(input.evaluationAfter, input.opponentName, input.viewerColor);
 
   return { reaction, odds, verdictWord: verdict.word, verdictColor, why, wwcd, risk, patternName: pattern ? pattern.name : null };
 }
