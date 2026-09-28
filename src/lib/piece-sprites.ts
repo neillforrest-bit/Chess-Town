@@ -29,8 +29,13 @@ export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b',
   ctx.lineJoin = 'round';
   ctx.shadowColor = pal.glow;
   ctx.shadowBlur = small ? size * 0.05 : size * 0.09;
+  // His call (batch 65): a true black ring around every piece so armies and piece
+  // types separate at phone size, on both square colours.
+  ctx.strokeStyle = '#050505';
+  ctx.lineWidth = small ? size * 0.085 : size * 0.105;
+  ctx.strokeText(glyph, x, y);
   ctx.strokeStyle = pal.stroke;
-  ctx.lineWidth = small ? size * 0.055 : size * 0.07;
+  ctx.lineWidth = small ? size * 0.05 : size * 0.062;
   ctx.strokeText(glyph, x, y);
   const grad = ctx.createLinearGradient(0, size * 0.1, 0, size * 0.98);
   grad.addColorStop(0, pal.stops[0]);

@@ -556,6 +556,24 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
           };
 
+          const CAPTURE_BUBBLE_NAMES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+          // His capture spec: the capturing piece gloats - "I took your Rook!".
+          const showCaptureBubble = (m: any) => {
+            try {
+              const attacker = pieceContainers[m.to];
+              if (!attacker) return;
+              const raw = CAPTURE_BUBBLE_NAMES[m.captured] || 'piece';
+              const name = raw.charAt(0).toUpperCase() + raw.slice(1);
+              const text = scene.add.text(0, 0, `I took your ${name}!`, { fontFamily: 'sans-serif', fontSize: '15px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
+              const bg = scene.add.rectangle(0, 0, text.width + 22, text.height + 14, 0x101418, 0.96).setStrokeStyle(1.5, 0xffd84d, 0.9);
+              const bx = Math.min(Math.max(attacker.x, boardOffset + text.width / 2 + 14), boardOffset + 8 * tileSize - text.width / 2 - 14);
+              const by = Math.max(boardOffset + 20, attacker.y - tileSize * 0.66);
+              const bubble = scene.add.container(bx, by, [bg, text]).setDepth(34).setScale(0.01);
+              scene.tweens.add({ targets: bubble, scaleX: 1, scaleY: 1, duration: 240, ease: 'Back.Out' });
+              scene.tweens.add({ targets: bubble, alpha: 0, y: by - 12, delay: 1500, duration: 300, ease: 'Quad.In', onComplete: () => bubble.destroy() });
+            } catch { /* bubble is decorative - never break the game for it */ }
+          };
+
           const renderAfterCapture = (move: any) => {
             if (!move.captured) {
               renderBoard();
@@ -592,14 +610,18 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               captureSettled = true;
               emitCapture(move);
               renderBoard();
+              showCaptureBubble(move);
             };
+            // His capture spec: the taken piece pops larger first, then waddles off.
+            capturedPiece.setScale(1.02);
+            scene.tweens.add({ targets: capturedPiece, scaleX: 1.4, scaleY: 1.4, duration: 200, ease: 'Back.Out' });
             const moonwalk = scene.tweens.add({
               targets: capturedPiece,
               x: targetX,
               y: targetY,
               angle: { from: -14, to: 14 },
-              scaleX: { from: 1, to: 0.52 },
-              scaleY: { from: 1, to: 0.52 },
+              scaleX: { from: 1.4, to: 0.52 },
+              scaleY: { from: 1.4, to: 0.52 },
               duration: 1250,
               ease: 'Sine.InOut',
               onUpdate: (_tween, target) => {
