@@ -9,7 +9,7 @@ import { askChesterChat } from '@/app/actions';
 import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
-import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, chesterHowlerLine } from '@/lib/chester-voice';
+import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets } from '@/lib/chester-voice';
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly } from '@/lib/move-words';
@@ -42,7 +42,6 @@ function PlayChesterGame() {
   const warMode = requestedMode === 'duel' && searchParams.get('war') === '1';
   const clockSeconds = Math.min(3600, Math.max(0, parseInt(searchParams.get('clock') || '0', 10) || 0));
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode === 'duel' ? 'PVP_REMOTE' : requestedMode || 'COACH_OPENING';
-  const [howlerAside, setHowlerAside] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const coachPromptRef = useRef<CoachPrompt | null>(null);
   const [ladder, setLadder] = useState<LadderState>({ unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null });
@@ -169,7 +168,7 @@ function PlayChesterGame() {
         if (bossNode) completeBossNode(bossNode);
       }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (detail.kind === 'howler') { if (coachPromptRef.current?.kind === 'move') { setHowlerAside(chesterHowlerLine(detail.ply || 1)); } else { setCoachPrompt(detail); } return; } setHowlerAside(null); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
     window.addEventListener('load-puzzle', resetJails);
@@ -185,11 +184,6 @@ function PlayChesterGame() {
 
   useEffect(() => {
     if (!coachPrompt) return;
-    if (coachPrompt.kind === 'howler') {
-      setIsThinking(false);
-      setCoachReply(chesterHowlerLine(coachPrompt.ply || 1));
-      return;
-    }
     if (coachPrompt.kind === 'move') {
       // Verdict bullets are fully local now - no per-move LLM call, no waiting.
       setIsThinking(false); setCoachReply('');
@@ -335,12 +329,12 @@ function PlayChesterGame() {
 
   const lesson = LESSONS[lessonStep];
   const material = splitMaterial(capturedPieces, 'w');
-  const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : coachPrompt?.kind === 'howler' ? ({ '--verdict-color': '#ffc53d' } as React.CSSProperties) : undefined;
+  const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined;
   const moodEmoji = material.lead > 0 ? '🦄' : material.lead < 0 ? '🐴💦' : '🐴';
   const verdictKey = coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}-${isThinking ? 'think' : 'say'}` : `idle-${moodEmoji}`;
-  const verdictEmoji = isThinking && coachPrompt ? '🐴💭' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : coachPrompt?.kind === 'howler' ? '🐴💥' : moodEmoji;
+  const verdictEmoji = isThinking && coachPrompt ? '🐴💭' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : moodEmoji;
   const verdictKicker = isThinking ? 'CHESTER LIVE - READING THE BOARD…' : 'CHESTER LIVE';
-  const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt?.kind === 'howler' ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i className="chester-verdict">MY BAD</i></> : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
+  const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
   const coachMovePrompt = coachPrompt?.kind === 'move' && !isThinking ? coachPrompt : null;
   const coachBullets = coachMovePrompt ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
   return <main className="chester-game" aria-label="Play Chester guided game">
@@ -381,7 +375,6 @@ function PlayChesterGame() {
       </div>
       {coachBullets && <div className="chester-detail-line">
         <div className="chester-detail-line__scroll"><div className="chester-coach-bullets">
-          {howlerAside && <p className="chester-howler-aside">🐴💥 MY BAD - {howlerAside}</p>}
           {coachBullets.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</p> : null}
           <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
           <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>

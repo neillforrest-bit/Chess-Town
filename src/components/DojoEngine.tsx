@@ -811,18 +811,6 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 exchangeNet: phrases.exchange?.net ?? null,
               },
             }));
-            // Chester owns his howlers: rookie mode hangs pieces on purpose, so he admits them out loud.
-            if (isAiMover && (quality?.label === 'MISTAKE' || quality?.label === 'BLUNDER')) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
-              detail: {
-                kind: 'howler',
-                move: move.san,
-                classification: quality.label,
-                captured: move.captured || null,
-                ply: gameRef.current.ply,
-                player,
-                movePhrase: phrases.movePhrase || (fenBeforeMove ? describeMove(fenBeforeMove, move.san) : null),
-              },
-            }));
           };
 
           const publishPositionEvaluation = (fen: string) => {
