@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { phrasesFromPgn } from '@/lib/move-words';
-import { weakestHabit, getVerdictMemory, recordVerdictMemory } from '@/lib/rating';
+import { weakestHabit, getVerdictMemory, recordVerdictMemory, getLadder } from '@/lib/rating';
 import VerdictShare from './VerdictShare';
 
 export type GradedMove = {
@@ -97,6 +97,7 @@ export default function ChesterReportCard({
   const readyUp = won && Boolean(nextLabel);
   const atTop = !nextLabel;
 
+
   // Verdict 2.0: cross-game memory. Read the previous mission BEFORE banking
   // this one, then judge it against this game's dimensions.
   const prevMission = useMemo(() => getVerdictMemory(), []);
@@ -129,6 +130,26 @@ export default function ChesterReportCard({
       ]
     : null;
 
+  // PROMOTION PROGRESS: real, local, game-by-game evidence of how close the player
+  // is to the next rung - the door (beat this level), the grade (bank a B or better
+  // here), and the habits (clean sheet: castle, develop, hang nothing). This game's
+  // result is already banked in the ladder by the time the card opens.
+  const GRADE_POINTS: Record<string, number> = { 'A+': 7, A: 6, 'A-': 5, B: 4, C: 3, D: 2, F: 1 };
+  const lad = getLadder();
+  const levelRecord = (difficulty && lad.levels?.[difficulty]) || { wins: 0, games: 0, bestGrade: null, lastGrade: null };
+  const doorBeaten = levelIndex >= LADDER.length - 1 ? lad.grandChester : lad.unlocked > levelIndex;
+  const gradeBanked = (GRADE_POINTS[levelRecord.bestGrade || ''] || 0) >= GRADE_POINTS.B;
+  const habitsPassed = habitChecks ? habitChecks.filter((c) => c.state === 'pass').length : 0;
+  const cleanSheet = habitChecks ? habitsPassed === habitChecks.length : false;
+  const promoChecks = [
+    { done: doorBeaten, label: `BEAT ${levelLabel}`, hint: doorBeaten ? 'door beaten' : `the door to ${nextLabel || 'the crown'}` },
+    { done: gradeBanked, label: 'BANK A B OR BETTER', hint: `best at ${levelLabel}: ${levelRecord.bestGrade || 'none yet'}` },
+    { done: cleanSheet, label: 'CLEAN SHEET', hint: `${habitsPassed}/3 habits this game` },
+  ];
+  const promoDone = promoChecks.filter((c) => c.done).length;
+  const promoPct = Math.round((promoDone / promoChecks.length) * 100);
+  const promoReady = promoDone === promoChecks.length;
+
   const bestPhrase = best ? phrases.get(best.ply) || null : null;
   const worstPhrase = worst ? phrases.get(worst.ply) || null : null;
   const canRetry = Boolean(onRetry && worst && (worst.centipawnLoss ?? 0) >= 150 && pgn);
@@ -147,9 +168,13 @@ export default function ChesterReportCard({
           <div className="chester-report-card__ladder-track">
             {LADDER.map((level, index) => <i key={level.value} className={`chester-report-card__rung ${index < levelIndex ? 'is-passed' : ''} ${index === levelIndex ? 'is-current' : ''}`}><em>{level.label}</em>{index === levelIndex && <u>YOU</u>}</i>)}
           </div>
-          <div className={`chester-report-card__readiness ${readyUp ? 'is-ready' : ''}`}>
-            <b>{readyUp ? `🪜 ${nextLabel} UNLOCKED` : atTop ? '👑 TOP OF THE LADDER' : `🛑 HOLD AT ${levelLabel}`}</b>
-            <p>{readyUp ? `Promotion earned with the win. At ${nextLabel}, the habits below stop being suggestions.` : atTop ? 'NIGHTMARE is the last door. Beat it and the crown is yours.' : `Level-up criteria: beat ${levelLabel} to unlock ${nextLabel}. A-grade path: castle, develop three pieces, hang nothing.`}</p>
+          <div className={`chester-report-card__readiness ${promoReady ? 'is-ready' : ''}`}>
+            <b>{atTop ? '👑 THE CROWN' : `ROAD TO ${nextLabel}`}<em className="chester-report-card__promo-pct">{promoPct}%</em></b>
+            <div className="chester-report-card__promo-bar"><i style={{ width: `${promoPct}%` }} /></div>
+            <ul className="chester-report-card__promo-checks">
+              {promoChecks.map((check) => <li key={check.label} className={check.done ? 'is-done' : ''}><u>{check.done ? '✅' : '⬜'}</u> {check.label} <small>{check.hint}</small></li>)}
+            </ul>
+            <p>{promoReady ? (atTop ? 'The town is yours. Joseph is next.' : `Promotion case complete - ${nextLabel} Chester is waiting. Go take it.`) : atTop ? 'Beat NIGHTMARE and keep the sheets clean: the crown wants proof.' : `${promoDone} of 3 banked. ${!doorBeaten ? `Beat ${levelLabel} for the door.` : !gradeBanked ? 'A B-grade here seals the case.' : 'One clean game: castle, develop, hang nothing.'}`}</p>
           </div>
         </div>
       </div>
