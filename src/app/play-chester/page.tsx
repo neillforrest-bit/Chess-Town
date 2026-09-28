@@ -375,7 +375,7 @@ function PlayChesterGame() {
         <div className="chester-live-line__avatar" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
         <div className="chester-live-line__main">
         <div className="chester-live-line__head"><span>{verdictKicker}</span><b>{verdictTitle}</b></div>
-        {coachBullets && coachMovePrompt ? <p className="chester-live-line__reaction"><b style={{ color: '#ffd84d' }}>{getVerdict(coachMovePrompt.classification).emoji} CHESTER:</b> {coachBullets.reaction}</p> : <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}{howlerAside && <p className="chester-howler-aside">🐴💥 MY BAD - {howlerAside}</p>}
+        {!(coachBullets && coachMovePrompt) && <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}{howlerAside && <p className="chester-howler-aside">🐴💥 MY BAD - {howlerAside}</p>}
         </div>
       </div>
       {coachBullets && <div className="chester-detail-line">
