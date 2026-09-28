@@ -2224,3 +2224,12 @@ vercel-live-feedback { display: none !important; }
   .hero-score { zoom: .88; }
   .hero-jail-row { zoom: .85; }
 }
+
+/* Batch 69 (BUILD 69 - phone board size): stop flex-shrink eating the board.
+   The frame was shrinking ~40px so the tall bottom card fit. Frame now keeps
+   its size; the coach card flexes and its live-line scrolls internally. */
+@media (max-width: 860px) {
+  .chester-board-frame { flex: 0 0 auto; }
+  .chester-game__board .chester-bottom { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column; }
+  .chester-game__board .chester-live-line { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+}
