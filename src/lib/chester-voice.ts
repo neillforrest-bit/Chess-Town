@@ -2,7 +2,7 @@
 // Deterministic by design - zero per-visit prompt cost, no engine jargon, facts come from Stockfish telemetry.
 
 import { detectWhyPattern } from './why-patterns';
-import { explainEngineChoice } from './move-words';
+import { explainEngineChoice, sameMove } from './move-words';
 
 export type PersonaKey = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 
@@ -740,7 +740,7 @@ export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
   }
 
   const engineChoice = input.fenBefore && input.bestMove ? explainEngineChoice(input.fenBefore, input.bestMove) : null;
-  const playedBest = input.bestMove && input.move ? input.bestMove === input.move : input.bestMovePhrase === input.movePhrase;
+  const playedBest = input.bestMove && input.move ? sameMove(input.fenBefore || '', input.bestMove, input.move) : input.bestMovePhrase === input.movePhrase;
   const wwcd = !playedBest && engineChoice
     ? `best was ${engineChoice}.`
     : !playedBest && input.bestMovePhrase

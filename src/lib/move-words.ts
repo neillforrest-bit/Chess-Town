@@ -132,6 +132,28 @@ export function phrasesFromPgn(pgn: string): Map<number, string> {
 /* WWCD clarity (batch 87) refined (BUILD 95, his steering): no SAN, no square
    coordinates - piece names and board regions only, phrased like a coach talking
    ("knight to the kingside: develops the knight toward the action"). */
+// Two descriptors of the same move can arrive in different formats (SAN "e4"
+// vs Stockfish UCI "e2e4" - the engine's pv/bestmove lines are always UCI).
+// Compare them as moves, not strings, or "you played the best move" reads as
+// "you should have played the move you just played".
+export function sameMove(fenBefore: string, a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!fenBefore || !a || !b) return false;
+  if (a === b) return true;
+  try {
+    const chess = new Chess(fenBefore);
+    const legal = chess.moves({ verbose: true }) as any[];
+    const toUci = (m: string) => {
+      const mv = legal.find((x) => x.san === m)
+        || legal.find((x) => `${x.from}${x.to}${x.promotion || ''}` === m)
+        || legal.find((x) => x.lan === m);
+      return mv ? `${mv.from}${mv.to}${mv.promotion || ''}` : m;
+    };
+    return toUci(a) === toUci(b);
+  } catch {
+    return false;
+  }
+}
+
 export function explainEngineChoice(fenBefore: string, bestMove: string): string | null {
   if (!fenBefore || !bestMove) return null;
   try {
@@ -157,7 +179,7 @@ export function explainEngineChoice(fenBefore: string, bestMove: string): string
     if (!purposes.length && mv.piece !== 'k' && wasAttacked) purposes.push(`gets the ${pieceName} out of danger`);
     const homeRank = mv.color === 'w' ? '1' : '8';
     if (!purposes.length && (mv.piece === 'n' || mv.piece === 'b') && mv.from[1] === homeRank) purposes.push(`develops the ${pieceName} toward the action`);
-    if (!purposes.length && mv.piece === 'p' && (mv.to[0] === 'd' || mv.to[0] === 'e') && (mv.to[1] === '4' || mv.to[1] === '5')) purposes.push('plants a pawn in the centre');
+    if (!purposes.length && mv.piece === 'p' && (mv.to[0] === 'd' || mv.to[0] === 'e') && (mv.to[1] === '4' || mv.to[1] === '5')) purposes.push(`plants the ${mv.to[0] === 'e' ? "king's" : "queen's"} pawn in the centre`);
     if (!purposes.length && (mv.piece === 'r' || mv.piece === 'q') && mv.from[0] !== mv.to[0] && isOpenFile(after, mv.to.charCodeAt(0) - 97)) purposes.push(`seizes the open file on ${regionOf(mv.to)}`);
     if (!purposes.length && mv.piece === 'r' && ((mv.color === 'w' && mv.to[1] === '7') || (mv.color === 'b' && mv.to[1] === '2'))) purposes.push('plants the rook on the seventh rank - horrible for their pawns');
     if (!purposes.length && mv.piece === 'k') purposes.push('activates the king, which matters as the board empties');
