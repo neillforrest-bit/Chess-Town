@@ -2544,3 +2544,7 @@ vercel-live-feedback { display: none !important; }
   .chester-hud .hero-score { display: none; }
   .chester-matchbar--jail { display: none; }
 }
+
+/* BUILD 103: tablet teleprompter min 190->178 so its bottom border clears the
+   fold at real Safari-chrome heights (820x1024); taller bands flex-fill anyway. */
+@media (min-width: 700px) and (max-width: 860px) { .chester-teleprompter { min-height: 178px; } }
