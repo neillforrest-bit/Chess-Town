@@ -426,24 +426,24 @@ function PlayChesterGame() {
         </div>
       </section>
     </div>}
-    {menuOpen && <div className="chester-drawer-wrap" role="dialog" aria-modal="true" aria-label="Match menu">
-      <div className="chester-drawer-wrap__backdrop" onClick={() => { setMenuOpen(false); setResignArmed(false); }} />
-      <aside className="chester-drawer">
+    {menuOpen && <div className="chester-navdrawer-wrap" role="dialog" aria-modal="true" aria-label="Match menu">
+      <div className="chester-navdrawer-wrap__backdrop" onClick={() => { setMenuOpen(false); setResignArmed(false); }} />
+      <aside className="chester-navdrawer">
         <header><b>☰ MATCH CONTROL</b><button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); }} aria-label="Close">×</button></header>
-        {!isFriendMode && <div className="chester-drawer__tier">
+        {!isFriendMode && <div className="chester-navdrawer__tier">
           <span>YOUR LADDER</span>
           <ul>{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return <li key={level.value} className={`${level.value === difficulty ? 'is-current' : ''} ${locked ? 'is-locked' : ''}`}><b>{locked ? '🔒 ' : level.value === difficulty ? '▶ ' : ''}{level.label}</b><small>{locked ? `beat ${LEVELS[index - 1].label}` : `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}${rec?.bestGrade ? ` · best ${rec.bestGrade}` : ''}`}</small></li>; })}</ul>
         </div>}
-        <div className="chester-drawer__toggles">
+        <div className="chester-navdrawer__toggles">
           <button type="button" onClick={() => { const next = !muted; setMuted(next); setMutedState(next); if (!next) playSfx('select'); }}><b>{muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'}</b><small>tap to {muted ? 'unmute' : 'mute'}</small></button>
           <button type="button" onClick={() => { const next = !haptics; setHaptics(next); setHapticsState(next); if (next) buzz(18); }}><b>{haptics ? '📳 HAPTICS: ON' : '📴 HAPTICS: OFF'}</b><small>tap to {haptics ? 'disable' : 'enable'}</small></button>
         </div>
-        <div className="chester-drawer__actions">
+        <div className="chester-navdrawer__actions">
           {resignArmed
             ? <button type="button" className="is-confirm" onClick={() => { setMenuOpen(false); setResignArmed(false); window.dispatchEvent(new CustomEvent('request-resign')); }}><b>⚠ CONFIRM RESIGN?</b><small>ends the match, shows your report</small></button>
             : <button type="button" onClick={() => setResignArmed(true)}><b>🏳 RESIGN MATCH</b><small>asks again before it fires</small></button>}
           {!isFriendMode && <button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); setStarted(false); }}><b>🎓 CHANGE LEVEL</b><small>back to the level select</small></button>}
-          <Link href="/" className="chester-drawer__link" onClick={() => setMenuOpen(false)}><b>🏠 BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
+          <Link href="/" className="chester-navdrawer__link" onClick={() => setMenuOpen(false)}><b>🏠 BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
         </div>
       </aside>
     </div>}
