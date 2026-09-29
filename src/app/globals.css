@@ -2480,3 +2480,7 @@ vercel-live-feedback { display: none !important; }
   .chester-teleprompter__head { padding: .2rem .6rem .18rem; }
   .chester-teleprompter__body { padding: .28rem .6rem .3rem; }
 }
+
+/* BUILD 99: tablet band polish - BUILD 97's bigger prose pushed RISK 2px past the
+   iPad fold; give back 6px of teleprompter min-height so all three lines show. */
+@media (min-width: 700px) and (max-width: 860px) { .chester-teleprompter { min-height: 224px; } }
