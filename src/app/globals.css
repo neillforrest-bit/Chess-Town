@@ -2405,3 +2405,7 @@ vercel-live-feedback { display: none !important; }
 
 /* coach mark arrow pointed at the old top HINT button - the lifelines live below now */
 .hero-tip::before { display: none; }
+
+/* Batch 91 fix: the /verdict page's global .chester-verdict carries min-height:240px -
+   neutralize it inside the new console exactly like the old live-line did. */
+.chester-console .chester-verdict { min-height: 0; position: static; border: 0 !important; }
