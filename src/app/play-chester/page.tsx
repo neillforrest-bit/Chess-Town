@@ -64,6 +64,7 @@ function PlayChesterGame() {
   useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = el.scrollHeight; });
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
+  const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
   const [helpRemaining, setHelpRemaining] = useState(3);
   const [report, setReport] = useState<GameReport | null>(null);
   const [review, setReview] = useState('');
@@ -142,7 +143,7 @@ function PlayChesterGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, requestedRoom, requestedSeat]);
 
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; kind?: 'chat' }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; kind?: 'chat' | 'reaction' }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
@@ -198,8 +199,30 @@ function PlayChesterGame() {
   useEffect(() => {
     if (!coachPrompt) return;
     if (coachPrompt.kind === 'move') {
-      // Verdict bullets are fully local now - no per-move LLM call, no waiting.
+      // Verdict bullets stay fully local. The LLM speaks only on VALUE MOMENTS
+      // (blunder/mistake/brilliant/great, or a 2+ pawn swing) - the hybrid guard
+      // that keeps the persona voice where it matters at near-zero per-move cost.
       setIsThinking(false); setCoachReply('');
+      setTeleprompterLlm(null);
+      const loss = Math.abs(coachPrompt.evalDelta ?? 0);
+      const bigGrade = /blunder|mistake|brilliant|great/i.test(coachPrompt.classification || '');
+      const prompt = coachPrompt;
+      if (bigGrade || loss >= 200) {
+        const swingFact = loss >= 200
+          ? ` The move gave away about ${(loss / 100).toFixed(1)} pawns.`
+          : /brilliant|great/i.test(prompt.classification || '') ? ' This is a big POSITIVE moment - praise it.' : '';
+        void askChesterChat(JSON.stringify({ type: 'teleprompter', message: 'Write the teleprompter line for this move.', context: `The player just played ${prompt.movePhrase || prompt.move}. Grade: ${prompt.classification || 'ungraded'}.${swingFact}${prompt.check ? ' It gives check.' : ''}${prompt.mate ? ' It is checkmate.' : ''} The engine's preferred idea was: ${prompt.bestMovePhrase || 'unknown'} - hint at its theme without naming the move.`, fen: prompt.fen || lastFen }))
+          .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setTeleprompterLlm({ key: `${prompt.ply}-${prompt.move}`, text: reply }); })
+          .catch(() => undefined);
+        // CHAT target from the spec: Chester the friendly opponent reacts live
+        // to big eval swings in the chat drawer - praise on great finds, a gentle
+        // tease + hint on 2+ pawn drops, under 20 words.
+        if (!isFriendMode && mode !== 'PVP_REMOTE') {
+          void askChesterChat(JSON.stringify({ type: 'reaction', message: 'React to this move as the opponent.', context: `The player just played ${prompt.movePhrase || prompt.move}. Grade: ${prompt.classification || 'ungraded'}.${swingFact}`, fen: prompt.fen || lastFen }))
+            .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setChatMessages((prev) => [...prev.slice(-30), { role: 'chester', text: reply, kind: 'reaction' }]); })
+            .catch(() => undefined);
+        }
+      }
       return;
     }
     setIsThinking(true); setCoachReply('');
@@ -251,7 +274,8 @@ function PlayChesterGame() {
     const story = buildStoryRecap(report.gradeHistory, difficulty, (ply) => phraseMap.get(ply) || null);
     setReview(story);
     setReviewLoading(false);
-    void askChesterChat(JSON.stringify({ type: 'post-game-report', gradeHistory: report.gradeHistory.map((g) => ({ player: g.player, move: g.move, grade: g.grade, phrase: phraseMap.get(g.ply) || undefined })), persona: PERSONA_DESC[difficulty], instruction: 'Tell the story of this match in Chester’s voice: the turning point, what the player did well, one lesson, one concrete thing to try next game. At most 4 sentences, plain English, no engine jargon, and NEVER chess notation or coordinates - describe moves in words, like \'knight to the kingside\'.' }))
+    const topSwings = [...report.gradeHistory].filter((g) => g.player === 'You').sort((a, b) => (b.centipawnLoss ?? 0) - (a.centipawnLoss ?? 0)).slice(0, 2).map((g) => `${phraseMap.get(g.ply) || g.move} (graded ${g.grade}, lost about ${((g.centipawnLoss ?? 0) / 100).toFixed(1)} pawns)`).join('; ') || 'no big swings on record';
+    void askChesterChat(JSON.stringify({ type: 'post-game-report', gradeHistory: report.gradeHistory.map((g) => ({ player: g.player, move: g.move, grade: g.grade, phrase: phraseMap.get(g.ply) || undefined })), persona: PERSONA_DESC[difficulty], instruction: `SCORECARD for a finished match: tell its story built around the turning point. The player's two biggest evaluation swings were: ${topSwings}. Pick the single biggest as the turning point and say why it decided the game. Be encouraging - name what the player did well, and end with ONE specific chess concept for them to study next. At most 4 sentences, plain English, no engine jargon, and NEVER chess notation or coordinates - describe moves in words, like 'knight to the kingside'.` }))
       .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setReview(reply); })
       .catch(() => undefined);
   }, [report, difficulty]);
@@ -411,7 +435,7 @@ function PlayChesterGame() {
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
           {isThinking || calculating
             ? <p className="chester-teleprompter__calculating">CHESTER IS CALCULATING<span className="chester-teleprompter__cursor">▮</span></p>
-            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? coachBullets.reaction : coachPrompt ? coachReply : lesson.body}</p>}
+            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? (teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : coachBullets.reaction) : coachPrompt ? coachReply : lesson.body}</p>}
           {coachBullets && <div className="chester-coach-bullets">
             <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
             <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>

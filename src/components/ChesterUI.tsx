@@ -123,7 +123,7 @@ export function ChesterChatOverlay({
   isMobile,
   defaultExpanded
 }: {
-  chatMessages: { role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[];
+  chatMessages: { role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' | 'reaction' }[];
   chatInput: string;
   setChatInput: (v: string) => void;
   onSendMessage: (e: React.FormEvent) => void;
