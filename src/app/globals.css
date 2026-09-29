@@ -2492,3 +2492,33 @@ vercel-live-feedback { display: none !important; }
   .chester-board-frame { width: min(97cqw, calc(100dvh - 290px)) !important; }
   .chester-stack { width: min(97cqw, calc(100dvh - 290px)); }
 }
+
+/* ── BUILD 101 · his iPad layout brief: unbury CHESTER SAYS ──
+   He authorized a slight board shrink. Slim the score row (digits stay big),
+   restore the captured-pieces strip just under the tug-of-war bar, shrink the
+   board a touch, and hand all of it to the teleprompter so all three Chester
+   lines show without scrolling - verified against realistic Safari-chrome
+   viewports, not bare bands. */
+@media (max-width: 860px) {
+  .hero-score { gap: 8px; }
+  .hero-score__box { min-width: 78px; padding: 1px 12px 2px; }
+  .hero-score__box small { font-size: .52rem; letter-spacing: 1.6px; }
+  .hero-score__poss { margin: 2px 10px 3px; height: 2px; }
+  .hero-tug { height: 9px; min-width: 56px; }
+  .hero-jail-row { display: flex !important; justify-content: space-between; align-items: center; gap: .5rem; width: 100cqw; flex: 0 0 auto; padding: .02rem .1rem; }
+  .hero-jail-row .capture-strip { display: flex; align-items: center; gap: .28rem; min-width: 0; }
+  .hero-jail-row .capture-strip > span { color: #9db2b8; font: 900 .48rem/1 Arial, sans-serif; letter-spacing: 1.1px; white-space: nowrap; }
+  .hero-jail-row .capture-strip__pieces { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+  .hero-jail-row .capture-strip__pieces img { width: 17px; height: 17px; }
+  .hero-jail-row .capture-strip__pieces em { color: #5c6f74; font: 700 .58rem/1 Arial, sans-serif; font-style: normal; }
+  .chester-board-frame { width: min(91cqw, calc(100dvh - 340px)) !important; }
+  .chester-stack { width: min(91cqw, calc(100dvh - 340px)); }
+  .chester-teleprompter { min-height: 128px; }
+}
+@media (min-width: 700px) and (max-width: 860px) {
+  .chester-board-frame { width: min(88cqw, calc(100dvh - 400px)) !important; }
+  .chester-stack { width: min(88cqw, calc(100dvh - 400px)); }
+  .chester-teleprompter { min-height: 170px; }
+  .hero-jail-row .capture-strip__pieces img { width: 20px; height: 20px; }
+  .hero-jail-row .capture-strip > span { font-size: .54rem; }
+}

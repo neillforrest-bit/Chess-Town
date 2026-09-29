@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat } from '@/app/actions';
-import { HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct } from '@/lib/chester-voice';
@@ -372,6 +372,10 @@ function PlayChesterGame() {
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
+      <div className="hero-jail-row" aria-label="Captured pieces">
+        <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
+        <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
+      </div>
       {coachBullets?.odds && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b>📊 ODDS</b><span>{coachBullets.odds}</span></div>}
       {clockBar}
       {flagBanner}
