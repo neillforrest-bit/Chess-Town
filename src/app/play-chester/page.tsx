@@ -374,8 +374,8 @@ function PlayChesterGame() {
         <div className="chester-console__grade">
           <div className="chester-console__badge" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
           <div className="chester-console__verdict">
-            <span>{isThinking ? 'READING THE BOARD…' : coachPrompt ? 'LAST MOVE' : lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</span>
-            <b>{verdictTitle}</b>
+            <span>{isThinking ? 'READING THE BOARD…' : coachPrompt ? `LAST MOVE · ${coachPrompt.movePhrase || coachPrompt.move}` : lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</span>
+            <b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i> : lesson.title}</b>
           </div>
         </div>
         <div className="chester-console__lifelines">
