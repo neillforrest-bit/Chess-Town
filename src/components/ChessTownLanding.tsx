@@ -41,8 +41,8 @@ export default function ChessTownLanding() {
   }, []);
 
   const greeting = returning
-    ? `Back for more${name ? `, ${name}` : ''}? Joseph is still unbeaten and still smug. Pick a door.`
-    : 'Evening. I’m Chester - knight, coach and mayor of Chesterville. Pick a door: I grade the moves, roast the blunders and remember everything.';
+    ? `Welcome back${name ? `, ${name}` : ''}! The whole town lit up when you walked in. Pick a door - any door.`
+    : `Well hello there${name ? `, ${name}` : ''}! I’m Chester - knight, jester and mayor of this little town, and I am SO glad you found us. Pick a door below and let’s play.`;
   const ladderLines: string[] = [];
   if (ladder) {
     const currentLabel = ladder.grandChester ? 'GRAND CHESTER' : LADDER_LABELS[['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][ladder.unlocked]] || 'ROOKIE';
@@ -70,7 +70,7 @@ export default function ChessTownLanding() {
 
     <header className="town-masthead town-masthead--compact">
       <div className="town-greet" role="note" aria-label="Chester greets you">
-        <div className="town-greet__avatar town-greet__avatar--talking" aria-hidden="true">♞</div>
+        <div className="town-greet__avatar town-greet__avatar--talking town-greet__avatar--wave" aria-hidden="true">♞</div>
         <div className="town-greet__bubble">
           <span>{returning ? 'CHESTER SAYS' : 'CHESTER, MAYOR OF CHESTERVILLE'}</span>
           <p key={lineIndex % chesterLines.length} className="town-greet__line">{bubbleLine}</p>

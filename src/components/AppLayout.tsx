@@ -36,6 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
   return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">
+    <div className="portrait-lock" role="status"><i aria-hidden="true">♞</i><b>ROTATE ME</b><span>Chesterville is a portrait town - turn your phone upright and the fun continues.</span></div>
     <GlobalNav />
     <BuildBadge />
     <main className="app-main flex-1 overflow-hidden">{children}</main>

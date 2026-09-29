@@ -2575,3 +2575,23 @@ vercel-live-feedback { display: none !important; }
   .hero-roll { font-size: 2.4rem; }
   .hero-score__box { min-width: 78px; }
 }
+
+/* ── BUILD 112 · his 6:23+6:26 steering: (1) Lesson Hall + Road to Joseph scroll
+   again - html/body are overflow:hidden app-wide, so pages need their own
+   definite-height scroll box; .training-page clipped the lesson cards and
+   .bossmap-page's min-height let the map grow past a non-scrolling body.
+   (2) Warmer jester welcome on the landing - waving avatar, bigger bubble.
+   (3) Portrait lock: a true orientation lock needs fullscreen, so landscape on
+   touch devices gets a friendly rotate prompt instead (desktop pointer fine). */
+.lesson-hall.training-page { overflow-y: auto; }
+.bossmap-page { height: calc(100dvh - 64px); min-height: 0; overflow-y: auto; }
+@keyframes jesterWave { 0%, 100% { transform: rotate(-10deg) translateY(0); } 50% { transform: rotate(10deg) translateY(-3px); } }
+.town-greet__avatar--wave { animation: jesterWave 1.6s ease-in-out infinite; }
+.town-greet__avatar { filter: drop-shadow(0 0 12px rgba(255,216,77,.45)); }
+.portrait-lock { display: none; }
+@media (orientation: landscape) and (pointer: coarse) {
+  .portrait-lock { display: flex; position: fixed; inset: 0; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; text-align: center; padding: 2rem; background: radial-gradient(circle at 50% 20%, rgba(34,211,238,.14), transparent 50%), #070510; color: #e8dfe3; font-family: Arial, sans-serif; }
+  .portrait-lock i { font-size: 3.4rem; animation: jesterWave 1.4s ease-in-out infinite; }
+  .portrait-lock b { font-size: 1.2rem; letter-spacing: 3px; color: #ffd84d; }
+  .portrait-lock span { font-size: .85rem; color: #b6c5c9; max-width: 300px; line-height: 1.5; }
+}
