@@ -8,7 +8,8 @@ import { getRating, rankFor, getLadder, LADDER_LABELS, WEAKNESS_HOMEWORK, type L
 const doors = [
   { href: '/play-chester', icon: '♞', title: 'PLAY WITH CHESTER', copy: 'Guided games, instant grades, WHY lessons. The front door.', accent: '#4ade80', first: true },
   { href: '/duel', icon: '⚔️', title: 'CHALLENGE A FRIEND', copy: 'Live duel on two phones. Chester commentates every move on both.', accent: '#ffd84d' },
-  { href: '/arcade', icon: '🕹️', title: "CHESTER'S ARCADE", copy: 'Chessdle, Pawn Wars, Mate Sprint. Fast and loud.', accent: '#ff4eb1' },
+  // BUILD 116 (his 7:53 steering): arcade door hidden for now - the games stay built, restore this line when he wants it back.
+  // { href: '/arcade', icon: '🕹️', title: "CHESTER'S ARCADE", copy: 'Chessdle, Pawn Wars, Mate Sprint. Fast and loud.', accent: '#ff4eb1' },
   { href: '/training', icon: '♝', title: 'LESSON HALL', copy: 'Nine coached drills. Pick a difficulty, learn by playing.', accent: '#b8a2ff' },
   { href: '/trivia-brawl', icon: '🍻', title: 'PUB TRIVIA BRAWL', copy: 'Trivia with teeth - solo vs me, or a friend by link.', accent: '#22d3ee' },
   { href: '/daily-challenge', icon: '☀️', title: 'DAILY CHALLENGE', copy: 'One town puzzle a day. Bank the streak.', accent: '#4ade80' },
