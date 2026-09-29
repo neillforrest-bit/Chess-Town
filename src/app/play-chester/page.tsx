@@ -211,7 +211,7 @@ function PlayChesterGame() {
         const swingFact = loss >= 200
           ? ` The move gave away about ${(loss / 100).toFixed(1)} pawns.`
           : /brilliant|great/i.test(prompt.classification || '') ? ' This is a big POSITIVE moment - praise it.' : '';
-        void askChesterChat(JSON.stringify({ type: 'teleprompter', message: 'Write the teleprompter line for this move.', context: `The player just played ${prompt.movePhrase || prompt.move}. Grade: ${prompt.classification || 'ungraded'}.${swingFact}${prompt.check ? ' It gives check.' : ''}${prompt.mate ? ' It is checkmate.' : ''} The engine's preferred idea was: ${prompt.bestMovePhrase || 'unknown'} - hint at its theme without naming the move.`, fen: prompt.fen || lastFen }))
+        void askChesterChat(JSON.stringify({ type: 'teleprompter', message: 'Write the teleprompter line for this move.', context: `The player just played ${prompt.movePhrase || prompt.move}. Grade: ${prompt.classification || 'ungraded'}.${swingFact}${prompt.check ? ' It gives check.' : ''}${prompt.mate ? ' It is checkmate.' : ''} The engine's preferred idea was: ${prompt.bestMovePhrase || 'unknown'} - COACH ONLY THIS IDEA: hint at its theme without naming the exact move, and never suggest any other move or plan.`, fen: prompt.fen || lastFen }))
           .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setTeleprompterLlm({ key: `${prompt.ply}-${prompt.move}`, text: reply }); })
           .catch(() => undefined);
         // CHAT target from the spec: Chester the friendly opponent reacts live
