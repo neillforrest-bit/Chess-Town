@@ -1049,6 +1049,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 finishGame(`🏁 ${status} The ${AI_TAGS[mode]?.title} just defined an entire era.`, isCheckmate ? 'checkmate' : 'draw');
               }
               renderAfterCapture(result);
+              // Batch 93: the page derives its turn chip + Jumbotron possession underline
+              // from lastFen, which only the user-move coach events were updating - after
+              // Chester's reply the chip (and the underline) stuck on his side until the
+              // user's next move. The page already listens for duel-turn; reuse it.
+              window.dispatchEvent(new CustomEvent('duel-turn', { detail: { fen: gameRef.current.chess.fen() } }));
               window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } }));
             }, responseDelay);
           };
