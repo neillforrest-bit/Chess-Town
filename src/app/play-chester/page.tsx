@@ -50,12 +50,14 @@ function PlayChesterGame() {
   const [difficulty, setDifficulty] = useState<Difficulty>(requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [calculating, setCalculating] = useState(false);
   const [coachPrompt, setCoachPrompt] = useState<CoachPrompt | null>(null);
   const [muted, setMutedState] = useState(false);
   const [haptics, setHapticsState] = useState(true);
   const [resignArmed, setResignArmed] = useState(false);
   const teleRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setHapticsState(isHaptics()); }, []);
+  useEffect(() => { const onCalc = (e: Event) => setCalculating(!!(e as CustomEvent).detail?.on); window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
   useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = el.scrollHeight; });
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
@@ -360,7 +362,7 @@ function PlayChesterGame() {
         <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking} />
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} />
       {clockBar}
       {flagBanner}
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
@@ -390,7 +392,7 @@ function PlayChesterGame() {
           {coachBullets && <button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          {isThinking
+          {isThinking || calculating
             ? <p className="chester-teleprompter__calculating">CHESTER IS CALCULATING<span className="chester-teleprompter__cursor">▮</span></p>
             : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt ? coachReply : lesson.body}</p>}
           {coachBullets && <div className="chester-coach-bullets">

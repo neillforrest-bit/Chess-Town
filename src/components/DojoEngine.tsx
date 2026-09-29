@@ -1004,13 +1004,16 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const playAiTurn = (responseDelay = AI_RESPONSE_DELAY_MS) => {
-            
+
             if (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
+            // Batch 92: the calculating window - teleprompter terminal + scoreboard pulse
+            // stay alive from here until Chester's reply snaps onto the board.
+            window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: true } }));
             setTimeout(async () => {
 
-              if (gameRef.current.isGameOver) return;
+              if (gameRef.current.isGameOver) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               const moves = gameRef.current.chess.moves({ verbose: true });
-              if (!moves.length) return;
+              if (!moves.length) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               const fenBeforeMove = gameRef.current.chess.fen();
               const searchD = difficulty === 'PRO' || difficulty === 'EXPERT' || difficulty === 'ADVANCED' ? 2 : 1;
               let engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty)).catch(() => null);
@@ -1035,7 +1038,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               }
               const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, AI_SEARCH_DEPTH);
               gameRef.current.ply++;
-              gameRef.current.lastMove = { from: result.from, to: result.to, grade: getLetterGrade(quality?.centipawnLoss) };
+              gameRef.current.lastMove = { from: result.from, to: result.to, grade: getLetterGrade(quality?.centipawnLoss), captured: result.captured || null, check: result.san.includes('+') || result.san.includes('#'), color: result.color };
               gameRef.current.gradeHistory.push({ move: result.san, player: AI_TAGS[mode]?.rival || 'Chester', ply: gameRef.current.ply, grade: getLetterGrade(quality?.centipawnLoss), centipawnLoss: quality?.centipawnLoss ?? null });
               gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: result.san });
               evaluateAndPublishMove(result, AI_TAGS[mode]?.rival || 'Brendan', fenBeforeMove, quality);
@@ -1046,6 +1049,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 finishGame(`🏁 ${status} The ${AI_TAGS[mode]?.title} just defined an entire era.`, isCheckmate ? 'checkmate' : 'draw');
               }
               renderAfterCapture(result);
+              window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } }));
             }, responseDelay);
           };
 
