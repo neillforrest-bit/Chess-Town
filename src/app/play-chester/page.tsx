@@ -13,7 +13,7 @@ import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSO
 import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
-import { phrasesFromPgn, fenBeforePly } from '@/lib/move-words';
+import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
 
@@ -208,16 +208,19 @@ function PlayChesterGame() {
       const bigGrade = /blunder|mistake|brilliant|great/i.test(coachPrompt.classification || '');
       const prompt = coachPrompt;
       if (bigGrade || loss >= 200) {
-        const swingFact = loss >= 200
+        // Anchor the LLM to the SAME descriptor the WWCD line prints
+          // (explainEngineChoice) - one move, one wording, no divergence.
+          const anchorIdea = (prompt.fenBefore && prompt.bestMove ? explainEngineChoice(prompt.fenBefore, prompt.bestMove) : null) || prompt.bestMovePhrase || 'unknown';
+          const swingFact = loss >= 200
           ? ` The move gave away about ${(loss / 100).toFixed(1)} pawns.`
           : /brilliant|great/i.test(prompt.classification || '') ? ' This is a big POSITIVE moment - praise it.' : '';
-        void askChesterChat(JSON.stringify({ type: 'teleprompter', message: 'Write the teleprompter line for this move.', context: `The player just played ${prompt.movePhrase || prompt.move}. Grade: ${prompt.classification || 'ungraded'}.${swingFact}${prompt.check ? ' It gives check.' : ''}${prompt.mate ? ' It is checkmate.' : ''} The engine's preferred idea was: ${prompt.bestMovePhrase || 'unknown'} - COACH ONLY THIS IDEA: hint at its theme without naming the exact move, and never suggest any other move or plan.`, fen: prompt.fen || lastFen }))
+        void askChesterChat(JSON.stringify({ type: 'teleprompter', message: 'Write the teleprompter line for this move.', context: `The player just played ${prompt.movePhrase || prompt.move}. Grade: ${prompt.classification || 'ungraded'}.${swingFact}${prompt.check ? ' It gives check.' : ''}${prompt.mate ? ' It is checkmate.' : ''} The engine's preferred idea was: ${anchorIdea} - COACH ONLY THIS IDEA: hint at its theme without naming the exact move, and never suggest any other move or plan.`, fen: prompt.fen || lastFen }))
           .then((reply) => {
             if (!reply || /messenger|delayed|unavailable/i.test(reply)) return;
             // Agreement guard: the LLM line must share a content word with the
             // engine's preferred idea, or the WWCD template stays on screen.
             const STOP = new Set(['pawn', 'push', 'move', 'piece', 'best', 'with', 'your', 'into', 'the', 'and', 'for', 'square', 'play', 'two']);
-            const anchors = (prompt.bestMovePhrase || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w));
+            const anchors = anchorIdea.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w));
             const low = reply.toLowerCase();
             if (!anchors.length || anchors.some((w) => low.includes(w))) setTeleprompterLlm({ key: `${prompt.ply}-${prompt.move}`, text: reply });
           })
