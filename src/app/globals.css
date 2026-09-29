@@ -2522,3 +2522,25 @@ vercel-live-feedback { display: none !important; }
   .hero-jail-row .capture-strip__pieces img { width: 20px; height: 20px; }
   .hero-jail-row .capture-strip > span { font-size: .54rem; }
 }
+
+/* ── BUILD 102 · his scorebug arrangement: scoreboard moves up beside MENU ──
+   NFL/NBA scorebug feel: one header row = [MENU] [YOU - tug - CHESTER], big
+   digits kept. The level/turn chips move into the captured-pieces strip below.
+   Frees a whole row (~46px) for the teleprompter. Desktop unchanged
+   (.hero-score/.hero-jail-row stay hidden >=861px, hud matchbar stays). */
+@media (max-width: 860px) {
+  .chester-matchbar--hud { display: none; }
+  .chester-hud { min-height: 0; gap: .45rem; }
+  .chester-hud .hero-score { flex: 1 1 auto; width: auto; min-width: 0; padding-bottom: 0; }
+  .hero-jail-row .chester-matchbar--jail { flex: 0 1 auto; justify-content: center; gap: .35rem; min-width: 0; }
+  .hero-jail-row .chester-matchbar__badge, .hero-jail-row .chester-matchbar__turn { font-size: .56rem; padding: .24rem .5rem; }
+  .chester-teleprompter { min-height: 148px; }
+}
+@media (min-width: 700px) and (max-width: 860px) {
+  .chester-teleprompter { min-height: 190px; }
+  .hero-jail-row .chester-matchbar__badge, .hero-jail-row .chester-matchbar__turn { font-size: .62rem; padding: .3rem .6rem; }
+}
+@media (min-width: 861px) {
+  .chester-hud .hero-score { display: none; }
+  .chester-matchbar--jail { display: none; }
+}

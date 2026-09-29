@@ -360,7 +360,8 @@ function PlayChesterGame() {
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-hud">
       <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b><span className="chester-menu-btn__pill">MATCH</span></button>
-      <div className="chester-matchbar">
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
+      <div className="chester-matchbar chester-matchbar--hud">
         <span className="chester-matchbar__badge">{isFriendMode ? modeTitle : selectedLevel.label}</span>
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
@@ -371,9 +372,12 @@ function PlayChesterGame() {
         <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
       <div className="hero-jail-row" aria-label="Captured pieces">
         <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
+        <div className="chester-matchbar chester-matchbar--jail" aria-hidden="true">
+          <span className="chester-matchbar__badge">{isFriendMode ? modeTitle : selectedLevel.label}</span>
+          <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
+        </div>
         <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
       </div>
       {coachBullets?.odds && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b>📊 ODDS</b><span>{coachBullets.odds}</span></div>}
