@@ -142,17 +142,21 @@ function RollNumber({ value }: { value: number }) {
   );
 }
 
-export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false, turnSide = 'you', streak = 0 }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean; turnSide?: 'you' | 'opp'; streak?: number }) {
+export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false, turnSide = 'you', tugPct = 50 }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean; turnSide?: 'you' | 'opp'; tugPct?: number }) {
   const { yourPts, oppPts } = material;
-  const hot = streak >= 3;
+  const you = Math.max(2, Math.min(98, tugPct));
   return (
     <div className="hero-score" aria-label={`Live material score: ${youLabel} ${yourPts}, ${oppLabel} ${oppPts}`}>
-      <div className={`hero-score__box hero-score__box--you ${yourPts > oppPts ? 'is-leading' : ''} ${turnSide === 'you' ? 'is-turn' : ''} ${hot ? 'is-hot' : ''}`}>
+      <div className={`hero-score__box hero-score__box--you ${yourPts > oppPts ? 'is-leading' : ''} ${turnSide === 'you' ? 'is-turn' : ''}`}>
         <small>{youLabel}</small>
         <i className="hero-score__poss" aria-hidden="true" />
         <RollNumber value={yourPts} />
-        {hot && <em className="hero-score__fire" key={streak}>🔥 {streak}-MOVE RUN</em>}
         {oppPts > 0 && <i key={`hurt-${oppPts}`} className="hurt" aria-hidden="true" />}
+      </div>
+      <div className="hero-tug" role="img" aria-label={`Tug of war: ${youLabel} ${Math.round(you)} percent, ${oppLabel} ${Math.round(100 - you)} percent`}>
+        <i className="hero-tug__you" style={{ width: `${you}%` }} />
+        <b className="hero-tug__notch" aria-hidden="true" />
+        <i className="hero-tug__opp" style={{ width: `${100 - you}%` }} />
       </div>
       <div className={`hero-score__box hero-score__box--opp ${oppPts > yourPts ? 'is-leading' : ''} ${oppThinking ? 'is-thinking' : ''} ${turnSide === 'opp' ? 'is-turn' : ''}`}>
         <small>{oppLabel}</small>

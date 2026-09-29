@@ -6,10 +6,10 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat } from '@/app/actions';
-import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
-import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets } from '@/lib/chester-voice';
+import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct } from '@/lib/chester-voice';
 import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
@@ -21,6 +21,9 @@ const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
 type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; principleKey?: string | null; principleFollowed?: boolean | null; exchangeLost?: string | null; exchangeWon?: string | null; exchangeNet?: number | null };
+// BUILD 94: giant emoji move reviews replace the static horse avatar on graded moves.
+// (The horse stays for the idle/thinking coach persona - Chester IS a knight.)
+const GRADE_EMOJI: Record<string, string> = { BRILLIANT: '👑', BEST: '🎯', GREAT: '🔥', GOOD: '✅', INACCURACY: '😬', MISTAKE: '⚠️', BLUNDER: '💥' };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
@@ -52,8 +55,6 @@ function PlayChesterGame() {
   const [isThinking, setIsThinking] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [coachPrompt, setCoachPrompt] = useState<CoachPrompt | null>(null);
-  const [streak, setStreak] = useState(0);
-  const streakRef = useRef<{ ply: number; good: boolean }[]>([]);
   const [muted, setMutedState] = useState(false);
   const [haptics, setHapticsState] = useState(true);
   const [resignArmed, setResignArmed] = useState(false);
@@ -180,20 +181,9 @@ function PlayChesterGame() {
         if (bossNode) completeBossNode(bossNode);
       }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' });
-      if (!isFriendMode && typeof detail.ply === 'number') {
-        // Momentum streak: consecutive TOP DOG / SPOT ON / STRONG grades on the user's
-        // own moves. Keyed by ply so a revised (sac-confirmed) grade replaces the first
-        // take instead of double-counting the move.
-        const good = detail.classification === 'BRILLIANT' || detail.classification === 'BEST' || detail.classification === 'GREAT';
-        const entries = streakRef.current;
-        const at = entries.findIndex((entry) => entry.ply === detail.ply);
-        if (at >= 0) entries[at] = { ply: detail.ply as number, good }; else { entries.push({ ply: detail.ply as number, good }); if (entries.length > 16) entries.shift(); }
-        let run = 0; for (let i = entries.length - 1; i >= 0 && entries[i].good; i--) run++;
-        setStreak(run);
-      } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
-    const resetJails = () => { setCapturedPieces([]); streakRef.current = []; setStreak(0); };
+    const resetJails = () => setCapturedPieces([]);
     window.addEventListener('load-puzzle', resetJails);
     window.addEventListener('piece-captured', capture); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help);
     return () => { window.clearTimeout(timer); window.removeEventListener('load-puzzle', resetJails); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); };
@@ -354,6 +344,10 @@ function PlayChesterGame() {
   const material = splitMaterial(capturedPieces, 'w');
   const viewerSeat: 'w' | 'b' = mode === 'PVP_REMOTE' ? requestedSeat : 'w';
   const turnSide: 'you' | 'opp' = turnColor === viewerSeat ? 'you' : 'opp';
+  // BUILD 94 tug-of-war: same winOddsPct + same evaluationAfter as the ODDS bullet, so
+  // the bar and the ODDS line can never disagree. 50/50 until the first graded move.
+  const tugPct = winOddsPct(coachPrompt?.kind === 'move' ? coachPrompt.evaluationAfter : null, viewerSeat) ?? 50;
+  const gradeEmoji = coachPrompt?.kind === 'move' ? GRADE_EMOJI[(coachPrompt.classification || '').toUpperCase()] || '♟️' : null;
   const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined;
   const moodEmoji = material.lead > 0 ? '🦄' : material.lead < 0 ? '🐴💦' : '🐴';
   const verdictKey = coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}-${isThinking ? 'think' : 'say'}` : `idle-${moodEmoji}`;
@@ -377,7 +371,7 @@ function PlayChesterGame() {
         <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} streak={streak} />
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
       {clockBar}
       {flagBanner}
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
@@ -385,11 +379,10 @@ function PlayChesterGame() {
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
       <div className="chester-bottom">
-        <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       <div className="chester-stack">
       <div className="chester-console" style={verdictStyle}>
         <div className="chester-console__grade">
-          <div className="chester-console__badge" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
+          <div className={`chester-console__badge ${gradeEmoji ? 'chester-console__badge--grade' : ''}`} key={verdictKey} aria-hidden="true">{gradeEmoji || verdictEmoji}</div>
           <div className="chester-console__verdict">
             <span>{isThinking ? 'READING THE BOARD…' : coachPrompt ? `LAST MOVE · ${coachPrompt.movePhrase || coachPrompt.move}` : lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</span>
             <b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i> : lesson.title}</b>

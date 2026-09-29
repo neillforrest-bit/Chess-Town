@@ -690,14 +690,19 @@ function shortReaction(label: string, seed: number): string {
 
 // Lichess-style win odds from a centipawn score (side-to-move relative after the move,
 // which is always Chester - so negate for the player, who is white in Play Chester).
-function winOdds(evaluationAfter: number | null | undefined, opponentName?: string | null, viewerColor?: 'w' | 'b' | null): string | null {
+// BUILD 94: the numeric core is exported so the tug-of-war bar and the ODDS line can
+// never disagree - both read this exact percentage from the same evaluationAfter.
+export function winOddsPct(evaluationAfter: number | null | undefined, viewerColor?: 'w' | 'b' | null): number | null {
   if (evaluationAfter === null || evaluationAfter === undefined) return null;
-  const opp = opponentName || 'Chester';
-  // evaluationAfter is white-absolute centipawns (normalised in stockfish.ts); flip for
-  // a black-seat viewer (duel mode). Single-player is always the white seat.
   const playerCp = (viewerColor || 'w') === 'w' ? evaluationAfter : -evaluationAfter;
   const w = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * playerCp)) - 1);
-  const p = Math.max(1, Math.min(99, Math.round(w)));
+  return Math.max(1, Math.min(99, Math.round(w)));
+}
+
+function winOdds(evaluationAfter: number | null | undefined, opponentName?: string | null, viewerColor?: 'w' | 'b' | null): string | null {
+  const p = winOddsPct(evaluationAfter, viewerColor);
+  if (p === null) return null;
+  const opp = opponentName || 'Chester';
   const tag = p >= 70 ? 'you are winning' : p >= 56 ? 'you are ahead' : p >= 45 ? 'dead even' : p >= 30 ? `${opp} is ahead` : `${opp} is winning`;
   return `you ${p}% · ${opp} ${100 - p}% - ${tag}.`;
 }
