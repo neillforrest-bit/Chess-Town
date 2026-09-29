@@ -2439,3 +2439,12 @@ vercel-live-feedback { display: none !important; }
 .chester-oddsline { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: .45rem; width: 100cqw; padding: .14rem .5rem .3rem; }
 .chester-oddsline b { color: #c084fc; font: 900 .56rem/1 Arial, sans-serif; letter-spacing: 1.6px; text-shadow: 0 0 10px rgba(192,132,252,.5); }
 .chester-oddsline span { color: #d5e4e6; font: 700 .66rem/1.1 Arial, sans-serif; letter-spacing: .2px; }
+
+/* ── BUILD 96 · console scroll fix (his iPhone clipped RISK off the bottom) ──
+   .chester-bottom overflowed with oy=visible, so RISK spilled past the viewport
+   and no scroll region could reach it. Make the bottom console itself the
+   scroll region (thin bar, only appears when content exceeds the space). */
+.chester-bottom { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent; overscroll-behavior: contain; }
+.chester-bottom::-webkit-scrollbar { width: 5px; }
+.chester-bottom::-webkit-scrollbar-track { background: transparent; }
+.chester-bottom::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 3px; }
