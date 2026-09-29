@@ -2617,3 +2617,13 @@ vercel-live-feedback { display: none !important; }
 .chester-why-button--ghost:active { transform: scale(.94); }
 @keyframes whyGhostPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(209,213,219,.0); opacity: 1; } 50% { box-shadow: 0 0 8px 1px rgba(209,213,219,.35); opacity: .82; } }
 .chester-teleprompter__prose { font-size: 13px; line-height: 1.35; }
+
+/* ── BUILD 115 · his 7:30 steering: bottom of the commentary text box was slightly
+   cut off on his phone. Root cause: stacked legacy min-height floors (148px at
+   <=860px) let the teleprompter overflow the bottom stack at shorter real-world
+   heights (Safari chrome), and overflow:hidden clips the box bottom. On short
+   mobile screens the box now shrinks to fit (its body already scrolls inside);
+   the 148/190px floors stay for tall screens where the room is real. */
+@media (max-width: 860px) and (max-height: 700px) {
+  .chester-teleprompter { min-height: 0; flex: 0 1 auto; }
+}
