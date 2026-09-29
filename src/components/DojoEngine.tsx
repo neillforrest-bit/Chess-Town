@@ -11,7 +11,7 @@ import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
 
 import { getPieceSpriteDataUrl } from '@/lib/piece-sprites';
-import { playSfx } from '@/lib/sounds';
+import { playSfx , buzz } from '@/lib/sounds';
 
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
@@ -702,7 +702,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               case 'GOOD': return 0xbbf7d0;
               case 'INACCURACY': return 0xfbbf24;
               case 'MISTAKE': return 0xf97316;
-              case 'BLUNDER': return 0xef4444;
+              case 'BLUNDER': return 0xfb7185;
               default: return null;
             }
           };
@@ -754,13 +754,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 (gameRef.current as any).lastArmyFlash = flashKey;
                 flashArmyTint(move.color, armyTintFor(quality.label));
                 playSfx(quality.label === 'BRILLIANT' ? 'brilliant' : quality.label === 'BEST' || quality.label === 'GREAT' || quality.label === 'GOOD' ? 'good' : quality.label === 'INACCURACY' ? 'shaky' : 'bad');
+                buzz(quality.label === 'BRILLIANT' || quality.label === 'BEST' || quality.label === 'GREAT' || quality.label === 'GOOD' ? 18 : [26, 40, 26]);
               }
             }
             playSfx(move.captured ? 'capture' : 'move');
+            if (move.captured) buzz(22);
             if (move.san.includes('#')) playSfx('win');
             else if (move.san.includes('+')) playSfx('check');
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
-            gameRef.current.lastMove = { ...gameRef.current.lastMove, grade };
+            gameRef.current.lastMove = { ...gameRef.current.lastMove, grade, color: move.color };
             const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
             if (!isAiMover) window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
@@ -1105,7 +1107,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             legalTargetMarkers = gameRef.current.legalTargets.map((target: string) => {
               const col = files.indexOf(target[0]);
               const row = ranks.indexOf(target[1]);
-              return scene.add.circle(boardOffset + sx(col) * tileSize + tileSize / 2, boardOffset + sy(row) * tileSize + tileSize / 2, 14, 0x39ff14, 0.8);
+              return scene.add.circle(boardOffset + sx(col) * tileSize + tileSize / 2, boardOffset + sy(row) * tileSize + tileSize / 2, 12, 0x22d3ee, 0.75);
             });
           };
 
@@ -1116,16 +1118,37 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             return pieceColor === 'w';
           };
 
+          const clearSelectLift = () => {
+            const lift = (gameRef.current as any).selectLift;
+            if (!lift) return;
+            (gameRef.current as any).selectLift = null;
+            try { lift.container.setScale(1); } catch { /* recreated by a redraw */ }
+            try { lift.glow.destroy(); } catch { /* gone */ }
+          };
+          const applySelectLift = (squareName: string) => {
+            clearSelectLift();
+            const container = pieceContainers[squareName];
+            if (!container) return;
+            try {
+              const glow = scene.add.circle(0, 0, tileSize * 0.52, 0x22d3ee, 0.22);
+              container.addAt(glow, 0);
+              container.setScale(1.06);
+              scene.tweens.add({ targets: glow, alpha: 0.38, duration: 520, ease: 'Sine.InOut', yoyo: true, repeat: -1 });
+              (gameRef.current as any).selectLift = { container, glow };
+            } catch { /* the lift is decoration */ }
+          };
           const selectSquare = (squareName: string, pieceColor: string) => {
             playSfx('select');
             if (!canControlPiece(pieceColor)) return false;
             gameRef.current.selectedSquare = squareName;
             gameRef.current.legalTargets = gameRef.current.chess.moves({ square: squareName, verbose: true }).map((move: any) => move.to);
             showLegalTargets();
+            applySelectLift(squareName);
             return true;
           };
 
           renderBoard = () => {
+            (gameRef.current as any).selectLift = null;
             updateSpotlights();
             graphics.clear();
             // Wipe every mark from the previous redraw (arrows, rings, spotlights) so
@@ -1167,19 +1190,30 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   tileSize
                 );
                 if (isMoveSpotlight) {
+                  // Batch 91 "arcade precision": no neon bounding boxes or fiery halos.
+                  // Origin gets a faint cyan whisper; the landing square gets glowing
+                  // corner brackets with a soft inner pulse - placement confirmed,
+                  // anxiety gone.
                   const isDestination = squareName === gameRef.current.lastMove.to;
-                  const gradeColor = getGradeColor(gameRef.current.lastMove.grade);
-                  const spotlight = scene.add.circle(
-                    boardOffset + sx(col) * tileSize + tileSize / 2,
-                    boardOffset + sy(row) * tileSize + tileSize / 2,
-                    tileSize * 0.55,
-                    gradeColor,
-                    isDestination ? 0.38 : 0.1
-                  ).setBlendMode(Phaser.BlendModes.ADD).setDepth(1);
-                  (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(spotlight);
-                  scene.tweens.add({ targets: spotlight, alpha: isDestination ? 0.14 : 0.04, scale: 1.18, duration: 620, ease: 'Sine.InOut', yoyo: true, repeat: 1, onComplete: () => { try { spotlight.destroy(); } catch { /* wiped by redraw */ } } });
-                  graphics.lineStyle(isDestination ? 3 : 1, gradeColor, isDestination ? 0.9 : 0.22);
-                  graphics.strokeRect(boardOffset + sx(col) * tileSize + 4, boardOffset + sy(row) * tileSize + 4, tileSize - 8, tileSize - 8);
+                  const cx = boardOffset + sx(col) * tileSize;
+                  const cy = boardOffset + sy(row) * tileSize;
+                  if (isDestination) {
+                    const pulse = scene.add.circle(cx + tileSize / 2, cy + tileSize / 2, tileSize * 0.42, 0x22d3ee, 0.12).setDepth(1);
+                    (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(pulse);
+                    scene.tweens.add({ targets: pulse, alpha: 0.3, scale: 0.86, duration: 640, ease: 'Sine.InOut', yoyo: true, repeat: 1, onComplete: () => { try { pulse.destroy(); } catch { /* wiped by redraw */ } } });
+                    const brackets = scene.add.graphics().setDepth(2);
+                    const inset = 5, arm = 16;
+                    brackets.lineStyle(3, 0x22d3ee, 0.95);
+                    [[cx + inset, cy + inset, 1, 1], [cx + tileSize - inset, cy + inset, -1, 1], [cx + inset, cy + tileSize - inset, 1, -1], [cx + tileSize - inset, cy + tileSize - inset, -1, -1]].forEach(([bx, by, dx, dy]) => {
+                      brackets.lineBetween(bx, by, bx + arm * dx, by);
+                      brackets.lineBetween(bx, by, bx, by + arm * dy);
+                    });
+                    (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(brackets);
+                    scene.tweens.add({ targets: brackets, alpha: 0.45, duration: 1500, ease: 'Sine.InOut' });
+                  } else {
+                    const whisper = scene.add.circle(cx + tileSize / 2, cy + tileSize / 2, tileSize * 0.4, 0x22d3ee, 0.07).setDepth(1);
+                    (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(whisper);
+                  }
                 }
 
                 const zone = scene.add.zone(
@@ -1208,29 +1242,38 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const y1 = boardOffset + sy(fromRow) * tileSize + tileSize / 2;
               const x2 = boardOffset + sx(toCol) * tileSize + tileSize / 2;
               const y2 = boardOffset + sy(toRow) * tileSize + tileSize / 2;
+              // Batch 91: thin neon vector that fades out cleanly + soft corner
+              // brackets on the landing square (was a heavy laser + pulsing ring).
               const arrow = scene.add.graphics().setDepth(16);
-              arrow.lineStyle(7, color, 0.28);
+              arrow.lineStyle(5, color, 0.16);
               arrow.strokeLineShape(new Phaser.Geom.Line(x1, y1, x2, y2));
-              arrow.lineStyle(3.5, color, 0.95);
+              arrow.lineStyle(2.5, color, 0.9);
               arrow.strokeLineShape(new Phaser.Geom.Line(x1, y1, x2, y2));
               const angle = Phaser.Math.Angle.Between(x1, y1, x2, y2);
-              const headLength = 15;
-              arrow.fillStyle(color, 0.95);
+              const headLength = 12;
+              arrow.fillStyle(color, 0.9);
               arrow.fillTriangle(
                 x2, y2,
                 x2 - headLength * Math.cos(angle - 0.45), y2 - headLength * Math.sin(angle - 0.45),
                 x2 - headLength * Math.cos(angle + 0.45), y2 - headLength * Math.sin(angle + 0.45)
               );
-              const ring = scene.add.circle(x2, y2, tileSize * 0.46, color, 0).setStrokeStyle(3, color, 0.55).setDepth(15);
+              const inset = 5, arm = 15;
+              const bx = x2 - tileSize / 2, by = y2 - tileSize / 2;
+              const ring = scene.add.graphics().setDepth(15);
+              ring.lineStyle(2.5, color, 0.75);
+              [[bx + inset, by + inset, 1, 1], [bx + tileSize - inset, by + inset, -1, 1], [bx + inset, by + tileSize - inset, 1, -1], [bx + tileSize - inset, by + tileSize - inset, -1, -1]].forEach(([cx0, cy0, dx, dy]) => {
+                ring.lineBetween(cx0, cy0, cx0 + arm * dx, cy0);
+                ring.lineBetween(cx0, cy0, cx0, cy0 + arm * dy);
+              });
               (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(arrow, ring);
-              scene.tweens.add({ targets: ring, alpha: 0.25, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+              scene.tweens.add({ targets: [arrow, ring], alpha: 0.35, duration: 2400, ease: 'Sine.InOut' });
             };
             // Arrow discipline: lines appear ONLY for (a) a lesson/hint suggestion,
             // (b) the move just made, (c) a tapped piece's options (the green dots above).
             // One of each, always replaced - never a spiderweb.
             if (!gameRef.current.isGameOver) {
               if (gameRef.current.lastMove) {
-                drawCoachArrow(gameRef.current.lastMove.from, gameRef.current.lastMove.to, getGradeColor(gameRef.current.lastMove.grade));
+                drawCoachArrow(gameRef.current.lastMove.from, gameRef.current.lastMove.to, gameRef.current.lastMove.color === 'b' && mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && mode !== '2V2' ? 0xffd84d : 0x22d3ee);
                 // Fun trail: a spark rides the path of the move that was just made (both sides).
                 if (gameRef.current.trailPly !== gameRef.current.ply) {
                   gameRef.current.trailPly = gameRef.current.ply;
@@ -1240,7 +1283,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const tCol = files.indexOf(gameRef.current.lastMove.to[0]);
                   const tRow = ranks.indexOf(gameRef.current.lastMove.to[1]);
                   if (fCol >= 0 && fRow >= 0 && tCol >= 0 && tRow >= 0) {
-                    const spark = scene.add.circle(boardOffset + sx(fCol) * tileSize + tileSize / 2, boardOffset + sy(fRow) * tileSize + tileSize / 2, tileSize * 0.16, getGradeColor(gameRef.current.lastMove?.grade), 0.95).setDepth(30);
+                    const spark = scene.add.circle(boardOffset + sx(fCol) * tileSize + tileSize / 2, boardOffset + sy(fRow) * tileSize + tileSize / 2, tileSize * 0.16, 0x22d3ee, 0.95).setDepth(30);
                     scene.tweens.add({ targets: spark, x: boardOffset + sx(tCol) * tileSize + tileSize / 2, y: boardOffset + sy(tRow) * tileSize + tileSize / 2, duration: 420, ease: 'Cubic.Out', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
                   }
                 }
@@ -1264,7 +1307,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   // Highlight last move
                   if (!isInvisible && !isLastMoveInvisible && gameRef.current.lastMove && (squareName === gameRef.current.lastMove.from || squareName === gameRef.current.lastMove.to)) {
                     const isDestination = squareName === gameRef.current.lastMove.to;
-                    const highlight = scene.add.circle(0, 0, tileSize * 0.45, getGradeColor(gameRef.current.lastMove.grade), isDestination ? 0.4 : 0.08);
+                    const highlight = scene.add.circle(0, 0, tileSize * 0.45, 0x22d3ee, isDestination ? 0.14 : 0.05);
                     container.add(highlight);
                   }
 
@@ -1285,7 +1328,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   }
 
                   if (!isInvisible && isMovedPiece) {
-                    const spotlight = scene.add.circle(0, 0, tileSize * 0.52, getGradeColor(gameRef.current.lastMove?.grade), 0.28);
+                    const spotlight = scene.add.circle(0, 0, tileSize * 0.52, 0x22d3ee, 0.14);
                     container.addAt(spotlight, 0);
                     const glide = gameRef.current.glideMove && gameRef.current.glideMove.to === squareName ? gameRef.current.glideMove : null;
                     if (glide) {

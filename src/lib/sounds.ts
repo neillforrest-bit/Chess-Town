@@ -116,3 +116,16 @@ export function playSfx(name: SfxName) {
     }
   } catch { /* sound is decoration - never break the game for it */ }
 }
+
+// Batch 91: haptics (drawer-toggleable). iOS Safari ignores navigator.vibrate - no-op there.
+const HAPTICS_KEY = 'chess-town-haptics';
+export function isHaptics(): boolean {
+  try { return localStorage.getItem(HAPTICS_KEY) !== '0'; } catch { return true; }
+}
+export function setHaptics(on: boolean) {
+  try { localStorage.setItem(HAPTICS_KEY, on ? '1' : '0'); } catch { /* private mode */ }
+}
+export function buzz(pattern: number | number[]) {
+  if (!isHaptics()) return;
+  try { (navigator as unknown as { vibrate?: (p: number | number[]) => boolean }).vibrate?.(pattern); } catch { /* unsupported */ }
+}

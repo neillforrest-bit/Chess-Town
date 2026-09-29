@@ -2318,3 +2318,90 @@ vercel-live-feedback { display: none !important; }
 .hero-score__event img { width: 26px; height: 26px; filter: drop-shadow(0 0 5px rgba(255,216,77,.55)); }
 .hero-score__box.is-leading { animation: leadingGlow 2.6s ease-in-out infinite; }
 @keyframes leadingGlow { 0%, 100% { box-shadow: 0 0 10px rgba(255,216,77,.12); } 50% { box-shadow: 0 0 22px rgba(255,216,77,.4); } }
+
+/* ===== Batch 91 (BUILD 91 - his Principal UX brief): calm arcade HUD. Chunky top
+   buttons -> hamburger + match status bar; drawer owns nav/resign/audio/haptics;
+   two-tier coaching console (live grade + lifelines / live transmission). ===== */
+.chester-hud { grid-column: 1/-1; display: flex; align-items: center; gap: .55rem; min-height: 46px; }
+.chester-menu-btn { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 44px; padding: .3rem .8rem; border: 2px solid rgba(255,216,77,.75); border-radius: 12px; background: linear-gradient(180deg, rgba(255,216,77,.16), rgba(255,216,77,.05)); color: #ffd84d; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.4), 0 0 14px rgba(255,216,77,.22); }
+.chester-menu-btn b { font: 900 .92rem Arial, sans-serif; letter-spacing: 1.2px; }
+.chester-menu-btn__pill { padding: 1px 8px; border-radius: 999px; background: linear-gradient(180deg, #ffd84d, #e2ac1f); color: #241a02; font: 900 .5rem/1.4 Arial, sans-serif; letter-spacing: 1.6px; }
+.chester-menu-btn:active { transform: scale(.95); }
+.chester-matchbar { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: .45rem; }
+.chester-matchbar__badge { padding: .34rem .7rem; border: 1.5px solid rgba(34,211,238,.55); border-radius: 999px; color: #b5f3ff; background: rgba(34,211,238,.1); font: 900 .68rem Arial, sans-serif; letter-spacing: 1.2px; white-space: nowrap; }
+.chester-matchbar__turn { padding: .34rem .7rem; border-radius: 999px; border: 1.5px solid rgba(255,216,77,.5); color: #ffd84d; background: rgba(255,216,77,.08); font: 900 .68rem Arial, sans-serif; letter-spacing: 1px; white-space: nowrap; }
+.chester-matchbar__turn.is-thinking { border-color: rgba(34,211,238,.5); color: #22d3ee; }
+.chester-matchbar__score { padding: .34rem .6rem; border-radius: 999px; border: 1.5px solid #42555a; color: #e8f2f4; background: rgba(7,16,18,.9); font: 900 .72rem Arial, sans-serif; font-variant-numeric: tabular-nums; animation: badgePop .5s cubic-bezier(.2,1.5,.35,1); }
+.chester-matchbar__score.is-ahead { border-color: rgba(74,222,128,.65); color: #86efac; }
+.chester-matchbar__score.is-behind { border-color: rgba(251,113,133,.6); color: #fb7185; }
+@media (max-width: 420px) {
+  .chester-matchbar__badge { font-size: .6rem; padding: .3rem .5rem; }
+  .chester-matchbar__turn { font-size: .6rem; padding: .3rem .5rem; }
+  .chester-menu-btn { padding: .3rem .6rem; }
+}
+
+/* Navigation drawer (slide-over) */
+.chester-drawer-wrap { position: fixed; inset: 0; z-index: 95; }
+.chester-drawer-wrap__backdrop { position: absolute; inset: 0; background: rgba(2,6,8,.72); animation: drawerFade .25s ease both; }
+.chester-drawer { position: absolute; top: 0; left: 0; bottom: 0; width: min(84vw, 330px); display: flex; flex-direction: column; gap: .7rem; padding: max(.9rem, env(safe-area-inset-top)) .9rem max(.9rem, env(safe-area-inset-bottom)); box-sizing: border-box; background: linear-gradient(180deg, #0a1418, #050a0c); border-right: 2px solid rgba(255,216,77,.4); box-shadow: 12px 0 40px rgba(0,0,0,.6); overflow-y: auto; animation: drawerSlide .28s cubic-bezier(.2,1,.3,1) both; }
+@keyframes drawerSlide { from { transform: translateX(-102%); } to { transform: translateX(0); } }
+@keyframes drawerFade { from { opacity: 0; } to { opacity: 1; } }
+.chester-drawer header { display: flex; align-items: center; justify-content: space-between; }
+.chester-drawer header > b { font: 900 .95rem Georgia, serif; color: #ffd84d; letter-spacing: 1.5px; }
+.chester-drawer header button { border: none; background: none; color: #9cb0b5; font-size: 1.5rem; line-height: 1; cursor: pointer; }
+.chester-drawer__tier { border: 1.5px solid rgba(34,211,238,.3); border-radius: 12px; padding: .6rem .7rem; background: rgba(34,211,238,.05); }
+.chester-drawer__tier > span { color: #22d3ee; font: 900 .58rem Arial, sans-serif; letter-spacing: 2px; }
+.chester-drawer__tier ul { list-style: none; margin: .45rem 0 0; padding: 0; display: grid; gap: 6px; }
+.chester-drawer__tier li { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.chester-drawer__tier li b { color: #e8f2f4; font: 900 .8rem Arial, sans-serif; letter-spacing: .6px; }
+.chester-drawer__tier li small { color: #9cb0b5; font-size: .66rem; }
+.chester-drawer__tier li.is-current b { color: #ffd84d; }
+.chester-drawer__tier li.is-locked { opacity: .5; }
+.chester-drawer__toggles { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.chester-drawer__toggles button { display: grid; gap: 3px; justify-items: start; min-height: 52px; padding: .5rem .65rem; border: 1.5px solid rgba(34,211,238,.4); border-radius: 12px; background: rgba(34,211,238,.07); color: #e8f2f4; cursor: pointer; text-align: left; }
+.chester-drawer__toggles button b { font: 900 .72rem Arial, sans-serif; letter-spacing: .4px; }
+.chester-drawer__toggles button small { color: #9cb0b5; font-size: .6rem; }
+.chester-drawer__actions { display: grid; gap: .5rem; margin-top: auto; }
+.chester-drawer__actions button, .chester-drawer__link { display: grid; gap: 3px; justify-items: start; padding: .6rem .7rem; border: 1.5px solid #42555a; border-radius: 12px; background: rgba(7,16,18,.9); color: #e8f2f4; cursor: pointer; text-decoration: none; text-align: left; width: 100%; box-sizing: border-box; }
+.chester-drawer__actions button b, .chester-drawer__link b { font: 900 .8rem Arial, sans-serif; letter-spacing: .8px; }
+.chester-drawer__actions button small, .chester-drawer__link small { color: #9cb0b5; font-size: .62rem; font-weight: 400; }
+.chester-drawer__actions button.is-confirm { border-color: #fb7185; background: rgba(251,113,133,.12); }
+.chester-drawer__actions button.is-confirm b { color: #fb7185; }
+
+/* Tier A: live grade + lifeline pills (50/50) */
+.chester-console { box-sizing: border-box; width: 100%; flex: 0 0 auto; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: stretch; gap: .5rem; padding: .4rem .5rem; border: 1.5px solid var(--verdict-color, rgba(255,216,77,.55)); border-radius: 14px; background: linear-gradient(180deg, rgba(16,23,30,.97), rgba(7,10,14,.95)); box-shadow: 0 8px 26px rgba(0,0,0,.5), 0 0 26px rgba(34,211,238,.12), inset 0 1px 0 rgba(255,255,255,.07); }
+.chester-console__grade { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+.chester-console__badge { flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center; border: 1.5px solid var(--verdict-color, #ffd84d); border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255,216,77,.25), #0b0508 72%); font-size: 1.5rem; animation: townFloat 5s ease-in-out infinite; }
+.chester-console__verdict { min-width: 0; }
+.chester-console__verdict > span { display: block; color: var(--arena-pink, #f43f7a); font-size: .52rem; font-weight: 900; letter-spacing: 2px; }
+.chester-console__verdict > b { display: block; margin-top: 1px; color: #f4f7ff; font: 900 .95rem/1.15 Georgia, serif; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chester-console__verdict b .chester-verdict { font-style: italic; color: var(--verdict-color, #ffd84d); text-shadow: 0 0 12px var(--verdict-color, rgba(255,216,77,.6)); }
+.chester-console__lifelines { display: flex; gap: .45rem; align-items: stretch; }
+.chester-console__pill { display: grid; gap: 1px; place-items: center; align-content: center; min-width: 74px; padding: .35rem .6rem; border-radius: 12px; border: 2px solid; cursor: pointer; }
+.chester-console__pill b { font: 900 .85rem/1 Arial, sans-serif; letter-spacing: .5px; }
+.chester-console__pill small { font: 900 .52rem Arial, sans-serif; letter-spacing: 1px; opacity: .85; }
+.chester-console__pill--hint { background: linear-gradient(180deg, #ffd84d, #e2ac1f); border-color: #fff0b3; color: #241a02; box-shadow: 0 0 14px rgba(255,216,77,.4); }
+.chester-console__pill--hint:disabled { opacity: .5; }
+.chester-console__pill--chat { background: linear-gradient(180deg, #22d3ee, #0e9db8); border-color: #b5f3ff; color: #03262e; box-shadow: 0 0 14px rgba(34,211,238,.4); }
+.chester-console__pill:active { transform: scale(.94); }
+@media (max-width: 420px) {
+  .chester-console__pill { min-width: 64px; padding: .3rem .45rem; }
+  .chester-console__pill b { font-size: .78rem; }
+  .chester-console__badge { width: 38px; height: 38px; font-size: 1.3rem; }
+  .chester-console__verdict > b { font-size: .85rem; }
+}
+
+/* Tier B: Chester teleprompter (persistent live transmission) */
+.chester-teleprompter { box-sizing: border-box; width: 100%; flex: 1 1 auto; min-height: 84px; display: flex; flex-direction: column; border: 1.5px solid rgba(34,211,238,.32); border-radius: 14px; background: linear-gradient(180deg, rgba(10,16,20,.97), rgba(5,8,10,.95)); box-shadow: 0 8px 26px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); overflow: hidden; }
+.chester-teleprompter__head { flex: 0 0 auto; display: flex; align-items: center; gap: .45rem; padding: .32rem .6rem .25rem; border-bottom: 1px solid rgba(34,211,238,.18); }
+.chester-teleprompter__beacon { width: 8px; height: 8px; border-radius: 50%; background: #39ff14; box-shadow: 0 0 8px #39ff14; animation: beaconPulse 1.8s ease-in-out infinite; }
+@keyframes beaconPulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.chester-teleprompter__head > span { color: #39ff14; font: 900 .56rem Arial, sans-serif; letter-spacing: 2.2px; }
+.chester-teleprompter__head .chester-why-button { margin-left: auto; padding: .15rem .55rem !important; font-size: .72rem !important; }
+.chester-teleprompter__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: .35rem .6rem .45rem; -webkit-overflow-scrolling: touch; }
+.chester-teleprompter__prose { margin: 0 0 .15rem; color: #d5e4e6; font-size: .82rem; line-height: 1.35; animation: teleFade .5s ease both; }
+@keyframes teleFade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.chester-teleprompter .chester-coach-bullets p { font-size: .82rem; line-height: 1.28; }
+
+/* coach mark arrow pointed at the old top HINT button - the lifelines live below now */
+.hero-tip::before { display: none; }

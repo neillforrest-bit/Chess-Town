@@ -10,7 +10,7 @@ import { MaterialJailBar, CaptureStrip, HeroScoreboard, splitMaterial, type Capt
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets } from '@/lib/chester-voice';
-import { isMuted, setMuted, playSfx } from '@/lib/sounds';
+import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly } from '@/lib/move-words';
@@ -52,6 +52,11 @@ function PlayChesterGame() {
   const [isThinking, setIsThinking] = useState(false);
   const [coachPrompt, setCoachPrompt] = useState<CoachPrompt | null>(null);
   const [muted, setMutedState] = useState(false);
+  const [haptics, setHapticsState] = useState(true);
+  const [resignArmed, setResignArmed] = useState(false);
+  const teleRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setHapticsState(isHaptics()); }, []);
+  useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = el.scrollHeight; });
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
   const [helpRemaining, setHelpRemaining] = useState(3);
@@ -342,17 +347,14 @@ function PlayChesterGame() {
   const coachBullets = coachMovePrompt ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
   return <main className="chester-game" aria-label="Play Chester guided game">
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
-    <header className="chester-game__top"><div><span>{modeKicker}</span><b>{modeTitle}</b></div><div className="chester-game__progress"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</small><i style={{ width: `${((lessonStep + 1) / 3) * 100}%` }} /></div><button onClick={() => setStarted(false)}>LEVELS</button><span className="chester-level-badge">{isFriendMode ? modeTitle : selectedLevel.label}</span><div className="chester-score-actions">
-        <button type="button" className="chester-icon-btn" onClick={() => { if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}>?<small>{helpRemaining}</small></button>
-        <button type="button" className="chester-icon-btn" onClick={() => setChatOpen(true)} aria-label="Chat with Chester">💬</button>
-        <button type="button" className="chester-icon-btn" onClick={() => setMenuOpen(true)} aria-label="More game options">…</button>
+    <header className="chester-hud">
+      <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b><span className="chester-menu-btn__pill">MATCH</span></button>
+      <div className="chester-matchbar">
+        <span className="chester-matchbar__badge">{isFriendMode ? modeTitle : selectedLevel.label}</span>
+        <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
+        <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
       </div>
-      <div className="chester-top-buttons">
-        <button type="button" onClick={() => setStarted(false)} aria-label="Change level"><small>{lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'LEVEL'}</small><b>{isFriendMode ? modeTitle : selectedLevel.label}</b></button>
-        <button type="button" className="chester-top-buttons__hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><small>{helpRemaining} LEFT</small><b>? HINT</b></button>
-        <button type="button" className="chester-top-buttons__chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><small>TALK TO</small><b>💬 CHESTER</b></button>
-        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Back to home"><small>BACK TO</small><b>🏠 HOME</b></button>
-      </div></header>
+    </header>
     <section className="chester-game__board">
       {heroTipOpen && <div className="hero-tip" role="status">
         <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
@@ -361,31 +363,44 @@ function PlayChesterGame() {
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       {clockBar}
       {flagBanner}
-      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><button type="button" className="chester-mute-btn" aria-label={muted ? 'Unmute sounds' : 'Mute sounds'} onClick={(e) => { e.stopPropagation(); const next = !muted; setMuted(next); setMutedState(next); if (!next) playSfx('select'); }}>{muted ? '🔇' : '🔊'}</button><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
       <div className="chester-bottom">
         <MaterialJailBar capturedPieces={capturedPieces} playerColor="w" youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
       <div className="chester-stack">
-      <div className={`chester-live-line ${coachPrompt ? 'is-reviewing' : ''}`} aria-live="polite" style={verdictStyle}>
-        <div className="chester-live-line__avatar" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
-        <div className="chester-live-line__main">
-        <div className="chester-live-line__head"><span>{verdictKicker}</span><b>{verdictTitle}</b></div>
-        {!(coachBullets && coachMovePrompt) && <p>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>}
+      <div className="chester-console" style={verdictStyle}>
+        <div className="chester-console__grade">
+          <div className="chester-console__badge" key={verdictKey} aria-hidden="true">{verdictEmoji}</div>
+          <div className="chester-console__verdict">
+            <span>{isThinking ? 'READING THE BOARD…' : coachPrompt ? 'LAST MOVE' : lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</span>
+            <b>{verdictTitle}</b>
+          </div>
         </div>
-        {coachBullets && <button type="button" className="chester-why-button chester-why-button--hero" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}
+        <div className="chester-console__lifelines">
+          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT</b><small>{helpRemaining} LEFT</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b>💬 CHAT</b><small>CHESTER</small></button>
+        </div>
       </div>
-      {coachBullets && <div className="chester-detail-line">
-        <div className="chester-detail-line__scroll"><div className="chester-coach-bullets">
-          {coachBullets.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</p> : null}
-          <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
-          <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>
-        </div></div>
-      </div>}
+      <div className="chester-teleprompter">
+        <div className="chester-teleprompter__head">
+          <i className="chester-teleprompter__beacon" aria-hidden="true" />
+          <span>CHESTER LIVE TRANSMISSION</span>
+          {coachBullets && <button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}
+        </div>
+        <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
+          <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>
+          {coachBullets && <div className="chester-coach-bullets">
+            {coachBullets.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</p> : null}
+            <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
+            <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>
+          </div>}
+        </div>
       </div>
       </div>
-      <div className="chester-game__actions chester-game__actions--desktop"><button onClick={help} disabled={!helpRemaining || isThinking}>💡 HINT <small>{helpRemaining} LEFT</small></button><button onClick={() => setChatOpen(true)}>💬 CHAT</button><button onClick={() => window.dispatchEvent(new CustomEvent('request-resign'))}>🏳 RESIGN</button></div>
+      </div>
+      
     </section>
     <aside className="chester-game__coach chester-game__coach--route">
       <span>TONIGHT’S TRAINING ROUTE</span><h2>LEARN WHILE YOU PLAY</h2><p>Chester’s notes arrive beside the live board. No pop-ups, no dismissing, no break in the game.</p>
@@ -411,17 +426,26 @@ function PlayChesterGame() {
         </div>
       </section>
     </div>}
-    {menuOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Game options">
-      <div className="chess-game-sheet__backdrop" onClick={() => setMenuOpen(false)} />
-      <section className="chess-game-sheet__content chester-menu-sheet">
-        <header><b>BACK TO CHESTERVILLE?</b><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close">×</button></header>
-        <div className="chester-menu-list">
-          <button type="button" onClick={() => setMenuOpen(false)}>▶ KEEP PLAYING<small>Stay at the board</small></button>
-          <button type="button" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('request-resign')); }}>🏳 RESIGN<small>End the match and see your report</small></button>
-          <button type="button" onClick={() => { setMenuOpen(false); setStarted(false); }}>🎓 CHANGE LEVEL<small>Back to the level select</small></button>
-          <Link href="/" className="chester-menu-link" onClick={() => setMenuOpen(false)}>🏠 QUIT TO TOWN<small>Leave the board for Chesterville</small></Link>
+    {menuOpen && <div className="chester-drawer-wrap" role="dialog" aria-modal="true" aria-label="Match menu">
+      <div className="chester-drawer-wrap__backdrop" onClick={() => { setMenuOpen(false); setResignArmed(false); }} />
+      <aside className="chester-drawer">
+        <header><b>☰ MATCH CONTROL</b><button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); }} aria-label="Close">×</button></header>
+        {!isFriendMode && <div className="chester-drawer__tier">
+          <span>YOUR LADDER</span>
+          <ul>{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return <li key={level.value} className={`${level.value === difficulty ? 'is-current' : ''} ${locked ? 'is-locked' : ''}`}><b>{locked ? '🔒 ' : level.value === difficulty ? '▶ ' : ''}{level.label}</b><small>{locked ? `beat ${LEVELS[index - 1].label}` : `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}${rec?.bestGrade ? ` · best ${rec.bestGrade}` : ''}`}</small></li>; })}</ul>
+        </div>}
+        <div className="chester-drawer__toggles">
+          <button type="button" onClick={() => { const next = !muted; setMuted(next); setMutedState(next); if (!next) playSfx('select'); }}><b>{muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'}</b><small>tap to {muted ? 'unmute' : 'mute'}</small></button>
+          <button type="button" onClick={() => { const next = !haptics; setHaptics(next); setHapticsState(next); if (next) buzz(18); }}><b>{haptics ? '📳 HAPTICS: ON' : '📴 HAPTICS: OFF'}</b><small>tap to {haptics ? 'disable' : 'enable'}</small></button>
         </div>
-      </section>
+        <div className="chester-drawer__actions">
+          {resignArmed
+            ? <button type="button" className="is-confirm" onClick={() => { setMenuOpen(false); setResignArmed(false); window.dispatchEvent(new CustomEvent('request-resign')); }}><b>⚠ CONFIRM RESIGN?</b><small>ends the match, shows your report</small></button>
+            : <button type="button" onClick={() => setResignArmed(true)}><b>🏳 RESIGN MATCH</b><small>asks again before it fires</small></button>}
+          {!isFriendMode && <button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); setStarted(false); }}><b>🎓 CHANGE LEVEL</b><small>back to the level select</small></button>}
+          <Link href="/" className="chester-drawer__link" onClick={() => setMenuOpen(false)}><b>🏠 BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
+        </div>
+      </aside>
     </div>}
     {whyOpen && coachPrompt && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Why this verdict">
       <div className="chess-game-sheet__backdrop" onClick={() => setWhyOpen(false)} />
