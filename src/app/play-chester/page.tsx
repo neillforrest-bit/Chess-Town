@@ -425,7 +425,7 @@ function PlayChesterGame() {
           <div className={`chester-console__badge ${gradeEmoji ? 'chester-console__badge--grade' : ''}`} key={verdictKey} aria-hidden="true">{gradeEmoji || verdictEmoji}</div>
           <div className="chester-console__verdict">
             <span>{isThinking ? 'READING THE BOARD…' : coachPrompt ? `LAST MOVE · ${coachPrompt.movePhrase || coachPrompt.move}` : lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</span>
-            <b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i> : lesson.title}</b>
+            <b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i> : lesson.title}{coachBullets && coachPrompt?.kind === 'move' && <button type="button" className="chester-why-button chester-why-button--ghost" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}</b>
           </div>
         </div>
         <div className="chester-console__lifelines">
@@ -437,17 +437,11 @@ function PlayChesterGame() {
         <div className="chester-teleprompter__head">
           <i className="chester-teleprompter__beacon" aria-hidden="true" />
           <span>CHESTER SAYS</span>
-          {coachBullets && <button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
           {isThinking || calculating
             ? <p className="chester-teleprompter__calculating">CHESTER IS CALCULATING<span className="chester-teleprompter__cursor">▮</span></p>
-            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? (teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : coachBullets.reaction) : coachPrompt ? coachReply : lesson.body}</p>}
-          {coachBullets && <div className="chester-coach-bullets">
-            <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
-            <p><b style={{ color: coachBullets.verdictColor }}>💡 WHY:</b> {coachBullets.why}</p>
-            {!coachBullets.gradeGood && <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>}
-          </div>}
+            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? (teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : [coachBullets.reaction, coachBullets.why, !coachBullets.gradeGood ? coachBullets.risk : null].filter(Boolean).join(' ')) : coachPrompt ? coachReply : lesson.body}</p>}
         </div>
       </div>
       </div>
