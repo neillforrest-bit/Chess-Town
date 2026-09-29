@@ -445,7 +445,8 @@ function PlayChesterGame() {
             : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? (teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : coachBullets.reaction) : coachPrompt ? coachReply : lesson.body}</p>}
           {coachBullets && <div className="chester-coach-bullets">
             <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
-            <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>
+            <p><b style={{ color: coachBullets.verdictColor }}>💡 WHY:</b> {coachBullets.why}</p>
+            {!coachBullets.gradeGood && <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>}
           </div>}
         </div>
       </div>

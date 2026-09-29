@@ -632,6 +632,7 @@ export type CoachBullets = {
   why: string;
   wwcd: string;
   risk: string;
+  gradeGood: boolean;
   patternName: string | null;
 };
 
@@ -770,7 +771,7 @@ export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
     : shortReaction(label, seed);
   const odds = input.mate ? 'you 100% - mate on the board.' : winOdds(input.evaluationAfter, input.opponentName, input.viewerColor);
 
-  return { reaction, odds, verdictWord: verdict.word, verdictColor, why, wwcd, risk, patternName: pattern ? pattern.name : null };
+  return { reaction, odds, verdictWord: verdict.word, verdictColor, why, wwcd, risk, gradeGood: good, patternName: pattern ? pattern.name : null };
 }
 
 export function buildWhyLesson(input: WhyLessonInput): WhyLesson {

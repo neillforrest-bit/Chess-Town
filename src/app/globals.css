@@ -2595,3 +2595,14 @@ vercel-live-feedback { display: none !important; }
   .portrait-lock b { font-size: 1.2rem; letter-spacing: 3px; color: #ffd84d; }
   .portrait-lock span { font-size: .85rem; color: #b6c5c9; max-width: 300px; line-height: 1.5; }
 }
+
+/* ── BUILD 113 · his 6:37 steering: shrink the Chester grade reaction (smaller
+   badge, tighter verdict block) so the commentary box gets more room; every
+   grade now shows a clear WHY one-liner and RISK only appears for real danger. */
+.chester-console__badge--grade { width: 44px; height: 44px; font-size: 2.1rem; }
+.chester-console__grade { gap: .4rem; }
+@media (max-width: 860px) {
+  .chester-console__badge--grade { width: 38px; height: 38px; font-size: 1.8rem; }
+  .chester-console__verdict > span { font-size: .46rem; letter-spacing: 1.5px; }
+  .chester-console__verdict > b { font-size: .82rem; }
+}
