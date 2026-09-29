@@ -2465,3 +2465,18 @@ vercel-live-feedback { display: none !important; }
   .chester-teleprompter__prose { font-size: 1.08rem; }
   .chester-teleprompter .chester-coach-bullets p { font-size: 1.08rem; }
 }
+
+/* ── BUILD 98 · reclaim the teleprompter's first lines after the BUILD 97 growth ──
+   Bigger digits + bigger text cost ~25px of console height; take it back from
+   padding/gaps only (no element shrinks): score row, console gaps, ticker and
+   teleprompter chrome. Result at 402x730: reaction + first WWCD line visible
+   at default; RISK stays one swipe away (BUILD 96 scroll). */
+@media (max-width: 860px) {
+  .hero-score { padding-bottom: 0; }
+  .hero-score__box { padding: 2px 16px 4px; }
+  .chester-bottom { gap: .22rem; }
+  .chester-stack { gap: .22rem; }
+  .chester-oddsline { padding: .05rem .5rem .16rem; }
+  .chester-teleprompter__head { padding: .2rem .6rem .18rem; }
+  .chester-teleprompter__body { padding: .28rem .6rem .3rem; }
+}
