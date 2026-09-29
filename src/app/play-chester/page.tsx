@@ -110,9 +110,31 @@ function PlayChesterGame() {
       if (dead) return;
       const roomId = `chess-town-duel-${requestedRoom}`;
       if (requestedSeat === 'w') {
-        peer = new Peer(roomId, PEER_CONFIG as never) as unknown as DuelPeer;
-        peer!.on('connection', (conn?: unknown) => wireConn(conn as Conn));
-        peer!.on('error', () => { if (!dead) setDuelStatus('failed'); });
+        // Host. A quick refresh (or a double-opened tab) can hit unavailable-id while the
+        // broker still holds the old registration - retry every 3s like the guest's knock
+        // instead of showing a dead CONNECTION DROPPED panel. ~2 minutes of patience.
+        let hostTries = 0;
+        let hostTimer: ReturnType<typeof setTimeout> | null = null;
+        const openRoom = () => {
+          if (dead) return;
+          hostTries += 1;
+          try {
+            peer = new Peer(roomId, PEER_CONFIG as never) as unknown as DuelPeer;
+            peer!.on('connection', (conn?: unknown) => wireConn(conn as Conn));
+            peer!.on('error', (err?: unknown) => {
+              if (dead) return;
+              const t = (err as { type?: string })?.type || '';
+              if (t === 'unavailable-id' && hostTries < 40) {
+                try { peer?.destroy(); } catch {}
+                hostTimer = setTimeout(openRoom, 3000);
+                return;
+              }
+              setDuelStatus('failed');
+            });
+          } catch { if (hostTries < 40) hostTimer = setTimeout(openRoom, 3000); }
+        };
+        openRoom();
+        cleanupRef.push(() => { if (hostTimer) clearTimeout(hostTimer); });
       } else {
         // Guest. The friend often opens the link BEFORE the host opens their room, so a
         // peer-unavailable must retry - that was the real-world failure (one shot, then a
