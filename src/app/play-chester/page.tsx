@@ -395,9 +395,7 @@ function PlayChesterGame() {
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-hud">
       <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b><span className="chester-menu-btn__pill">MATCH</span></button>
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
       <div className="chester-matchbar chester-matchbar--hud">
-        <span className="chester-matchbar__badge">{isFriendMode ? modeTitle : selectedLevel.label}</span>
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
       </div>
@@ -407,21 +405,19 @@ function PlayChesterGame() {
         <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
-      <div className="hero-jail-row" aria-label="Captured pieces">
-        <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
-        <div className="chester-matchbar chester-matchbar--jail" aria-hidden="true">
-          <span className="chester-matchbar__badge">{isFriendMode ? modeTitle : selectedLevel.label}</span>
-          <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
-        </div>
-        <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
-      </div>
       {coachBullets?.odds && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b>📊 ODDS</b><span>{coachBullets.odds}</span></div>}
       {clockBar}
       {flagBanner}
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
+      <div className="hero-jail-row" aria-label="Captured pieces">
+        <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
+        <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
+      </div>
+
       <div className="chester-bottom">
       <div className="chester-stack">
       <div className="chester-console" style={verdictStyle}>
