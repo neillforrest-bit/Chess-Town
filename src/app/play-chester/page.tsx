@@ -372,6 +372,7 @@ function PlayChesterGame() {
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
+      {coachBullets?.odds && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b>📊 ODDS</b><span>{coachBullets.odds}</span></div>}
       {clockBar}
       {flagBanner}
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
@@ -396,15 +397,14 @@ function PlayChesterGame() {
       <div className="chester-teleprompter">
         <div className="chester-teleprompter__head">
           <i className="chester-teleprompter__beacon" aria-hidden="true" />
-          <span>CHESTER LIVE TRANSMISSION</span>
+          <span>CHESTER SAYS</span>
           {coachBullets && <button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
           {isThinking || calculating
             ? <p className="chester-teleprompter__calculating">CHESTER IS CALCULATING<span className="chester-teleprompter__cursor">▮</span></p>
-            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt ? coachReply : lesson.body}</p>}
+            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? coachBullets.reaction : coachPrompt ? coachReply : lesson.body}</p>}
           {coachBullets && <div className="chester-coach-bullets">
-            {coachBullets.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</p> : null}
             <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>
             <p><b style={{ color: '#ff8c00' }}>⚠ RISK:</b> {coachBullets.risk}</p>
           </div>}

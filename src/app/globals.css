@@ -2433,3 +2433,9 @@ vercel-live-feedback { display: none !important; }
 .chester-teleprompter__body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 3px; }
 @media (max-width: 860px) { .chester-teleprompter { min-height: 118px; } }
 @media (min-width: 700px) and (max-width: 860px) { .chester-teleprompter { min-height: 230px; } }
+
+/* BUILD 94b: the ODDS ticker lives directly beneath the tug-of-war bar now, reading the
+   exact same winOddsPct - one slim broadcast line, out of the teleprompter's way. */
+.chester-oddsline { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: .45rem; width: 100cqw; padding: .14rem .5rem .3rem; }
+.chester-oddsline b { color: #c084fc; font: 900 .56rem/1 Arial, sans-serif; letter-spacing: 1.6px; text-shadow: 0 0 10px rgba(192,132,252,.5); }
+.chester-oddsline span { color: #d5e4e6; font: 700 .66rem/1.1 Arial, sans-serif; letter-spacing: .2px; }

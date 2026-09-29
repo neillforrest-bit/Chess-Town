@@ -129,9 +129,9 @@ export function phrasesFromPgn(pgn: string): Map<number, string> {
   return map;
 }
 
-/* WWCD clarity (batch 87, his steering): "the engine preferred knight to the kingside"
-   was too cryptic even for him. This spells the choice out for a new player - the SAN,
-   the piece, the from-to squares, and WHY it helps in plain words. */
+/* WWCD clarity (batch 87) refined (BUILD 95, his steering): no SAN, no square
+   coordinates - piece names and board regions only, phrased like a coach talking
+   ("knight to the kingside: develops the knight toward the action"). */
 export function explainEngineChoice(fenBefore: string, bestMove: string): string | null {
   if (!fenBefore || !bestMove) return null;
   try {
@@ -158,11 +158,23 @@ export function explainEngineChoice(fenBefore: string, bestMove: string): string
     const homeRank = mv.color === 'w' ? '1' : '8';
     if (!purposes.length && (mv.piece === 'n' || mv.piece === 'b') && mv.from[1] === homeRank) purposes.push(`develops the ${pieceName} toward the action`);
     if (!purposes.length && mv.piece === 'p' && (mv.to[0] === 'd' || mv.to[0] === 'e') && (mv.to[1] === '4' || mv.to[1] === '5')) purposes.push('plants a pawn in the centre');
-    if (!purposes.length && (mv.piece === 'r' || mv.piece === 'q') && mv.from[0] !== mv.to[0] && isOpenFile(after, mv.to.charCodeAt(0) - 97)) purposes.push(`seizes the open ${mv.to[0]}-file`);
+    if (!purposes.length && (mv.piece === 'r' || mv.piece === 'q') && mv.from[0] !== mv.to[0] && isOpenFile(after, mv.to.charCodeAt(0) - 97)) purposes.push(`seizes the open file on ${regionOf(mv.to)}`);
     if (!purposes.length && mv.piece === 'r' && ((mv.color === 'w' && mv.to[1] === '7') || (mv.color === 'b' && mv.to[1] === '2'))) purposes.push('plants the rook on the seventh rank - horrible for their pawns');
     if (!purposes.length && mv.piece === 'k') purposes.push('activates the king, which matters as the board empties');
     if (!purposes.length) purposes.push('keeps every piece guarded and the pressure on');
-    return `${san} - ${pieceName} from ${mv.from} to ${mv.to}: ${purposes.join(' and ')}`;
+    const isCastle = flags.includes('k') || flags.includes('q');
+    const motion = isCastle
+      ? 'castle to safety'
+      : mv.piece === 'p'
+        ? mv.captured
+          ? `pawn takes the ${PIECE_NAMES[mv.captured] || 'piece'}`
+          : mv.promotion
+            ? 'push a pawn all the way to a brand-new queen'
+            : `pawn push on ${regionOf(mv.to)}`
+        : mv.captured
+          ? `${pieceName} takes the ${PIECE_NAMES[mv.captured] || 'piece'}`
+          : `${pieceName} to ${regionOf(mv.to)}`;
+    return `${motion}: ${purposes.join(' and ')}`;
   } catch {
     return null;
   }
