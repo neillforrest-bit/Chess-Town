@@ -360,7 +360,7 @@ function PlayChesterGame() {
         <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} />
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking} />
       {clockBar}
       {flagBanner}
       <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
@@ -390,7 +390,9 @@ function PlayChesterGame() {
           {coachBullets && <button type="button" className="chester-why-button" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt ? (isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : coachReply) : lesson.body}</p>
+          {isThinking
+            ? <p className="chester-teleprompter__calculating">CHESTER IS CALCULATING<span className="chester-teleprompter__cursor">▮</span></p>
+            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt ? coachReply : lesson.body}</p>}
           {coachBullets && <div className="chester-coach-bullets">
             {coachBullets.odds ? <p><b style={{ color: '#c084fc' }}>📊 ODDS:</b> {coachBullets.odds}</p> : null}
             <p className="chester-coach-break"><b style={{ color: '#22d3ee' }}>♟ WWCD:</b> {coachBullets.wwcd}</p>

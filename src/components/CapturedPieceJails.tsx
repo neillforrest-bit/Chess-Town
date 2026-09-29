@@ -119,7 +119,7 @@ export function CaptureStrip({ pieces, tone, label }: { pieces: CapturedPiece[];
 const TAKE_QUIPS: Record<string, string> = { p: 'pawn pocketed', n: 'knight snatched!', b: 'bishop bagged!', r: 'rook robbed!', q: 'QUEEN HUNTED!', k: 'royal scandal!' };
 const LOSE_QUIPS: Record<string, string> = { p: 'pawn falls', n: 'knight down!', b: 'bishop lost!', r: 'rook taken!', q: 'QUEEN LOST!', k: 'king hunted!' };
 
-export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER' }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string }) {
+export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean }) {
   const { youTook, oppTook, yourPts, oppPts } = material;
   const lastYou = youTook.at(-1);
   const lastOpp = oppTook.at(-1);
@@ -136,7 +136,7 @@ export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER
         <b key={yourPts} className={yourPts > 0 ? 'pop' : undefined}>{yourPts}</b>
         {oppPts > 0 && <i key={`hurt-${oppPts}`} className="hurt" aria-hidden="true" />}
       </div>
-      <div className={`hero-score__box hero-score__box--opp ${oppPts > yourPts ? 'is-leading' : ''}`}>
+      <div className={`hero-score__box hero-score__box--opp ${oppPts > yourPts ? 'is-leading' : ''} ${oppThinking ? 'is-thinking' : ''}`}>
         <small>{oppLabel}</small>
         <b key={oppPts} className={oppPts > 0 ? 'pop' : undefined}>{oppPts}</b>
         {yourPts > 0 && <i key={`hurt-${yourPts}`} className="hurt" aria-hidden="true" />}

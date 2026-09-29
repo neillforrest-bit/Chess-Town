@@ -73,13 +73,19 @@ export function playSfx(name: SfxName) {
         tone(c, 640, 660, 'sine', 0.05, 0.07);
         break;
       case 'move':
-        tone(c, 235, 150, 'triangle', 0.1, 0.24);
-        noise(c, 0.045, 0.07, 0, 1800);
+        // Batch 92: bass-heavy magnetic thock - weighted body drop + wooden knock + contact transient
+        tone(c, 170, 65, 'sine', 0.15, 0.34);
+        tone(c, 320, 150, 'triangle', 0.07, 0.12);
+        noise(c, 0.028, 0.11, 0, 950);
         break;
       case 'capture':
-        tone(c, 310, 75, 'sawtooth', 0.17, 0.26);
-        noise(c, 0.12, 0.18, 0, 1200);
-        tone(c, 95, 60, 'sine', 0.16, 0.22, 0.02);
+        // Batch 92: the thock, layered with a high-frequency shatter (glass click)
+        tone(c, 170, 60, 'sine', 0.16, 0.34);
+        tone(c, 300, 130, 'triangle', 0.08, 0.14);
+        noise(c, 0.03, 0.12, 0, 950);
+        tone(c, 2600, 3400, 'square', 0.03, 0.045, 0.012);
+        tone(c, 3400, 2400, 'square', 0.026, 0.04, 0.038);
+        noise(c, 0.05, 0.06, 0.01, 5200);
         break;
       case 'good':
         tone(c, 659, 659, 'sine', 0.1, 0.18);
@@ -128,4 +134,38 @@ export function setHaptics(on: boolean) {
 export function buzz(pattern: number | number[]) {
   if (!isHaptics()) return;
   try { (navigator as unknown as { vibrate?: (p: number | number[]) => boolean }).vibrate?.(pattern); } catch { /* unsupported */ }
+}
+
+// Batch 92: Chester speaks the grade. Male voice profile, slightly lowered pitch;
+// delivery shifts with the grade - blunders slow and deep, strong moves sharper.
+// cancel() before speak() prevents clipping when grades land quickly. Any autoplay
+// block or unsupported browser fails silent - the game never breaks for a voice.
+const SPEECH_LINES: Record<string, { text: string; rate: number; pitch: number }> = {
+  BRILLIANT: { text: 'Brilliant!', rate: 1.15, pitch: 1.05 },
+  BEST: { text: 'Best move.', rate: 1.1, pitch: 1.0 },
+  GREAT: { text: 'Great move.', rate: 1.08, pitch: 0.98 },
+  GOOD: { text: 'Good.', rate: 1.0, pitch: 0.92 },
+  INACCURACY: { text: 'Shaky.', rate: 0.9, pitch: 0.82 },
+  MISTAKE: { text: 'Mistake.', rate: 0.84, pitch: 0.74 },
+  BLUNDER: { text: 'Blunder.', rate: 0.76, pitch: 0.62 },
+};
+export function speakGrade(label: string) {
+  if (isMuted()) return;
+  const line = SPEECH_LINES[label];
+  if (!line || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(line.text);
+    u.rate = line.rate;
+    u.pitch = line.pitch;
+    u.volume = 0.9;
+    u.lang = 'en-GB';
+    const voices = synth.getVoices();
+    const male = voices.find((v) => v.lang.startsWith('en') && /male/i.test(v.name))
+      || voices.find((v) => /daniel|george|brian|arthur|james/i.test(v.name))
+      || voices.find((v) => v.lang === 'en-GB');
+    if (male) u.voice = male;
+    synth.speak(u);
+  } catch { /* blocked or unsupported - silence is acceptable */ }
 }

@@ -11,7 +11,7 @@ import { checkChaosTriggers } from '@/lib/ChaosEngine';
 import { useBrawlState } from '@/components/EngineEvaluationProvider';
 
 import { getPieceSpriteDataUrl } from '@/lib/piece-sprites';
-import { playSfx , buzz } from '@/lib/sounds';
+import { playSfx, buzz, speakGrade } from '@/lib/sounds';
 
 const PIECE_GLYPHS: Record<string, Record<string, string>> = {
   w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
@@ -755,6 +755,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 flashArmyTint(move.color, armyTintFor(quality.label));
                 playSfx(quality.label === 'BRILLIANT' ? 'brilliant' : quality.label === 'BEST' || quality.label === 'GREAT' || quality.label === 'GOOD' ? 'good' : quality.label === 'INACCURACY' ? 'shaky' : 'bad');
                 buzz(quality.label === 'BRILLIANT' || quality.label === 'BEST' || quality.label === 'GREAT' || quality.label === 'GOOD' ? 18 : [26, 40, 26]);
+                speakGrade(quality.label);
               }
             }
             playSfx(move.captured ? 'capture' : 'move');
@@ -1061,7 +1062,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const blindnessExpires = gameRef.current.neonBlindnessColor && moveResult.color !== gameRef.current.neonBlindnessColor;
             if (blindnessExpires) gameRef.current.neonBlindnessColor = null;
             gameRef.current.ply++;
-            gameRef.current.lastMove = { from, to };
+            gameRef.current.lastMove = { from, to, captured: moveResult.captured || null, check: moveResult.san.includes('+') || moveResult.san.includes('#'), color: moveResult.color };
             gameRef.current.coachSuggestion = null;
             gameRef.current.timeline.push({ fen: gameRef.current.chess.fen(), lastMove: gameRef.current.lastMove, san: moveResult.san });
             gameRef.current.selectedSquare = null;
@@ -1285,6 +1286,31 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   if (fCol >= 0 && fRow >= 0 && tCol >= 0 && tRow >= 0) {
                     const spark = scene.add.circle(boardOffset + sx(fCol) * tileSize + tileSize / 2, boardOffset + sy(fRow) * tileSize + tileSize / 2, tileSize * 0.16, 0x22d3ee, 0.95).setDepth(30);
                     scene.tweens.add({ targets: spark, x: boardOffset + sx(tCol) * tileSize + tileSize / 2, y: boardOffset + sy(tRow) * tileSize + tileSize / 2, duration: 420, ease: 'Cubic.Out', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
+                    // Batch 92 "Play Made" feedback: capture shatter (a glowing flash +
+                    // particle burst reads as the taken piece breaking) just before the
+                    // attacker lands, then the landing ripple exactly on the snap.
+                    const landX = boardOffset + sx(tCol) * tileSize + tileSize / 2;
+                    const landY = boardOffset + sy(tRow) * tileSize + tileSize / 2;
+                    if (gameRef.current.lastMove.captured) {
+                      scene.time.delayedCall(310, () => {
+                        try {
+                          const flash = scene.add.circle(landX, landY, tileSize * 0.3, 0xe8f6ff, 0.55).setDepth(29);
+                          scene.tweens.add({ targets: flash, alpha: 0, scale: 1.7, duration: 170, ease: 'Cubic.Out', onComplete: () => flash.destroy() });
+                          for (let pi = 0; pi < 7; pi++) {
+                            const ang = (Math.PI * 2 / 7) * pi + Math.random() * 0.5;
+                            const dist = tileSize * (0.5 + Math.random() * 0.35);
+                            const particle = scene.add.circle(landX, landY, 3, pi % 2 ? 0x22d3ee : 0xe8f6ff, 0.9).setDepth(29);
+                            scene.tweens.add({ targets: particle, x: landX + Math.cos(ang) * dist, y: landY + Math.sin(ang) * dist, alpha: 0, duration: 340, ease: 'Cubic.Out', onComplete: () => particle.destroy() });
+                          }
+                        } catch { /* decoration */ }
+                      });
+                    }
+                    scene.time.delayedCall(380, () => {
+                      try {
+                        const ripple = scene.add.circle(landX, landY, tileSize * 0.22, 0x22d3ee, 0).setStrokeStyle(3, 0x22d3ee, 0.32).setDepth(28);
+                        scene.tweens.add({ targets: ripple, scaleX: 3.1, scaleY: 3.1, alpha: 0, duration: 300, ease: 'Cubic.Out', onComplete: () => ripple.destroy() });
+                      } catch { /* decoration */ }
+                    });
                   }
                 }
               }
@@ -1325,6 +1351,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   // last move, a hint suggestion, and tapped-piece targets get marks.
                   if (!isInvisible) {
                     container.add(isNeonBlind ? [] : [pieceVisual]);
+                  }
+
+                  // Batch 92: check warning - the checked king pulses a soft amber/gold
+                  // aura (never red) for a beat so the threat reads without anxiety.
+                  if (!isInvisible && piece.type === 'k' && gameRef.current.lastMove?.check && gameRef.current.chess.turn() === piece.color) {
+                    const aura = scene.add.circle(0, 0, tileSize * 0.56, 0xfbbf24, 0.26);
+                    container.addAt(aura, 0);
+                    scene.tweens.add({ targets: aura, alpha: 0.5, scaleX: 1.12, scaleY: 1.12, duration: 520, ease: 'Sine.InOut', yoyo: true, repeat: 2, onComplete: () => { try { aura.destroy(); } catch { /* gone */ } } });
                   }
 
                   if (!isInvisible && isMovedPiece) {
