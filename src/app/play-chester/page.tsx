@@ -212,7 +212,15 @@ function PlayChesterGame() {
           ? ` The move gave away about ${(loss / 100).toFixed(1)} pawns.`
           : /brilliant|great/i.test(prompt.classification || '') ? ' This is a big POSITIVE moment - praise it.' : '';
         void askChesterChat(JSON.stringify({ type: 'teleprompter', message: 'Write the teleprompter line for this move.', context: `The player just played ${prompt.movePhrase || prompt.move}. Grade: ${prompt.classification || 'ungraded'}.${swingFact}${prompt.check ? ' It gives check.' : ''}${prompt.mate ? ' It is checkmate.' : ''} The engine's preferred idea was: ${prompt.bestMovePhrase || 'unknown'} - COACH ONLY THIS IDEA: hint at its theme without naming the exact move, and never suggest any other move or plan.`, fen: prompt.fen || lastFen }))
-          .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setTeleprompterLlm({ key: `${prompt.ply}-${prompt.move}`, text: reply }); })
+          .then((reply) => {
+            if (!reply || /messenger|delayed|unavailable/i.test(reply)) return;
+            // Agreement guard: the LLM line must share a content word with the
+            // engine's preferred idea, or the WWCD template stays on screen.
+            const STOP = new Set(['pawn', 'push', 'move', 'piece', 'best', 'with', 'your', 'into', 'the', 'and', 'for', 'square', 'play', 'two']);
+            const anchors = (prompt.bestMovePhrase || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w));
+            const low = reply.toLowerCase();
+            if (!anchors.length || anchors.some((w) => low.includes(w))) setTeleprompterLlm({ key: `${prompt.ply}-${prompt.move}`, text: reply });
+          })
           .catch(() => undefined);
         // CHAT target from the spec: Chester the friendly opponent reacts live
         // to big eval swings in the chat drawer - praise on great finds, a gentle
