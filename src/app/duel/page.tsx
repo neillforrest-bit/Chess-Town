@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Safari-safe room id: crypto.randomUUID is missing on iOS < 15.4, so fall back.
 function makeRoomId() {
@@ -9,7 +9,10 @@ function makeRoomId() {
 }
 
 export default function DuelLobby() {
-  const [room] = useState(makeRoomId);
+  // Room id is client-only (random) - generating it during SSR caused a React #418
+  // hydration mismatch on every visit. Start blank, generate after mount.
+  const [room, setRoom] = useState('');
+  useEffect(() => { setRoom(makeRoomId()); }, []);
   const [copied, setCopied] = useState(false);
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
   const friendUrl = `${origin}/play-chester?mode=duel&room=${room}`;
@@ -25,7 +28,7 @@ export default function DuelLobby() {
     <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
       <span style={{ color: '#ffd84d', fontSize: '.68rem', fontWeight: 900, letterSpacing: '2px' }}>CHESS-TOWN LIVE DUEL</span>
       <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '1.7rem', margin: '.4rem 0 .3rem' }}>Challenge a Friend</h1>
-      <p style={{ color: '#9db2b7', fontSize: '.84rem', lineHeight: 1.5, margin: '0 0 1.2rem' }}>Two phones, one board. Chester commentates every move on both screens - verdicts, win odds and all. Room <b style={{ color: '#ffd84d' }}>{room}</b>.</p>
+      <p style={{ color: '#9db2b7', fontSize: '.84rem', lineHeight: 1.5, margin: '0 0 1.2rem' }}>Two phones, one board. Chester commentates every move on both screens - verdicts, win odds and all. Room <b style={{ color: '#ffd84d' }}>{room || '…'}</b>.</p>
       <a href={hostUrl} style={{ display: 'block', padding: '.9rem', marginBottom: '.6rem', background: '#ffd84d', color: '#171106', fontWeight: 900, letterSpacing: '1px', borderRadius: 8, textDecoration: 'none' }}>OPEN YOUR ROOM - YOU ARE WHITE</a>
       <button type="button" onClick={() => void share()} style={{ display: 'block', width: '100%', padding: '.9rem', marginBottom: '.6rem', background: 'rgba(34,211,238,.12)', color: '#22d3ee', border: '1px solid #22d3ee', fontWeight: 900, letterSpacing: '1px', borderRadius: 8, cursor: 'pointer' }}>{copied ? 'COPIED - PASTE IT IN A TEXT' : 'COPY THE LINK'}</button>
       <p style={{ color: '#71878b', fontSize: '.7rem', lineHeight: 1.5 }}>Send the link first, then open your room. The game starts the moment your friend joins - they play Black, and each of you sees your own pieces on the bottom row.</p>
