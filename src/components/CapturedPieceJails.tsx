@@ -116,36 +116,49 @@ export function CaptureStrip({ pieces, tone, label }: { pieces: CapturedPiece[];
 // else on the page), capturer's number pops green, the loser's box flashes red, and
 // side commentary boxes call the latest take in words. Mobile band only - desktop keeps
 // the floating badge.
-const TAKE_QUIPS: Record<string, string> = { p: 'pawn pocketed', n: 'knight snatched!', b: 'bishop bagged!', r: 'rook robbed!', q: 'QUEEN HUNTED!', k: 'royal scandal!' };
-const LOSE_QUIPS: Record<string, string> = { p: 'pawn falls', n: 'knight down!', b: 'bishop lost!', r: 'rook taken!', q: 'QUEEN LOST!', k: 'king hunted!' };
+// Batch 93 (BUILD 93, his NBA Jumbotron brief): the captured-pieces text panels are
+// gone - the two glossy obsidian score blocks carry the material story. Slot-machine
+// rolling digits on every score change, a pulsating neon ring on the leader, a neon
+// possession underline under the side to move, and an ON FIRE run badge with an amber
+// score glow when the user strings 3+ top grades (TOP DOG / SPOT ON / STRONG) together.
+function RollDigit({ digit }: { digit: number }) {
+  return (
+    <span className="hero-roll__digit" aria-hidden="true">
+      <span className="hero-roll__strip" style={{ transform: `translateY(-${digit}em)` }}>
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => <span key={d}>{d}</span>)}
+      </span>
+    </span>
+  );
+}
 
-export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean }) {
-  const { youTook, oppTook, yourPts, oppPts } = material;
-  const lastYou = youTook.at(-1);
-  const lastOpp = oppTook.at(-1);
+function RollNumber({ value }: { value: number }) {
+  const v = Math.max(0, Math.min(99, value));
+  const tens = Math.floor(v / 10);
+  return (
+    <b className="hero-roll">
+      {tens > 0 && <RollDigit digit={tens} />}
+      <RollDigit digit={v % 10} />
+    </b>
+  );
+}
+
+export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false, turnSide = 'you', streak = 0 }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean; turnSide?: 'you' | 'opp'; streak?: number }) {
+  const { yourPts, oppPts } = material;
+  const hot = streak >= 3;
   return (
     <div className="hero-score" aria-label={`Live material score: ${youLabel} ${yourPts}, ${oppLabel} ${oppPts}`}>
-      <div className="hero-score__side hero-score__side--you">
-        <span>{youLabel} TOOK</span>
-        {lastYou
-          ? <div className="hero-score__event" key={youTook.length}><img src={jailSpriteUrl(lastYou.color, lastYou.type)} alt="" /><em>{TAKE_QUIPS[lastYou.type] || 'piece taken'}</em></div>
-          : <em className="hero-score__idle">no blood yet</em>}
-      </div>
-      <div className={`hero-score__box hero-score__box--you ${yourPts > oppPts ? 'is-leading' : ''}`}>
+      <div className={`hero-score__box hero-score__box--you ${yourPts > oppPts ? 'is-leading' : ''} ${turnSide === 'you' ? 'is-turn' : ''} ${hot ? 'is-hot' : ''}`}>
         <small>{youLabel}</small>
-        <b key={yourPts} className={yourPts > 0 ? 'pop' : undefined}>{yourPts}</b>
+        <i className="hero-score__poss" aria-hidden="true" />
+        <RollNumber value={yourPts} />
+        {hot && <em className="hero-score__fire" key={streak}>🔥 {streak}-MOVE RUN</em>}
         {oppPts > 0 && <i key={`hurt-${oppPts}`} className="hurt" aria-hidden="true" />}
       </div>
-      <div className={`hero-score__box hero-score__box--opp ${oppPts > yourPts ? 'is-leading' : ''} ${oppThinking ? 'is-thinking' : ''}`}>
+      <div className={`hero-score__box hero-score__box--opp ${oppPts > yourPts ? 'is-leading' : ''} ${oppThinking ? 'is-thinking' : ''} ${turnSide === 'opp' ? 'is-turn' : ''}`}>
         <small>{oppLabel}</small>
-        <b key={oppPts} className={oppPts > 0 ? 'pop' : undefined}>{oppPts}</b>
+        <i className="hero-score__poss" aria-hidden="true" />
+        <RollNumber value={oppPts} />
         {yourPts > 0 && <i key={`hurt-${yourPts}`} className="hurt" aria-hidden="true" />}
-      </div>
-      <div className="hero-score__side hero-score__side--opp">
-        <span>{oppLabel} TOOK</span>
-        {lastOpp
-          ? <div className="hero-score__event" key={oppTook.length}><img src={jailSpriteUrl(lastOpp.color, lastOpp.type)} alt="" /><em>{LOSE_QUIPS[lastOpp.type] || 'piece falls'}</em></div>
-          : <em className="hero-score__idle">circling&hellip;</em>}
       </div>
     </div>
   );
