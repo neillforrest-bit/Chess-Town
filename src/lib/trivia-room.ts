@@ -1,7 +1,7 @@
 // Trivia Brawl room logic - host-authoritative, ported from the old serverless
 // sync route. The host browser owns the full room (including correct answers);
 // guests only ever receive the serialized public view.
-import { LOCAL_QUESTIONS } from './trivia-local';
+import { LOCAL_CATEGORIES, LOCAL_QUESTIONS } from './trivia-local';
 
 export type Player = 'p1' | 'p2';
 export type TriviaQuestion = { category: string; question: string; correctAnswer: string; answers: string[] };
@@ -86,7 +86,8 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
   let justLocked = false;
 
   if (Array.isArray(body.categories) && next.phase === 'draft') {
-    const picked = body.categories.filter((category): category is number => Number.isInteger(category) && (category as number) > 0).slice(0, MAX_CATEGORIES);
+    const localIds = new Set(LOCAL_CATEGORIES.map((category) => category.id));
+    const picked = body.categories.filter((category): category is number => Number.isInteger(category) && ((category as number) > 0 || localIds.has(category as number))).slice(0, MAX_CATEGORIES);
     if (picked.length !== MAX_CATEGORIES) return { room, error: 'Choose exactly three categories' };
     const bank = { ...next.questionBank };
     try {
