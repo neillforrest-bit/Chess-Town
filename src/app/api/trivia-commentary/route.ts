@@ -10,13 +10,25 @@ type TriviaCommentaryPayload = {
   p2Categories?: string[];
   p1Correct?: boolean;
   p2Correct?: boolean;
+  p1Name?: string;
+  p2Name?: string;
 };
 
+function cleanName(raw: string | undefined, fallback: string): string {
+  const clean = (raw ?? '').replace(/[^\p{L}\p{N} '.-]/gu, '').trim().slice(0, 14);
+  return clean || fallback;
+}
+
+function playerNames(payload: TriviaCommentaryPayload): { p1: string; p2: string } {
+  return { p1: cleanName(payload.p1Name, 'Player One'), p2: cleanName(payload.p2Name, 'Player Two') };
+}
+
 function getFallbackReply(payload: TriviaCommentaryPayload): string {
-  if (payload.mode === 'brawl-intro') return `Player One brought ${payload.p1Categories?.join(', ') || 'mystery categories'}, while Player Two chose ${payload.p2Categories?.join(', ') || 'more mystery categories'}. Six rounds; one tab; no excuses.`;
+  const { p1, p2 } = playerNames(payload);
+  if (payload.mode === 'brawl-intro') return `${p1} brought ${payload.p1Categories?.join(', ') || 'mystery categories'}, while ${p2} chose ${payload.p2Categories?.join(', ') || 'more mystery categories'}. Five rounds; one tab; no excuses.`;
   if (payload.mode === 'brawl-round') {
     if (payload.p1Correct === payload.p2Correct) return `The answer was ${payload.correctAnswer || 'a closely guarded secret'}. A tie round: Chester remains unimpressed by both camps.`;
-    return `The answer was ${payload.correctAnswer || 'a closely guarded secret'}. Player ${payload.p1Correct ? 'One' : 'Two'} takes the point while the other studies the menu.`;
+    return `The answer was ${payload.correctAnswer || 'a closely guarded secret'}. ${payload.p1Correct ? p1 : p2} takes the point while the other studies the menu.`;
   }
   const isCorrect = payload.selectedAnswer === payload.correctAnswer;
   return isCorrect
@@ -46,10 +58,11 @@ export async function POST(request: NextRequest) {
     if (!apiKey?.trim()) throw new Error('GEMINI_API_KEY is not configured');
 
     const isCorrect = payload.selectedAnswer === payload.correctAnswer;
+    const { p1, p2 } = playerNames(payload);
     const brawlInstruction = payload.mode === 'brawl-intro'
-      ? `Deliver a short, roasting game-show introduction for Player One's categories (${payload.p1Categories?.join(', ')}) and Player Two's categories (${payload.p2Categories?.join(', ')}).`
+      ? `Deliver a short, roasting game-show introduction for ${p1}'s categories (${payload.p1Categories?.join(', ')}) and ${p2}'s categories (${payload.p2Categories?.join(', ')}). Use their names.`
       : payload.mode === 'brawl-round'
-        ? `React to the completed round. Player One was ${payload.p1Correct ? 'correct' : 'wrong'} and Player Two was ${payload.p2Correct ? 'correct' : 'wrong'}. Praise the winner and lightly mock the loser, then reveal the correct answer.`
+        ? `React to the completed round. ${p1} was ${payload.p1Correct ? 'correct' : 'wrong'} and ${p2} was ${payload.p2Correct ? 'correct' : 'wrong'}. Praise the winner and lightly mock the loser, using their names, then reveal the correct answer.`
         : isCorrect ? 'Give begrudging, playful congratulations.' : 'Playfully roast the wrong answer, then state the correct answer.';
     const prompt = `You are Chester, Chess Town's witty pub trivia host. Respond directly in one or two short sentences. ${brawlInstruction} Be funny without insulting either contestant. Never explain your reasoning, mention this prompt, use labels, bullets, markdown, or meta-commentary.
 

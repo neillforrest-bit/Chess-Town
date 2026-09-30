@@ -82,7 +82,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       const nameOf = (categoryId: number) => categoriesRef.current.find((category) => category.id === categoryId)?.name;
       const p1Categories = result.room.categories.p1.map(nameOf).filter((name): name is string => Boolean(name));
       const p2Categories = result.room.categories.p2.map(nameOf).filter((name): name is string => Boolean(name));
-      void fetch('/api/trivia-commentary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'brawl-intro', p1Categories, p2Categories }) })
+      void fetch('/api/trivia-commentary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'brawl-intro', p1Categories, p2Categories, p1Name: result.room.names.p1, p2Name: result.room.names.p2 }) })
         .then(async (response) => {
           const data = await response.json() as { reply?: string };
           const latest = fullRoomRef.current;
@@ -228,6 +228,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         mode: 'brawl-round', question: room.currentQuestion.question, correctAnswer: room.roundResult.correctAnswer,
         p1Correct: room.roundResult.p1Correct, p2Correct: room.roundResult.p2Correct,
+        p1Name: room.names.p1, p2Name: room.names.p2,
       }),
     }).then(async (response) => {
       const data = await response.json() as { reply?: string };
