@@ -417,8 +417,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
       phaserRef.current = null;
     }
 
+    // iOS WebGL sheds textures under memory churn (his bug: pieces invisible after a
+    // few rounds). Canvas 2D redraws from live image sources every frame, so sprites
+    // can never evaporate there. Desktop keeps WebGL (AUTO). ?renderer=canvas forces it.
+    const forceCanvas = new URLSearchParams(window.location.search).get('renderer') === 'canvas';
+    const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const config: Phaser.Types.Core.GameConfig = {
-      type: Phaser.AUTO,
+      type: (isIOS || forceCanvas) ? Phaser.CANVAS : Phaser.AUTO,
       parent: containerRef.current,
       backgroundColor: '#05000a',
       input: { activePointers: 2, touch: { capture: true }, dragDistanceThreshold: 14 },
@@ -477,7 +482,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const image = new Image();
               image.onload = () => {
                 const textureKey = `royal-cat-${pieceType}`;
-                if (!scene.textures.exists(textureKey)) scene.textures.addImage(textureKey, image);
+                let source: HTMLImageElement | HTMLCanvasElement = image;
+                const MAX_CAT_PX = 288;
+                if (image.naturalWidth > MAX_CAT_PX || image.naturalHeight > MAX_CAT_PX) {
+                  const shrink = MAX_CAT_PX / Math.max(image.naturalWidth, image.naturalHeight);
+                  const canvas = document.createElement('canvas');
+                  canvas.width = Math.max(1, Math.round(image.naturalWidth * shrink));
+                  canvas.height = Math.max(1, Math.round(image.naturalHeight * shrink));
+                  canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+                  source = canvas;
+                }
+                if (!scene.textures.exists(textureKey)) scene.textures.addImage(textureKey, source as HTMLImageElement);
                 royalCatTextures[pieceType] = textureKey;
                 renderBoard?.();
               };
