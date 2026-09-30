@@ -1,11 +1,14 @@
 // Trivia Brawl room logic - host-authoritative, ported from the old serverless
 // sync route. The host browser owns the full room (including correct answers);
 // guests only ever receive the serialized public view.
+import { LOCAL_QUESTIONS } from './trivia-local';
+
 export type Player = 'p1' | 'p2';
 export type TriviaQuestion = { category: string; question: string; correctAnswer: string; answers: string[] };
 export type RoundResult = { correctAnswer: string; p1Correct: boolean; p2Correct: boolean };
 export type TriviaRoom = {
   categories: Record<Player, number[]>;
+  names: Record<Player, string>;
   questionBank: Record<number, TriviaQuestion>;
   questions: TriviaQuestion[];
   answers: Partial<Record<Player, string>>;
@@ -22,7 +25,7 @@ export type TriviaRoom = {
 export type PublicRoom = Omit<TriviaRoom, 'questions'> & { currentQuestion: Omit<TriviaQuestion, 'correctAnswer'> | null };
 
 const MAX_CATEGORIES = 3;
-const TOTAL_ROUNDS = 6;
+const TOTAL_ROUNDS = 5;
 
 function decodeHtml(value: string): string {
   return value.replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -42,6 +45,13 @@ function shuffle<T>(items: T[]): T[] {
 // sequentially with spacing and retry instead.
 let lastQuestionFetch = 0;
 async function fetchQuestion(categoryId: number): Promise<TriviaQuestion> {
+  // Local town pack: negative ids are hand-written in trivia-local (no network, no rate limit).
+  if (categoryId < 0) {
+    const pack = LOCAL_QUESTIONS[categoryId] || [];
+    const source = pack[Math.floor(Math.random() * pack.length)];
+    if (!source) throw new Error('That category is still being written on beer mats');
+    return { category: (categoryId === -1 ? 'Chess-Town' : categoryId === -2 ? 'Pub Culture' : categoryId === -3 ? 'Movie Night' : 'Blighty'), question: source.question, correctAnswer: source.correct, answers: shuffle([source.correct, ...source.wrong]) };
+  }
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const wait = Math.max(0, 5300 - (Date.now() - lastQuestionFetch));
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
@@ -60,7 +70,7 @@ async function fetchQuestion(categoryId: number): Promise<TriviaQuestion> {
 }
 
 export function createRoom(): TriviaRoom {
-  return { categories: { p1: [], p2: [] }, questionBank: {}, questions: [], answers: {}, score: { p1: 0, p2: 0 }, sabotage: { p1: false, p2: false }, sabotageTarget: null, sabotageRound: null, hostMessage: 'Choose your categories and Chester will open the Brawl.', phase: 'draft', round: 0, roundResult: null, updatedAt: Date.now() };
+  return { categories: { p1: [], p2: [] }, names: { p1: 'PLAYER 1', p2: 'PLAYER 2' }, questionBank: {}, questions: [], answers: {}, score: { p1: 0, p2: 0 }, sabotage: { p1: false, p2: false }, sabotageTarget: null, sabotageRound: null, hostMessage: 'Choose your categories and Chester will open the Brawl.', phase: 'draft', round: 0, roundResult: null, updatedAt: Date.now() };
 }
 
 export function serializeRoom(room: TriviaRoom): PublicRoom {
@@ -69,10 +79,10 @@ export function serializeRoom(room: TriviaRoom): PublicRoom {
   return { ...rest, currentQuestion: question ? { category: question.category, question: question.question, answers: question.answers } : null };
 }
 
-export type RoomAction = { categories?: unknown; answer?: unknown; sabotage?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown };
+export type RoomAction = { categories?: unknown; answer?: unknown; sabotage?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown };
 
 export async function applyRoomAction(room: TriviaRoom, player: Player, body: RoomAction): Promise<{ room: TriviaRoom; error?: string; justLocked?: boolean }> {
-  const next: TriviaRoom = { ...room, categories: { ...room.categories }, answers: { ...room.answers }, score: { ...room.score }, sabotage: { ...room.sabotage } };
+  const next: TriviaRoom = { ...room, categories: { ...room.categories }, names: { ...room.names }, answers: { ...room.answers }, score: { ...room.score }, sabotage: { ...room.sabotage } };
   let justLocked = false;
 
   if (Array.isArray(body.categories) && next.phase === 'draft') {
@@ -110,6 +120,10 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
   }
 
   if (typeof body.hostMessage === 'string' && (next.phase === 'intro' || next.phase === 'banter')) next.hostMessage = body.hostMessage.slice(0, 600);
+  if (typeof body.name === 'string') {
+    const clean = body.name.replace(/[^\p{L}\p{N} '.-]/gu, '').trim().slice(0, 14);
+    if (clean) next.names[player] = clean;
+  }
   if (body.start === true && player === 'p1' && next.phase === 'intro') next.phase = 'question';
   if (body.sabotage === true && next.phase === 'question' && !next.sabotage[player] && next.round < TOTAL_ROUNDS - 1) {
     next.sabotage[player] = true;
