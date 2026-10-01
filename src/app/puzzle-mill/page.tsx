@@ -52,7 +52,7 @@ export default function PuzzleMillPage() {
   };
   const again = () => { const list = loadMill(); setAll(list); setQueue(todaysQueue(list, 5)); setIndex(0); setTries(0); setPhase('ask'); setSolvedToday(0); setDone(false); };
 
-  const tone = puzzle?.grade === 'BLUNDER' ? '💥 BLUNDER' : '⚠️ MISTAKE';
+  const tone = puzzle?.grade === 'BLUNDER' ? 'BLUNDER' : 'MISTAKE';
   const total = all.length;
   const mastered = all.filter((p) => p.solved > 0).length;
 
@@ -81,7 +81,7 @@ export default function PuzzleMillPage() {
       <p className="minigame-message" aria-live="polite">
         {phase === 'ask' && `You slipped here on ${puzzle.date}. Find the better move.`}
         {phase === 'miss' && `Not that one - ${3 - tries} ${3 - tries === 1 ? 'try' : 'tries'} left. Look at what is hanging, then what you can win.`}
-        {phase === 'solved' && `✅ That is it. ${millWhy(puzzle)}`}
+        {phase === 'solved' && `✓ That is it. ${millWhy(puzzle)}`}
         {phase === 'shown' && `Here it is, highlighted. ${millWhy(puzzle)} It comes back tomorrow.`}
       </p>
       {(phase === 'solved' || phase === 'shown') && <button type="button" className="minigame-cta" onClick={next}>{index + 1 >= queue.length ? 'FINISH THE SHIFT' : 'NEXT PUZZLE →'}</button>}
