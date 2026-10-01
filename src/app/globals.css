@@ -2653,3 +2653,9 @@ vercel-live-feedback { display: none !important; }
 
 /* BUILD 121 - trivia Season Two */
 .trivia-series { margin: 0; color: var(--arena-gold); font: 900 .78rem/1.2 Georgia, serif; letter-spacing: 1px; text-align: center; }
+
+/* BUILD 122 - Puzzle Mill */
+.puzzle-mill-pill { position: fixed; left: 50%; bottom: 4.2rem; transform: translateX(-50%); z-index: 40; max-width: 92vw; padding: .55rem .9rem; border: 1px solid #f43f7a; border-radius: 999px; background: rgba(10,6,10,.94); color: #ffd1e1; font: 900 .72rem/1.2 Georgia, serif; text-align: center; text-decoration: none; box-shadow: 0 0 18px rgba(244,63,122,.35); }
+.puzzle-mill .minigame-cta { display: inline-block; text-decoration: none; text-align: center; }
+.tapboard { grid-template-rows: repeat(8, minmax(0, 1fr)); grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.tapboard__square { min-height: 0; min-width: 0; overflow: hidden; }

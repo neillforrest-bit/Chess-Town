@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat } from '@/app/actions';
 import { CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct } from '@/lib/chester-voice';
@@ -67,6 +68,8 @@ function PlayChesterGame() {
   const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
   const [helpRemaining, setHelpRemaining] = useState(3);
   const [report, setReport] = useState<GameReport | null>(null);
+  const [millCount, setMillCount] = useState(0);
+  useEffect(() => { setMillCount(loadMill().length); }, []);
   const [review, setReview] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
@@ -204,7 +207,7 @@ function PlayChesterGame() {
         if (bossNode) completeBossNode(bossNode);
       }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
     window.addEventListener('load-puzzle', resetJails);
@@ -529,6 +532,7 @@ function PlayChesterGame() {
         </div>
       </section>
     </div>}
+    {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
   </main>;
 }

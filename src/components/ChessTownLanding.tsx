@@ -12,6 +12,7 @@ const doors = [
   // { href: '/arcade', icon: '🕹️', title: "CHESTER'S ARCADE", copy: 'Chessdle, Pawn Wars, Mate Sprint. Fast and loud.', accent: '#ff4eb1' },
   { href: '/training', icon: '♝', title: 'LESSON HALL', copy: 'Nine coached drills. Pick a difficulty, learn by playing.', accent: '#b8a2ff' },
   { href: '/trivia-brawl', icon: '🍻', title: 'PUB TRIVIA BRAWL', copy: 'Trivia with teeth - solo vs me, or a friend by link.', accent: '#22d3ee' },
+  { href: '/puzzle-mill', icon: '🏭', title: 'PUZZLE MILL', copy: 'Your own mistakes, served back as puzzles.', accent: '#f43f7a' },
   { href: '/daily-challenge', icon: '☀️', title: 'DAILY CHALLENGE', copy: 'One town puzzle a day. Bank the streak.', accent: '#4ade80' },
   { href: '/boss-map', icon: '👑', title: 'THE ROAD TO JOSEPH', copy: 'Clear the map, beat the bosses, dethrone the Big Boss.', accent: '#ff8c00' },
 ];
