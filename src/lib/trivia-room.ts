@@ -1,7 +1,7 @@
 // Trivia Brawl room logic - host-authoritative, ported from the old serverless
 // sync route. The host browser owns the full room (including correct answers);
 // guests only ever receive the serialized public view.
-import { LOCAL_CATEGORIES, LOCAL_QUESTIONS } from './trivia-local';
+import { LOCAL_CATEGORIES, localCategoryName, pickLocalQuestion } from './trivia-local';
 
 export type Player = 'p1' | 'p2';
 export type TriviaQuestion = { category: string; question: string; correctAnswer: string; answers: string[] };
@@ -44,13 +44,12 @@ function shuffle<T>(items: T[]): T[] {
 // which is exactly what killed the category lock for real players. Fetch
 // sequentially with spacing and retry instead.
 let lastQuestionFetch = 0;
-async function fetchQuestion(categoryId: number): Promise<TriviaQuestion> {
+export async function fetchQuestion(categoryId: number): Promise<TriviaQuestion> {
   // Local town pack: negative ids are hand-written in trivia-local (no network, no rate limit).
   if (categoryId < 0) {
-    const pack = LOCAL_QUESTIONS[categoryId] || [];
-    const source = pack[Math.floor(Math.random() * pack.length)];
+    const source = pickLocalQuestion(categoryId);
     if (!source) throw new Error('That category is still being written on beer mats');
-    return { category: (categoryId === -1 ? 'Chess-Town' : categoryId === -2 ? 'Pub Culture' : categoryId === -3 ? 'Movie Night' : 'Blighty'), question: source.question, correctAnswer: source.correct, answers: shuffle([source.correct, ...source.wrong]) };
+    return { category: localCategoryName(categoryId), question: source.question, correctAnswer: source.correct, answers: shuffle([source.correct, ...source.wrong]) };
   }
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const wait = Math.max(0, 5300 - (Date.now() - lastQuestionFetch));
@@ -79,11 +78,18 @@ export function serializeRoom(room: TriviaRoom): PublicRoom {
   return { ...rest, currentQuestion: question ? { category: question.category, question: question.question, answers: question.answers } : null };
 }
 
-export type RoomAction = { categories?: unknown; answer?: unknown; sabotage?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown };
+export type RoomAction = { rematch?: unknown; categories?: unknown; answer?: unknown; sabotage?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown };
 
 export async function applyRoomAction(room: TriviaRoom, player: Player, body: RoomAction): Promise<{ room: TriviaRoom; error?: string; justLocked?: boolean }> {
   const next: TriviaRoom = { ...room, categories: { ...room.categories }, names: { ...room.names }, answers: { ...room.answers }, score: { ...room.score }, sabotage: { ...room.sabotage } };
   let justLocked = false;
+
+  if (body.rematch === true && next.phase === 'finished') {
+    const fresh = createRoom();
+    fresh.names = { ...next.names };
+    fresh.hostMessage = '';
+    return { room: fresh };
+  }
 
   if (Array.isArray(body.categories) && next.phase === 'draft') {
     const localIds = new Set(LOCAL_CATEGORIES.map((category) => category.id));
@@ -101,7 +107,21 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
     next.categories[player] = picked;
     if (next.categories.p1.length === MAX_CATEGORIES && next.categories.p2.length === MAX_CATEGORIES && !next.questions.length) {
       const ids = [...next.categories.p1, ...next.categories.p2];
-      next.questions = Array.from({ length: TOTAL_ROUNDS }, (_, index) => bank[ids[index % ids.length]]);
+      // Same category picked twice must not mean the same question twice.
+      const used = new Set<string>();
+      const built: TriviaQuestion[] = [];
+      try {
+        for (let index = 0; index < TOTAL_ROUNDS; index += 1) {
+          const id = ids[index % ids.length];
+          let candidate = bank[id];
+          for (let tries = 0; used.has(candidate.question) && tries < 4; tries += 1) candidate = await fetchQuestion(id);
+          used.add(candidate.question);
+          built.push(candidate);
+        }
+      } catch (error) {
+        return { room, error: error instanceof Error ? error.message : 'Could not prepare questions' };
+      }
+      next.questions = built;
       next.phase = 'intro';
       justLocked = true;
     }

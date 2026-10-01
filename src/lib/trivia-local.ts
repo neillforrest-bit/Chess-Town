@@ -5,14 +5,17 @@
 export type LocalCategory = { id: number; name: string };
 export type LocalQuestion = { question: string; correct: string; wrong: [string, string, string] };
 
+import { SEASON_TWO_CATEGORIES, SEASON_TWO_QUESTIONS } from './trivia-packs';
+
 export const LOCAL_CATEGORIES: LocalCategory[] = [
   { id: -1, name: '♞ Chess-Town' },
   { id: -2, name: '🍻 Pub Culture' },
   { id: -3, name: '🎬 Movie Night' },
   { id: -4, name: '🇬🇧 Blighty' },
+  ...SEASON_TWO_CATEGORIES,
 ];
 
-export const LOCAL_QUESTIONS: Record<number, LocalQuestion[]> = {
+const BASE_QUESTIONS: Record<number, LocalQuestion[]> = {
   [-1]: [
     { question: 'How many squares are there on a standard chessboard?', correct: '64', wrong: ['48', '72', '81'] },
     { question: 'Which piece can only ever move diagonally?', correct: 'The bishop', wrong: ['The knight', 'The rook', 'The queen'] },
@@ -47,6 +50,32 @@ export const LOCAL_QUESTIONS: Record<number, LocalQuestion[]> = {
   ],
 };
 
+export const LOCAL_QUESTIONS: Record<number, LocalQuestion[]> = (() => {
+  const merged: Record<number, LocalQuestion[]> = {};
+  for (const [id, list] of Object.entries(BASE_QUESTIONS)) merged[Number(id)] = [...list];
+  for (const [id, list] of Object.entries(SEASON_TWO_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
+  return merged;
+})();
+
+export function localCategoryName(id: number): string {
+  return (LOCAL_CATEGORIES.find((c) => c.id === id)?.name || 'House Special').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+}
+
+// Season Two: never serve the same house question twice until the whole shelf is used.
+const SEEN_KEY = 'ct-trivia-seen-v1';
+export function pickLocalQuestion(categoryId: number): LocalQuestion | null {
+  const pack = LOCAL_QUESTIONS[categoryId] || [];
+  if (!pack.length) return null;
+  let seen: Record<string, string[]> = {};
+  try { seen = JSON.parse(window.localStorage.getItem(SEEN_KEY) || '{}'); } catch { /* private browsing */ }
+  let used = seen[categoryId] || [];
+  let fresh = pack.filter((item) => !used.includes(item.question));
+  if (!fresh.length) { used = []; fresh = pack; }
+  const choice = fresh[Math.floor(Math.random() * fresh.length)];
+  try { seen[categoryId] = [...used, choice.question]; window.localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch { /* best effort */ }
+  return choice;
+}
+
 // Chester's round intros, keyed by category flavor. Warm, pub-host energy, layman-safe.
 const CATEGORY_QUIPS: Array<[RegExp, string]> = [
   [/chess/i, 'Home turf, this one. Chester is polishing a hoof and pretending not to watch.'],
@@ -64,6 +93,11 @@ const CATEGORY_QUIPS: Array<[RegExp, string]> = [
   [/animal/i, 'The animal kingdom sends its regards and its trick questions.'],
   [/art/i, 'Berets optional. Opinions mandatory.'],
   [/mytholog/i, 'Gods, monsters, and one of you about to look very heroic.'],
+  [/brainbox/i, 'Lab coats on, Chester has been reading the back of the crisp packets again.'],
+  [/kitchen/i, 'Apron up. Chester guarantees at least one answer will make you hungry.'],
+  [/wide world/i, 'Passports out. Chester has never left the pub but knows everything about everywhere.'],
+  [/jukebox/i, 'Drop a coin in. Humming the answer still counts as answering.'],
+  [/time machine/i, 'Hold tight. Chester was there, he says, and he is not going to say which century.'],
   [/general/i, 'A bit of everything - the lucky dip of the trivia world.'],
   [/politic/i, 'No speeches, no filibuster - just the right answer, please.'],
   [/vehicle/i, 'Engines running. Hands at ten and two on those buzzers.'],

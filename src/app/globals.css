@@ -2650,3 +2650,6 @@ vercel-live-feedback { display: none !important; }
 .trivia-scorebug__pips i.is-done { background: #22d3ee; border-color: #22d3ee; box-shadow: 0 0 6px rgba(34,211,238,.7); }
 .trivia-scorebug__pips i.is-live { background: var(--arena-gold); border-color: #fff0b3; box-shadow: 0 0 8px rgba(255,216,77,.9); animation: whyGhostPulse 1.6s ease-in-out infinite; }
 @media (max-width: 540px) { .trivia-scorebug__side b { font-size: 1.35rem; } .trivia-scorebug__side small { font-size: .52rem; letter-spacing: .8px; } }
+
+/* BUILD 121 - trivia Season Two */
+.trivia-series { margin: 0; color: var(--arena-gold); font: 900 .78rem/1.2 Georgia, serif; letter-spacing: 1px; text-align: center; }
