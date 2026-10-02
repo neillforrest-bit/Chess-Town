@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat } from '@/app/actions';
 import { CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { buildGameRecord, recordGameToFile } from '@/lib/player-file';
 import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
@@ -199,6 +200,7 @@ function PlayChesterGame() {
       if (!isFriendMode) {
         const result = /1-0\s*$/.test(detail.pgn || '') ? 'win' : /0-1\s*$/.test(detail.pgn || '') ? 'loss' : 'draw';
         const myMoves = detail.gradeHistory.filter((entry) => entry.player === 'You');
+        try { recordGameToFile(buildGameRecord({ level: difficulty, result, pgn: detail.pgn || '', gradeHistory: detail.gradeHistory })); } catch { /* learning is a bonus, never break the report */ }
         const habit = weakestHabit(detail, myMoves.filter((entry) => entry.grade === 'F').length);
         setLadder(recordLadderGame({ level: difficulty, result, grade: detail.grade, focus: habit.focus, weakness: habit.key }));
       }
