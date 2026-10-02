@@ -2671,3 +2671,23 @@ vercel-live-feedback { display: none !important; }
 .learn-dot { display: inline-block; width: .7rem; height: .7rem; border-radius: 3px; margin: 0 .15rem 0 0; } .learn-dot--ok { background: #2a4a3a; } .learn-dot--slip { background: #c9a227; } .learn-dot--mistake { background: #ff8c00; } .learn-dot--blunder { background: #f43f7a; } .learn-legend { font-size: .66rem !important; display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .45rem; }
 .learn-moment { display: grid; grid-template-columns: minmax(0, 9.5rem) 1fr; gap: .7rem; align-items: start; padding-top: .5rem; border-top: 1px solid rgba(255,255,255,.08); } .learn-moment__board { width: 100%; } .learn-moment__board .tapboard { width: 100%; } .learn-moment__text { display: grid; gap: .3rem; } .learn-moment__text b { color: #ff9ec1; font-size: .78rem; }
 .learn-card .minigame-cta, .learn-link { display: block; text-align: center; text-decoration: none; } .learn-link { color: #22d3ee; font-size: .78rem; font-weight: 900; padding: .3rem; }
+
+/* BUILD 124: eight doors must fit one screen on phones (zero-scroll landing) */
+.town-night--doors .town-doors { flex: 1 1 auto; min-height: 0; }
+@media (max-height: 800px) {
+  .town-night--doors .town-door:not(.town-door--first) span { display: none; }
+  .town-night--doors .town-door:not(.town-door--first) { padding: .4rem .8rem; }
+  .town-night--doors .town-door--first { padding: .55rem .8rem; }
+  .town-night--doors .town-masthead--compact { margin-bottom: .4rem; }
+  .town-night--doors .town-live { margin-top: .3rem; margin-bottom: .3rem; }
+}
+@media (max-height: 800px) {
+  .town-night--doors .town-doors { gap: .3rem; }
+  .town-night--doors .town-door:not(.town-door--first) { padding: .3rem .8rem; }
+  .town-night--doors .town-door--first span { font-size: .64rem; }
+  .town-night--doors .town-masthead--compact h1 { margin: .1rem 0; font-size: 1.5rem; }
+}
+@media (max-height: 640px) {
+  .town-night--doors .town-door--first span { display: none; }
+  .town-night--doors .town-greet__bubble p { font-size: .7rem; }
+}
