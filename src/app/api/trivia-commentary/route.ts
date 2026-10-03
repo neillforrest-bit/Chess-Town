@@ -1,4 +1,4 @@
-import { GEMINI_MODEL } from '@/lib/gemini-model';
+import { GEMINI_MODEL, GEMINI_THINKING } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
@@ -75,7 +75,7 @@ Contestant answer: ${payload.selectedAnswer}`;
     const result = await client.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
-      config: { responseMimeType: 'text/plain', maxOutputTokens: 160, thinkingConfig: { thinkingBudget: 0 } },
+      config: { responseMimeType: 'text/plain', maxOutputTokens: 400, thinkingConfig: GEMINI_THINKING },
     });
     const reply = sanitizeReply(result.text ?? '');
     if (!reply) throw new Error('Gemini returned an empty trivia reply');

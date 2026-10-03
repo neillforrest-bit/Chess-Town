@@ -1,4 +1,4 @@
-import { GEMINI_MODEL } from '@/lib/gemini-model';
+import { GEMINI_MODEL, GEMINI_THINKING } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
@@ -200,8 +200,8 @@ Return only the JSON object required by the response schema. Put character dialo
       config: {
         responseMimeType: 'application/json',
         responseJsonSchema: CHESTER_RESPONSE_SCHEMA,
-        maxOutputTokens: payload.type === 'chat' ? 1000 : 400,
-        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: payload.type === 'chat' ? 1300 : 700,
+        thinkingConfig: GEMINI_THINKING,
       },
     });
     const responseText = result.text || '';

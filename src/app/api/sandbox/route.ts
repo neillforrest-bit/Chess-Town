@@ -37,7 +37,7 @@ OPERATOR: ${payload.message || 'Run a diagnostic.'}`;
     const result = await client.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
-      config: { responseMimeType: 'text/plain', maxOutputTokens: 300 },
+      config: { responseMimeType: 'text/plain', maxOutputTokens: 600 },
     });
     const reply = sanitizeReply(result.text ?? '');
     if (!reply) throw new Error('Gemini returned an empty sandbox response');

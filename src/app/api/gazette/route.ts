@@ -1,4 +1,4 @@
-import { GEMINI_MODEL } from '@/lib/gemini-model';
+import { GEMINI_MODEL, GEMINI_THINKING } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
@@ -63,7 +63,7 @@ RULES:
     const result = await genAI.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
-      config: { responseMimeType: 'text/plain', maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } },
+      config: { responseMimeType: 'text/plain', maxOutputTokens: 700, thinkingConfig: GEMINI_THINKING },
     });
 
     const dispatch = sanitizeDispatch(result.text ?? '');
