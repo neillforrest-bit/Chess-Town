@@ -8,7 +8,7 @@ import { getRating, rankFor, getLadder, LADDER_LABELS, WEAKNESS_HOMEWORK, type L
 const doors = [
   { href: '/play-chester', icon: '♞', title: 'PLAY CHESTER', copy: 'A guided game with a coach who explains every move.', accent: '#4ade80', first: true },
   { href: '/play-chester?road=1', icon: '👑', title: 'ROAD TO JOSEPH', copy: 'Adventure map: beat the bosses, dethrone the Big Boss.', accent: '#ffb800', top: true },
-  { href: '/duel', icon: '⚔️', title: 'PLAY A FRIEND', copy: 'Live game on two phones, with Chester commentating.', accent: '#ffd84d' },
+  { href: '/battle', icon: '⚔️', title: 'BATTLE MODE', copy: 'Walk out of the tunnel against a friend: live arena, crowd swings, one timeout, Chester in your corner.', accent: '#ffd84d' },
   // BUILD 116 (his 7:53 steering): arcade door hidden for now - the games stay built, restore this line when he wants it back.
   // { href: '/arcade', icon: '🕹️', title: "CHESTER'S ARCADE", copy: 'Chessdle, Pawn Wars, Mate Sprint. Fast and loud.', accent: '#ff4eb1' },
   { href: '/training', icon: '♝', title: 'LESSONS', copy: 'Nine short coached drills. Learn by playing.', accent: '#b8a2ff' },
