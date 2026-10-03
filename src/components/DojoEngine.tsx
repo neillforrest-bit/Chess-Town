@@ -1030,7 +1030,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: true } }));
             setTimeout(async () => {
 
-              if (gameRef.current.isGameOver || (window as any).__ctAiEpoch !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
+              if (gameRef.current.isGameOver || ((window as any).__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               // BUILD 125: Chester waits for the verdict on your move (so a FREEZE lands before he replies),
               // holds while a freeze is up, then thinks for as long as the position deserves (his hesitation rule).
               const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -1038,7 +1038,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               for (let t = 0; t < 30 && w.__ctPending; t++) await sleep(100);
               w.__ctPending = false;
               for (let t = 0; t < 150 && w.__ctFreeze; t++) await sleep(100);
-              if (w.__ctAiEpoch !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
+              if ((w.__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               const fastReply = !!w.__ctFastReply; w.__ctFastReply = false; // ACCEPT CONSEQUENCES: Chester answers at once
               if (!fastReply && !gameRef.current.isGameOver && difficulty) {
                 const hist = gameRef.current.chess.history({ verbose: true }) as any[];
