@@ -1,3 +1,4 @@
+import { GEMINI_MODEL } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
@@ -106,14 +107,14 @@ export async function POST(req: NextRequest) {
       // Boss exam mode: the client sends the boss prompt verbatim; no coaching voice, one hostile sentence.
       if (/\bJoseph\b/.test(message)) return NextResponse.json({ reply: '', toolCall: null, tokens: null });
       const bossPrompt = `${message}\n\n${buildEvidence(payload)}\n\nReturn only the one-sentence taunt. No markdown, no advice, no chess notation.`;
-      const out = await new GoogleGenAI({ apiKey }).models.generateContent({ model: 'gemini-3.5-flash', contents: bossPrompt, config: { responseMimeType: 'text/plain', maxOutputTokens: 80, thinkingConfig: { thinkingBudget: 0 } } });
+      const out = await new GoogleGenAI({ apiKey }).models.generateContent({ model: GEMINI_MODEL, contents: bossPrompt, config: { responseMimeType: 'text/plain', maxOutputTokens: 80, thinkingConfig: { thinkingBudget: 0 } } });
       return NextResponse.json({ reply: sanitizeReply(out.text ?? ''), toolCall: null, tokens: null });
     }
     if (payload.type === 'corner-man') {
       // Battle Mode timeout: his verbatim corner-man brief ("Maverick" ships as "Forrest" per his ruling).
       const history = payload.conversationHistory?.slice(-8).map((entry) => `${entry.role === 'user' ? 'FORREST' : 'CHESTER'}: ${entry.text.slice(0, 600)}`).join('\n') || 'No previous messages.';
       const cornerPrompt = `You are Chester, an elite chess corner-man. Forrest (your player) just called their one and only timeout in a high-stakes battle against a friend. Look at the current FEN and evaluation. Deliver ONE highly specific, aggressive piece of tactical advice. Keep it under 3 sentences. Be intense, urgent, and precise. No generic advice.\n\nGROUNDING: the engine's best move for Forrest is the first move in \"Engine's top line\" (it is the player's move to play). Build the advice around that exact move and what it does, use only the VERIFIED BOARD FACTS, never invent opponent threats, never exaggerate how bad the position is, and stay at 3 sentences or fewer.\n\n${buildEvidence(payload)}\n\nConversation so far:\n${history}\n\nFORREST: ${message}\n\nReturn only Chester's spoken reply. No markdown.`;
-      const out = await new GoogleGenAI({ apiKey }).models.generateContent({ model: 'gemini-3.5-flash', contents: cornerPrompt + CHESS_GUARDRAILS, config: { responseMimeType: 'text/plain', maxOutputTokens: 200, thinkingConfig: { thinkingBudget: 0 } } });
+      const out = await new GoogleGenAI({ apiKey }).models.generateContent({ model: GEMINI_MODEL, contents: cornerPrompt + CHESS_GUARDRAILS, config: { responseMimeType: 'text/plain', maxOutputTokens: 200, thinkingConfig: { thinkingBudget: 0 } } });
       const reply = sanitizeReply(out.text ?? '');
       return NextResponse.json({ reply: reply && !isMetaReply(reply) ? reply : '', toolCall: null, tokens: null });
     }
@@ -137,7 +138,7 @@ PLAYER: ${message}
 Return only Chester's spoken reply. No markdown, no asterisks, no hashtags, at most one emoji.`;
 
     const result = await new GoogleGenAI({ apiKey }).models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt + CHESS_GUARDRAILS,
       config: { responseMimeType: 'text/plain', maxOutputTokens: TYPE_MAX_TOKENS[payload.type || 'chat'] || 480, thinkingConfig: { thinkingBudget: 0 } },
     });

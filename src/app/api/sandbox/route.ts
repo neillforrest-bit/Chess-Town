@@ -1,3 +1,4 @@
+import { GEMINI_MODEL } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
@@ -34,7 +35,7 @@ OPERATOR: ${payload.message || 'Run a diagnostic.'}`;
 
     const client = new GoogleGenAI({ apiKey });
     const result = await client.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt,
       config: { responseMimeType: 'text/plain', maxOutputTokens: 300 },
     });

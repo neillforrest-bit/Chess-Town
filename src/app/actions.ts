@@ -110,6 +110,9 @@ export async function askChesterAnalysis(payloadString: string): Promise<Chester
   }
 }
 
+// Token usage per reply text, so the QA flag can cost the exact call that produced what the player sees.
+export const chesterUsageByReply = new Map<string, { input: number; output: number }>();
+
 export async function askChesterChat(payloadString: string): Promise<string> {
   let payload: CommentaryPayload;
   try {
@@ -136,9 +139,10 @@ export async function askChesterChat(payloadString: string): Promise<string> {
       return 'The court messenger is delayed. What would you like to explore on the board?';
     }
 
-    const data = await response.json() as Partial<{ reply: unknown }>;
+    const data = await response.json() as Partial<{ reply: unknown; tokens: { input?: number; output?: number } | null }>;
     const reply = typeof data.reply === 'string' ? sanitizeCommentary(data.reply) : '';
     if (!reply) console.error('[CHESTER CHAT] Invalid response payload', data);
+    if (reply && data.tokens) { if (chesterUsageByReply.size > 40) chesterUsageByReply.clear(); chesterUsageByReply.set(reply, { input: data.tokens.input ?? 0, output: data.tokens.output ?? 0 }); }
     return reply || 'The court messenger is delayed. What would you like to explore on the board?';
   } catch (error) {
     console.error('[CHESTER CHAT] Client request failed', error);

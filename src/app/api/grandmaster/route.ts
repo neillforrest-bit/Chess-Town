@@ -1,3 +1,4 @@
+import { GEMINI_MODEL } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
@@ -194,7 +195,7 @@ Return only the JSON object required by the response schema. Put character dialo
 
     const genAI = new GoogleGenAI({ apiKey });
     const result = await genAI.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: GEMINI_MODEL,
       contents: systemPrompt + CHESS_GUARDRAILS,
       config: {
         responseMimeType: 'application/json',

@@ -1,3 +1,4 @@
+import { GEMINI_MODEL } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
@@ -75,7 +76,7 @@ OUTPUT CONTRACT: Return only Chester's spoken commentary. Never mention prompts,
 
     const genAI = new GoogleGenAI({ apiKey });
     const result = await genAI.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt + CHESS_GUARDRAILS,
       config: { responseMimeType: 'text/plain', maxOutputTokens: 200, thinkingConfig: { thinkingBudget: 0 } },
     });

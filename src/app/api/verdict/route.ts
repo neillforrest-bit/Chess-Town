@@ -1,3 +1,4 @@
+import { GEMINI_MODEL } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest } from '@/lib/api-guard';
@@ -82,7 +83,7 @@ No markdown, no chess notation like Nf3, no centipawns. Refer to moves by number
     if (!apiKey?.trim()) throw new Error('GEMINI_API_KEY is not configured');
     const genAI = new GoogleGenAI({ apiKey });
     const response = await genAI.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt + CHESS_GUARDRAILS,
       config: { responseMimeType: 'application/json', maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } },
     });

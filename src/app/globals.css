@@ -2878,3 +2878,9 @@ a.battle-btn{text-decoration:none}
 .battle-msg--chester{background:rgba(34,211,238,.14);border-left:3px solid #22d3ee}
 .battle-corner-row{display:flex;gap:.5rem;width:min(100%,420px)}
 .battle-corner-row input{flex:1;min-width:0;padding:.6rem;border-radius:8px;border:1px solid rgba(238,252,255,.25);background:#0b1113;color:#e8f4f6;font-size:16px}
+/* BUILD 141 - QA flag */
+.qa-flag{margin-left:auto;display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .45rem;background:transparent;border:0;border-radius:6px;color:rgba(157,178,183,.55);font:700 .62rem Arial,sans-serif;letter-spacing:1px;cursor:pointer;transition:color .2s,filter .2s}
+.qa-flag:hover{color:#9db2b7}
+.qa-flag--logged{color:#ef4444;filter:drop-shadow(0 4px 6px rgba(239,68,68,.55));animation:qaGlow 1.4s ease-out forwards}
+.qa-flag--error{color:#f59e0b}
+@keyframes qaGlow{0%{filter:drop-shadow(0 4px 10px rgba(239,68,68,.9))}100%{color:#22c55e;filter:none}}

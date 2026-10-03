@@ -1,3 +1,4 @@
+import { GEMINI_MODEL } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
@@ -72,7 +73,7 @@ Contestant answer: ${payload.selectedAnswer}`;
 
     const client = new GoogleGenAI({ apiKey });
     const result = await client.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt,
       config: { responseMimeType: 'text/plain', maxOutputTokens: 160, thinkingConfig: { thinkingBudget: 0 } },
     });

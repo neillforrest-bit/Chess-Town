@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PEER_CONFIG } from '@/lib/p2p';
-import { askChesterChat } from '@/app/actions';
+import { askChesterChat, chesterUsageByReply } from '@/app/actions';
+import { GEMINI_MODEL } from '@/lib/gemini-model';
+import QAFlagButton from '@/components/QAFlagButton';
 import { CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { buildGameRecord, recordGameToFile } from '@/lib/player-file';
 import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
@@ -86,6 +88,7 @@ function PlayChesterGame() {
   useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = freeze ? 0 : el.scrollHeight; });
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
+  const qaMatchId = useRef(`qa-${Math.random().toString(36).slice(2, 10)}`);
   const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
   const [helpRemaining, setHelpRemaining] = useState(3);
   const [report, setReport] = useState<GameReport | null>(null);
@@ -565,6 +568,12 @@ function PlayChesterGame() {
         <div className="chester-teleprompter__head">
           <i className="chester-teleprompter__beacon" aria-hidden="true" />
           <span>CHESTER SAYS</span>
+          {coachPrompt && coachPrompt.kind === 'move' && <QAFlagButton key={`qa-${coachPrompt.ply}-${coachPrompt.move}`} build={() => {
+            const shown = (teleRef.current?.innerText || '').trim();
+            const llm = teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : null;
+            const usage = llm ? chesterUsageByReply.get(llm) : undefined;
+            return { match_id: qaMatchId.current, move_number: coachPrompt.ply ?? null, current_fen: coachPrompt.fen, stockfish_cpl: coachPrompt.evalDelta == null ? null : Math.round(Math.abs(coachPrompt.evalDelta)), tactic_flagged: `${coachPrompt.classification || 'ungraded'} - ${coachPrompt.movePhrase || coachPrompt.move || ''}${llm ? '' : ' (local template, no Gemini call)'}`, gemini_output: shown, model: GEMINI_MODEL, usageMetadata: usage ? { promptTokenCount: usage.input, candidatesTokenCount: usage.output } : null };
+          }} />}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
           {freeze
