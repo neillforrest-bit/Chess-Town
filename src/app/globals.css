@@ -2856,3 +2856,25 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .battle-btn--ghost:disabled{opacity:.4;cursor:default}
 .battle-outcome{color:#ffd84d;font-weight:900;letter-spacing:1px}
 a.battle-btn{text-decoration:none}
+/* BUILD 138 - Battle arena + timeout */
+.battle-arena{background:#050708;isolation:isolate}
+.battle-glow{position:absolute;inset:-40%;z-index:-1;background:radial-gradient(circle at 30% 30%,rgba(34,211,238,.28),transparent 45%),radial-gradient(circle at 70% 70%,rgba(255,216,77,.22),transparent 45%),radial-gradient(circle at 70% 25%,rgba(244,63,94,.18),transparent 40%);animation:battleSpin 28s linear infinite}
+@keyframes battleSpin{to{transform:rotate(360deg)}}
+.battle-arena--roar .battle-board{animation:battleRoar .7s ease-out 2}
+.battle-arena--silent .battle-board{animation:battleShake .45s linear 2}
+.battle-arena--silent .battle-glow{filter:grayscale(1) brightness(.4);transition:filter .3s}
+@keyframes battleRoar{0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(255,216,77,0)}50%{transform:scale(1.025);box-shadow:0 0 38px rgba(255,216,77,.75)}}
+@keyframes battleShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.battle-banner{position:absolute;top:30%;left:50%;transform:translateX(-50%);z-index:20;padding:.6rem 1rem;border-radius:8px;font:900 1.05rem/1.1 Georgia,serif;letter-spacing:2px;white-space:nowrap;pointer-events:none;animation:battleBanner 2.6s ease-out forwards}
+.battle-banner--roar{background:#ffd84d;color:#171106;box-shadow:0 0 40px rgba(255,216,77,.8)}
+.battle-banner--silent{background:#0b1113;color:#9db2b7;border:1px solid #9db2b7}
+@keyframes battleBanner{0%{opacity:0;transform:translateX(-50%) scale(.7)}12%{opacity:1;transform:translateX(-50%) scale(1.08)}85%{opacity:1}100%{opacity:0}}
+.battle-btn--timeout{padding:.55rem .9rem;background:#f43f5e;color:#fff}
+.battle-overlay{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;padding:1.2rem;background:rgba(5,7,8,.94);text-align:center}
+.battle-overlay h2{margin:0;font:900 1.4rem Georgia,serif;color:#ffd84d;letter-spacing:2px}
+.battle-overlay p{margin:0;color:#9db2b7;font-size:.9rem}
+.battle-corner-log{width:min(100%,420px);max-height:38dvh;overflow:auto;display:flex;flex-direction:column;gap:.5rem;text-align:left}
+.battle-msg{padding:.55rem .7rem;border-radius:8px;background:rgba(238,252,255,.08);color:#e8f4f6 !important}
+.battle-msg--chester{background:rgba(34,211,238,.14);border-left:3px solid #22d3ee}
+.battle-corner-row{display:flex;gap:.5rem;width:min(100%,420px)}
+.battle-corner-row input{flex:1;min-width:0;padding:.6rem;border-radius:8px;border:1px solid rgba(238,252,255,.25);background:#0b1113;color:#e8f4f6;font-size:16px}

@@ -7,13 +7,14 @@ import { useParams } from 'next/navigation';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import { createClient } from '@/utils/supabase/client';
+import { getStockfishClient } from '@/lib/stockfish';
 
 const START_MS = 10 * 60 * 1000;
 type Synced = {
   pgn: string; playerOneTime: number; playerTwoTime: number; playerOneTimeoutUsed: boolean; playerTwoTimeoutUsed: boolean;
-  rev: number; result: string | null; drawBy: 0 | 1 | null; rematchBy: 0 | 1 | null;
+  rev: number; result: string | null; drawBy: 0 | 1 | null; rematchBy: 0 | 1 | null; pausedBy: 0 | 1 | null;
 };
-const FRESH: Synced = { pgn: '', playerOneTime: START_MS, playerTwoTime: START_MS, playerOneTimeoutUsed: false, playerTwoTimeoutUsed: false, rev: 0, result: null, drawBy: null, rematchBy: null };
+const FRESH: Synced = { pgn: '', playerOneTime: START_MS, playerTwoTime: START_MS, playerOneTimeoutUsed: false, playerTwoTimeoutUsed: false, rev: 0, result: null, drawBy: null, rematchBy: null, pausedBy: null };
 type Peer = { id: string; at: number; seat: 0 | 1 | null };
 const fmt = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const loadChess = (pgn: string) => { const c = new Chess(); if (pgn) { try { c.loadPgn(pgn); } catch { /* keep start */ } } return c; };
@@ -55,10 +56,10 @@ export default function BattlePage() {
     stamp.current = Date.now(); stateRef.current = s; setState(s);
     try { localStorage.setItem(key + ':state', JSON.stringify(s)); } catch { /* private mode */ }
   }, [key]);
-  const commit = useCallback((patch: Partial<Synced>) => {
+  const commit = useCallback((patch: Partial<Synced>, event: 'state' | 'pause_game' | 'resume_game' = 'state') => {
     const next = { ...stateRef.current, ...patch, rev: stateRef.current.rev + 1 };
     apply(next, false);
-    void chanRef.current?.send({ type: 'broadcast', event: 'state', payload: next });
+    void chanRef.current?.send({ type: 'broadcast', event, payload: next });
   }, [apply]);
 
   useEffect(() => {
@@ -77,6 +78,8 @@ export default function BattlePage() {
       setPeers(Object.entries(st).map(([id, v]) => ({ id, at: v[0]?.at ?? 0, seat: v[0]?.seat ?? null })).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id)));
     });
     ch.on('broadcast', { event: 'state' }, ({ payload }) => apply(payload as Synced, true));
+    ch.on('broadcast', { event: 'pause_game' }, ({ payload }) => apply(payload as Synced, true));
+    ch.on('broadcast', { event: 'resume_game' }, ({ payload }) => apply(payload as Synced, true));
     ch.on('broadcast', { event: 'hello' }, () => { if (stateRef.current.rev > 0) void ch.send({ type: 'broadcast', event: 'state', payload: stateRef.current }); });
     ch.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
@@ -108,7 +111,8 @@ export default function BattlePage() {
   const chess = useMemo(() => loadChess(state.pgn), [state.pgn]);
   const turn = chess.turn();
   const over = chess.isGameOver() || state.result !== null;
-  const running = connected && state.pgn !== '' && !over;
+  const paused = state.pausedBy !== null;
+  const running = connected && state.pgn !== '' && !over && !paused;
   const elapsed = running ? now - stamp.current : 0;
   const liveOne = state.playerOneTime - (turn === 'w' && running ? elapsed : 0);
   const liveTwo = state.playerTwoTime - (turn === 'b' && running ? elapsed : 0);
@@ -122,6 +126,71 @@ export default function BattlePage() {
     if (liveOne <= 0) commit({ result: 'timeout:w', playerOneTime: 0 });
     else if (liveTwo <= 0) commit({ result: 'timeout:b', playerTwoTime: 0 });
   }, [running, liveOne, liveTwo, seat, commit]);
+
+  // ---- Stage 2: arena swing. Each phone runs its own Stockfish on the new position (white-absolute pawns).
+  const evalRef = useRef<{ pgn: string; pawns: number } | null>(null);
+  const [swing, setSwing] = useState<{ n: number; text: string; good: boolean } | null>(null);
+  const [pawnsNow, setPawnsNow] = useState<number | null>(null);
+  useEffect(() => {
+    if (!connected || !state.pgn) return;
+    let dead = false;
+    const fen = loadChess(state.pgn).fen();
+    const pgn = state.pgn;
+    void getStockfishClient().analyzeForDisplay(fen).then((a) => {
+      if (dead) return;
+      const stm = fen.split(' ')[1] === 'w' ? 1 : -1;
+      const raw = a.mate !== null ? (a.mate > 0 ? 10 : -10) : Math.max(-10, Math.min(10, (a.score ?? 0) / 100));
+      const pawns = raw * stm;
+      setPawnsNow(pawns);
+      const prev = evalRef.current;
+      evalRef.current = { pgn, pawns };
+      if (!prev || prev.pgn === pgn || pgn.length < prev.pgn.length) return;
+      const d = pawns - prev.pawns;
+      if (Math.abs(d) > 2.0) {
+        const goodForWhite = d > 0;
+        const good = goodForWhite === (myColorRef.current === 'w');
+        setSwing({ n: Date.now(), good, text: good ? '[THE CROWD ROARS]' : '[THE ARENA GOES DEAD SILENT]' });
+      }
+    }).catch(() => undefined);
+    return () => { dead = true; };
+  }, [state.pgn, connected]);
+  useEffect(() => { if (!swing) return; const t = setTimeout(() => setSwing(null), 2600); return () => clearTimeout(t); }, [swing]);
+  const myColorRef = useRef<'w' | 'b'>('w');
+  myColorRef.current = myColor;
+
+  // ---- Stage 3: CALL TIMEOUT. One per player, own turn only, pauses both clocks.
+  const myTimeoutUsed = seat === 1 ? state.playerTwoTimeoutUsed : state.playerOneTimeoutUsed;
+  const callTimeout = () => {
+    if (seat === null || !myTurn || myTimeoutUsed || paused) return;
+    commit({ ...folded(), pausedBy: seat, ...(seat === 1 ? { playerTwoTimeoutUsed: true } : { playerOneTimeoutUsed: true }) }, 'pause_game');
+  };
+  const resumeBattle = () => { if (seat !== null && state.pausedBy === seat) commit({ pausedBy: null }, 'resume_game'); };
+  type Msg = { role: 'user' | 'chester'; text: string };
+  const [corner, setCorner] = useState<Msg[]>([]);
+  const [cornerBusy, setCornerBusy] = useState(false);
+  const [cornerInput, setCornerInput] = useState('');
+  const askCorner = useCallback(async (message: string, history: Msg[]) => {
+    setCornerBusy(true);
+    try {
+      const r = await fetch('/api/chester/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'corner-man', message, fen: loadChess(stateRef.current.pgn).fen(), evaluationAfter: pawnsRef.current === null ? null : Math.round(pawnsRef.current * 100), conversationHistory: history }) });
+      const j = await r.json() as { reply?: string };
+      setCorner([...history, { role: 'chester', text: j.reply || 'Chester is tying his gloves - ask me again.' }]);
+    } catch { setCorner([...history, { role: 'chester', text: 'Chester lost the line for a second - ask me again.' }]); }
+    setCornerBusy(false);
+  }, []);
+  const pawnsRef = useRef<number | null>(null);
+  pawnsRef.current = pawnsNow;
+  const openedFor = useRef<number>(-1);
+  useEffect(() => {
+    if (state.pausedBy === null || state.pausedBy !== seat) { if (state.pausedBy === null) { openedFor.current = -1; setCorner([]); } return; }
+    if (openedFor.current === state.rev || corner.length) return;
+    openedFor.current = state.rev;
+    void askCorner('Timeout called. Give me the one move or plan I must find right now.', []);
+  }, [state.pausedBy, state.rev, seat, corner.length, askCorner]);
+  const sendCorner = () => {
+    const m = cornerInput.trim(); if (!m || cornerBusy) return;
+    const h: Msg[] = [...corner, { role: 'user', text: m }]; setCorner(h); setCornerInput(''); void askCorner(m, h);
+  };
 
   const onMove = useCallback((from: string, to: string, promotion?: string) => {
     const s = stateRef.current;
@@ -174,7 +243,10 @@ export default function BattlePage() {
     <p className="battle-hint">The board appears the moment two fighters are in the tunnel.</p>
   </main>;
 
-  return <main className="battle-shell battle-arena">
+  const iCalled = paused && state.pausedBy === seat;
+  return <main className={`battle-shell battle-arena${swing ? (swing.good ? ' battle-arena--roar' : ' battle-arena--silent') : ''}`}>
+    <div className="battle-glow" aria-hidden="true" />
+    {swing && <div key={swing.n} className={`battle-banner ${swing.good ? 'battle-banner--roar' : 'battle-banner--silent'}`}>{swing.text}</div>}
     <div className="battle-clock" data-active={running && turn !== myColor}><span>OPPONENT{opponentHere ? '' : ' (AWAY)'}</span><b>{fmt(theirs)}</b></div>
     <div className="battle-board"><TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn} lastMove={lastMove} onMove={onMove} /></div>
     <div className="battle-clock" data-active={running && turn === myColor}><span>FORREST 🌲</span><b>{fmt(mine)}</b></div>
@@ -189,7 +261,21 @@ export default function BattlePage() {
       </> : <>
         <button type="button" className="battle-btn battle-btn--ghost" onClick={offerDraw} disabled={state.drawBy === seat || !state.pgn}>{state.drawBy === seat ? 'DRAW OFFERED' : 'OFFER DRAW'}</button>
         <button type="button" className="battle-btn battle-btn--ghost" onClick={resign} disabled={!state.pgn}>RESIGN</button>
+        {myTurn && !myTimeoutUsed && <button type="button" className="battle-btn battle-btn--timeout" onClick={callTimeout}>CALL TIMEOUT</button>}
       </>}
+    </div>}
+    {paused && !iCalled && <div className="battle-overlay" role="alert"><h2>OPPONENT CALLED TIMEOUT</h2><p>Clocks are stopped. Hold your ground - the fight resumes when they are ready.</p></div>}
+    {iCalled && <div className="battle-overlay battle-overlay--corner" role="dialog" aria-label="Chester in your corner">
+      <h2>CHESTER - YOUR CORNER</h2>
+      <div className="battle-corner-log">
+        {corner.map((m, i) => <p key={i} className={m.role === 'chester' ? 'battle-msg battle-msg--chester' : 'battle-msg'}>{m.text}</p>)}
+        {cornerBusy && <p className="battle-msg battle-msg--chester">...</p>}
+      </div>
+      <div className="battle-corner-row">
+        <input value={cornerInput} onChange={(e) => setCornerInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendCorner(); }} placeholder="Ask Chester..." aria-label="Ask Chester" />
+        <button type="button" className="battle-btn battle-btn--sm" onClick={sendCorner}>SEND</button>
+      </div>
+      <button type="button" className="battle-btn" onClick={resumeBattle}>RESUME BATTLE</button>
     </div>}
   </main>;
 }

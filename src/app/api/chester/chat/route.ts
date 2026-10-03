@@ -109,6 +109,14 @@ export async function POST(req: NextRequest) {
       const out = await new GoogleGenAI({ apiKey }).models.generateContent({ model: 'gemini-3.5-flash', contents: bossPrompt, config: { responseMimeType: 'text/plain', maxOutputTokens: 80, thinkingConfig: { thinkingBudget: 0 } } });
       return NextResponse.json({ reply: sanitizeReply(out.text ?? ''), toolCall: null, tokens: null });
     }
+    if (payload.type === 'corner-man') {
+      // Battle Mode timeout: his verbatim corner-man brief ("Maverick" ships as "Forrest" per his ruling).
+      const history = payload.conversationHistory?.slice(-8).map((entry) => `${entry.role === 'user' ? 'FORREST' : 'CHESTER'}: ${entry.text.slice(0, 600)}`).join('\n') || 'No previous messages.';
+      const cornerPrompt = `You are Chester, an elite chess corner-man. Forrest (your player) just called their one and only timeout in a high-stakes battle against a friend. Look at the current FEN and evaluation. Deliver ONE highly specific, aggressive piece of tactical advice. Keep it under 3 sentences. Be intense, urgent, and precise. No generic advice.\n\n${buildEvidence(payload)}\n\nConversation so far:\n${history}\n\nFORREST: ${message}\n\nReturn only Chester's spoken reply. No markdown.`;
+      const out = await new GoogleGenAI({ apiKey }).models.generateContent({ model: 'gemini-3.5-flash', contents: cornerPrompt + CHESS_GUARDRAILS, config: { responseMimeType: 'text/plain', maxOutputTokens: 200, thinkingConfig: { thinkingBudget: 0 } } });
+      const reply = sanitizeReply(out.text ?? '');
+      return NextResponse.json({ reply: reply && !isMetaReply(reply) ? reply : '', toolCall: null, tokens: null });
+    }
     const typeContract = TYPE_CONTRACTS[payload.type || 'chat'] || TYPE_CONTRACTS.chat;
     const evidence = buildEvidence(payload);
     const history = payload.conversationHistory?.slice(-8).map((entry) => `${entry.role === 'user' ? 'PLAYER' : 'CHESTER'}: ${entry.text.slice(0, 800)}`).join('\n') || 'No previous messages.';
