@@ -142,8 +142,8 @@ Return only Chester's spoken reply. No markdown, no asterisks, no hashtags, at m
       contents: prompt + CHESS_GUARDRAILS,
       config: { responseMimeType: 'text/plain', maxOutputTokens: TYPE_MAX_TOKENS[payload.type || 'chat'] || 480, thinkingConfig: GEMINI_THINKING },
     });
-    const usage = (result as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }).usageMetadata;
-    const tokens = usage ? { input: usage.promptTokenCount ?? 0, output: usage.candidatesTokenCount ?? 0 } : null;
+    const usage = (result as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number } }).usageMetadata;
+    const tokens = usage ? { input: usage.promptTokenCount ?? 0, output: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0) } : null;
     const reply = sanitizeReply(result.text ?? '');
     return NextResponse.json({ reply: !reply || isMetaReply(reply) ? fallback(message) : reply, toolCall: null, tokens });
   } catch (error) {
