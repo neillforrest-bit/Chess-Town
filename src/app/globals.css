@@ -2800,3 +2800,17 @@ vercel-live-feedback { display: none !important; }
 .fighthud .fighthud__name > span { font-size: clamp(1.5rem, 8vw, 2.1rem) !important; font-weight: 900 !important; line-height: 1 !important; color: inherit !important; letter-spacing: .5px !important; font-family: Arial Black, Arial, sans-serif !important; }
 .fighthud .fighthud__name > em { font-size: clamp(1rem, 5vw, 1.35rem) !important; color: #ffd84d !important; font-weight: 900 !important; }
 .fighthud .fighthud__pct { font-size: clamp(.95rem, 4.4vw, 1.3rem) !important; color: #fff !important; font-weight: 900 !important; letter-spacing: 0 !important; font-family: Arial Black, Arial, sans-serif !important; }
+
+/* ── BUILD 132 · Chester's theatrical intro for Road to Joseph (plain CSS, no rules text) */
+.road-intro { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 1.2rem; background: radial-gradient(ellipse at 50% 35%, rgba(70,10,40,.92), rgba(0,0,0,.98) 70%); animation: roadIntroIn .9s ease both; }
+.road-intro__card { max-width: 440px; width: 100%; text-align: center; }
+.road-intro__avatar { display: flex; justify-content: center; margin-bottom: 1.2rem; filter: drop-shadow(0 0 24px rgba(255,78,177,.55)); }
+.road-intro__card p { margin: 0 0 1.6rem; color: #f4f7ff; font: italic 600 clamp(1.1rem, 4.8vw, 1.45rem)/1.5 Georgia, serif; text-shadow: 0 2px 12px rgba(0,0,0,.8); animation: roadIntroIn 1.6s ease .4s both; }
+.road-intro__card button { padding: .95rem 2.2rem; border: 3px solid #fff0b3; border-radius: 14px; background: linear-gradient(180deg, #ffd84d, #e2ac1f); color: #241a02; font: 900 1.15rem/1 Arial Black, Arial, sans-serif; letter-spacing: 2px; box-shadow: 0 0 22px rgba(255,216,77,.5); cursor: pointer; animation: roadIntroIn 1.2s ease 1.6s both; }
+@keyframes roadIntroIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* BUILD 132: ROAD TO JOSEPH is a top-tier door: glowing gold border, gold icon, subtext always visible */
+.town-night--doors .town-door.town-door--top { padding: .6rem .85rem; border: 2px solid #ffb800; border-left-width: 5px; box-shadow: 0 0 22px rgba(255,184,0,.35), inset 0 0 14px rgba(255,184,0,.08); }
+.town-night--doors .town-door.town-door--top b { font-size: .9rem; }
+.town-night--doors .town-door.town-door--top i { font-size: 1.6rem; color: #ffb800; }
+.town-night--doors .town-door.town-door--top span { display: block; }
+@media (max-height: 760px) { .town-night--doors .town-door.town-door--top { padding: .35rem .8rem; } .town-night--doors .town-door.town-door--top span { font-size: .64rem; } .town-night--doors .town-door.town-door--top b { font-size: .8rem; } }

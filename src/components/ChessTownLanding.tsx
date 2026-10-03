@@ -7,6 +7,7 @@ import { getRating, rankFor, getLadder, LADDER_LABELS, WEAKNESS_HOMEWORK, type L
 
 const doors = [
   { href: '/play-chester', icon: '♞', title: 'PLAY CHESTER', copy: 'A guided game with a coach who explains every move.', accent: '#4ade80', first: true },
+  { href: '/play-chester?road=1', icon: '👑', title: 'ROAD TO JOSEPH', copy: 'Adventure map: beat the bosses, dethrone the Big Boss.', accent: '#ffb800', top: true },
   { href: '/duel', icon: '⚔️', title: 'PLAY A FRIEND', copy: 'Live game on two phones, with Chester commentating.', accent: '#ffd84d' },
   // BUILD 116 (his 7:53 steering): arcade door hidden for now - the games stay built, restore this line when he wants it back.
   // { href: '/arcade', icon: '🕹️', title: "CHESTER'S ARCADE", copy: 'Chessdle, Pawn Wars, Mate Sprint. Fast and loud.', accent: '#ff4eb1' },
@@ -15,7 +16,6 @@ const doors = [
   { href: '/learn', icon: '📈', title: 'MY LEARNING', copy: 'Where you slip, in your own games, and how to fix it.', accent: '#22d3ee' },
   { href: '/puzzle-mill', icon: '🏭', title: 'FIX MY MISTAKES', copy: 'Puzzles made from your own slips.', accent: '#f43f7a' },
   { href: '/daily-challenge', icon: '☀️', title: 'DAILY PUZZLE', copy: 'One puzzle a day. Keep the streak.', accent: '#4ade80' },
-  { href: '/boss-map', icon: '👑', title: 'ROAD TO JOSEPH', copy: 'Adventure map: beat the bosses, dethrone the Big Boss.', accent: '#ff8c00' },
 ];
 
 export default function ChessTownLanding() {
@@ -85,7 +85,7 @@ export default function ChessTownLanding() {
     </header>
 
     <nav className="town-doors" aria-label="Chesterville destinations">
-      {doors.map((door) => <Link href={door.href} key={door.title} className={`town-door ${door.first ? 'town-door--first' : ''}`} style={{ '--card-accent': door.accent } as React.CSSProperties}>
+      {doors.map((door) => <Link href={door.href} key={door.title} className={`town-door ${door.first ? 'town-door--first' : ''} ${(door as { top?: boolean }).top ? 'town-door--top' : ''}`} style={{ '--card-accent': door.accent } as React.CSSProperties}>
         <i aria-hidden="true">{door.icon}</i>
         <div><b>{door.title}</b><span>{door.copy}</span></div>
         <em>→</em>

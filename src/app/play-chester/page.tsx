@@ -18,7 +18,7 @@ import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
-import { ChesterChatOverlay } from '@/components/ChesterUI';
+import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { loadPlayerFile, analyse } from '@/lib/player-file';
 import { Chess } from 'chess.js';
 import { direct, postGamePrompt, parsePostGame, localScouting } from '@/lib/chester-director';
@@ -60,6 +60,8 @@ function PlayChesterGame() {
   // Road to Joseph: 15 levels, every 3rd is a boss fight (exam mode).
   const [roadLevel, setRoadLevelState] = useState(1);
   useEffect(() => { if (roadActive) setRoadLevelState(getRoadLevel()); }, [roadActive]);
+  const [introOpen, setIntroOpen] = useState(false);
+  useEffect(() => { if (roadActive && getRoadLevel() === 1) setIntroOpen(true); }, [roadActive]);
   const isBossFight = roadActive && isBossLevel(roadLevel);
   const boss = isBossFight ? bossFor(roadLevel) : null;
   const bossRef = useRef<{ on: boolean; boss: ReturnType<typeof bossFor> }>({ on: false, boss: null });
@@ -441,6 +443,15 @@ function PlayChesterGame() {
   if (!started) return <main className="chester-start-screen">
     <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
       {!isFriendMode && ladder.lastLevel && <p className="chester-remembers">🧠 CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
+      {introOpen && !started && (
+        <div className="road-intro" role="dialog" aria-modal="true" aria-label="Chester">
+          <div className="road-intro__card">
+            <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>
+            <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>
+            <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
+          </div>
+        </div>
+      )}
       {!isFriendMode && roadActive && (
         <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
           <p className="road-strip__title">ROAD TO JOSEPH · LEVEL {roadLevel}/{ROAD_MAX}</p>
