@@ -1021,6 +1021,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const playAiTurn = (responseDelay = AI_RESPONSE_DELAY_MS) => {
+            const aiEpoch = (window as any).__ctAiEpoch || 0; // REWIND & RETRY bumps this, which cancels the pending reply
 
             if (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
             // Batch 92: the calculating window - teleprompter terminal + scoreboard pulse
@@ -1028,7 +1029,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: true } }));
             setTimeout(async () => {
 
-              if (gameRef.current.isGameOver) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
+              if (gameRef.current.isGameOver || (window as any).__ctAiEpoch !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               // BUILD 125: Chester waits for the verdict on your move (so a FREEZE lands before he replies),
               // holds while a freeze is up, then thinks for as long as the position deserves (his hesitation rule).
               const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -1036,7 +1037,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               for (let t = 0; t < 30 && w.__ctPending; t++) await sleep(100);
               w.__ctPending = false;
               for (let t = 0; t < 150 && w.__ctFreeze; t++) await sleep(100);
-              if (!gameRef.current.isGameOver && difficulty) {
+              if (w.__ctAiEpoch !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
+              const fastReply = !!w.__ctFastReply; w.__ctFastReply = false; // ACCEPT CONSEQUENCES: Chester answers at once
+              if (!fastReply && !gameRef.current.isGameOver && difficulty) {
                 const hist = gameRef.current.chess.history({ verbose: true }) as any[];
                 const last = hist[hist.length - 1]; const prev = hist[hist.length - 2];
                 const legal = gameRef.current.chess.moves().length;
@@ -1700,6 +1703,23 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
           window.addEventListener('chester-help-request', handleHelpRequest);
           window.addEventListener('request-resign', handleRequestResign);
+          // BUILD 128: REWIND & RETRY - take back the player's last move (1 ply) and cancel Chester's pending reply.
+          const handleRewind = () => {
+            const g = gameRef.current; const w = window as any;
+            if (g.isGameOver || mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
+            const last = (g.chess.history({ verbose: true }) as any[]).at(-1);
+            if (!last || last.color !== 'w') return;
+            const undone = g.chess.undo();
+            if (!undone) return;
+            w.__ctAiEpoch = (w.__ctAiEpoch || 0) + 1; w.__ctPending = false; w.__ctFreeze = false;
+            g.ply = Math.max(0, g.ply - 1); g.timeline.pop(); g.gradeHistory.pop(); g.playerQualities.pop();
+            g.lastMove = g.timeline.at(-1)?.lastMove || null; g.selectedSquare = null; g.legalTargets = []; g.coachSuggestion = null;
+            if (undone.captured) window.dispatchEvent(new CustomEvent('piece-restored', { detail: { color: 'b', type: undone.captured } }));
+            window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } }));
+            renderBoard();
+            publishPositionEvaluation(g.chess.fen());
+          };
+          window.addEventListener('chester-rewind', handleRewind);
           const handleToggleBoardTheme = () => {
             gameRef.current.boardTheme = gameRef.current.boardTheme === 'RETRO' ? 'NEON' : 'RETRO';
             renderBoard();
@@ -1714,6 +1734,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('replay-step', handleReplayStep);
             window.removeEventListener('chester-help-request', handleHelpRequest);
             window.removeEventListener('request-resign', handleRequestResign);
+            window.removeEventListener('chester-rewind', handleRewind);
             window.removeEventListener('toggle-board-theme', handleToggleBoardTheme);
             if (demoIntervalRef.current) {
               clearInterval(demoIntervalRef.current);

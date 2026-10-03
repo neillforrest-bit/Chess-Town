@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest } from '@/lib/api-guard';
+import { CHESS_GUARDRAILS } from '@/lib/chess-guardrails';
 
 // THE VERDICT - turns a finished game's real record into Chester's shareable
 // report-card lines. Grounded ONLY in the graded moves and stats the client
@@ -82,7 +83,7 @@ No markdown, no chess notation like Nf3, no centipawns. Refer to moves by number
     const genAI = new GoogleGenAI({ apiKey });
     const response = await genAI.models.generateContent({
       model: 'gemini-3.5-flash',
-      contents: prompt,
+      contents: prompt + CHESS_GUARDRAILS,
       config: { responseMimeType: 'application/json', maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } },
     });
     const parsed = JSON.parse(clean(response.text ?? '{}')) as Partial<CardLines>;

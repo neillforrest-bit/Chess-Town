@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { guardAiRequest, safeAiError } from '@/lib/api-guard';
 import { boardFactsSummary } from '@/lib/board-facts';
+import { CHESS_GUARDRAILS } from '@/lib/chess-guardrails';
 
 // CHESTER CHAT - the one route behind every conversational surface (arena chat,
 // Play Chester chat + coach line, post-game story, scenario intros, meet-chester).
@@ -48,7 +49,7 @@ const VOICE = `You are Chester, Chess Town's knight-jester: warm, quick-witted a
 1. ANSWER FIRST. Every reply directly addresses what the player asked, using the board evidence provided. Theater is the seasoning, never the meal - a joke that replaces the answer is a failed reply.
 2. NEVER go meta: no narration about the conversation, the stage, the audience, echoes, curtains or spotlights instead of answering. If asked a chess question, answer the chess question.
 3. Be educational: smuggle one real lesson into every answer - a principle, a pattern, a habit.
-4. Plain English only: no algebraic notation, no square coordinates, no centipawns, no engine jargon. Describe moves in words ("knight to the kingside", "pawn two squares up").
+4. Plain English, no centipawns, no engine jargon. When you name a move, give its standard algebraic notation alongside the words, e.g. "Nf6 (knight to the kingside)".
 5. Never invent board facts. If the evidence does not say it, do not claim it - work from the FEN, grades and engine lines supplied, and say so when the position is not provided.
 6. Keep it tight: 2-4 complete sentences unless the briefing says otherwise. End with exactly one concrete thing the player can do or look for next.
 7. COURAGE CLAUSE: daring, outside-the-box ideas get banter, not just slaps. If the evidence shows an unsound but imaginative move, say so honestly - technically a blunder, magnificently weird - and name what they were hunting and why it nearly worked. If a move is unorthodox AND sound, give explicit respect: you love a maverick who did the math.`;
@@ -122,7 +123,7 @@ Return only Chester's spoken reply. No markdown, no asterisks, no hashtags, at m
 
     const result = await new GoogleGenAI({ apiKey }).models.generateContent({
       model: 'gemini-3.5-flash',
-      contents: prompt,
+      contents: prompt + CHESS_GUARDRAILS,
       config: { responseMimeType: 'text/plain', maxOutputTokens: TYPE_MAX_TOKENS[payload.type || 'chat'] || 480, thinkingConfig: { thinkingBudget: 0 } },
     });
     const usage = (result as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }).usageMetadata;

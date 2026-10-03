@@ -19,6 +19,7 @@ import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-wo
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
 import { loadPlayerFile, analyse } from '@/lib/player-file';
+import { Chess } from 'chess.js';
 import { direct, postGamePrompt, parsePostGame, localScouting } from '@/lib/chester-director';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
@@ -66,7 +67,7 @@ function PlayChesterGame() {
   const teleRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setHapticsState(isHaptics()); }, []);
   useEffect(() => { const onCalc = (e: Event) => { const d = (e as CustomEvent).detail; setCalculating(!!d?.on); setDeepThought(!!d?.on && !!d?.deep); }; window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
-  useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = el.scrollHeight; });
+  useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = freeze ? 0 : el.scrollHeight; });
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
   const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
@@ -77,9 +78,12 @@ function PlayChesterGame() {
   const [review, setReview] = useState('');
   const [scouting, setScouting] = useState<string[]>([]);
   const [shake, setShake] = useState(false);
-  const [freeze, setFreeze] = useState<{ tone: 'green' | 'red'; text: string; banter: string } | null>(null);
+  const [freeze, setFreeze] = useState<{ tone: 'green' | 'red'; text: string; banter: string; best: { from: string; to: string } | null } | null>(null);
   const [banter, setBanter] = useState('');
   const releaseFreeze = () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; setFreeze(null); };
+  // BUILD 128 fork: ACCEPT = Chester replies at once; REWIND = take back the move (1 ply) and try again.
+  const acceptConsequences = () => { (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
+  const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); };
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [lessonStep, setLessonStep] = useState(0);
@@ -217,16 +221,27 @@ function PlayChesterGame() {
         if (bossNode) completeBossNode(bossNode);
       }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply }); if (d.ui_action === 'freeze_green' || d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: d.ui_action === 'freeze_green' ? 'green' : 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat }); setBanter(''); } else { setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const bestSquares = (fenBefore: string | null | undefined, best: string | null | undefined): { from: string; to: string } | null => {
+      if (!fenBefore || !best) return null;
+      try { const m = new Chess(fenBefore).move(best, { strict: false } as never) ?? null; if (m) return { from: m.from, to: m.to }; } catch { /* not SAN */ }
+      const u = /^([a-h][1-8])([a-h][1-8])/.exec(best); return u ? { from: u[1], to: u[2] } : null;
+    };
+    const bestSanOf = (fenBefore: string | null | undefined, best: string | null | undefined): string | null => {
+      const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
+      try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
+    };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply }); if (d.ui_action === 'freeze_green' || d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: d.ui_action === 'freeze_green' ? 'green' : 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat, best: d.ui_action === 'freeze_red' ? bestSquares(detail.fenBefore, detail.bestMove) : null }); setBanter(''); } else { setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
+    const restored = (event: Event) => { const r = (event as CustomEvent<CapturedPiece>).detail; setCapturedPieces((pieces) => { const i = pieces.findLastIndex((p) => p.color === r.color && p.type === r.type); return i < 0 ? pieces : pieces.filter((_, k) => k !== i); }); };
+    window.addEventListener('piece-restored', restored);
     window.addEventListener('load-puzzle', resetJails);
     window.addEventListener('piece-captured', capture); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help);
-    return () => { window.clearTimeout(timer); window.removeEventListener('load-puzzle', resetJails); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); };
+    return () => { window.clearTimeout(timer); window.removeEventListener('load-puzzle', resetJails); window.removeEventListener('piece-restored', restored); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); };
   }, [mode, started]);
 
   useEffect(() => { coachPromptRef.current = coachPrompt; }, [coachPrompt]);
-  useEffect(() => { if (!freeze) return; const t = window.setTimeout(releaseFreeze, 9000); return () => window.clearTimeout(t); }, [freeze]);
+  useEffect(() => { if (!freeze || freeze.tone === 'red') return; const t = window.setTimeout(releaseFreeze, 9000); return () => window.clearTimeout(t); }, [freeze]);
   useEffect(() => { if (!banter) return; const t = window.setTimeout(() => setBanter(''), 4500); return () => window.clearTimeout(t); }, [banter]);
   useEffect(() => () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; }, []);
 
@@ -447,12 +462,12 @@ function PlayChesterGame() {
         <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
-      {coachBullets?.odds && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b>📊 ODDS</b><span>{coachBullets.odds}</span></div>}
+      {coachBullets?.odds && !heroTipOpen && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b>📊 ODDS</b><span>{coachBullets.odds}</span></div>}
       {clockBar}
       {flagBanner}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
-        {freeze && <div className={`chester-freeze chester-freeze--${freeze.tone}`} role="alertdialog" aria-label={freeze.tone === 'green' ? 'Brilliant move' : 'Costly move'}><span>{freeze.tone === 'green' ? 'FROZEN - NICE ONE' : 'FROZEN - HOLD ON'}</span><p>{freeze.text}</p><em>{freeze.banter}</em><button type="button" onClick={releaseFreeze}>CONTINUE</button></div>}
+        {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
         {!freeze && banter && <div className="chester-banter" aria-live="polite"><b>CHESTER</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
@@ -483,7 +498,18 @@ function PlayChesterGame() {
           <span>CHESTER SAYS</span>
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          {isThinking || calculating
+          {freeze
+            ? <div className={`chester-freezebox chester-freezebox--${freeze.tone}`} role="alertdialog" aria-label={freeze.tone === 'green' ? 'Brilliant move' : 'Costly move'}>
+                <b>{freeze.tone === 'green' ? 'FROZEN - NICE ONE' : 'FROZEN - HOLD ON'}</b>
+                <p>{freeze.text}</p>
+                <em>{freeze.banter}</em>
+                <div className="chester-freezebox__actions">
+                  {freeze.tone === 'red'
+                    ? <><button type="button" className="chester-freezebox__primary" onClick={rewindAndRetry}>REWIND &amp; RETRY</button><button type="button" className="chester-freezebox__ghost" onClick={acceptConsequences}>ACCEPT CONSEQUENCES</button></>
+                    : <button type="button" className="chester-freezebox__primary" onClick={releaseFreeze}>CONTINUE</button>}
+                </div>
+              </div>
+            : isThinking || calculating
             ? <p className="chester-teleprompter__calculating">{deepThought ? 'CHESTER IS DEEP IN THOUGHT' : 'CHESTER IS CALCULATING'}<span className="chester-teleprompter__cursor">▮</span></p>
             : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? (teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : [coachBullets.reaction, coachBullets.why, !coachBullets.gradeGood ? coachBullets.risk : null].filter(Boolean).join(' ')) : coachPrompt ? coachReply : lesson.body}</p>}
         </div>
@@ -554,6 +580,17 @@ function PlayChesterGame() {
     {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
   </main>;
+}
+
+// BUILD 128: Red Freeze spotlight. Everything on the board is dimmed except the two squares of the best move.
+// The Phaser board is 796 units wide (8 x 92 squares + a 30 unit margin), so the cut-outs sit at fixed percentages.
+function FreezeSpotlight({ from, to }: { from: string; to: string }) {
+  const cell = (sq: string) => { const c = sq.charCodeAt(0) - 97; const r = 8 - Number(sq[1]); return [30 + c * 92, 30 + r * 92] as const; };
+  const hole = (sq: string) => { const [x, y] = cell(sq); return `M${x} ${y}h92v92h-92Z`; };
+  return <svg className="chester-spotlight" viewBox="0 0 796 796" role="img" aria-label={`Best move: ${from} to ${to}`}>
+    <path className="chester-spotlight__dim" fillRule="evenodd" d={`M0 0h796v796H0Z ${hole(from)} ${hole(to)}`} />
+    {[from, to].map((sq) => { const [x, y] = cell(sq); return <rect key={sq} x={x + 3} y={y + 3} width={86} height={86} rx={8} className="chester-spotlight__ring" fill="none" />; })}
+  </svg>;
 }
 
 export default function PlayChesterPage() { return <Suspense fallback={<main className="chester-start-screen" />}><PlayChesterGame /></Suspense>; }

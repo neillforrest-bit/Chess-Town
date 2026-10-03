@@ -3,6 +3,7 @@
 // deterministic rules (zero cost per move); only the post-game debrief + scouting
 // report may come from the LLM (see parsePostGame / localPostGame).
 import { analyse, type PlayerFile } from '@/lib/player-file';
+import { CHESS_GUARDRAILS } from '@/lib/chess-guardrails';
 
 export type UiAction = 'freeze_green' | 'freeze_red' | 'shake' | 'none';
 export type DirectorOut = {
@@ -18,7 +19,7 @@ export type MoveFacts = {
   evaluationAfter?: number | null; // WHITE-absolute centipawns after the move
   playerColor?: 'w' | 'b'; movePhrase?: string | null; bestMovePhrase?: string | null;
   captured?: string | null; check?: boolean; mate?: boolean; sacrificePiece?: string | null;
-  principleKey?: string | null; principleFollowed?: boolean | null; ply?: number;
+  moveSan?: string | null; bestSan?: string | null; principleKey?: string | null; principleFollowed?: boolean | null; ply?: number;
 };
 
 export const FREEZE_PAWNS = 1.5; // his number: +-1.5 pawns
@@ -51,8 +52,13 @@ export function direct(f: MoveFacts): Pick<DirectorOut, 'ui_action' | 'chester_i
   const bad = (cls === 'MISTAKE' || cls === 'BLUNDER') && loss >= FREEZE_PAWNS * 100;
   const good = !bad && (cls === 'BRILLIANT' || ((cls === 'BEST' || cls === 'GREAT') && swing !== null && swing >= FREEZE_PAWNS));
   const slip = !bad && (cls === 'INACCURACY' || (loss >= 80 && loss < FREEZE_PAWNS * 100));
-  const move = f.movePhrase || 'that move';
-  const better = f.bestMovePhrase ? ` The move you wanted was ${f.bestMovePhrase}.` : '';
+  // His notation rule: every move reference carries its standard algebraic notation next to the words.
+  const withSan = (phrase: string | null | undefined, san: string | null | undefined) => (phrase && san ? `${phrase} (${san})` : phrase || san || null);
+  const move = withSan(f.movePhrase, f.moveSan) || 'that move';
+  const bestRef = withSan(f.bestMovePhrase, f.bestSan);
+  const better = bestRef ? ` The move you wanted was ${bestRef}.` : '';
+  // His chess rule: a King is never captured or sacrificed, so it can never be named as a sacrifice.
+  const sacPiece = f.sacrificePiece && (f.sacrificePiece || '').toLowerCase().charAt(0) !== 'k' ? f.sacrificePiece : null;
   const cost = Math.max(1, Math.round(loss / 100));
   if (bad) {
     const concept = f.captured ? 'a CAPTURE that costs more than it wins' : f.principleKey && f.principleFollowed === false ? 'a BROKEN OPENING PRINCIPLE' : f.check ? 'a CHECK that walks into trouble' : 'an UNDEFENDED PIECE and a LOST TEMPO';
@@ -60,7 +66,7 @@ export function direct(f: MoveFacts): Pick<DirectorOut, 'ui_action' | 'chester_i
       freeze_explanation: `${move.toUpperCase()}, MAVERICK? THAT IS ${concept} - roughly ${cost} ${cost === 1 ? 'PAWN' : 'PAWNS'} OF VALUE GONE.${better}` };
   }
   if (good) {
-    const concept = f.sacrificePiece ? `a SACRIFICE of your ${PIECE[(f.sacrificePiece || '').toLowerCase().charAt(0)] || f.sacrificePiece.toUpperCase()} that pays back with INTEREST` : f.mate ? 'CHECKMATE' : f.captured ? 'a CLEAN WIN OF MATERIAL' : 'a move that grabs the INITIATIVE';
+    const concept = sacPiece ? `a SACRIFICE of your ${PIECE[(sacPiece || '').toLowerCase().charAt(0)] || (sacPiece || '').toUpperCase()} that pays back with INTEREST` : f.mate ? 'CHECKMATE' : f.captured ? 'a CLEAN WIN OF MATERIAL' : 'a move that grabs the INITIATIVE';
     return { ui_action: 'freeze_green', chester_immediate_chat: pick(BANTER.green, seed),
       freeze_explanation: `${move.toUpperCase()} IS ${concept}. I HATE that you found it, Maverick.` };
   }
@@ -81,7 +87,7 @@ export function hesitationMs(input: { legalMoves: number; evalAbsCp: number | nu
 
 // Post-game: ask the LLM for his exact JSON shape, fall back to a local read.
 export function postGamePrompt(topSwings: string, playerLine: string): string {
-  return `You are Chester, sharp-witted, slightly arrogant, highly analytical host of Chess-Town. Address the player as Maverick: competitive, a little sarcastic, genuinely educational. Return ONLY a strict JSON object, no markdown: {"storyteller_debrief": "<punchy narrative of the 2 biggest evaluation swings, centipawns translated into plain-English strategy, max 4 sentences>", "scouting_report": ["<bullet 1: Maverick's current form>", "<bullet 2: a recurring weakness>", "<bullet 3: one concrete tactical adjustment>"]}. The two biggest swings this game: ${topSwings}. Maverick's history: ${playerLine}. NEVER use chess notation or coordinates - describe moves in words.`;
+  return `You are Chester, sharp-witted, slightly arrogant, highly analytical host of Chess-Town. Address the player as Maverick: competitive, a little sarcastic, genuinely educational. Return ONLY a strict JSON object, no markdown: {"storyteller_debrief": "<punchy narrative of the 2 biggest evaluation swings, centipawns translated into plain-English strategy, max 4 sentences>", "scouting_report": ["<bullet 1: Maverick's current form>", "<bullet 2: a recurring weakness>", "<bullet 3: one concrete tactical adjustment>"]}. The two biggest swings this game: ${topSwings}. Maverick's history: ${playerLine}. ${CHESS_GUARDRAILS}`;
 }
 export function parsePostGame(raw: string | null | undefined): { debrief: string; bullets: string[] } | null {
   if (!raw) return null;

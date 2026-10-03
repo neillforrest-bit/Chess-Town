@@ -2726,3 +2726,25 @@ vercel-live-feedback { display: none !important; }
 .signin-db--ok { border-color: rgba(125,255,176,.5); } .signin-db--bad { border-color: rgba(255,138,168,.6); }
 .signin-db span { color: #a9c3cc; }
 .signin-back { font-size: .85rem; color: #22d3ee; text-decoration: none; }
+
+/* BUILD 128 · Red Freeze lives in CHESTER SAYS; the board only gets a spotlight on the best move */
+.chester-spotlight__ring { stroke: #ffd84d; stroke-width: 5; filter: drop-shadow(0 0 6px rgba(255,216,77,.8)); animation: chester-spot-pulse 1.4s ease-in-out infinite; }
+@keyframes chester-spot-pulse { 0%,100% { opacity: .75; } 50% { opacity: 1; } }
+.chester-freezebox { display: flex; flex-direction: column; gap: .3rem; padding: .1rem 0; }
+.chester-freezebox > b { font: 900 .62rem Arial,sans-serif; letter-spacing: 2.5px; color: #ffd84d; }
+.chester-freezebox--green > b { color: #4ade80; }
+.chester-freezebox p { margin: 0; font: 800 clamp(.8rem, 3.3vw, 1.05rem)/1.25 Arial,sans-serif; color: #fff; }
+.chester-freezebox em { font-style: normal; font-size: .76rem; color: #ffe9b0; }
+.chester-freezebox__actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .15rem; }
+.chester-freezebox__actions button { flex: 1 1 auto; min-height: 44px; padding: 0 .9rem; border-radius: 10px; font: 900 .72rem Arial,sans-serif; letter-spacing: 1px; cursor: pointer; }
+.chester-freezebox__primary { border: 2px solid #ffd84d; background: linear-gradient(180deg, #ffd84d, #e2ac1f); color: #241a02; }
+.chester-freezebox__ghost { border: 1px solid rgba(255,255,255,.28); background: transparent; color: #b8c8cc; }
+/* spotlight: Tailwind utilities do not compile in this stack, so the same values (red-950 at 80%) live here */
+.chester-spotlight { position: absolute; inset: 0; z-index: 30; width: 100%; height: 100%; pointer-events: auto; }
+.chester-spotlight__dim { fill: rgba(69, 10, 10, .8); }
+@media (max-height: 1100px) {
+  .chester-freezebox > b, .chester-freezebox em { display: none; }
+  .chester-freezebox p { font-size: .74rem; line-height: 1.22; }
+  .chester-freezebox__actions { flex-wrap: nowrap; gap: .35rem; }
+  .chester-freezebox__actions button { min-height: 38px; padding: 0 .4rem; font-size: .6rem; letter-spacing: .4px; }
+}
