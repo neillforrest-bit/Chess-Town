@@ -2707,3 +2707,22 @@ vercel-live-feedback { display: none !important; }
 .chester-board-frame--shake { animation: chester-shake .6s ease-in-out; }
 @keyframes chester-shake { 0%,100% { transform: none; } 15% { transform: translateX(-7px) rotate(-.6deg); } 35% { transform: translateX(7px) rotate(.6deg); } 55% { transform: translateX(-5px); } 75% { transform: translateX(4px); } }
 .chester-report-card__scout { margin: .5rem 0 0; padding-left: 1.1rem; color: #e8dfe3; font-size: .8rem; line-height: 1.4; }
+
+/* sign-in (unique signin- prefix) */
+.signin-page { min-height: calc(100dvh - 64px); box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: .8rem; background: radial-gradient(circle at 18% 10%, rgba(34,211,238,.14), transparent 34%), #050708; overflow-y: auto; }
+.signin-card { width: min(420px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: .7rem; padding: 1.1rem; border: 1px solid rgba(34,211,238,.35); border-radius: 16px; background: rgba(8,14,18,.92); color: #e8f7fb; }
+.signin-kicker { font-size: .7rem; letter-spacing: .18em; color: #22d3ee; }
+.signin-card h1 { margin: 0; font-size: 1.6rem; }
+.signin-card form { display: flex; flex-direction: column; gap: .55rem; }
+.signin-note { margin: 0; font-size: .92rem; color: #a9c3cc; line-height: 1.4; }
+.signin-note--ok { color: #7dffb0; }
+.signin-label { font-size: .8rem; color: #a9c3cc; }
+.signin-input { box-sizing: border-box; width: 100%; padding: .75rem .8rem; font-size: 1rem; border-radius: 10px; border: 1px solid rgba(34,211,238,.4); background: #050b0e; color: #fff; }
+.signin-btn { padding: .8rem 1rem; font-size: 1rem; font-weight: 700; border: 0; border-radius: 10px; background: #22d3ee; color: #041014; cursor: pointer; }
+.signin-btn:disabled { opacity: .6; }
+.signin-btn--ghost { background: transparent; color: #22d3ee; border: 1px solid #22d3ee; }
+.signin-error { margin: 0; font-size: .88rem; color: #ff8aa8; }
+.signin-db { display: flex; flex-direction: column; gap: .15rem; padding: .6rem .7rem; border-radius: 10px; font-size: .82rem; border: 1px solid rgba(255,255,255,.12); }
+.signin-db--ok { border-color: rgba(125,255,176,.5); } .signin-db--bad { border-color: rgba(255,138,168,.6); }
+.signin-db span { color: #a9c3cc; }
+.signin-back { font-size: .85rem; color: #22d3ee; text-decoration: none; }
