@@ -2,7 +2,7 @@
 // Example wiring (NOT mounted anywhere yet): fire-and-forget the dossier update when Chester
 // freezes the board red. The game never waits on the network, and a failed save never breaks play.
 import { useEffect, useRef } from 'react';
-import { updateDossier } from '@/actions/updateDossier';
+import { updateDossier } from '@/actions/chessActions';
 
 type Freeze = { ui_action: 'freeze_green' | 'freeze_red' | 'shake' | 'none'; tactic: string; ply: number } | null;
 
