@@ -24,10 +24,10 @@ const PIECES_SVG: Record<string, string> = {
 export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288): string | null {
   let svg = PIECES_SVG[`${color}-${type}`] || PIECES_SVG[`${color}-p`];
   if (!svg) return null;
-  // BUILD 128: faint light drop shadow (0 2px 4px, white 15%) lifts black pieces off dark squares.
+  // BUILD 128: light drop shadow (0 2px 4px, white; strengthened at his request to 55%) lifts black pieces off dark squares.
   // Phaser draws the board, so the Tailwind drop-shadow utility cannot reach the pieces; same values baked into the SVG.
   if (color === 'b' && svg.includes('</defs>')) {
-    svg = svg.replace('</defs>', '<filter id="ctLift" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#ffffff" flood-opacity="0.15"/></filter></defs><g filter="url(#ctLift)">').replace(/<\/svg>\s*$/, '</g></svg>');
+    svg = svg.replace('</defs>', '<filter id="ctLift" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="1.2" stdDeviation="1.4" flood-color="#ffffff" flood-opacity="0.55"/></filter></defs><g filter="url(#ctLift)">').replace(/<\/svg>\s*$/, '</g></svg>');
   }
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }

@@ -78,12 +78,12 @@ function PlayChesterGame() {
   const [review, setReview] = useState('');
   const [scouting, setScouting] = useState<string[]>([]);
   const [shake, setShake] = useState(false);
-  const [freeze, setFreeze] = useState<{ tone: 'green' | 'red'; text: string; banter: string; best: { from: string; to: string } | null } | null>(null);
+  const [freeze, setFreeze] = useState<{ tone: 'green' | 'red'; text: string; banter: string; strategy: string; pawns: number; betterPhrase: string | null; best: { from: string; to: string } | null } | null>(null);
   const [banter, setBanter] = useState('');
-  const releaseFreeze = () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; setFreeze(null); };
+  const releaseFreeze = () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; window.dispatchEvent(new CustomEvent('chester-clear-better')); setFreeze(null); };
   // BUILD 128 fork: ACCEPT = Chester replies at once; REWIND = take back the move (1 ply) and try again.
   const acceptConsequences = () => { (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
-  const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); };
+  const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-clear-better')); window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); };
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [lessonStep, setLessonStep] = useState(0);
@@ -230,7 +230,7 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply }); if (d.ui_action === 'freeze_green' || d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: d.ui_action === 'freeze_green' ? 'green' : 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat, best: d.ui_action === 'freeze_red' ? bestSquares(detail.fenBefore, detail.bestMove) : null }); setBanter(''); } else { setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); if (d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
     const restored = (event: Event) => { const r = (event as CustomEvent<CapturedPiece>).detail; setCapturedPieces((pieces) => { const i = pieces.findLastIndex((p) => p.color === r.color && p.type === r.type); return i < 0 ? pieces : pieces.filter((_, k) => k !== i); }); };
@@ -241,7 +241,7 @@ function PlayChesterGame() {
   }, [mode, started]);
 
   useEffect(() => { coachPromptRef.current = coachPrompt; }, [coachPrompt]);
-  useEffect(() => { if (!freeze || freeze.tone === 'red') return; const t = window.setTimeout(releaseFreeze, 9000); return () => window.clearTimeout(t); }, [freeze]);
+  useEffect(() => { if (!freeze || freeze.tone === 'red') return; const t = window.setTimeout(releaseFreeze, 5000); return () => window.clearTimeout(t); }, [freeze]);
   useEffect(() => { if (!banter) return; const t = window.setTimeout(() => setBanter(''), 4500); return () => window.clearTimeout(t); }, [banter]);
   useEffect(() => () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; }, []);
 
@@ -459,10 +459,10 @@ function PlayChesterGame() {
     </header>
     <section className="chester-game__board">
       {heroTipOpen && <div className="hero-tip" role="status">
-        <span>👋 <b>New here?</b> ? HINT shows you the best move. 💬 CHESTER answers any chess question.</span>
+        <span><Ico n="wave" /> <b>New here?</b> HINT shows you the best move. <Ico n="chat" /> CHESTER answers any chess question.</span>
         <button type="button" onClick={dismissHeroTip}>GOT IT</button>
       </div>}
-      {coachBullets?.odds && !heroTipOpen && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b>📊 ODDS</b><span>{coachBullets.odds}</span></div>}
+      {coachBullets?.odds && !heroTipOpen && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b><Ico n="chart" /> ODDS</b><span>{coachBullets.odds}</span></div>}
       {clockBar}
       {flagBanner}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
@@ -479,17 +479,17 @@ function PlayChesterGame() {
 
       <div className="chester-bottom">
       <div className="chester-stack">
-      <div className="chester-console" style={verdictStyle}>
+      <div className={`chester-console ${freeze ? 'chester-console--hidden' : ''}`} style={verdictStyle}>
         <div className="chester-console__grade">
           <div className={`chester-console__badge ${gradeEmoji ? 'chester-console__badge--grade' : ''}`} key={verdictKey} aria-hidden="true">{gradeEmoji || verdictEmoji}</div>
           <div className="chester-console__verdict">
             <span>{isThinking ? 'READING THE BOARD…' : coachPrompt ? `LAST MOVE · ${coachPrompt.movePhrase || coachPrompt.move}` : lessonStep < 2 ? `LESSON ${lessonStep + 1}/3` : 'MATCH COACH LIVE'}</span>
-            <b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i> : lesson.title}{coachBullets && coachPrompt?.kind === 'move' && <button type="button" className="chester-why-button chester-why-button--ghost" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}>📖 WHY?</button>}</b>
+            <b>{coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i> : lesson.title}{coachBullets && coachPrompt?.kind === 'move' && <button type="button" className="chester-why-button chester-why-button--ghost" onClick={(e) => { e.stopPropagation(); setWhyOpen(true); }}><Ico n="book" /> WHY?</button>}</b>
           </div>
         </div>
         <div className="chester-console__lifelines">
           <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT</b><small>{helpRemaining} LEFT</small></button>
-          <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b>💬 CHAT</b><small>CHESTER</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
         </div>
       </div>
       <div className="chester-teleprompter">
@@ -500,7 +500,7 @@ function PlayChesterGame() {
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
           {freeze
             ? <div className={`chester-freezebox chester-freezebox--${freeze.tone}`} role="alertdialog" aria-label={freeze.tone === 'green' ? 'Brilliant move' : 'Costly move'}>
-                <b>{freeze.tone === 'green' ? 'FROZEN - NICE ONE' : 'FROZEN - HOLD ON'}</b>
+                <b>{freeze.tone === 'green' ? 'GREEN LIGHT' : 'FROZEN'} · {freeze.strategy}{freeze.pawns ? ` · about ${freeze.pawns} ${freeze.pawns === 1 ? 'pawn' : 'pawns'} lost` : ''}</b>
                 <p>{freeze.text}</p>
                 <em>{freeze.banter}</em>
                 <div className="chester-freezebox__actions">
@@ -580,6 +580,12 @@ function PlayChesterGame() {
     {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
   </main>;
+}
+
+// Inline icons: an emoji font is not guaranteed (headless Chrome, some Android builds show boxes), SVG always renders.
+function Ico({ n }: { n: 'wave' | 'chat' | 'chart' | 'book' }) {
+  const d = { wave: 'M7 11V5a1.5 1.5 0 0 1 3 0v5m0-6a1.5 1.5 0 0 1 3 0v6m0-5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-4a1.5 1.5 0 0 1 2.5-1.5L7 14', chat: 'M4 5h16v11H9l-5 4z', chart: 'M4 20V10m6 10V4m6 16v-7m4 7H2', book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm2 14h13' }[n];
+  return <svg className="chester-ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
 }
 
 // BUILD 128: Red Freeze spotlight. Everything on the board is dimmed except the two squares of the best move.

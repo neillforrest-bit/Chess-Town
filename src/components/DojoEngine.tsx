@@ -397,6 +397,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     legalTargets: [],
     lastMove: null,
     coachSuggestion: null,
+    betterHint: null as any,
     trailPly: -1,
     openingAssessment: null,
     principleStreak: 0,
@@ -1359,6 +1360,27 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 }
               }
               if (gameRef.current.coachSuggestion) drawCoachArrow(gameRef.current.coachSuggestion.from, gameRef.current.coachSuggestion.to, 0x2563eb);
+              // BUILD 126: the better move, acted out on the real board - a ghost piece glides from
+              // where it stands to where it should have gone, over and over, until the freeze is released.
+              if (gameRef.current.betterHint) {
+                const h = gameRef.current.betterHint;
+                const bc = h.tone === 'green' ? 0x4ade80 : 0xffd84d;
+                drawCoachArrow(h.startSq, h.to, bc);
+                const fc = files.indexOf(h.startSq[0]), fr = ranks.indexOf(h.startSq[1]), tc = files.indexOf(h.to[0]), tr = ranks.indexOf(h.to[1]);
+                if (fc >= 0 && fr >= 0 && tc >= 0 && tr >= 0) {
+                  const gx1 = boardOffset + sx(fc) * tileSize + tileSize / 2, gy1 = boardOffset + sy(fr) * tileSize + tileSize / 2;
+                  const gx2 = boardOffset + sx(tc) * tileSize + tileSize / 2, gy2 = boardOffset + sy(tr) * tileSize + tileSize / 2;
+                  const tex = `piece-${h.piece[0]}-${h.piece[1]}`;
+                  if (scene.textures.exists(tex)) {
+                    const ghost = scene.add.image(gx1, gy1, tex).setDisplaySize(tileSize * 1.0, tileSize * 1.0).setOrigin(0.5).setDepth(45).setAlpha(0.8);
+                    const halo = scene.add.graphics().setDepth(44);
+                    halo.lineStyle(3, bc, 0.95); halo.strokeRect(gx2 - tileSize / 2 + 2, gy2 - tileSize / 2 + 2, tileSize - 4, tileSize - 4);
+                    scene.tweens.add({ targets: ghost, x: gx2, y: gy2, duration: 900, hold: 500, repeatDelay: 300, yoyo: false, repeat: -1, ease: 'Sine.InOut', onRepeat: () => { ghost.setPosition(gx1, gy1); } });
+                    scene.tweens.add({ targets: halo, alpha: 0.25, duration: 500, yoyo: true, repeat: -1 });
+                    (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(ghost, halo);
+                  }
+                }
+              }
             }
 
             // Draw pieces
@@ -1702,6 +1724,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             });
           };
           window.addEventListener('chester-help-request', handleHelpRequest);
+          const handleShowBetter = (e: Event) => { gameRef.current.betterHint = (e as CustomEvent).detail; renderBoard?.(); };
+          const handleClearBetter = () => { if (!gameRef.current.betterHint) return; gameRef.current.betterHint = null; renderBoard?.(); };
+          window.addEventListener('chester-show-better', handleShowBetter);
+          window.addEventListener('chester-clear-better', handleClearBetter);
           window.addEventListener('request-resign', handleRequestResign);
           // BUILD 128: REWIND & RETRY - take back the player's last move (1 ply) and cancel Chester's pending reply.
           const handleRewind = () => {
@@ -1733,6 +1759,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('remote-chess-move', handleRemoteMove);
             window.removeEventListener('replay-step', handleReplayStep);
             window.removeEventListener('chester-help-request', handleHelpRequest);
+            window.removeEventListener('chester-show-better', handleShowBetter);
+            window.removeEventListener('chester-clear-better', handleClearBetter);
             window.removeEventListener('request-resign', handleRequestResign);
             window.removeEventListener('chester-rewind', handleRewind);
             window.removeEventListener('toggle-board-theme', handleToggleBoardTheme);
