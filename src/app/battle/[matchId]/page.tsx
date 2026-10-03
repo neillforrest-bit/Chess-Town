@@ -44,6 +44,9 @@ export default function BattlePage() {
   const [err, setErr] = useState('');
   const [ready, setReady] = useState(false);
   const stateRef = useRef(state);
+  const dbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const matchIdRef = useRef('');
+  matchIdRef.current = matchId;
   const stamp = useRef(Date.now());
   const trackedSeat = useRef<number | null | undefined>(undefined);
   const joinedAt = useRef(Date.now());
@@ -60,6 +63,8 @@ export default function BattlePage() {
     const next = { ...stateRef.current, ...patch, rev: stateRef.current.rev + 1 };
     apply(next, false);
     void chanRef.current?.send({ type: 'broadcast', event, payload: next });
+    // Durable copy (table is created by supabase/migrations/20261003_battle_matches.sql). Silent if absent.
+    void dbRef.current?.from('battle_matches').upsert({ match_id: matchIdRef.current, state: next, updated_at: new Date().toISOString() }).then(() => undefined, () => undefined);
   }, [apply]);
 
   useEffect(() => {
@@ -70,6 +75,11 @@ export default function BattlePage() {
       const saved = localStorage.getItem(key + ':state'); if (saved) { const s = JSON.parse(saved) as Synced; stateRef.current = s; setState({ ...FRESH, ...s }); stamp.current = Date.now(); }
       const sv = sessionStorage.getItem(key + ':seat'); if (sv === '0' || sv === '1') trackedSeat.current = Number(sv);
     } catch { me.current = me.current || uid(); }
+    dbRef.current = sb;
+    void sb.from('battle_matches').select('state').eq('match_id', matchId).maybeSingle().then(({ data }) => {
+      const remote = data?.state as Synced | undefined;
+      if (remote && remote.rev > stateRef.current.rev) apply({ ...FRESH, ...remote }, true);
+    }, () => undefined);
     setReady(true);
     const ch = sb.channel(`battle:${matchId}`, { config: { presence: { key: me.current }, broadcast: { self: false } } });
     chanRef.current = ch;
@@ -128,6 +138,7 @@ export default function BattlePage() {
   }, [running, liveOne, liveTwo, seat, commit]);
 
   // ---- Stage 2: arena swing. Each phone runs its own Stockfish on the new position (white-absolute pawns).
+  const bestRefEarly = null; void bestRefEarly;
   const evalRef = useRef<{ pgn: string; pawns: number } | null>(null);
   const [swing, setSwing] = useState<{ n: number; text: string; good: boolean } | null>(null);
   const [pawnsNow, setPawnsNow] = useState<number | null>(null);
@@ -142,6 +153,7 @@ export default function BattlePage() {
       const raw = a.mate !== null ? (a.mate > 0 ? 10 : -10) : Math.max(-10, Math.min(10, (a.score ?? 0) / 100));
       const pawns = raw * stm;
       setPawnsNow(pawns);
+      try { const c = loadChess(pgn); const u = a.pv[0]; const m = u ? c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }) : null; bestRef.current = m ? m.san : null; } catch { bestRef.current = null; }
       const prev = evalRef.current;
       evalRef.current = { pgn, pawns };
       if (!prev || prev.pgn === pgn || pgn.length < prev.pgn.length) return;
@@ -172,13 +184,14 @@ export default function BattlePage() {
   const askCorner = useCallback(async (message: string, history: Msg[]) => {
     setCornerBusy(true);
     try {
-      const r = await fetch('/api/chester/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'corner-man', message, fen: loadChess(stateRef.current.pgn).fen(), evaluationAfter: pawnsRef.current === null ? null : Math.round(pawnsRef.current * 100), conversationHistory: history }) });
+      const r = await fetch('/api/chester/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'corner-man', message, fen: loadChess(stateRef.current.pgn).fen(), principalVariation: bestRef.current ? [bestRef.current] : [], evaluationAfter: pawnsRef.current === null ? null : Math.round(pawnsRef.current * 100), conversationHistory: history }) });
       const j = await r.json() as { reply?: string };
       setCorner([...history, { role: 'chester', text: j.reply || 'Chester is tying his gloves - ask me again.' }]);
     } catch { setCorner([...history, { role: 'chester', text: 'Chester lost the line for a second - ask me again.' }]); }
     setCornerBusy(false);
   }, []);
   const pawnsRef = useRef<number | null>(null);
+  const bestRef = useRef<string | null>(null);
   pawnsRef.current = pawnsNow;
   const openedFor = useRef<number>(-1);
   useEffect(() => {
