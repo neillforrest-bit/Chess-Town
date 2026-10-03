@@ -34,7 +34,6 @@ export async function saveGame(input: SaveGameInput): Promise<SaveGameResult> {
 // Red Freeze -> dossier. Inserts the leak, or bumps its frequency if this player already has it.
 // The atomic increment lives in the database function public.bump_dossier (see the migration),
 // because supabase-js .upsert() cannot express "frequency = frequency + 1".
-import { createClient } from '@/utils/supabase/server';
 
 export type UpdateDossierResult = { ok: true; frequency: number } | { ok: false; error: string };
 
