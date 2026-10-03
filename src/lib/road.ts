@@ -10,15 +10,29 @@ export const BOSS_ROSTER: Record<number, RoadBoss> = {
 };
 export const isBossLevel = (level: number) => level % 3 === 0;
 export const bossFor = (level: number): RoadBoss | null => (isBossLevel(level) ? BOSS_ROSTER[level] || null : null);
-/** Levels 1-14 interpolate 1320..3190 (Stockfish's UCI_Elo range). Level 15 is unlimited strength (null). */
+/** Nominal strength. Levels 1-14 interpolate 800..3190 Elo. Level 15 is unlimited (null): Joseph plays at full grandmaster strength. */
+export const ROAD_FLOOR_ELO = 800;
 export function eloForLevel(level: number): number | null {
   if (level >= ROAD_MAX) return null;
   const l = Math.max(1, level);
-  return Math.round(1320 + ((l - 1) / 13) * (3190 - 1320));
+  return Math.round(ROAD_FLOOR_ELO + ((l - 1) / 13) * (3190 - ROAD_FLOOR_ELO));
 }
-/** Search depth grows with the level so high Elo settings are not throttled by a shallow search. */
+/** Stockfish's UCI_Elo cannot go below 1320, so the engine setting is clamped to that floor. */
+export const engineEloFor = (level: number): number | null => { const e = eloForLevel(level); return e === null ? null : Math.max(1320, e); };
+/** Below 1320 Elo the engine alone is too strong, so some moves are a human-style casual pick instead (85% at level 1, fading to 0 at 1320). */
+export function casualChanceForLevel(level: number): number {
+  const e = eloForLevel(level);
+  if (e === null || e >= 1320) return 0;
+  return Math.min(0.85, ((1320 - e) / (1320 - ROAD_FLOOR_ELO)) * 0.85);
+}
 export function depthForLevel(level: number): number {
-  return level >= ROAD_MAX ? 16 : Math.min(14, 6 + Math.round(level * 0.6));
+  if (level >= ROAD_MAX) return 22;
+  const e = eloForLevel(level) ?? 3190;
+  return e < 1320 ? 2 : Math.min(16, 6 + Math.round(level * 0.7));
+}
+/** Think-time cap per move (ms) so high levels stay under the analysis timeout on a phone. */
+export function movetimeForLevel(level: number): number {
+  return level >= ROAD_MAX ? 4000 : level >= 10 ? 2500 : level >= 5 ? 1200 : 600;
 }
 /** The persona/teaching tier a level borrows from the older 4-step ladder. */
 export function tierForLevel(level: number): 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' {

@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client';
 
+import { casualChanceForLevel } from '@/lib/road';
 import { hesitationMs } from '@/lib/chester-director';
 import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
@@ -1053,7 +1054,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const fenBeforeMove = gameRef.current.chess.fen();
               const searchD = difficulty === 'PRO' || difficulty === 'EXPERT' || difficulty === 'ADVANCED' ? 2 : 1;
               const roadLevel: number | null = typeof w.__ctRoadLevel === 'number' ? w.__ctRoadLevel : null;
-              let engineMove = await (roadLevel ? getStockfishClient().selectMoveRoad(fenBeforeMove, roadLevel) : getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty))).catch(() => null);
+              const roadCasual = roadLevel ? casualChanceForLevel(roadLevel) : 0;
+              const roadCasualPick = roadCasual > 0 && Math.random() < roadCasual ? (pickCasualMove(gameRef.current.chess) || pickRookieMove(gameRef.current.chess)) : null;
+              let engineMove = roadCasualPick ? `${roadCasualPick.from}${roadCasualPick.to}${roadCasualPick.promotion || ''}` : await (roadLevel ? getStockfishClient().selectMoveRoad(fenBeforeMove, roadLevel) : getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty))).catch(() => null);
               // Strong levels must never silently collapse to a shallow search: if the
               // full-strength call fails, retry at CLUB strength before any fallback.
               if (!engineMove && (difficulty === 'ADVANCED' || difficulty === 'EXPERT' || difficulty === 'PRO')) {

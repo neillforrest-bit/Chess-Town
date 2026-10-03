@@ -69,7 +69,7 @@ function classify(loss: number | null, isBestMove: boolean, firstChoiceGap: numb
   return 'BLUNDER';
 }
 
-import { eloForLevel, depthForLevel } from '@/lib/road';
+import { eloForLevel, engineEloFor, depthForLevel, movetimeForLevel } from '@/lib/road';
 
 export class StockfishClient {
   private worker: Worker | null = null;
@@ -111,7 +111,7 @@ export class StockfishClient {
     return result;
   }
 
-  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number, limitStrength = true, multiPv = 1, road?: { elo: number | null }): Promise<Analysis> {
+  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number, limitStrength = true, multiPv = 1, road?: { elo: number | null; skill?: number; movetime?: number }): Promise<Analysis> {
     return this.enqueue(async () => {
       await this.initialize();
       const worker = this.worker;
@@ -150,7 +150,7 @@ export class StockfishClient {
         worker.addEventListener('message', onMessage);
         if (road) {
           // Road to Joseph: Elo-scaled play. Level 15 (elo null) = full strength.
-          worker.postMessage('setoption name Skill Level value 20');
+          worker.postMessage(`setoption name Skill Level value ${road.skill ?? 20}`);
           if (road.elo === null) worker.postMessage('setoption name UCI_LimitStrength value false');
           else { worker.postMessage('setoption name UCI_LimitStrength value true'); worker.postMessage(`setoption name UCI_Elo value ${road.elo}`); }
         } else if (limitStrength) {
@@ -169,7 +169,7 @@ export class StockfishClient {
         // reset explicitly on every run, or a grading call's MultiPV 2 leaks into play strength.
         worker.postMessage(`setoption name MultiPV value ${multiPv}`);
         worker.postMessage(`position fen ${fen}`);
-        worker.postMessage(`go depth ${depthOverride ?? preset.depth}`);
+        worker.postMessage(road?.movetime ? `go depth ${depthOverride ?? preset.depth} movetime ${road.movetime}` : `go depth ${depthOverride ?? preset.depth}`);
       });
     });
   }
@@ -292,7 +292,7 @@ export class StockfishClient {
   }
 
   async selectMoveRoad(fen: string, level: number) {
-    return (await this.analyze(fen, 'INTERMEDIATE', depthForLevel(level), true, 1, { elo: eloForLevel(level) })).bestMove;
+    return (await this.analyze(fen, 'INTERMEDIATE', depthForLevel(level), true, 1, { elo: engineEloFor(level), skill: (eloForLevel(level) ?? 3190) < 1320 ? 0 : 20, movetime: movetimeForLevel(level) })).bestMove;
   }
 
   async analyzePosition(fen: string, difficulty: ChesterDifficulty) {

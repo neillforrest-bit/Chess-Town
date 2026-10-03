@@ -469,7 +469,9 @@ function PlayChesterGame() {
         <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
           <p className="road-strip__title">ROAD TO JOSEPH · LEVEL {roadLevel}/{ROAD_MAX}</p>
           <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
-          <p className="road-strip__who">{boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. No hints, no freezes. Exam mode.` : `Opponent strength: about ${eloForLevel(roadLevel)} Elo${roadLevel < ROAD_MAX ? '' : ''}. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()}.`}</p>
+          <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 800) - 800) / 2390) * 100}%` }} /><span>800</span><span>3190+</span></div>
+          <p className="road-strip__who">{roadLevel >= ROAD_MAX ? 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.' : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. About ${eloForLevel(roadLevel)} Elo. No hints, no freezes. Exam mode.` : `You face about ${eloForLevel(roadLevel)} Elo this level. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()} (level ${[3, 6, 9, 12, 15].find((b) => b >= roadLevel)}).`}</p>
+          {roadLevel < ROAD_MAX && <p className="road-strip__top">At the top waits <b>JOSEPH</b>: a grandmaster at full engine strength, the hardest opponent here. Each rung is a real step up.</p>}
         </div>
       )}
       {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/play-chester?road=1"><b>ROAD TO JOSEPH</b><small>15 levels · a boss every 3rd · your level is saved</small></a>}
