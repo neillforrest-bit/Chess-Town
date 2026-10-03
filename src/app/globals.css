@@ -2837,3 +2837,16 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .road-gauge span + span { left: auto; right: 8px; }
 .road-strip__top { margin: .35rem 0 0; color: #ff8fb0; font: 700 .72rem/1.35 Arial, sans-serif; }
 .road-strip__top b { color: #ffd84d; letter-spacing: 1px; }
+
+/* BUILD 136 - Battle Mode shell */
+.battle-shell{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;padding:1rem;background:#050708;color:#e8f4f6;font-family:Arial,sans-serif;text-align:center;overflow:hidden}
+.battle-kicker{color:#ffd84d;font-size:.68rem;font-weight:900;letter-spacing:2px}
+.battle-title{font-family:Georgia,serif;font-size:1.8rem;margin:0}
+.battle-sub{color:#9db2b7;font-size:.9rem;margin:0}
+.battle-hint{color:#71878b;font-size:.7rem;margin:0}
+.battle-btn{padding:.9rem 1.2rem;background:#ffd84d;color:#171106;font-weight:900;letter-spacing:1px;border:0;border-radius:8px;cursor:pointer;max-width:90vw}
+.battle-dots{display:flex;gap:.5rem}.battle-dots i{width:10px;height:10px;border-radius:50%;background:#22d3ee;animation:battlePulse 1.2s infinite}.battle-dots i:nth-child(2){animation-delay:.2s}.battle-dots i:nth-child(3){animation-delay:.4s}
+@keyframes battlePulse{0%,100%{opacity:.2}50%{opacity:1}}
+.battle-board{width:min(100vw - 1rem,600px,60dvh)}
+.battle-clock{display:flex;justify-content:space-between;align-items:center;width:min(100vw - 1rem,600px,60dvh);padding:.45rem .8rem;border:1px solid rgba(238,252,255,.18);border-radius:8px;font-weight:900;letter-spacing:1px;font-size:.8rem}
+.battle-clock[data-active="true"]{border-color:#ffd84d;color:#ffd84d}.battle-clock b{font-size:1.3rem;font-variant-numeric:tabular-nums}
