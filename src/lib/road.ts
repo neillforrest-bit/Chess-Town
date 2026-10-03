@@ -24,6 +24,12 @@ export const engineEloFor = (level: number): number | null => {
 };
 /** Levels 1-3 skip UCI_Elo: the engine searches 3 lines at depth 1/1/2 and a dice roll picks which line to play. */
 export const isHandicapLevel = (level: number) => level >= 1 && level <= 3;
+/** BUILD 148 (restored): the human-style casual-pick blend, layered ON TOP of the handicap dice so Level 1 plays like a beginner (85% at level 1, fading to 0 at 1320 Elo). */
+export function casualChanceForLevel(level: number): number {
+  const e = eloForLevel(level);
+  if (e === null || e >= 1320) return 0;
+  return Math.min(0.85, ((1320 - e) / (1320 - ROAD_FLOOR_ELO)) * 0.85);
+}
 export const HANDICAP_DEPTH: Record<number, number> = { 1: 1, 2: 1, 3: 2 };
 /** Cumulative odds for [best, 2nd, 3rd]. */
 export const HANDICAP_ODDS: Record<number, number[]> = { 1: [0.5, 0.3, 0.2], 2: [0.7, 0.3], 3: [0.85, 0.15] };

@@ -87,7 +87,19 @@ const BANTER = {
 
 export type Directed = Pick<DirectorOut, 'ui_action' | 'chester_immediate_chat' | 'freeze_explanation'> & { strategy: string; pawns: number; better: BetterMove | null };
 
+/** BUILD 148: the freeze card must never silently vanish - if the rich director throws on an odd position, fall back to a plain red/green card. */
 export function direct(f: MoveFacts): Directed {
+  try { return directRich(f); } catch (e) {
+    console.warn('[director] fallback card', e);
+    const loss = f.evalDelta ?? 0; const cls = (f.classification || '').toUpperCase();
+    if ((cls === 'MISTAKE' || cls === 'BLUNDER') && loss >= FREEZE_PAWNS * 100) {
+      return { ui_action: 'freeze_red', chester_immediate_chat: 'Oh, Forrest 🌲. I almost feel bad. Almost.', strategy: 'COSTLY MOVE', pawns: Math.max(1, Math.round(loss / 100)), better: null, freeze_explanation: `${WHO}, THAT MOVE COST YOU ABOUT ${Math.max(1, Math.round(loss / 100))} PAWNS. Before you move, ask what the move is FOR and what it leaves undefended.${f.bestMovePhrase ? ` The move you wanted was ${f.bestMovePhrase}.` : ''}` };
+    }
+    if (cls === 'BRILLIANT' || cls === 'GREAT' || cls === 'BEST') return { ui_action: 'freeze_green', chester_immediate_chat: 'Hm. Not bad, Forrest 🌲.', strategy: 'STRONG MOVE', pawns: 0, better: null, freeze_explanation: `${WHO}, THAT IS A STRONG MOVE - it matches the best idea in the position.` };
+    return { ui_action: 'none', chester_immediate_chat: 'Steady. Let us see if you keep it up.', strategy: '', pawns: 0, better: null, freeze_explanation: '' };
+  }
+}
+function directRich(f: MoveFacts): Directed {
   const loss = f.evalDelta ?? 0;
   const swing = f.evalDelta == null && f.evaluationAfter == null ? null : (evalSwingPawns(f) ?? 0);
   const cls = (f.classification || '').toUpperCase();

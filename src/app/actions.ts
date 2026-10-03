@@ -82,7 +82,7 @@ export async function askChesterAnalysis(payloadString: string): Promise<Chester
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payloadString,
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(25_000),
     });
 
     if (!response.ok) {
@@ -127,7 +127,7 @@ export async function askChesterChat(payloadString: string): Promise<string> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payloadString,
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!response.ok) {
       const errorBody = await response.text();
@@ -170,7 +170,7 @@ export async function askChesterAdminChat(payloadString: string): Promise<Cheste
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payloadString,
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!response.ok) {
       const errorBody = await response.text();
@@ -217,7 +217,7 @@ export async function askCommentary(insights: StockfishInsights): Promise<string
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(insights),
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(25_000),
     });
     const data = await response.json() as Partial<{ commentary: unknown }>;
     const commentary = typeof data.commentary === 'string' ? sanitizeCommentary(data.commentary) : '';
