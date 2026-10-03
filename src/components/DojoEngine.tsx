@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client';
 
+import { hesitationMs } from '@/lib/chester-director';
 import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
@@ -812,6 +813,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
             // Live-move commentary for the play-chester page (Chester games AND pass & play):
             // the page listens for chester-coaching-pause; nothing else dispatches it.
+            if (!isAiMover) { (window as any).__ctEval = engineTelemetry?.evaluationAfter ?? (window as any).__ctEval ?? null; (window as any).__ctPending = false; }
             if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
               detail: {
                 kind: 'move',
@@ -1027,6 +1029,21 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             setTimeout(async () => {
 
               if (gameRef.current.isGameOver) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
+              // BUILD 125: Chester waits for the verdict on your move (so a FREEZE lands before he replies),
+              // holds while a freeze is up, then thinks for as long as the position deserves (his hesitation rule).
+              const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+              const w = window as any;
+              for (let t = 0; t < 30 && w.__ctPending; t++) await sleep(100);
+              w.__ctPending = false;
+              for (let t = 0; t < 150 && w.__ctFreeze; t++) await sleep(100);
+              if (!gameRef.current.isGameOver && difficulty) {
+                const hist = gameRef.current.chess.history({ verbose: true }) as any[];
+                const last = hist[hist.length - 1]; const prev = hist[hist.length - 2];
+                const legal = gameRef.current.chess.moves().length;
+                const hes = hesitationMs({ legalMoves: legal, evalAbsCp: typeof w.__ctEval === 'number' ? w.__ctEval : null, fullmove: Math.ceil(hist.length / 2), lastWasCapture: !!last?.captured, recapture: !!(last?.captured && prev?.captured && last.to === prev.to), level: difficulty });
+                const extra = Math.max(0, hes - responseDelay);
+                if (extra > 0) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: true, deep: hes >= 4000 } })); await sleep(extra); }
+              }
               const moves = gameRef.current.chess.moves({ verbose: true });
               if (!moves.length) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               const fenBeforeMove = gameRef.current.chess.fen();
@@ -1124,7 +1141,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
             renderAfterCapture(moveResult);
             if (blindnessExpires) renderBoard();
-            if (!isRemote) playAiTurn(moveResult.captured ? 2600 : AI_RESPONSE_DELAY_MS);
+            if (!isRemote) { (window as any).__ctPending = true; playAiTurn(moveResult.captured ? 2600 : AI_RESPONSE_DELAY_MS); }
           };
 
           const showLegalTargets = () => {

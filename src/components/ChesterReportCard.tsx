@@ -61,6 +61,7 @@ function habitMark(state: 'pass' | 'almost' | 'miss'): string {
 export default function ChesterReportCard({
   grades,
   review,
+  scouting,
   isLoading,
   pgn,
   difficulty,
@@ -70,6 +71,7 @@ export default function ChesterReportCard({
 }: {
   grades: GradedMove[];
   review: string;
+  scouting?: string[];
   isLoading: boolean;
   pgn?: string;
   difficulty?: string;
@@ -206,6 +208,7 @@ export default function ChesterReportCard({
       {canRetry && <button type="button" className="verdict-share__cta" style={{ background: '#22d3ee' }} onClick={onRetry!}>🔁 RETRY THE MISTAKE<small>replay the position, find the better move</small></button>}
 
       <p className="chester-report-card__story">{isLoading ? 'Chester is writing his final review...' : review}</p>
+      {!isLoading && scouting && scouting.length > 0 && <ul className="chester-report-card__scout" aria-label="Scouting report">{scouting.map((b, i) => <li key={i}>{b}</li>)}</ul>}
       <p className="chester-report-signature">{letter === 'A' ? 'Framed. This one hangs on the town hall wall.' : letter === 'B' ? 'A proper scrap. You are knocking on something big.' : letter === 'C' ? 'The bones of a great player, the skin of a gambler.' : 'We burn this tape together, then we rebuild.'}<b>- Chester 🖋</b></p>
       <VerdictShare grades={grades} pgn={pgn} difficulty={difficulty} opponentLabel={`${levelLabel} CHESTER`} summary={{ grade: letter, score, accuracy: summary?.accuracy, openingName: null }} />
     </section>

@@ -18,6 +18,8 @@ import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderSt
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
 import { ChesterChatOverlay } from '@/components/ChesterUI';
+import { loadPlayerFile, analyse } from '@/lib/player-file';
+import { direct, postGamePrompt, parsePostGame, localScouting } from '@/lib/chester-director';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
@@ -56,13 +58,14 @@ function PlayChesterGame() {
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [calculating, setCalculating] = useState(false);
+  const [deepThought, setDeepThought] = useState(false);
   const [coachPrompt, setCoachPrompt] = useState<CoachPrompt | null>(null);
   const [muted, setMutedState] = useState(false);
   const [haptics, setHapticsState] = useState(true);
   const [resignArmed, setResignArmed] = useState(false);
   const teleRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setHapticsState(isHaptics()); }, []);
-  useEffect(() => { const onCalc = (e: Event) => setCalculating(!!(e as CustomEvent).detail?.on); window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
+  useEffect(() => { const onCalc = (e: Event) => { const d = (e as CustomEvent).detail; setCalculating(!!d?.on); setDeepThought(!!d?.on && !!d?.deep); }; window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
   useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = el.scrollHeight; });
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
@@ -72,6 +75,11 @@ function PlayChesterGame() {
   const [millCount, setMillCount] = useState(0);
   useEffect(() => { setMillCount(loadMill().length); }, []);
   const [review, setReview] = useState('');
+  const [scouting, setScouting] = useState<string[]>([]);
+  const [shake, setShake] = useState(false);
+  const [freeze, setFreeze] = useState<{ tone: 'green' | 'red'; text: string; banter: string } | null>(null);
+  const [banter, setBanter] = useState('');
+  const releaseFreeze = () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; setFreeze(null); };
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [lessonStep, setLessonStep] = useState(0);
@@ -209,7 +217,7 @@ function PlayChesterGame() {
         if (bossNode) completeBossNode(bossNode);
       }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply }); if (d.ui_action === 'freeze_green' || d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: d.ui_action === 'freeze_green' ? 'green' : 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat }); setBanter(''); } else { setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
     window.addEventListener('load-puzzle', resetJails);
@@ -218,6 +226,9 @@ function PlayChesterGame() {
   }, [mode, started]);
 
   useEffect(() => { coachPromptRef.current = coachPrompt; }, [coachPrompt]);
+  useEffect(() => { if (!freeze) return; const t = window.setTimeout(releaseFreeze, 9000); return () => window.clearTimeout(t); }, [freeze]);
+  useEffect(() => { if (!banter) return; const t = window.setTimeout(() => setBanter(''), 4500); return () => window.clearTimeout(t); }, [banter]);
+  useEffect(() => () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; }, []);
 
   useEffect(() => {
     if (coachPrompt?.kind === 'help' && !isThinking && coachReply) setLastHintReply(coachReply);
@@ -313,8 +324,12 @@ function PlayChesterGame() {
     setReview(story);
     setReviewLoading(false);
     const topSwings = [...report.gradeHistory].filter((g) => g.player === 'You').sort((a, b) => (b.centipawnLoss ?? 0) - (a.centipawnLoss ?? 0)).slice(0, 2).map((g) => `${phraseMap.get(g.ply) || g.move} (graded ${g.grade}, lost about ${((g.centipawnLoss ?? 0) / 100).toFixed(1)} pawns)`).join('; ') || 'no big swings on record';
-    void askChesterChat(JSON.stringify({ type: 'post-game-report', gradeHistory: report.gradeHistory.map((g) => ({ player: g.player, move: g.move, grade: g.grade, phrase: phraseMap.get(g.ply) || undefined })), persona: PERSONA_DESC[difficulty], instruction: `SCORECARD for a finished match: tell its story built around the turning point. The player's two biggest evaluation swings were: ${topSwings}. Pick the single biggest as the turning point and say why it decided the game. Be encouraging - name what the player did well, and end with ONE specific chess concept for them to study next. At most 4 sentences, plain English, no engine jargon, and NEVER chess notation or coordinates - describe moves in words, like 'knight to the kingside'.` }))
-      .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setReview(reply); })
+    const file = loadPlayerFile();
+    setScouting(localScouting(file));
+    const a = analyse(file);
+    const playerLine = a.games ? `${a.games} games, ${a.wins} wins, ${a.perGame.toFixed(1)} big slips a game. ${a.headline}` : 'first game on record';
+    void askChesterChat(JSON.stringify({ type: 'post-game-report', gradeHistory: report.gradeHistory.map((g) => ({ player: g.player, move: g.move, grade: g.grade, phrase: phraseMap.get(g.ply) || undefined })), persona: PERSONA_DESC[difficulty], instruction: postGamePrompt(topSwings, playerLine) }))
+      .then((reply) => { const parsed = parsePostGame(reply); if (parsed) { setReview(parsed.debrief); setScouting(parsed.bullets); } else if (reply && !/messenger|delayed|unavailable|\{/.test(reply)) setReview(reply); })
       .catch(() => undefined);
   }, [report, difficulty]);
 
@@ -436,7 +451,9 @@ function PlayChesterGame() {
       {clockBar}
       {flagBanner}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
-      <div className={`chester-board-frame ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+      <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+        {freeze && <div className={`chester-freeze chester-freeze--${freeze.tone}`} role="alertdialog" aria-label={freeze.tone === 'green' ? 'Brilliant move' : 'Costly move'}><span>{freeze.tone === 'green' ? 'FROZEN - NICE ONE' : 'FROZEN - HOLD ON'}</span><p>{freeze.text}</p><em>{freeze.banter}</em><button type="button" onClick={releaseFreeze}>CONTINUE</button></div>}
+        {!freeze && banter && <div className="chester-banter" aria-live="polite"><b>CHESTER</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
@@ -467,7 +484,7 @@ function PlayChesterGame() {
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
           {isThinking || calculating
-            ? <p className="chester-teleprompter__calculating">CHESTER IS CALCULATING<span className="chester-teleprompter__cursor">▮</span></p>
+            ? <p className="chester-teleprompter__calculating">{deepThought ? 'CHESTER IS DEEP IN THOUGHT' : 'CHESTER IS CALCULATING'}<span className="chester-teleprompter__cursor">▮</span></p>
             : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? (teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : [coachBullets.reaction, coachBullets.why, !coachBullets.gradeGood ? coachBullets.risk : null].filter(Boolean).join(' ')) : coachPrompt ? coachReply : lesson.body}</p>}
         </div>
       </div>
@@ -535,7 +552,7 @@ function PlayChesterGame() {
       </section>
     </div>}
     {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
-    {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
+    {report && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
   </main>;
 }
 
