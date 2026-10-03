@@ -693,9 +693,12 @@ function shortReaction(label: string, seed: number): string {
 // which is always Chester - so negate for the player, who is white in Play Chester).
 // BUILD 94: the numeric core is exported so the tug-of-war bar and the ODDS line can
 // never disagree - both read this exact percentage from the same evaluationAfter.
-export function winOddsPct(evaluationAfter: number | null | undefined, viewerColor?: 'w' | 'b' | null): number | null {
+export function winOddsPct(evaluationAfter: number | null | undefined, viewerColor?: 'w' | 'b' | null, mateAfter?: number | null): number | null {
+  // Forced mate overrides the curve: the viewer mating = 100%, being mated = 0%.
+  if (mateAfter !== null && mateAfter !== undefined && mateAfter !== 0) { const viewerMates = (viewerColor || 'w') === 'w' ? mateAfter > 0 : mateAfter < 0; return viewerMates ? 100 : 0; }
   if (evaluationAfter === null || evaluationAfter === undefined) return null;
-  const playerCp = (viewerColor || 'w') === 'w' ? evaluationAfter : -evaluationAfter;
+  const clamped = Math.max(-1000, Math.min(1000, evaluationAfter));
+  const playerCp = (viewerColor || 'w') === 'w' ? clamped : -clamped;
   const w = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * playerCp)) - 1);
   return Math.max(1, Math.min(99, Math.round(w)));
 }

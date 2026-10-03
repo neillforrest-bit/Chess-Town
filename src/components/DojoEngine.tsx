@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { casualChanceForLevel } from '@/lib/road';
+import { isHandicapLevel } from '@/lib/road';
 import { hesitationMs } from '@/lib/chester-director';
 import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
@@ -799,6 +799,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 engineTelemetry,
                 evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
                 evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
+                evaluationMateAfter: engineTelemetry?.evaluationMateAfter ?? null,
                 evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null,
                 principalVariation: engineTelemetry?.principalVariation ?? [],
                 alternateWinningLines: engineTelemetry?.alternateWinningLines ?? [],
@@ -827,6 +828,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null,
                 evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
                 evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
+                evaluationMateAfter: engineTelemetry?.evaluationMateAfter ?? null,
                 captured: move.captured || null,
                 check: move.san.includes('+'),
                 mate: move.san.includes('#'),
@@ -1054,9 +1056,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const fenBeforeMove = gameRef.current.chess.fen();
               const searchD = difficulty === 'PRO' || difficulty === 'EXPERT' || difficulty === 'ADVANCED' ? 2 : 1;
               const roadLevel: number | null = typeof w.__ctRoadLevel === 'number' ? w.__ctRoadLevel : null;
-              const roadCasual = roadLevel ? casualChanceForLevel(roadLevel) : 0;
-              const roadCasualPick = roadCasual > 0 && Math.random() < roadCasual ? (pickCasualMove(gameRef.current.chess) || pickRookieMove(gameRef.current.chess)) : null;
-              let engineMove = roadCasualPick ? `${roadCasualPick.from}${roadCasualPick.to}${roadCasualPick.promotion || ''}` : await (roadLevel ? getStockfishClient().selectMoveRoad(fenBeforeMove, roadLevel) : getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty))).catch(() => null);
+              let engineMove = await (roadLevel ? (isHandicapLevel(roadLevel) ? getStockfishClient().selectMoveHandicap(fenBeforeMove, roadLevel) : getStockfishClient().selectMoveRoad(fenBeforeMove, roadLevel)) : getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty))).catch(() => null);
               // Strong levels must never silently collapse to a shallow search: if the
               // full-strength call fails, retry at CLUB strength before any fallback.
               if (!engineMove && (difficulty === 'ADVANCED' || difficulty === 'EXPERT' || difficulty === 'PRO')) {

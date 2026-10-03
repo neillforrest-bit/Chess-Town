@@ -26,7 +26,7 @@ import { direct, postGamePrompt, parsePostGame, localScouting } from '@/lib/ches
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
-type CoachPrompt = { kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; principleKey?: string | null; principleFollowed?: boolean | null; exchangeLost?: string | null; exchangeWon?: string | null; exchangeNet?: number | null };
+type CoachPrompt = { evaluationMateAfter?: number | null; kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; principleKey?: string | null; principleFollowed?: boolean | null; exchangeLost?: string | null; exchangeWon?: string | null; exchangeNet?: number | null };
 // BUILD 94: giant emoji move reviews replace the static horse avatar on graded moves.
 // (The horse stays for the idle/thinking coach persona - Chester IS a knight.)
 const GRADE_EMOJI: Record<string, string> = { BRILLIANT: '👑', BEST: '🎯', GREAT: '🔥', GOOD: '✅', INACCURACY: '😬', MISTAKE: '⚠️', BLUNDER: '💥' };
@@ -494,7 +494,7 @@ function PlayChesterGame() {
   const turnSide: 'you' | 'opp' = turnColor === viewerSeat ? 'you' : 'opp';
   // BUILD 94 tug-of-war: same winOddsPct + same evaluationAfter as the ODDS bullet, so
   // the bar and the ODDS line can never disagree. 50/50 until the first graded move.
-  const tugPct = winOddsPct(coachPrompt?.kind === 'move' ? coachPrompt.evaluationAfter : null, viewerSeat) ?? 50;
+  const tugPct = winOddsPct(coachPrompt?.kind === 'move' ? coachPrompt.evaluationAfter : null, viewerSeat, coachPrompt?.kind === 'move' ? coachPrompt.evaluationMateAfter : null) ?? 50;
   const gradeEmoji = coachPrompt?.kind === 'move' ? GRADE_EMOJI[(coachPrompt.classification || '').toUpperCase()] || '♟️' : null;
   const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined;
   const moodEmoji = material.lead > 0 ? '🦄' : material.lead < 0 ? '🐴💦' : '🐴';

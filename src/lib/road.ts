@@ -17,13 +17,21 @@ export function eloForLevel(level: number): number | null {
   const l = Math.max(1, level);
   return Math.round(ROAD_FLOOR_ELO + ((l - 1) / 13) * (3190 - ROAD_FLOOR_ELO));
 }
-/** Stockfish's UCI_Elo cannot go below 1320, so the engine setting is clamped to that floor. */
-export const engineEloFor = (level: number): number | null => { const e = eloForLevel(level); return e === null ? null : Math.max(1320, e); };
-/** Below 1320 Elo the engine alone is too strong, so some moves are a human-style casual pick instead (85% at level 1, fading to 0 at 1320). */
-export function casualChanceForLevel(level: number): number {
+/** UCI_Elo for levels 4+: rounded to an integer and clamped to 1380..3190 (Stockfish rejects decimals and values under its floor). */
+export const engineEloFor = (level: number): number | null => {
   const e = eloForLevel(level);
-  if (e === null || e >= 1320) return 0;
-  return Math.min(0.85, ((1320 - e) / (1320 - ROAD_FLOOR_ELO)) * 0.85);
+  return e === null ? null : Math.max(1380, Math.min(3190, Math.round(e)));
+};
+/** Levels 1-3 skip UCI_Elo: the engine searches 3 lines at depth 1/1/2 and a dice roll picks which line to play. */
+export const isHandicapLevel = (level: number) => level >= 1 && level <= 3;
+export const HANDICAP_DEPTH: Record<number, number> = { 1: 1, 2: 1, 3: 2 };
+/** Cumulative odds for [best, 2nd, 3rd]. */
+export const HANDICAP_ODDS: Record<number, number[]> = { 1: [0.5, 0.3, 0.2], 2: [0.7, 0.3], 3: [0.85, 0.15] };
+export function pickHandicapIndex(level: number, roll = Math.random(), available = 3): number {
+  const odds = HANDICAP_ODDS[level] || [1];
+  let acc = 0;
+  for (let i = 0; i < odds.length; i++) { acc += odds[i]; if (roll < acc) return Math.min(i, available - 1); }
+  return 0;
 }
 export function depthForLevel(level: number): number {
   if (level >= ROAD_MAX) return 22;

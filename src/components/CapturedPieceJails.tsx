@@ -144,7 +144,7 @@ function RollNumber({ value }: { value: number }) {
 
 export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false, turnSide = 'you', tugPct = 50, lead = 0 }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean; turnSide?: 'you' | 'opp'; tugPct?: number; lead?: number }) {
   const { yourPts, oppPts } = material;
-  const you = Math.max(2, Math.min(98, tugPct));
+  const you = Math.max(0, Math.min(100, tugPct));
   const youR = Math.round(you);
   return (
     <div className="fighthud" aria-label={`Live material score: ${youLabel} ${yourPts}, ${oppLabel} ${oppPts}`}>

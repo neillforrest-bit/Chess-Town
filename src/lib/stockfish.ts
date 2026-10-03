@@ -17,6 +17,8 @@ export type EngineTelemetry = {
   uci: string;
   evaluationBefore: number | null;
   evaluationAfter: number | null;
+  /** White-absolute mate distance after the move (positive = white mates), null when no forced mate. */
+  evaluationMateAfter?: number | null;
   evalDelta: number | null;
   classification: 'BRILLIANT' | 'BEST' | 'GREAT' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER';
   bestMove: string | null;
@@ -69,7 +71,7 @@ function classify(loss: number | null, isBestMove: boolean, firstChoiceGap: numb
   return 'BLUNDER';
 }
 
-import { eloForLevel, engineEloFor, depthForLevel, movetimeForLevel } from '@/lib/road';
+import { eloForLevel, engineEloFor, depthForLevel, movetimeForLevel, HANDICAP_DEPTH, pickHandicapIndex } from '@/lib/road';
 
 export class StockfishClient {
   private worker: Worker | null = null;
@@ -280,7 +282,7 @@ export class StockfishClient {
           : classification.toLowerCase() as 'inaccuracy' | 'mistake' | 'blunder',
       fenBefore: input.fenBefore, fenAfter: input.fenAfter, san: input.san, uci: input.uci,
       // evaluationAfter is now WHITE-ABSOLUTE centipawns (positive = white better).
-      evaluationBefore: before.score, evaluationAfter: absAfter, evalDelta: loss,
+      evaluationBefore: before.score, evaluationAfter: absAfter, evaluationMateAfter: absMateAfter, evalDelta: loss,
       classification, bestMove: before.bestMove,
       principalVariation: before.pv, alternateWinningLines: before.pv.length ? [before.pv.join(' ')] : [], engine: 'stockfish-18',
       centipawns: afterScore, mateIn: afterMate, continuation,
@@ -289,6 +291,14 @@ export class StockfishClient {
 
   async selectMove(fen: string, difficulty: ChesterDifficulty) {
     return (await this.analyze(fen, difficulty)).bestMove;
+  }
+
+  /** Levels 1-3: MultiPV 3 at a choked depth, then a weighted dice roll picks best / 2nd / 3rd line. */
+  async selectMoveHandicap(fen: string, level: number) {
+    const a = await this.analyze(fen, 'INTERMEDIATE', HANDICAP_DEPTH[level] || 1, true, 3, { elo: null, skill: 20 });
+    const moves = [1, 2, 3].map((n) => a.lines[n]?.pv?.[0]).filter((m): m is string => !!m);
+    if (!moves.length) return a.bestMove;
+    return moves[pickHandicapIndex(level, Math.random(), moves.length)];
   }
 
   async selectMoveRoad(fen: string, level: number) {
