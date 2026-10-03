@@ -2814,3 +2814,19 @@ vercel-live-feedback { display: none !important; }
 .town-night--doors .town-door.town-door--top i { font-size: 1.6rem; color: #ffb800; }
 .town-night--doors .town-door.town-door--top span { display: block; }
 @media (max-height: 760px) { .town-night--doors .town-door.town-door--top { padding: .35rem .8rem; } .town-night--doors .town-door.town-door--top span { font-size: .64rem; } .town-night--doors .town-door.town-door--top b { font-size: .8rem; } }
+
+/* ── BUILD 133 · mobile: no zoom/pull-to-refresh, safe areas, square board cap, victory overlay */
+body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
+.chester-board-frame, .chester-board-frame canvas { touch-action: none; }
+/* Square board: never wider than the screen or 600px, never taller than half the viewport (a cap on the WIDTH keeps it square). */
+.chester-game__board .chester-board-frame { width: min(100cqw, 600px, 50dvh) !important; max-width: 100%; aspect-ratio: 1 / 1; margin-inline: auto; position: relative; }
+/* Safe areas on the outermost page wrapper so nothing clips under the Dynamic Island or home indicator. */
+.chester-game, .chester-start-screen { padding-top: max(.7rem, env(safe-area-inset-top)); padding-bottom: max(.4rem, env(safe-area-inset-bottom)); }
+.road-victory { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; padding: 1rem; text-align: center; border-radius: inherit; }
+.road-victory h2 { margin: 0; color: #fff; font: 900 clamp(1.2rem, 6vw, 2rem)/1.1 Arial Black, Arial, sans-serif; text-shadow: 0 3px 0 rgba(0,0,0,.55), 0 0 22px rgba(255,216,77,.7); }
+.road-victory p { margin: 0 0 .6rem; color: #fff6d6; font: 700 clamp(.9rem, 4vw, 1.15rem)/1.35 Arial, sans-serif; }
+.road-victory--cleared { background: rgba(113,63,18,.8); box-shadow: inset 0 0 60px rgba(255,216,77,.55), 0 0 40px rgba(255,216,77,.45); animation: roadGlow 2.2s ease-in-out infinite; }
+.road-victory--boss_defeated { background: radial-gradient(circle at 50% 40%, rgba(150,10,60,.9), rgba(60,8,90,.92)); box-shadow: inset 0 0 70px rgba(255,40,110,.6); animation: roadPulse 1.3s ease-in-out infinite; }
+.road-victory__next { padding: 1.05rem 2.2rem; min-width: 70%; border: 3px solid #fff0b3; border-radius: 16px; background: linear-gradient(180deg, #ffd84d, #e2ac1f); color: #241a02; font: 900 clamp(1.3rem, 6.5vw, 1.9rem)/1 Arial Black, Arial, sans-serif; letter-spacing: 3px; box-shadow: 0 0 26px rgba(255,216,77,.6); cursor: pointer; }
+@keyframes roadGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+@keyframes roadPulse { 0%,100% { filter: brightness(.9) saturate(1); } 50% { filter: brightness(1.25) saturate(1.3); } }

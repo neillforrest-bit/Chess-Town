@@ -80,7 +80,7 @@ export default function ChessTownLanding() {
         </div>
       </div>
       <h1>CHESTER<em>VILLE</em></h1>
-      {rank && <Link href="/boss-map" className="town-rank">{rank.icon} {rank.name} · {rank.points} PTS</Link>}
+      {rank && <Link href="/play-chester?road=1" className="town-rank">{rank.icon} {rank.name} · {rank.points} PTS</Link>}
       {ladder && <Link href="/play-chester" className="town-rank town-rank--ladder">{ladder.grandChester ? '👑 GRAND CHESTER' : `♞ ${LADDER_LABELS[['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][ladder.unlocked]] || 'ROOKIE'} · RUNG ${ladder.unlocked + 1}/4`}</Link>}
     </header>
 

@@ -60,12 +60,15 @@ function PlayChesterGame() {
   // Road to Joseph: 15 levels, every 3rd is a boss fight (exam mode).
   const [roadLevel, setRoadLevelState] = useState(1);
   useEffect(() => { if (roadActive) setRoadLevelState(getRoadLevel()); }, [roadActive]);
+  const [victoryState, setVictoryState] = useState<'none' | 'cleared' | 'boss_defeated'>('none');
   const [introOpen, setIntroOpen] = useState(false);
-  useEffect(() => { if (roadActive && getRoadLevel() === 1) setIntroOpen(true); }, [roadActive]);
+  useEffect(() => { if (roadActive) setIntroOpen(true); }, [roadActive]);
   const isBossFight = roadActive && isBossLevel(roadLevel);
   const boss = isBossFight ? bossFor(roadLevel) : null;
   const bossRef = useRef<{ on: boolean; boss: ReturnType<typeof bossFor> }>({ on: false, boss: null });
   bossRef.current = { on: isBossFight, boss };
+  const roadRef = useRef({ active: false, level: 1 });
+  roadRef.current = { active: roadActive, level: roadLevel };
   useEffect(() => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = roadActive ? roadLevel : null; return () => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = null; }; }, [roadActive, roadLevel]);
   const [difficulty, setDifficulty] = useState<Difficulty>(roadActive ? 'BEGINNER' : requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
   useEffect(() => { if (roadActive) setDifficulty(tierForLevel(roadLevel)); }, [roadActive, roadLevel]);
@@ -96,6 +99,16 @@ function PlayChesterGame() {
   const releaseFreeze = () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; window.dispatchEvent(new CustomEvent('chester-clear-better')); setFreeze(null); };
   // BUILD 128 fork: ACCEPT = Chester replies at once; REWIND = take back the move (1 ply) and try again.
   const acceptConsequences = () => { (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
+  const handleNextLevel = () => {
+    const atTop = roadLevel >= ROAD_MAX;
+    const next = atTop ? 1 : roadLevel + 1; // beating Joseph restarts the climb at level 1
+    setRoadLevel(next); setRoadLevelState(next);
+    setVictoryState('none'); setReport(null); setMatchOver(false); setCoachPrompt(null); setCoachReply(''); setFreeze(null); setBanter(''); setCapturedPieces([]);
+    (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false;
+    window.dispatchEvent(new CustomEvent('chester-clear-better'));
+    window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } }));
+    burstConfetti();
+  };
   const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-clear-better')); window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); };
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
@@ -229,7 +242,7 @@ function PlayChesterGame() {
         const habit = weakestHabit(detail, myMoves.filter((entry) => entry.grade === 'F').length);
         setLadder(recordLadderGame({ level: difficulty, result, grade: detail.grade, focus: habit.focus, weakness: habit.key }));
       }
-      if (roadActive && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const next = Math.min(ROAD_MAX, roadLevel + 1); setRoadLevel(next); setRoadLevelState(next); }
+      if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(ROAD_MAX, lv + 1)); setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);
@@ -508,6 +521,19 @@ function PlayChesterGame() {
       {flagBanner}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+        {victoryState !== 'none' && (() => {
+          const finalWin = roadLevel >= ROAD_MAX;
+          const bossName = bossFor(roadLevel)?.name || 'THE BOSS';
+          const title = finalWin ? 'JOSEPH DETHRONED.' : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
+          const sub = finalWin ? 'You beat the Final Mastermind. The Road to Joseph is complete.' : victoryState === 'boss_defeated' ? 'Joseph felt that. Keep climbing.' : 'The ladder gets steeper.';
+          return (
+            <div className={`road-victory road-victory--${victoryState}`} role="dialog" aria-live="polite">
+              <h2>{title}</h2>
+              <p>{sub}</p>
+              <button type="button" className="road-victory__next" onClick={handleNextLevel}>{finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
+            </div>
+          );
+        })()}
         {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
         {!freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : 'CHESTER'}</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
@@ -619,11 +645,30 @@ function PlayChesterGame() {
       </section>
     </div>}
     {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
-    {report && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
+    {report && victoryState === 'none' && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
   </main>;
 }
 
 // Inline icons: an emoji font is not guaranteed (headless Chrome, some Android builds show boxes), SVG always renders.
+// Small canvas confetti burst (no dependency). Runs ~1.8s then removes itself.
+function burstConfetti() {
+  try {
+    const c = document.createElement('canvas');
+    c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9500';
+    c.width = window.innerWidth; c.height = window.innerHeight; document.body.appendChild(c);
+    const g = c.getContext('2d'); if (!g) { c.remove(); return; }
+    const colors = ['#ffd84d', '#22d3ee', '#ff4eb1', '#4ade80', '#ffffff'];
+    const parts = Array.from({ length: 110 }, () => ({ x: c.width / 2, y: c.height * 0.45, vx: (Math.random() - 0.5) * 14, vy: -Math.random() * 13 - 3, s: 4 + Math.random() * 6, col: colors[Math.floor(Math.random() * colors.length)], r: Math.random() * 6 }));
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const age = t - t0; g.clearRect(0, 0, c.width, c.height);
+      parts.forEach((p) => { p.vy += 0.38; p.x += p.vx; p.y += p.vy; p.r += 0.2; g.save(); g.globalAlpha = Math.max(0, 1 - age / 1800); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.col; g.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6); g.restore(); });
+      if (age < 1800) requestAnimationFrame(tick); else c.remove();
+    };
+    requestAnimationFrame(tick);
+  } catch { /* effects are a bonus */ }
+}
+
 function Ico({ n }: { n: 'wave' | 'chat' | 'chart' | 'book' }) {
   const d = { wave: 'M7 11V5a1.5 1.5 0 0 1 3 0v5m0-6a1.5 1.5 0 0 1 3 0v6m0-5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-4a1.5 1.5 0 0 1 2.5-1.5L7 14', chat: 'M4 5h16v11H9l-5 4z', chart: 'M4 20V10m6 10V4m6 16v-7m4 7H2', book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm2 14h13' }[n];
   return <svg className="chester-ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
