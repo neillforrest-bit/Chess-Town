@@ -102,6 +102,13 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey?.trim()) throw new Error('Gemini unavailable');
 
+    if (payload.type === 'boss-taunt') {
+      // Boss exam mode: the client sends the boss prompt verbatim; no coaching voice, one hostile sentence.
+      if (/\bJoseph\b/.test(message)) return NextResponse.json({ reply: '', toolCall: null, tokens: null });
+      const bossPrompt = `${message}\n\n${buildEvidence(payload)}\n\nReturn only the one-sentence taunt. No markdown, no advice, no chess notation.`;
+      const out = await new GoogleGenAI({ apiKey }).models.generateContent({ model: 'gemini-3.5-flash', contents: bossPrompt, config: { responseMimeType: 'text/plain', maxOutputTokens: 80, thinkingConfig: { thinkingBudget: 0 } } });
+      return NextResponse.json({ reply: sanitizeReply(out.text ?? ''), toolCall: null, tokens: null });
+    }
     const typeContract = TYPE_CONTRACTS[payload.type || 'chat'] || TYPE_CONTRACTS.chat;
     const evidence = buildEvidence(payload);
     const history = payload.conversationHistory?.slice(-8).map((entry) => `${entry.role === 'user' ? 'PLAYER' : 'CHESTER'}: ${entry.text.slice(0, 800)}`).join('\n') || 'No previous messages.';

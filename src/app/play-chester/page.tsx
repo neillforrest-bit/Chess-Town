@@ -14,6 +14,7 @@ import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct } from '@/lib/chester-voice';
 import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
+import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
@@ -46,6 +47,7 @@ function PlayChesterGame() {
   const requestedMode = searchParams.get('mode');
   const requestedLevel = searchParams.get('level');
   const bossNode = searchParams.get('boss');
+  const roadActive = searchParams.get('road') === '1';
   const requestedRoom = (searchParams.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
   const requestedSeat: 'w' | 'b' = searchParams.get('host') === '1' ? 'w' : 'b';
   const warMode = requestedMode === 'duel' && searchParams.get('war') === '1';
@@ -55,7 +57,16 @@ function PlayChesterGame() {
   const coachPromptRef = useRef<CoachPrompt | null>(null);
   const [ladder, setLadder] = useState<LadderState>({ unlocked: 0, grandChester: false, lastLevel: null, lastResult: null, lastGrade: null, lastFocus: null, lastWeakness: null, updatedAt: null });
   useEffect(() => { setLadder(getLadder()); }, []);
-  const [difficulty, setDifficulty] = useState<Difficulty>(requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
+  // Road to Joseph: 15 levels, every 3rd is a boss fight (exam mode).
+  const [roadLevel, setRoadLevelState] = useState(1);
+  useEffect(() => { if (roadActive) setRoadLevelState(getRoadLevel()); }, [roadActive]);
+  const isBossFight = roadActive && isBossLevel(roadLevel);
+  const boss = isBossFight ? bossFor(roadLevel) : null;
+  const bossRef = useRef<{ on: boolean; boss: ReturnType<typeof bossFor> }>({ on: false, boss: null });
+  bossRef.current = { on: isBossFight, boss };
+  useEffect(() => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = roadActive ? roadLevel : null; return () => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = null; }; }, [roadActive, roadLevel]);
+  const [difficulty, setDifficulty] = useState<Difficulty>(roadActive ? 'BEGINNER' : requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
+  useEffect(() => { if (roadActive) setDifficulty(tierForLevel(roadLevel)); }, [roadActive, roadLevel]);
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [calculating, setCalculating] = useState(false);
@@ -216,6 +227,7 @@ function PlayChesterGame() {
         const habit = weakestHabit(detail, myMoves.filter((entry) => entry.grade === 'F').length);
         setLadder(recordLadderGame({ level: difficulty, result, grade: detail.grade, focus: habit.focus, weakness: habit.key }));
       }
+      if (roadActive && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const next = Math.min(ROAD_MAX, roadLevel + 1); setRoadLevel(next); setRoadLevelState(next); }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);
@@ -230,7 +242,7 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); if (d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); if (bossRef.current.on) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
     const restored = (event: Event) => { const r = (event as CustomEvent<CapturedPiece>).detail; setCapturedPieces((pieces) => { const i = pieces.findLastIndex((p) => p.color === r.color && p.type === r.type); return i < 0 ? pieces : pieces.filter((_, k) => k !== i); }); };
@@ -251,6 +263,16 @@ function PlayChesterGame() {
 
   useEffect(() => {
     if (!coachPrompt) return;
+    if (coachPrompt.kind === 'move' && bossRef.current.on && bossRef.current.boss) {
+      // BOSS EXAM MODE: no coaching. The boss taunts in one hostile sentence (Joseph stays silent).
+      setIsThinking(false); setCoachReply(''); setTeleprompterLlm(null);
+      const bs = bossRef.current.boss; const p = coachPrompt;
+      if (bs.name === 'Joseph') { setBanter(''); return; }
+      void askChesterChat(JSON.stringify({ type: 'boss-taunt', message: bossTauntPrompt(bs, 'Forrest'), evalDelta: p.evalDelta ?? null, evaluationBefore: p.evaluationBefore ?? null, evaluationAfter: p.evaluationAfter ?? null, fen: p.fen }))
+        .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setCoachReply(reply.trim()); })
+        .catch(() => undefined);
+      return;
+    }
     if (coachPrompt.kind === 'move') {
       // Verdict bullets stay fully local. The LLM speaks only on VALUE MOMENTS
       // (blunder/mistake/brilliant/great, or a 2+ pawn swing) - the hybrid guard
@@ -414,13 +436,21 @@ function PlayChesterGame() {
   </div> : null;
   const flagBanner = flagResult ? <div className={`duel-flag-banner ${flagResult === 'won' ? 'is-won' : 'is-lost'}`} role="status">{flagResult === 'won' ? '⚡ FLAG FALL - rival ran out of time. You win on the clock!' : '⏱ FLAG FALL - your clock hit zero. Rival wins on time.'}</div> : null;
 
-  const help = () => { if (!helpRemaining || isThinking) return; setHelpRemaining((n) => n - 1); setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
+  const help = () => { if (!helpRemaining || isThinking || isBossFight) return; setHelpRemaining((n) => n - 1); setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
     <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
       {!isFriendMode && ladder.lastLevel && <p className="chester-remembers">🧠 CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
+      {!isFriendMode && roadActive && (
+        <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
+          <p className="road-strip__title">ROAD TO JOSEPH · LEVEL {roadLevel}/{ROAD_MAX}</p>
+          <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
+          <p className="road-strip__who">{boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. No hints, no freezes. Exam mode.` : `Opponent strength: about ${eloForLevel(roadLevel)} Elo${roadLevel < ROAD_MAX ? '' : ''}. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()}.`}</p>
+        </div>
+      )}
+      {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/play-chester?road=1"><b>ROAD TO JOSEPH</b><small>15 levels · a boss every 3rd · your level is saved</small></a>}
       {!isFriendMode && requestedLevel && <p style={{ margin: '.2rem 0 .6rem', color: '#ffd84d', fontWeight: 900, letterSpacing: '1px' }}>OPPONENT: {selectedLevel.label} · {selectedLevel.note}</p>}
-      {!isFriendMode && !requestedLevel && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? '🔒 ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small>{!locked && (() => { const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return rec?.games ? <i className="chester-level-stars">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}{rec.bestGrade ? ` · best ${rec.bestGrade}` : ''}</i> : null; })()}</button>; })}</div>}
+      {!isFriendMode && !requestedLevel && !roadActive && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? '🔒 ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small>{!locked && (() => { const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return rec?.games ? <i className="chester-level-stars">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}{rec.bestGrade ? ` · best ${rec.bestGrade}` : ''}</i> : null; })()}</button>; })}</div>}
       {mode === 'PVP_REMOTE' ? (
         <div style={{ margin: '.6rem 0', padding: '.7rem .9rem', border: '1px solid #ffd84d', borderRadius: 8, background: 'rgba(255,216,77,.08)' }}>
           <b style={{ color: '#ffd84d', letterSpacing: '1px' }}>{duelStatus === 'connected' ? 'FRIEND CONNECTED - FIGHT!' : duelStatus === 'failed' ? 'CONNECTION DROPPED - BOTH REOPEN THE LINK' : requestedSeat === 'w' ? `ROOM ${requestedRoom} - WAITING FOR YOUR FRIEND...` : `KNOCKING ON ROOM ${requestedRoom}...`}</b>
@@ -447,7 +477,7 @@ function PlayChesterGame() {
   const verdictKicker = isThinking ? 'CHESTER LIVE - READING THE BOARD…' : 'CHESTER LIVE';
   const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
   const coachMovePrompt = coachPrompt?.kind === 'move' && !isThinking ? coachPrompt : null;
-  const coachBullets = coachMovePrompt ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
+  const coachBullets = coachMovePrompt && !isBossFight ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
   return <main className="chester-game" aria-label="Play Chester guided game">
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-hud">
@@ -465,10 +495,10 @@ function PlayChesterGame() {
       {coachBullets?.odds && !heroTipOpen && <div className="chester-oddsline" key={`odds-${verdictKey}`}><b><Ico n="chart" /> ODDS</b><span>{coachBullets.odds}</span></div>}
       {clockBar}
       {flagBanner}
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} />
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
-        {!freeze && banter && <div className="chester-banter" aria-live="polite"><b>CHESTER</b> {banter}</div>}
+        {!freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : 'CHESTER'}</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
@@ -488,7 +518,7 @@ function PlayChesterGame() {
           </div>
         </div>
         <div className="chester-console__lifelines">
-          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT</b><small>{helpRemaining} LEFT</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking || isBossFight) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking || isBossFight} title={isBossFight ? 'No hints in a boss fight' : undefined} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT</b><small>{helpRemaining} LEFT</small></button>
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
         </div>
       </div>

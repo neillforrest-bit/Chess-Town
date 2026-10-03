@@ -142,27 +142,26 @@ function RollNumber({ value }: { value: number }) {
   );
 }
 
-export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false, turnSide = 'you', tugPct = 50 }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean; turnSide?: 'you' | 'opp'; tugPct?: number }) {
+export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false, turnSide = 'you', tugPct = 50, lead = 0 }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean; turnSide?: 'you' | 'opp'; tugPct?: number; lead?: number }) {
   const { yourPts, oppPts } = material;
   const you = Math.max(2, Math.min(98, tugPct));
+  const youR = Math.round(you);
   return (
-    <div className="hero-score" aria-label={`Live material score: ${youLabel} ${yourPts}, ${oppLabel} ${oppPts}`}>
-      <div className={`hero-score__box hero-score__box--you ${yourPts > oppPts ? 'is-leading' : ''} ${turnSide === 'you' ? 'is-turn' : ''}`}>
-        <small>{youLabel}</small>
-        <i className="hero-score__poss" aria-hidden="true" />
-        <RollNumber value={yourPts} />
-        {oppPts > 0 && <i key={`hurt-${oppPts}`} className="hurt" aria-hidden="true" />}
+    <div className="fighthud" aria-label={`Live material score: ${youLabel} ${yourPts}, ${oppLabel} ${oppPts}`}>
+      <div className="fighthud__names">
+        <div className={`fighthud__name fighthud__name--you ${turnSide === 'you' ? 'is-turn' : ''}`}>
+          <span>{youLabel}</span>{lead > 0 && <em key={`l-${lead}`}>+{lead}</em>}
+        </div>
+        <div className={`fighthud__name fighthud__name--opp ${turnSide === 'opp' ? 'is-turn' : ''} ${oppThinking ? 'is-thinking' : ''}`}>
+          {lead < 0 && <em key={`l-${lead}`}>+{-lead}</em>}<span>{oppLabel}</span>
+        </div>
       </div>
-      <div className="hero-tug" role="img" aria-label={`Tug of war: ${youLabel} ${Math.round(you)} percent, ${oppLabel} ${Math.round(100 - you)} percent`}>
-        <i className="hero-tug__you" style={{ width: `${you}%` }} />
-        <b className="hero-tug__notch" aria-hidden="true" />
-        <i className="hero-tug__opp" style={{ width: `${100 - you}%` }} />
-      </div>
-      <div className={`hero-score__box hero-score__box--opp ${oppPts > yourPts ? 'is-leading' : ''} ${oppThinking ? 'is-thinking' : ''} ${turnSide === 'opp' ? 'is-turn' : ''}`}>
-        <small>{oppLabel}</small>
-        <i className="hero-score__poss" aria-hidden="true" />
-        <RollNumber value={oppPts} />
-        {yourPts > 0 && <i key={`hurt-${yourPts}`} className="hurt" aria-hidden="true" />}
+      <div className="fighthud__bar" role="img" aria-label={`Tug of war: ${youLabel} ${youR} percent, ${oppLabel} ${100 - youR} percent`}>
+        <i className="fighthud__you" style={{ width: `${you}%` }} />
+        <i className="fighthud__opp" style={{ width: `${100 - you}%` }} />
+        <b className="fighthud__notch" aria-hidden="true" />
+        <span className="fighthud__pct fighthud__pct--you">{youR}%</span>
+        <span className="fighthud__pct fighthud__pct--opp">{100 - youR}%</span>
       </div>
     </div>
   );

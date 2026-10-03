@@ -1052,7 +1052,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (!moves.length) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               const fenBeforeMove = gameRef.current.chess.fen();
               const searchD = difficulty === 'PRO' || difficulty === 'EXPERT' || difficulty === 'ADVANCED' ? 2 : 1;
-              let engineMove = await getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty)).catch(() => null);
+              const roadLevel: number | null = typeof w.__ctRoadLevel === 'number' ? w.__ctRoadLevel : null;
+              let engineMove = await (roadLevel ? getStockfishClient().selectMoveRoad(fenBeforeMove, roadLevel) : getStockfishClient().selectMove(fenBeforeMove, getChesterDifficulty(difficulty))).catch(() => null);
               // Strong levels must never silently collapse to a shallow search: if the
               // full-strength call fails, retry at CLUB strength before any fallback.
               if (!engineMove && (difficulty === 'ADVANCED' || difficulty === 'EXPERT' || difficulty === 'PRO')) {
@@ -1061,7 +1062,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               let aiMove = engineMove
                 ? { from: engineMove.slice(0, 2), to: engineMove.slice(2, 4), promotion: engineMove.slice(4, 5) || undefined }
                 : pickBestMove(gameRef.current.chess, searchD);
-              if (difficulty === 'BEGINNER') {
+              if (difficulty === 'BEGINNER' && !roadLevel) {
                 const casual = Math.random() < 0.85 ? pickCasualMove(gameRef.current.chess) || pickRookieMove(gameRef.current.chess) : null;
                 if (casual) aiMove = { from: casual.from, to: casual.to, promotion: casual.promotion || undefined };
               }
