@@ -78,7 +78,7 @@ OUTPUT CONTRACT: Return only Chester's spoken commentary. Never mention prompts,
     const result = await genAI.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt + CHESS_GUARDRAILS,
-      config: { responseMimeType: 'text/plain', maxOutputTokens: 500, thinkingConfig: GEMINI_THINKING },
+      config: { responseMimeType: 'text/plain', maxOutputTokens: 1400, thinkingConfig: GEMINI_THINKING },
     });
 
     const commentary = sanitizeCommentary(result.text ?? '');

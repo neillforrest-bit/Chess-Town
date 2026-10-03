@@ -200,7 +200,7 @@ Return only the JSON object required by the response schema. Put character dialo
       config: {
         responseMimeType: 'application/json',
         responseJsonSchema: CHESTER_RESPONSE_SCHEMA,
-        maxOutputTokens: payload.type === 'chat' ? 1300 : 700,
+        maxOutputTokens: payload.type === 'chat' ? 2200 : 1600,
         thinkingConfig: GEMINI_THINKING,
       },
     });

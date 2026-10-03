@@ -85,7 +85,7 @@ No markdown, no chess notation like Nf3, no centipawns. Refer to moves by number
     const response = await genAI.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt + CHESS_GUARDRAILS,
-      config: { responseMimeType: 'application/json', maxOutputTokens: 900, thinkingConfig: GEMINI_THINKING },
+      config: { responseMimeType: 'application/json', maxOutputTokens: 1800, thinkingConfig: GEMINI_THINKING },
     });
     const parsed = JSON.parse(clean(response.text ?? '{}')) as Partial<CardLines>;
     const lines = fallbackLines(payload);
