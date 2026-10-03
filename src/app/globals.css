@@ -2850,3 +2850,9 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .battle-board{width:min(100vw - 1rem,600px,60dvh)}
 .battle-clock{display:flex;justify-content:space-between;align-items:center;width:min(100vw - 1rem,600px,60dvh);padding:.45rem .8rem;border:1px solid rgba(238,252,255,.18);border-radius:8px;font-weight:900;letter-spacing:1px;font-size:.8rem}
 .battle-clock[data-active="true"]{border-color:#ffd84d;color:#ffd84d}.battle-clock b{font-size:1.3rem;font-variant-numeric:tabular-nums}
+.battle-actions{display:flex;gap:.6rem;align-items:center;justify-content:center;flex-wrap:wrap}
+.battle-btn--sm{padding:.55rem .9rem}
+.battle-btn--ghost{padding:.55rem .9rem;background:transparent;color:#9db2b7;border:1px solid rgba(238,252,255,.25)}
+.battle-btn--ghost:disabled{opacity:.4;cursor:default}
+.battle-outcome{color:#ffd84d;font-weight:900;letter-spacing:1px}
+a.battle-btn{text-decoration:none}
