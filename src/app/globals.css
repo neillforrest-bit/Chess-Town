@@ -156,3 +156,26 @@ em{font-style:normal;color:var(--gold)}
 .cs-award{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cs-match-card .cs-poster{max-height:26dvh}.cs-obar{min-height:58px;padding:4px 14px}.cs-oavatar{width:48px;height:48px}
 .cs-vs{grid-template-rows:minmax(0,1fr)}.cs-bracket{overflow:hidden}.cs-match-card .cs-poster{max-height:24dvh;min-height:0}.cs-match-card{min-height:0}
+
+/* ===== batch 3: bigger Orson, taste map, power buttons, why sheet ===== */
+.cs-obar{min-height:108px;padding:8px 14px;gap:12px}
+.cs-oavatar{width:88px;height:88px;border-width:3px;overflow:visible;position:relative}.cs-oavatar .cs-oface{border-radius:50%}
+.cs-obubble{font-size:1.02rem;line-height:1.3;padding:10px 14px;-webkit-line-clamp:3;border-radius:16px}
+.cs-obar--tv{min-height:15vh}.cs-obar--tv .cs-oavatar{width:13vh;height:13vh}.cs-obar--tv .cs-obubble{font-size:3.2vh}
+@media (max-height:720px){.cs-obar{min-height:76px;padding:5px 12px}.cs-oavatar{width:62px;height:62px;border-width:2px}.cs-obubble{font-size:.88rem;padding:7px 11px}}
+.cs-ask--tight{gap:8px}
+.cs-tmap{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.cs-tchip{padding:8px 4px;border-radius:10px;background:#18121f;border:1px solid #4a3a6b;font-size:.74rem;color:#d9cfe6;min-height:38px}
+.cs-tchip.is-crave{border-color:#ffcf40;background:#2d2210;color:#fff1c2}.cs-tchip.is-ban{border-color:#c2371a;background:#3a1612;color:#ff9a7a;text-decoration:line-through}
+.cs-powers--big{gap:8px}
+.cs-powers--big .cs-pw{display:flex;flex-direction:column;gap:2px;padding:9px 6px;border-radius:12px;border:2px solid #4a3a6b;align-items:center}
+.cs-powers--big .cs-pw b{font-size:.74rem;letter-spacing:.1em}.cs-powers--big .cs-pw small{font-size:.58rem;color:#a89ebd;font-weight:500;letter-spacing:0}
+.cs-pw--bullet.is-ready{border-color:#9fb4e8;background:linear-gradient(180deg,#1e2a48,#141c30);box-shadow:0 0 16px #7a9aff66;animation:glowb 2.2s ease-in-out infinite}
+.cs-pw--surprise.is-ready{border-color:#d06af0;background:linear-gradient(180deg,#3a1a48,#241030);box-shadow:0 0 16px #d06af066;animation:glowp 2.2s ease-in-out infinite}
+@keyframes glowb{50%{box-shadow:0 0 26px #7a9affcc}}@keyframes glowp{50%{box-shadow:0 0 26px #d06af0cc}}
+.cs-why-sheet{flex:none;display:flex;flex-direction:column;gap:7px;animation:deal .25s ease-out}
+.cs-why-q{display:flex;justify-content:space-between;align-items:center;font-family:var(--serif);font-weight:700}.cs-why-q button{font-size:.7rem;color:var(--dim);text-decoration:underline;padding:4px 8px}
+.cs-why-chips{display:flex;flex-wrap:wrap;gap:6px}.cs-why-chips button{padding:8px 11px;border-radius:999px;background:#18121f;border:1px solid #4a3a6b;font-size:.76rem;color:#d9cfe6}.cs-why-chips button.is-on{border-color:var(--gold);background:#2d2210;color:#fff1c2}
+.cs-why-q button{background:none;border:0}
+.cs-oemo{position:absolute;right:-8px;bottom:-6px;font-size:1.5rem;animation:emopop .7s cubic-bezier(.2,1.6,.4,1);filter:drop-shadow(0 2px 4px #000a)}@keyframes emopop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
+.cs-obar--tv .cs-oemo{font-size:5vh}

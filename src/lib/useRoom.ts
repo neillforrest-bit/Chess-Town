@@ -100,6 +100,7 @@ export function useRoom(code: string, pid: PID | null, name: string) {
         s.vibe.passed ? [`${Math.round(s.vibe.score * 100)}%. You two are alarmingly compatible. I am going to need a moment.`, 'glee'] : [`${AXES[wi]}: ${A[wi]} against ${B[wi]}. I have seen peace treaties collapse over less.`, 'shock']);
     }
     if (s.phase === 'draft' && !s.draft.loading) say(k + 'draft', 'The blind draft is starting: each picks 10 films in secret.', `Tonight's mood target: energy ${s.vibe.target?.[0].toFixed(0)}, darkness ${s.vibe.target?.[1].toFixed(0)}, fantasy ${s.vibe.target?.[2].toFixed(0)}, scale ${s.vibe.target?.[3].toFixed(0)} out of 10.`, ['Ten films each, in secret. I will be watching your thumbs. Judging, mostly.', 'scheme']);
+    if (s.phase === 'draft' && !s.draft.loading) for (const p of ['A', 'B'] as const) { const pr = s.draft.learn[p]; if (pr.n >= 5 && pr.yes === 0) say(k + 'pass' + p, `${s.players[p].name} has passed on their first ${pr.n} films in a row.`, 'Deck is re-ranking toward what they actually like. Tease them.', [`${s.players[p].name} has rejected ${pr.n} straight. I am recalibrating. Quietly. With tears.`, 'shock']); }
     if (s.phase === 'bracket' && s.br.round === 1 && s.br.cur === 0) { const ov = s.draft.picks.A.filter((x) => s.draft.picks.B.includes(x)); say(k + 'pool', `The pool is locked: ${ov.length} of the drafts overlapped.`, ov.length ? `Both drafted: ${ov.map((x) => BY_ID[x].t).slice(0, 3).join(', ')}` : 'Zero overlap.', ov.length ? [`${ov.length} films in common. A flicker of hope. I refuse to enjoy it.`, 'smug'] : ['Zero overlap. You two have never met, have you?', 'shock']); }
     const top = s.log[0] || '';
     if (top && top !== q.lastLog) {
@@ -117,7 +118,7 @@ export function useRoom(code: string, pid: PID | null, name: string) {
     if (state.phase !== 'final') busy.current.judge = false;
     if (state.phase === 'draft' && state.draft.loading && !busy.current.pitches) {
       busy.current.pitches = true;
-      const ids = [...state.draft.deck, ...Array.from(new Set(state.draft.deck))].slice(0, 50);
+      const ids = Array.from(new Set(state.draft.deck)).slice(0, 70);
       const t = state.vibe.target || [1.5, 1.5, 1.5, 1.5];
       const vibe = `energy ${t[0].toFixed(1)}/10, darkness ${t[1].toFixed(1)}/10, fantasy-vs-real ${t[2].toFixed(1)}/10 (low = grounded), scale ${t[3].toFixed(1)}/10`;
       const movies = ids.map((id) => ({ id, t: BY_ID[id].t, y: BY_ID[id].y, g: BY_ID[id].g, o: BY_ID[id].o, c: BY_ID[id].c, rt: BY_ID[id].rt, k: BY_ID[id].k }));

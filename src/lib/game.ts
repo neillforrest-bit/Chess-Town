@@ -10,7 +10,12 @@ export const poster = (m: Movie, size = 'w342') => `https://image.tmdb.org/t/p/$
 
 export const RESPONSE_GATE = 0.7;
 export const CLASH = 5; // an axis gap this big fails the gate on its own
-export const TASTES = ['Real events', 'Pure fiction', 'Documentary', 'Sports', 'Artsy', 'Award winner'] as const;
+export const TASTES = ['Action', 'Comedy', 'Drama', 'Horror', 'Thriller', 'Romance', 'Sci-fi', 'Fantasy', 'Animation', 'Crime', 'Mystery', 'War', 'Western', 'Musical', 'Superhero', 'Documentary', 'Sports', 'Real events', 'Pure fiction', 'Artsy', 'Award winner'] as const;
+const GENRE_OF: Record<string, string> = { 'Sci-fi': 'Science Fiction', Musical: 'Music' };
+export type Prof = { streak: number; g: Record<string, number>; c: Record<string, number>; ax: number[]; n: number; yes: number; notes: string[] };
+export const newProf = (): Prof => ({ streak: 0, g: {}, c: {}, ax: [0, 0, 0, 0], n: 0, yes: 0, notes: [] });
+export const PASS_WHY = ['Seen it', 'Too dark', 'Too light', 'Not my genre', 'Dislike the cast', 'Not in the mood', 'Too long'] as const;
+export const YES_WHY = ['Love the genre', 'Great cast', 'Great reviews', 'Right mood', 'Havent seen it'] as const;
 export const AXES = ['Energy', 'Darkness', 'Fantasy', 'Scale'] as const;
 export const TAP_MS = 10000;
 export const PITCH_MS = 60000;
@@ -79,6 +84,8 @@ export function tagsOf(m: Movie): string[] {
   const kw = (m.kw || []).map((k) => k.toLowerCase()).join('|'); const t: string[] = [];
   const real = m.g.includes('Documentary') || m.g.includes('History') || /true story|biography|true crime|real person|based on a true/.test(kw);
   t.push(real ? 'Real events' : 'Pure fiction');
+  for (const g of TASTES) { const gg = GENRE_OF[g] || g; if (m.g.includes(gg)) t.push(g); }
+  if (/superhero|super power/.test(kw)) t.push('Superhero'); if (/musical/.test(kw) && !t.includes('Musical')) t.push('Musical');
   if (m.g.includes('Documentary')) t.push('Documentary');
   if (/sport|boxing|basketball|football|baseball|soccer|racing|olympic|wrestling|tennis|golf|hockey|formula one/.test(kw) || /sport/i.test(m.o)) t.push('Sports');
   if (/surreal|art house|auteur|independent film|experimental|avant|existential|neo-noir|slow burn/.test(kw) || (m.pop < 40 && m.r >= 7.6 && m.g.includes('Drama'))) t.push('Artsy');
@@ -116,7 +123,8 @@ export const vecOf = (m: Movie): number[] => {
 const dist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + (x - b[i]) ** 2, 0));
 const KID = ['Animation', 'Family'];
 // Hard exclusions: films that contradict the shared vibe outright, no matter how well rated.
-export function excluded(m: Movie, t: number[]): boolean {
+export function excluded(m: Movie, t: number[], nos: string[] = []): boolean {
+  if (nos.length) { const tg = tagsOf(m); if (nos.some((n) => tg.includes(n))) return true; }
   const kid = m.g.some((g) => KID.includes(g)) || ['G', 'TV-Y', 'TV-G'].includes(m.k || '');
   const toon = m.g.includes('Animation') || (m.kw || []).some((k) => /anthropomorphism|talking animal|cartoon|3d animation/i.test(k));
   const rk = m.k || '';
@@ -134,14 +142,60 @@ export const fitPct = (m: Movie, t: number[]) => Math.max(0, Math.min(99, Math.r
 export const W = [1.15, 1.15, 1, 0.8];
 const wdist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + W[i] * (x - b[i]) ** 2, 0));
 
+export function learnScore(m: Movie, base: number[], pr: Prof, nos: string[]): number {
+  const t = base.map((x, i) => clamp(x + pr.ax[i]));
+  let sc = wdist(vecOf(m), t) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012;
+  for (const g of m.g) sc -= 0.9 * Math.max(-3, Math.min(3, pr.g[g] || 0));
+  for (const c of (m.c || []).slice(0, 3)) sc -= 0.8 * Math.max(-3, Math.min(3, pr.c[c] || 0));
+  if (excluded(m, t, nos)) sc += 6;
+  return sc;
+}
+export function learnFrom(pr: Prof, m: Movie, yes: boolean, why: string[]) {
+  pr.n++; if (yes) { pr.yes++; pr.streak = 0; } else pr.streak++;
+  const dg = (g: string, v: number) => { pr.g[g] = (pr.g[g] || 0) + v; };
+  const dc = (v: number) => (m.c || []).slice(0, 3).forEach((c) => { pr.c[c] = (pr.c[c] || 0) + v; });
+  const v = vecOf(m);
+  for (const g of m.g) dg(g, yes ? 0.7 : -0.5);
+  if (yes) for (let i = 0; i < 4; i++) pr.ax[i] += (v[i] - 5) * 0.03; // quiet drift toward what they take
+  for (const w of why) {
+    if (w === 'Not my genre') m.g.forEach((g) => dg(g, -1.8)); else if (w === 'Love the genre') m.g.forEach((g) => dg(g, 1.6));
+    else if (w === 'Dislike the cast') dc(-2); else if (w === 'Great cast') dc(1.5);
+    else if (w === 'Too dark') pr.ax[1] -= 1.6; else if (w === 'Too light') pr.ax[1] += 1.6;
+    else if (w === 'Not in the mood') for (let i = 0; i < 4; i++) pr.ax[i] += (5 - v[i]) * 0.12;
+    else if (w === 'Right mood') for (let i = 0; i < 4; i++) pr.ax[i] += (v[i] - 5) * 0.2;
+    else if (w === 'Too long') pr.ax[3] -= 0.8;
+    else if (w === 'Great reviews') pr.ax[0] += 0;
+  }
+  pr.ax = pr.ax.map((x) => Math.max(-4, Math.min(4, x)));
+}
+const REACT: Record<string, [string, string, Mood]> = {
+  'Seen it': ['Seen it. Struck from the record. I will not insult you with repeats.', '🙄', 'smug'],
+  'Too dark': ['Too dark. Noted. Fewer things that go bump, more things that go ha.', '🕯️', 'sad'],
+  'Too light': ['Too light. You want teeth. I am sharpening the deck.', '🦷', 'scheme'],
+  'Not my genre': ['Wrong genre. I am pulling that whole neighbourhood out of the deck.', '🚫', 'shock'],
+  'Dislike the cast': ['The cast offends you. They are on a list now. A short, sad list.', '😬', 'scheme'],
+  'Not in the mood': ['Not in the mood. I am re-tuning the whole room to match.', '🎛️', 'idle'],
+  'Too long': ['Too long. Respect your evening. Shorter things coming.', '⏱️', 'smug'],
+  'Love the genre': ['More of that genre, coming up. I am practically a sommelier.', '😍', 'glee'],
+  'Great cast': ['A cast you adore. I am digging for their cousins.', '🤩', 'glee'],
+  'Great reviews': ['The critics persuaded you. Rare. Frame it.', '🏆', 'glee'],
+  'Right mood': ['Right mood. Locking onto that frequency.', '🎯', 'smug'],
+  'Havent seen it': ['Fresh territory. My favourite kind.', '🍿', 'glee'],
+};
+export function swipeLine(pr: Prof, m: Movie, yes: boolean, why: string[], seed: number): { line: string; mood: Mood; emo: string } {
+  if (why.length) { const r = REACT[why[0]] || REACT['Right mood']; return { line: r[0], mood: r[2], emo: r[1] }; }
+  if (!yes && pr.streak >= 3) return { line: `${pr.streak} passes in a row. Tell me why on the next one. Seen it? Too dark? I can fix this, but only if you talk.`, mood: 'shock', emo: '🤨' };
+  if (yes) { const L = ['Drafted. Bold. I will pretend I approve.', `${m.t}. A choice. Noted in the file.`, 'Into the vault it goes.']; return { line: L[seed % L.length], mood: 'smug', emo: '😏' }; }
+  const L = ['Next. The film will survive.', 'Brutal. I respect it.', 'Gone. Not even a goodbye.']; return { line: L[seed % L.length], mood: 'idle', emo: '🎬' };
+}
 // ---------- state
 export type Matchup = { id: string; a: number; b: number; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
 export type State = {
   code: string; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
-  vibe: { tastes: { A: string[] | null; B: string[] | null }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
-  draft: { deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID> };
+  vibe: { tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
+  draft: { deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
   pool: number[];
@@ -153,7 +207,7 @@ export type State = {
   tempt: { to: PID; stage: 'off' | 'offer' | 'done'; accepted: boolean; out: number | null; inn: number | null };
   stats: { caved: { A: number; B: number }; wildWins: number; wildBouts: number };
   cost: { calls: number; inTok: number; outTok: number; usd: number };
-  orson: { line: string; mood: Mood; n: number };
+  orson: { line: string; mood: Mood; n: number; emo?: string };
   log: string[];
 };
 export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2: 'ROUND 2 · 15 to 8 · GOLDEN BYE', 3: 'ROUND 3 · 8 to 4', 4: 'SEMIS · 4 to 2' };
@@ -161,8 +215,8 @@ export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2
 export const newState = (code: string): State => ({
   code, v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
-  vibe: { tastes: { A: null, B: null }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
-  draft: { deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {} },
+  vibe: { tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
+  draft: { deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
   fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
@@ -194,12 +248,12 @@ export function clashAxes(a: (number | null)[], b: (number | null)[]): number[] 
   const out = d.filter((x) => x.d >= 4).map((x) => x.i); for (const x of d) { if (out.length >= 2) break; if (!out.includes(x.i)) out.push(x.i); }
   return out.sort();
 }
-export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }): number[] {
+export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = []): number[] {
   const ok = MOVIES.filter((m) => !m.w && !banned.includes(m.id));
   const score = (m: Movie) => wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors);
-  const good = ok.filter((m) => !excluded(m, target) && m.r >= 5.8).sort((x, y) => score(x) - score(y));
-  const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target)).sort((x, y) => score(x) - score(y));
-  const ids = [...good, ...rest].slice(0, 50).map((m) => m.id);
+  const good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8).sort((x, y) => score(x) - score(y));
+  const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
+  const ids = [...good, ...rest].slice(0, 90).map((m) => m.id);
   if (ids.length < 30) for (const m of ok.sort((x, y) => score(x) - score(y))) { if (ids.length >= 40) break; if (!ids.includes(m.id)) ids.push(m.id); }
   return shuffled(ids, code, 'deck');
 }
@@ -254,13 +308,13 @@ function advance(s: State, now: number) {
 
 export type Intent =
   | { t: 'join'; pid: PID; name?: string } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
-  | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean }
+  | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
   | { t: 'verdict'; winner: number; reason: string } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
-  | { t: 'taste'; pid: PID; tags: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
+  | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
   | { t: 'tick'; now: number } | { t: 'reset' };
 
 function maybeLock(s: State) {
@@ -306,7 +360,7 @@ export function reduce(prev: State, it: Intent): State {
     }
     case 'begin': {
       if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) break;
-      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, [], { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors); s.draft.loading = true;
+      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, [], { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B]))); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
       break;
     }
     case 'draftreq': s.draft.requested = true; break;
@@ -315,41 +369,43 @@ export function reduce(prev: State, it: Intent): State {
       if (s.phase !== 'draft' || s.draft.loading) break;
       const picks = s.draft.picks[it.pid];
       if (picks.length >= DRAFT_SIZE) break;
-      const ib = s.draft.inbox[it.pid];
-      if (ib.length) { if (ib[0] !== it.id) break; ib.shift(); if (it.yes && !picks.includes(it.id)) picks.push(it.id); }
-      else {
-        if (s.draft.deck[s.draft.idx[it.pid]] !== it.id) break;
-        s.draft.idx[it.pid]++;
-        if (it.yes && !picks.includes(it.id)) picks.push(it.id);
-      }
+      const ib = s.draft.inbox[it.pid]; const q = s.draft.q[it.pid];
+      if (ib.length) { if (ib[0] !== it.id) break; ib.shift(); }
+      else { if (q[0] !== it.id) break; q.shift(); }
+      if (it.yes && !picks.includes(it.id)) picks.push(it.id);
+      learnFrom(s.draft.learn[it.pid], BY_ID[it.id], it.yes, (it.why || []).slice(0, 3));
+      { const r = swipeLine(s.draft.learn[it.pid], BY_ID[it.id], it.yes, (it.why || []).slice(0, 3), s.draft.learn[it.pid].n); s.orson = { line: r.line, mood: r.mood, n: s.orson.n + 1, emo: r.emo }; }
+      // re-rank what is left for this player using what they have taught us
+      { const base = s.vibe.target || [5, 5, 5, 5]; const nos = Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])); const pr = s.draft.learn[it.pid];
+        const rnd = seeded(s.code, 'rr' + it.pid + pr.n);
+        s.draft.q[it.pid] = q.map((id) => ({ id, sc: learnScore(BY_ID[id], base, pr, nos) + rnd() * 0.25 })).sort((a, b) => a.sc - b.sc).map((x) => x.id); }
       // deck exhausted without 10: fill with the best unpicked cards
-      if (picks.length < DRAFT_SIZE && !ib.length && s.draft.idx[it.pid] >= s.draft.deck.length) {
+      if (picks.length < DRAFT_SIZE && !ib.length && s.draft.q[it.pid].length === 0) {
         for (const id of s.draft.deck) { if (picks.length >= DRAFT_SIZE) break; if (!picks.includes(id)) picks.push(id); }
       }
       maybeLock(s);
       break;
     }
     case 'veto': {
-      if (s.phase !== 'draft' || s.draft.loading || !s.pw[it.pid].veto || s.draft.picks[it.pid].length >= DRAFT_SIZE) break;
-      const cur = s.draft.inbox[it.pid][0] ?? s.draft.deck[s.draft.idx[it.pid]]; if (cur !== it.id) break;
-      s.pw[it.pid].veto = false; s.vetoed.push(it.id);
+      if (s.phase !== 'draft' || s.draft.loading || !s.pw[it.pid].bullet || s.draft.picks[it.pid].length >= DRAFT_SIZE) break;
+      const cur = s.draft.inbox[it.pid][0] ?? s.draft.q[it.pid][0]; if (cur !== it.id) break;
+      s.pw[it.pid].bullet = false; s.vetoed.push(it.id);
       for (const p of ['A', 'B'] as PID[]) {
-        const pos = s.draft.deck.indexOf(it.id); if (pos >= 0 && pos < s.draft.idx[p]) s.draft.idx[p]--;
-        s.draft.picks[p] = s.draft.picks[p].filter((x) => x !== it.id); s.draft.inbox[p] = s.draft.inbox[p].filter((x) => x !== it.id);
+        s.draft.picks[p] = s.draft.picks[p].filter((x) => x !== it.id); s.draft.inbox[p] = s.draft.inbox[p].filter((x) => x !== it.id); s.draft.q[p] = s.draft.q[p].filter((x) => x !== it.id);
       }
       s.draft.deck = s.draft.deck.filter((x) => x !== it.id);
-      s.log.unshift(`${s.players[it.pid].name} used a Veto: ${BY_ID[it.id].t} is gone for both of you.`);
+      s.log.unshift(`${s.players[it.pid].name} fired a Silver Bullet: ${BY_ID[it.id].t} is gone for both of you.`);
       break;
     }
     case 'surprise': {
       if (s.phase !== 'draft' || s.draft.loading || !s.pw[it.pid].surprise) break;
       const picks = s.draft.picks[it.pid]; if (picks.length >= DRAFT_SIZE) break;
-      const ib = s.draft.inbox[it.pid]; const cur = ib[0] ?? s.draft.deck[s.draft.idx[it.pid]]; if (cur !== it.id) break;
+      const ib = s.draft.inbox[it.pid]; const cur = ib[0] ?? s.draft.q[it.pid][0]; if (cur !== it.id) break;
       s.pw[it.pid].surprise = false;
-      if (ib.length) ib.shift(); else s.draft.idx[it.pid]++;
+      if (ib.length) ib.shift(); else s.draft.q[it.pid].shift();
       if (!picks.includes(it.id)) picks.push(it.id);
       const o: PID = it.pid === 'A' ? 'B' : 'A';
-      if (s.draft.picks[o].length < DRAFT_SIZE && !s.draft.picks[o].includes(it.id)) { s.draft.inbox[o].push(it.id); s.draft.sur[it.id] = it.pid; }
+      if (s.draft.picks[o].length < DRAFT_SIZE && !s.draft.picks[o].includes(it.id)) { s.draft.q[o] = s.draft.q[o].filter((x) => x !== it.id); s.draft.inbox[o].push(it.id); s.draft.sur[it.id] = it.pid; }
       s.log.unshift(`${s.players[it.pid].name} played a Surprise on ${s.players[o].name}.`);
       maybeLock(s);
       break;
@@ -423,8 +479,8 @@ export function reduce(prev: State, it: Intent): State {
       s.winner = null; s.phase = 'final'; s.mem.recorded = false;
       break;
     }
-    case 'taste': if (s.phase === 'vibe' && s.vibe.passed) { s.vibe.tastes[it.pid] = it.tags.filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.actors[it.pid] = it.actor.slice(0, 30); } break;
-    case 'quip': s.orson = { line: it.line.slice(0, 200), mood: it.mood, n: s.orson.n + 1 }; break;
+    case 'taste': if (s.phase === 'vibe' && s.vibe.passed) { s.vibe.tastes[it.pid] = it.tags.filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.nos[it.pid] = (it.nos || []).filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.actors[it.pid] = it.actor.slice(0, 30); } break;
+    case 'quip': s.orson = { line: it.line.slice(0, 200), mood: it.mood, n: s.orson.n + 1, emo: it.emo }; break;
     case 'cost': s.cost = { calls: s.cost.calls + 1, inTok: s.cost.inTok + it.inTok, outTok: s.cost.outTok + it.outTok, usd: s.cost.usd + it.usd }; break;
     case 'tick': {
       const mt = s.br.matches[s.br.cur];

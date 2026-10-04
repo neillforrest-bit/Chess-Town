@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { BY_ID, QUESTION_SETS, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, type PID } from '@/lib/game';
+import { BY_ID, QUESTION_SETS, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID } from '@/lib/game';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 2800;
@@ -24,6 +24,9 @@ export default function PlayRoom({ code }: { code: string }) {
   const [sl, setSl] = useState(5);
   const [cont, setCont] = useState(false);
   const [tg, setTg] = useState<string[]>([]);
+  const [nos, setNos] = useState<string[]>([]);
+  const [pend, setPend] = useState<boolean | null>(null);
+  const [why, setWhy] = useState<string[]>([]);
   const [actor, setActor] = useState('');
   const [arm, setArm] = useState('');
   const [bp, setBp] = useState<'' | 'bullet' | 'veto'>('');
@@ -82,13 +85,13 @@ export default function PlayRoom({ code }: { code: string }) {
     const theirs = s.vibe.ans[other]; let bi = 0, bd = -1; for (let i = 0; i < 4; i++) { const d = Math.abs((mine[i] as number) - (theirs[i] as number)); if (d > bd) { bd = d; bi = i; } }
     const sc = s.vibe.score as number;
     if (s.vibe.passed && s.vibe.tastes[pid] === null && cont) {
-      const tog = (t: string) => setTg((x) => (x.includes(t) ? x.filter((y) => y !== t) : [...x, t]));
-      return shell(<div className="cs-ask">
-        <div className="cs-orson">ORSON · TASTE DIALS</div>
-        <p className="cs-aside">One last private thing. What should tonight lean toward? Pick any, or none. Orson will not tell your partner who asked.</p>
-        <div className="cs-chips cs-chips--tight">{TASTES.map((t) => <button key={t} className={'cs-chip' + (tg.includes(t) ? ' is-on' : '')} onClick={() => { buzz(8); tog(t); }}>{t}</button>)}</div>
+      const tog = (t: string) => { if (tg.includes(t)) { setTg(tg.filter((y) => y !== t)); setNos([...nos, t]); } else if (nos.includes(t)) setNos(nos.filter((y) => y !== t)); else setTg([...tg, t]); };
+      return shell(<div className="cs-ask cs-ask--tight">
+        <div className="cs-orson">ORSON · THE TASTE MAP</div>
+        <p className="cs-aside">Private. Tap once to CRAVE, twice to BAN, three times to clear. A ban is a hard no for the whole night.</p>
+        <div className="cs-tmap">{TASTES.map((t) => <button key={t} className={'cs-tchip' + (tg.includes(t) ? ' is-crave' : nos.includes(t) ? ' is-ban' : '')} onClick={() => { buzz(8); tog(t); }}>{nos.includes(t) ? '✕ ' : tg.includes(t) ? '★ ' : ''}{t}</button>)}</div>
         <input className="cs-input" maxLength={30} placeholder="An actor you want to see (optional)" value={actor} onChange={(e) => setActor(e.target.value)} />
-        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'taste', pid, tags: tg, actor }); }}>LOCK MY TASTE</button>
+        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'taste', pid, tags: tg, nos, actor }); }}>LOCK MY TASTE</button>
       </div>);
     }
     if (s.vibe.passed && s.vibe.tastes[pid] !== null && s.vibe.tastes[other] === null) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
@@ -101,25 +104,26 @@ export default function PlayRoom({ code }: { code: string }) {
         <div className="cs-axes">{AXES.map((nm, i) => { const d = Math.abs((mine[i] as number) - (theirs[i] as number)); return <div key={nm} className={'cs-axis' + (d >= CLASH ? ' is-clash' : '')}><span>{nm}</span><div className="cs-atrack"><i className="me" style={{ left: `${(mine[i] as number) * 10}%` }} /><i className="them" style={{ left: `${(theirs[i] as number) * 10}%` }} /></div><b>{d >= CLASH ? 'CLASH' : d <= 1 ? 'in sync' : ''}</b></div>; })}</div>
         <p className="cs-say">{s.vibe.passed ? 'In sync. I am almost moved.' : `${Math.round(RESPONSE_GATE * 100)}% was the bar and you missed it. That is my cue, not your failure.`}</p>
         <p className="cs-small">{playback} <span className="cs-legend">gold = you</span></p>
-        {s.vibe.passed ? (s.vibe.tastes.A && s.vibe.tastes.B ? <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'begin' })}>BEGIN THE DRAFT</button> : <button className="cs-btn cs-btn--gold" onClick={() => setCont(true)}>CONTINUE · TASTE DIALS</button>) : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>RE-ASK THE CLASHES</button>}
+        {s.vibe.passed ? (s.vibe.tastes.A && s.vibe.tastes.B ? <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'begin' })}>BEGIN THE DRAFT</button> : <button className="cs-btn cs-btn--gold" onClick={() => setCont(true)}>CONTINUE · TASTE MAP</button>) : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>RE-ASK THE CLASHES</button>}
       </div></div>);
   }
 
   // ---- PHASE 2: draft
   if (s.phase === 'draft') {
-    const picks = s.draft.picks[pid]; const idx = s.draft.idx[pid]; const id = s.draft.inbox[pid][0] ?? s.draft.deck[idx];
+    const picks = s.draft.picks[pid]; const idx = s.draft.idx[pid]; const id = s.draft.inbox[pid][0] ?? s.draft.q[pid][0];
     if (s.draft.loading) return shell(<div className="cs-center"><div className="cs-spin" /><Typing text="Orson is writing a pitch for every film. He is dramatic about it" /></div>);
     if (picks.length >= DRAFT_SIZE) return shell(<div className="cs-center"><p className="cs-say">Ten drafted and locked. Your picks stay secret.</p><p className="cs-small">{s.draft.picks[other].length >= DRAFT_SIZE ? 'Both done.' : `${them.name} has ${s.draft.picks[other].length}/${DRAFT_SIZE}.`}</p></div>);
     if (id === undefined) return shell(<div className="cs-center">Out of films.</div>);
     const m = BY_ID[id]; const sur = s.draft.inbox[pid][0] === id ? s.draft.sur[id] : undefined;
-    const go = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); send({ t: 'swipe', pid, id, yes }); };
+    const ask = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); setWhy([]); setPend(yes); };
+    const go = (yes: boolean, w: string[] = []) => { setPend(null); setWhy([]); send({ t: 'swipe', pid, id, yes, why: w }); };
     const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]);
     const critic = m.rt != null ? (m.rt >= 85 ? 'Critics raved' : m.rt >= 70 ? 'Critics liked it' : m.rt >= 50 ? 'Critics were split' : 'Critics were not kind') : m.mc != null ? (m.mc >= 70 ? 'Critics liked it' : m.mc >= 50 ? 'Critics were mixed' : 'Critics were not kind') : null;
     const runtime = m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
     const press = (kind: 'veto' | 'surprise') => { const key = kind + ':' + id; if (arm === key) { buzz([40, 30, 60]); setArm(''); send({ t: kind, pid, id }); } else setArm(key); };
     return shell(<div className="cs-draft"
       onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
-      onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70) go(dx > 0); }}>
+      onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70 && pend === null) ask(dx > 0); }}>
       <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><span className="cs-fit">{fit}% TONIGHT&apos;S MOOD</span></div>
       <div className="cs-card" key={id}>
         {sur && <div className="cs-surprise">SURPRISE FROM {s.players[sur].name.toUpperCase()}</div>}
@@ -137,11 +141,17 @@ export default function PlayRoom({ code }: { code: string }) {
         {critic && <p className="cs-critics"><em>CRITICS SAID</em> {critic}{m.rt != null && m.mc != null ? `, ${m.rt}% fresh, Metacritic ${m.mc}` : ''}.</p>}
         <p className="cs-why"><em>WHY YOU&apos;LL LIKE IT</em> {s.draft.pitches[id] || m.o}</p>
       </div>
-      <div className="cs-powers">
-        <button className={'cs-pw' + (arm === 'veto:' + id ? ' is-armed' : '')} disabled={!pw.veto} onClick={() => press('veto')}>{!pw.veto ? 'VETO SPENT' : arm === 'veto:' + id ? 'TAP TO CONFIRM VETO' : 'VETO · ban it for both'}</button>
-        <button className={'cs-pw' + (arm === 'surprise:' + id ? ' is-armed' : '')} disabled={!pw.surprise} onClick={() => press('surprise')}>{!pw.surprise ? 'SURPRISE SPENT' : arm === 'surprise:' + id ? 'TAP TO CONFIRM' : 'SURPRISE · gift it to ' + them.name.slice(0, 8)}</button>
-      </div>
-      <div className="cs-swipes"><button className="cs-btn cs-btn--no" onClick={() => go(false)}>PASS</button><button className="cs-btn cs-btn--gold" onClick={() => go(true)}>DRAFT</button></div>
+      {pend === null ? <>
+        <div className="cs-powers cs-powers--big">
+          <button className={'cs-pw cs-pw--bullet' + (pw.bullet ? ' is-ready' : '') + (arm === 'veto:' + id ? ' is-armed' : '')} disabled={!pw.bullet} onClick={() => press('veto')}><b>{!pw.bullet ? 'BULLET SPENT' : arm === 'veto:' + id ? 'TAP TO FIRE' : 'SILVER BULLET'}</b><small>{pw.bullet ? 'erase this film for both of you' : 'one per game'}</small></button>
+          <button className={'cs-pw cs-pw--surprise' + (pw.surprise ? ' is-ready' : '') + (arm === 'surprise:' + id ? ' is-armed' : '')} disabled={!pw.surprise} onClick={() => press('surprise')}><b>{!pw.surprise ? 'SURPRISE SPENT' : arm === 'surprise:' + id ? 'TAP TO SEND' : 'SURPRISE ' + them.name.slice(0, 8).toUpperCase()}</b><small>{pw.surprise ? 'gift this to their stack' : 'one per game'}</small></button>
+        </div>
+        <div className="cs-swipes"><button className="cs-btn cs-btn--no" onClick={() => ask(false)}>PASS</button><button className="cs-btn cs-btn--gold" onClick={() => ask(true)}>DRAFT</button></div>
+      </> : <div className="cs-why-sheet">
+        <div className="cs-why-q">{pend ? 'Why this one?' : 'Why pass?'}<button onClick={() => go(pend as boolean)}>skip</button></div>
+        <div className="cs-why-chips">{(pend ? YES_WHY : PASS_WHY).map((w) => <button key={w} className={why.includes(w) ? 'is-on' : ''} onClick={() => { buzz(6); setWhy(why.includes(w) ? why.filter((x) => x !== w) : [...why, w].slice(0, 3)); }}>{w === 'Havent seen it' ? "Haven't seen it" : w}</button>)}</div>
+        <button className={'cs-btn ' + (pend ? 'cs-btn--gold' : 'cs-btn--no')} onClick={() => go(pend as boolean, why)}>{pend ? 'DRAFT IT' : 'PASS IT'}</button>
+      </div>}
     </div>);
   }
 

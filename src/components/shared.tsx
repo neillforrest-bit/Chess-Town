@@ -96,13 +96,14 @@ export function OrsonFace({ mood, talking }: { mood: Mood; talking: boolean }) {
     </svg>
   );
 }
-export function OrsonBar({ o, tv = false }: { o: { line: string; mood: Mood; n: number }; tv?: boolean }) {
+const MOOD_EMO: Record<Mood, string> = { idle: '🎩', smug: '😏', shock: '😱', glee: '🤩', scheme: '😈', sad: '🥲' };
+export function OrsonBar({ o, tv = false }: { o: { line: string; mood: Mood; n: number; emo?: string }; tv?: boolean }) {
   const [shown, setShown] = useState(o.line.length);
   useEffect(() => { setShown(0); const t = setInterval(() => setShown((x) => { if (x >= o.line.length) { clearInterval(t); return x; } return x + 2; }), 28); return () => clearInterval(t); }, [o.n, o.line]);
   const talking = shown < o.line.length;
   return (
     <div className={'cs-obar' + (tv ? ' cs-obar--tv' : '')} key={o.n}>
-      <div className="cs-oavatar"><OrsonFace mood={o.mood} talking={talking} /></div>
+      <div className="cs-oavatar"><OrsonFace mood={o.mood} talking={talking} /><span className="cs-oemo" key={o.n}>{o.emo || MOOD_EMO[o.mood]}</span></div>
       <p className="cs-obubble">{o.line.slice(0, shown)}<span className="cs-caret" /></p>
     </div>
   );
