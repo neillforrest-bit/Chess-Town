@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -7,7 +7,8 @@ const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.r
 
 export default function Home() {
   const r = useRouter();
-  const [name, setName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('cs-name') || '' : ''));
+  const [name, setName] = useState('');
+  useEffect(() => { setName(localStorage.getItem('cs-name') || ''); }, []);
   const [code, setCode] = useState('');
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };
   return (

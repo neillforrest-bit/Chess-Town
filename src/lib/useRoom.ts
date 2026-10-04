@@ -1,10 +1,9 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { sb } from '@/lib/supa';
+import { loadMem, recordNight, coupleKey, nightsKey } from '@/lib/memory';
 import { newState, reduce, BY_ID, fallbackPitch, type Intent, type PID, type State } from '@/lib/game';
-
-let client: ReturnType<typeof createClient> | null = null;
-const sb = () => (client ||= createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string, { realtime: { params: { eventsPerSecond: 20 } } }));
 
 /** pid 'A' is the host (runs the reducer). 'B' and the TV (pid null) only send intents / render state. */
 export function useRoom(code: string, pid: PID | null, name: string) {
@@ -14,7 +13,7 @@ export function useRoom(code: string, pid: PID | null, name: string) {
   const [online, setOnline] = useState(false);
   const stRef = useRef<State | null>(null);
   const chRef = useRef<RealtimeChannel | null>(null);
-  const busy = useRef({ pitches: false, judge: false });
+  const busy = useRef({ pitches: false, judge: false, mem: false, rec: false });
 
   const publish = useCallback((s: State) => {
     stRef.current = s; setState(s);
@@ -68,6 +67,8 @@ export function useRoom(code: string, pid: PID | null, name: string) {
 
   useEffect(() => {
     if (!host || !state) return;
+    if (state.phase === 'lobby' || state.phase === 'vibe') busy.current.pitches = false;
+    if (state.phase !== 'final') busy.current.judge = false;
     if (state.phase === 'draft' && state.draft.loading && !busy.current.pitches) {
       busy.current.pitches = true;
       const ids = [...state.draft.deck, ...Array.from(new Set(state.draft.deck))].slice(0, 50);
@@ -89,12 +90,30 @@ export function useRoom(code: string, pid: PID | null, name: string) {
       const defender = (id: number) => (f.choice.A === id ? 'A' : 'B') as PID;
       const side = (id: number) => { const p = defender(id); return { t: BY_ID[id].t, y: BY_ID[id].y, r: BY_ID[id].r, by: state.players[p].name, pitch: f.pitch[p] || '' }; };
       const fallback = () => { const w = A.r >= B.r ? A.id : B.id; apply({ t: 'verdict', winner: w, reason: 'Orson lost the signal, so the higher rated film takes it.' }); };
-      fetch('/api/orson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'judge', a: side(A.id), b: side(B.id) }) })
+      fetch('/api/orson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'judge', roast: state.roast, rematch: state.fin.rematchUsed, a: side(A.id), b: side(B.id) }) })
         .then((r) => r.json()).then((d) => {
           if (!d.winner) return fallback();
           apply({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
           apply({ t: 'verdict', winner: d.winner === 'A' ? A.id : B.id, reason: d.verdict || '' });
         }).catch(fallback);
+    }
+  }, [host, state, apply]);
+
+  // Orson's memory (host only): load the Ledger once both names are known, record each night when it ends
+  useEffect(() => {
+    if (!host || !state) return;
+    const a = state.players.A, b = state.players.B;
+    if (a.joined && b.joined && !busy.current.mem) {
+      busy.current.mem = true;
+      loadMem(a.name, b.name).then((m) => apply({ t: 'mem', nights: m.nights, ledger: m.ledger, last: m.last, durable: m.durable })).catch(() => { busy.current.mem = false; });
+    }
+    if (state.phase === 'done' && !state.mem.recorded && !busy.current.rec) {
+      busy.current.rec = true;
+      const f = state.fin; const film = state.winner ? BY_ID[state.winner].t : 'unknown';
+      const wn = f.wpid ? state.players[f.wpid].name : a.name; const ln = f.loser ? state.players[f.loser].name : b.name;
+      recordNight({ ts: f.rematchUsed ? Date.now() : Date.now(), couple: coupleKey(a.name, b.name), winner: wn, loser: ln, film, tie: f.tie, amend: f.rematchUsed }, a.name, b.name)
+        .then((m) => { try { localStorage.setItem(nightsKey, String(m.nights)); } catch { /* ignore */ } apply({ t: 'mem', nights: m.nights, ledger: m.ledger, last: m.last, durable: m.durable }); apply({ t: 'recorded' }); busy.current.rec = false; })
+        .catch(() => { apply({ t: 'recorded' }); busy.current.rec = false; });
     }
   }, [host, state, apply]);
 

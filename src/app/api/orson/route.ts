@@ -4,7 +4,7 @@ import { GEMINI_MODEL, GEMINI_THINKING } from '@/lib/gemini-model';
 
 export const maxDuration = 60;
 const RATE = Date.now() >= Date.UTC(2027, 0, 1) ? { i: 1.5, o: 7.5 } : { i: 0.75, o: 3.75 }; // USD per 1M tokens, gemini-3.8-flash
-const PERSONA = 'You are Orson, a dry, theatrical film-buff host of a couples movie-night game. Witty, warm, never cruel, one sentence per pitch, no spoilers, no emojis.';
+const PERSONA = 'You are Orson: a world-weary cinematic maitre d\' with Welles-ish gravity and bone-dry wit, host of a couples movie-night game. Speak in short, deadpan one-liners, never paragraphs. Warm underneath, never cruel, no spoilers, no emojis.';
 
 type Pitch = { id: number; t: string; y: number; g: string[]; o: string };
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ map, ...usage(out) });
     }
     if (body.type === 'judge') {
-      const prompt = `${PERSONA}\nYou are the final judge of a movie-night tournament. Two finalists. Each partner wrote a 60-second pitch defending their film. Judge the PERSUASION of the pitches (specific, funny, honest beats long and generic), plus a small nudge for how well each film fits the couple. If a pitch is empty, that side forfeits unless both are empty. Declare a winner and give a two sentence verdict, theatrical, kind to the loser.\n` +
+      const prompt = `${PERSONA}${body.roast ? ' ROAST MODE is on: tease both partners about their picks, affectionately.' : ''}${body.rematch ? ' This is a REMATCH with swapped sides: each partner defended the OTHER one\'s film, so mention it.' : ''}\nYou are the final judge of a movie-night tournament. Two finalists. Each partner wrote a 60-second pitch defending their film. Judge the PERSUASION of the pitches (specific, funny, honest beats long and generic), plus a small nudge for how well each film fits the couple. If a pitch is empty, that side forfeits unless both are empty. Declare a winner and give a verdict of at most two short sentences, theatrical, kind to the loser.\n` +
         `Film A: ${body.a.t} (${body.a.y}), rating ${body.a.r}. Pitch by ${body.a.by}: "${body.a.pitch || '(nothing submitted)'}"\n` +
         `Film B: ${body.b.t} (${body.b.y}), rating ${body.b.r}. Pitch by ${body.b.by}: "${body.b.pitch || '(nothing submitted)'}"`;
       const out = await ai.models.generateContent({
