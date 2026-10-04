@@ -51,7 +51,7 @@ export default function PlayRoom({ code }: { code: string }) {
     const mine = s.vibe.ans[pid]; const nextQ = mine.findIndex((x) => x === null);
     const bothDone = s.vibe.score !== null;
     return shell(<div className="cs-chat">
-      <div className="cs-bubble cs-bubble--o">Four questions, answered in private. You each need to land at least {Math.round(RESPONSE_GATE * 100)}% aligned or we do this again.</div>
+      <div className="cs-bubble cs-bubble--o">Four questions, answered in private. I am looking for at least {Math.round(RESPONSE_GATE * 100)}% common ground. If we miss it, I simply ask better questions.</div>
       {qs.map((q, i) => mine[i] === null && i !== nextQ ? null : (
         <div key={i}>
           <div className="cs-bubble cs-bubble--o">{q.q}</div>
@@ -62,8 +62,8 @@ export default function PlayRoom({ code }: { code: string }) {
       {nextQ === -1 && !bothDone && <div className="cs-bubble cs-bubble--o">Locked. Waiting for {them.name} to finish. No peeking.</div>}
       {bothDone && <div className={'cs-result ' + (s.vibe.passed ? 'cs-result--ok' : 'cs-result--no')}>
         <div className="cs-score">{Math.round((s.vibe.score as number) * 100)}%</div>
-        <p>{s.vibe.passed ? 'Aligned. Orson approves this marriage of tastes.' : 'Not aligned enough. Your tastes are what scientists call "a situation". New questions coming.'}</p>
-        {s.vibe.passed ? <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'begin' })}>BEGIN THE DRAFT</button> : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>TRY AGAIN</button>}
+        <p>{s.vibe.passed ? 'Aligned. Orson approves this marriage of tastes.' : 'Not quite in sync yet, and that is my cue, not your failure. Let me try a different angle.'}</p>
+        {s.vibe.passed ? <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'begin' })}>BEGIN THE DRAFT</button> : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>TRY ANOTHER ANGLE</button>}
       </div>}
     </div>);
   }
