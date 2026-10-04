@@ -1,7 +1,7 @@
 'use client';
 import { useRoom } from '@/lib/useRoom';
 import { BY_ID, ROUND_LABEL, DRAFT_SIZE, type State } from '@/lib/game';
-import { Poster, secs, useNow, Meter, BUILD, ledgerLine, receipts } from './shared';
+import { Poster, OrsonBar, secs, useNow, Meter, BUILD, ledgerLine, receipts } from './shared';
 
 // Ringside Orson: boxing-announcer commentary derived purely from state. The TV stages; phones play.
 function ringside(s: State, now: number): string {
@@ -30,7 +30,7 @@ export default function TvRoom({ code }: { code: string }) {
   const say = ringside(s, now);
   return <main className="cs-tv">
     <header className="cs-tv-head"><span>CINE<b>SYNC</b></span><span>{names}</span><span>ROOM {code}</span></header>
-    <section className="cs-tv-body">
+    <OrsonBar o={s.orson} tv /><section className="cs-tv-body">
       {s.phase === 'lobby' && <div className="cs-tv-center"><div className="cs-tv-code">{code}</div><p className="cs-tv-sub">Open CineSync on your phones and join. {s.players.A.joined ? s.players.A.name + ' is in. ' : ''}{s.players.B.joined ? s.players.B.name + ' is in.' : ''}</p>{s.mem.last && <p className="cs-tv-log">Last time: {s.mem.last}</p>}{led && <p className="cs-tv-gold">{led}</p>}</div>}
       {s.phase === 'vibe' && <div className="cs-tv-center"><p className="cs-tv-sub">PHASE 1 · THE GATE</p><p className="cs-tv-say">{s.vibe.score === null ? `Orson is interrogating you both, in private. ${s.vibe.ans.A.filter((x) => x !== null).length + s.vibe.ans.B.filter((x) => x !== null).length}/8 answers in.` : s.vibe.passed ? `${Math.round(s.vibe.score * 100)}% aligned. Orson is almost moved.` : `${Math.round(s.vibe.score * 100)}%. A different angle, then.`}</p></div>}
       {s.phase === 'draft' && <div className="cs-tv-center"><p className="cs-tv-sub">PHASE 2 · THE BLIND DRAFT</p><p className="cs-tv-say">{s.draft.loading ? 'Orson is writing the pitches...' : 'Both of you are swiping in secret.'}</p><div className="cs-tv-bars">{(['A', 'B'] as const).map((p) => <div key={p}><span>{s.players[p].name} · {s.draft.picks[p].length}/{DRAFT_SIZE}</span><div className="cs-bar"><i style={{ width: `${(s.draft.picks[p].length / DRAFT_SIZE) * 100}%` }} /></div></div>)}</div></div>}

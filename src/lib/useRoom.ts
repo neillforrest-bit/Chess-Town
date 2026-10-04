@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { sb } from '@/lib/supa';
 import { loadMem, recordNight, coupleKey, nightsKey } from '@/lib/memory';
-import { newState, reduce, BY_ID, fallbackPitch, type Intent, type PID, type State } from '@/lib/game';
+import { newState, reduce, BY_ID, fallbackPitch, AXES, type Mood, type Intent, type PID, type State } from '@/lib/game';
 
 /** pid 'A' is the host (runs the reducer). 'B' and the TV (pid null) only send intents / render state. */
 export function useRoom(code: string, pid: PID | null, name: string) {
@@ -65,6 +65,52 @@ export function useRoom(code: string, pid: PID | null, name: string) {
     return () => { clearInterval(tick); clearInterval(beat); };
   }, [host, apply]);
 
+  // host: keep the screen awake and re-announce state the moment the tab comes back
+  useEffect(() => {
+    if (!host) return;
+    type WL = { release: () => Promise<void> };
+    let lock: WL | null = null;
+    const grab = async () => { try { const nav = navigator as unknown as { wakeLock?: { request: (t: string) => Promise<WL> } }; if (nav.wakeLock && document.visibilityState === 'visible') lock = await nav.wakeLock.request('screen'); } catch { /* unsupported or denied */ } };
+    const vis = () => { if (document.visibilityState === 'visible') { grab(); if (stRef.current) chRef.current?.send({ type: 'broadcast', event: 'state', payload: { ...stRef.current, now: Date.now() } }); } };
+    grab(); document.addEventListener('visibilitychange', vis); window.addEventListener('focus', vis); window.addEventListener('online', vis);
+    return () => { document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); window.removeEventListener('online', vis); lock?.release().catch(() => {}); };
+  }, [host]);
+
+  // host: Orson's live commentary. One short Gemini call per big moment, capped per room, always with an in-character fallback.
+  const qn = useRef({ calls: 0, seen: new Set<string>(), busy: false, lastLog: '', matches: 0 });
+  useEffect(() => {
+    if (!host || !state) return;
+    const q = qn.current; const s = state;
+    const names = `${s.players.A.name} and ${s.players.B.name}`;
+    const say = (key: string, event: string, ctx: string, fb: [string, Mood]) => {
+      if (q.seen.has(key)) return; q.seen.add(key);
+      if (q.calls >= 16 || q.busy) { apply({ t: 'quip', line: fb[0], mood: fb[1] }); return; }
+      q.busy = true; q.calls++;
+      const t = setTimeout(() => { q.busy = false; apply({ t: 'quip', line: fb[0], mood: fb[1] }); }, 6000); let done = false;
+      fetch('/api/orson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'quip', names, event, ctx, roast: s.roast }) })
+        .then((r) => r.json()).then((d) => { if (done) return; done = true; clearTimeout(t); q.busy = false; if (d.line) { apply({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); apply({ t: 'quip', line: d.line, mood: d.mood || 'idle' }); } else apply({ t: 'quip', line: fb[0], mood: fb[1] }); })
+        .catch(() => { if (done) return; done = true; clearTimeout(t); q.busy = false; apply({ t: 'quip', line: fb[0], mood: fb[1] }); });
+    };
+    const k = s.v === 0 ? '' : s.code + ':' + s.mem.nights;
+    if (s.phase === 'vibe' && s.players.A.joined && s.players.B.joined && s.vibe.attempts === 0 && s.vibe.score === null) say(k + 'meet', `Both players just arrived in the room. ${s.mem.last ? 'Last night: ' + s.mem.last : 'First night together on this app.'}`, '', [`${s.players.A.name}. ${s.players.B.name}. Two humans, one remote, zero chance of agreement. Wonderful.`, 'smug']);
+    if (s.vibe.score !== null && s.vibe.doneAt) {
+      const A = s.vibe.ans.A, B = s.vibe.ans.B; const gaps = [0, 1, 2, 3].map((i) => Math.abs((A[i] as number) - (B[i] as number)));
+      const wi = gaps.indexOf(Math.max(...gaps));
+      say(k + 'gate' + s.vibe.attempts, s.vibe.passed ? `The gate just PASSED at ${Math.round(s.vibe.score * 100)}% alignment.` : `The gate FAILED at ${Math.round(s.vibe.score * 100)}% alignment.`, `Widest gap: ${AXES[wi]}, ${s.players.A.name} said ${A[wi]}/10 and ${s.players.B.name} said ${B[wi]}/10. ${s.vibe.passed ? 'Tease about how suspiciously alike they are.' : 'Name the exact clash and enjoy it.'}`,
+        s.vibe.passed ? [`${Math.round(s.vibe.score * 100)}%. You two are alarmingly compatible. I am going to need a moment.`, 'glee'] : [`${AXES[wi]}: ${A[wi]} against ${B[wi]}. I have seen peace treaties collapse over less.`, 'shock']);
+    }
+    if (s.phase === 'draft' && !s.draft.loading) say(k + 'draft', 'The blind draft is starting: each picks 10 films in secret.', `Tonight's mood target: energy ${s.vibe.target?.[0].toFixed(0)}, darkness ${s.vibe.target?.[1].toFixed(0)}, fantasy ${s.vibe.target?.[2].toFixed(0)}, scale ${s.vibe.target?.[3].toFixed(0)} out of 10.`, ['Ten films each, in secret. I will be watching your thumbs. Judging, mostly.', 'scheme']);
+    if (s.phase === 'bracket' && s.br.round === 1 && s.br.cur === 0) { const ov = s.draft.picks.A.filter((x) => s.draft.picks.B.includes(x)); say(k + 'pool', `The pool is locked: ${ov.length} of the drafts overlapped.`, ov.length ? `Both drafted: ${ov.map((x) => BY_ID[x].t).slice(0, 3).join(', ')}` : 'Zero overlap.', ov.length ? [`${ov.length} films in common. A flicker of hope. I refuse to enjoy it.`, 'smug'] : ['Zero overlap. You two have never met, have you?', 'shock']); }
+    const top = s.log[0] || '';
+    if (top && top !== q.lastLog) {
+      q.lastLog = top;
+      if (/Veto|Surprise|Silver Bullet|Temptation|offer/.test(top)) say(k + 'log' + top, top, 'React to this power move. Be theatrical.', [/offer|Temptation/.test(top) ? 'Someone is being tempted. I arranged it, of course.' : top.includes('Surprise') ? 'A gift. How suspicious. How romantic. How suspicious again.' : top.includes('Veto') ? 'A veto. Somebody woke up and chose violence.' : 'Blood on the carpet. I will send the bill.', /offer|Temptation|Surprise/.test(top) ? 'scheme' : 'shock']);
+      else if (/ beats /.test(top)) { q.matches++; if (q.matches % 4 === 0 || /tap-battle/.test(top)) say(k + 'm' + q.matches, top, 'A bracket result. Comment on the winner, loser or how it was decided.', [top.includes('tap-battle') ? 'A tap battle. Dignity left the building three taps ago.' : 'Another one falls. The carpet remembers.', 'glee']); }
+    }
+    if (s.phase === 'final' && !s.fin.pitchEnds) say(k + 'final' + s.fin.rematchUsed, `The final two are ${BY_ID[s.fin.a].t} versus ${BY_ID[s.fin.b].t}.`, 'Build tension.', [`${BY_ID[s.fin.a].t} against ${BY_ID[s.fin.b].t}. Pick your hill. Prepare to die on it.`, 'scheme']);
+    if (s.phase === 'done' && s.winner !== null && s.fin.verdict) say(k + 'done' + s.fin.rematchUsed, `The night is decided: you watch ${BY_ID[s.winner].t}.`, s.fin.loser ? `${s.players[s.fin.loser].name} lost and owes the popcorn.` : 'They agreed on the same film.', [`${BY_ID[s.winner].t}. Dim the lights. I will be in the back, pretending not to cry.`, 'glee']);
+  }, [host, state, apply]);
+
   useEffect(() => {
     if (!host || !state) return;
     if (state.phase === 'lobby' || state.phase === 'vibe') busy.current.pitches = false;
@@ -73,8 +119,8 @@ export function useRoom(code: string, pid: PID | null, name: string) {
       busy.current.pitches = true;
       const ids = [...state.draft.deck, ...Array.from(new Set(state.draft.deck))].slice(0, 50);
       const t = state.vibe.target || [1.5, 1.5, 1.5, 1.5];
-      const vibe = `energy ${t[0].toFixed(1)}/3, darkness ${t[1].toFixed(1)}/3, fantasy ${t[2].toFixed(1)}/3, spectacle ${t[3].toFixed(1)}/3`;
-      const movies = ids.map((id) => ({ id, t: BY_ID[id].t, y: BY_ID[id].y, g: BY_ID[id].g, o: BY_ID[id].o }));
+      const vibe = `energy ${t[0].toFixed(1)}/10, darkness ${t[1].toFixed(1)}/10, fantasy-vs-real ${t[2].toFixed(1)}/10 (low = grounded), scale ${t[3].toFixed(1)}/10`;
+      const movies = ids.map((id) => ({ id, t: BY_ID[id].t, y: BY_ID[id].y, g: BY_ID[id].g, o: BY_ID[id].o, c: BY_ID[id].c, rt: BY_ID[id].rt, k: BY_ID[id].k }));
       const fallback = Object.fromEntries(ids.map((id) => [id, fallbackPitch(id)]));
       const timer = setTimeout(() => apply({ t: 'pitches', map: fallback }), 22000);
       fetch('/api/orson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'pitches', vibe, movies }) })

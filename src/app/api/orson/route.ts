@@ -4,9 +4,10 @@ import { GEMINI_MODEL, GEMINI_THINKING } from '@/lib/gemini-model';
 
 export const maxDuration = 60;
 const RATE = Date.now() >= Date.UTC(2027, 0, 1) ? { i: 1.5, o: 7.5 } : { i: 0.75, o: 3.75 }; // USD per 1M tokens, gemini-3.8-flash
-const PERSONA = 'You are Orson: a world-weary cinematic maitre d\' with Welles-ish gravity and bone-dry wit, host of a couples movie-night game. Speak in short, deadpan one-liners, never paragraphs. Warm underneath, never cruel, no spoilers, no emojis.';
+const PERSONA_OLD = 'You are Orson: a world-weary cinematic maitre d\' with Welles-ish gravity and bone-dry wit, host of a couples movie-night game. Speak in short, deadpan one-liners, never paragraphs. Warm underneath, never cruel, no spoilers, no emojis.';
 
-type Pitch = { id: number; t: string; y: number; g: string[]; o: string };
+const PERSONA = "You are Orson Pemberton-Wells: a magnificently pompous, deadpan maitre d' of an imaginary cinema, host of a couples movie-night game. You are secretly, hopelessly invested in these two people and pretend not to be. Voice: dry, theatrical, specific. You ALWAYS use the players' actual names and actual film titles, you keep running grudges (the one who caves a lot, the one with the worst pick), you make one sharp joke per line, never two. Affectionate, never cruel, no spoilers, no emojis, no stage directions, no quotes around the line. Max 24 words.";
+type Pitch = { id: number; t: string; y: number; g: string[]; o: string; c?: string[]; rt?: number | null; k?: string };
 
 export async function POST(req: Request) {
   const key = process.env.GEMINI_API_KEY;
@@ -16,8 +17,8 @@ export async function POST(req: Request) {
   try {
     if (body.type === 'pitches') {
       const movies = (body.movies as Pitch[]).slice(0, 70);
-      const prompt = `${PERSONA}\nA couple's vibe tonight: ${body.vibe || 'open'}.\nWrite ONE bespoke pitch sentence (max 22 words) per film, speaking to the couple, selling why it fits their vibe tonight. Return JSON.\n` +
-        movies.map((m) => `${m.id} | ${m.t} (${m.y}) | ${m.g.join('/')} | ${m.o}`).join('\n');
+      const prompt = `${PERSONA}\nA couple's vibe tonight: ${body.vibe || 'open'}.\nFor EACH film write the 'why you will like it' line (max 26 words): speak to the couple, name ONE concrete reason from the film itself (a lead actor, a hook, its tone) and tie it to their vibe tonight. Vary the openings, never start two the same way, no spoilers, no filler. Return JSON.\n` +
+        movies.map((m) => `${m.id} | ${m.t} (${m.y}) | ${m.g.join('/')} | ${m.k || ''} | stars ${(m.c || []).join(', ')} | ${m.o}`).join('\n');
       const out = await ai.models.generateContent({
         model: GEMINI_MODEL, contents: prompt,
         config: {
@@ -28,6 +29,16 @@ export async function POST(req: Request) {
       const data = JSON.parse(out.text || '{}') as { pitches?: { id: number; pitch: string }[] };
       const map: Record<number, string> = {}; for (const p of data.pitches || []) map[p.id] = p.pitch;
       return NextResponse.json({ map, ...usage(out) });
+    }
+    if (body.type === 'quip') {
+      const prompt = `${PERSONA}${body.roast ? ' ROAST MODE is on: tease harder.' : ''}\nPlayers: ${body.names}. Moment: ${body.event}\nExtra context: ${body.ctx || 'none'}\nReact in character as Orson to this exact moment. Also pick the mood that fits.`;
+      const out = await ai.models.generateContent({
+        model: GEMINI_MODEL, contents: prompt,
+        config: { responseMimeType: 'application/json', maxOutputTokens: 2500, thinkingConfig: GEMINI_THINKING,
+          responseSchema: { type: Type.OBJECT, properties: { line: { type: Type.STRING }, mood: { type: Type.STRING, enum: ['idle', 'smug', 'shock', 'glee', 'scheme', 'sad'] } }, required: ['line', 'mood'] } },
+      });
+      const data = JSON.parse(out.text || '{}') as { line?: string; mood?: string };
+      return NextResponse.json({ line: data.line || '', mood: data.mood || 'idle', ...usage(out) });
     }
     if (body.type === 'judge') {
       const prompt = `${PERSONA}${body.roast ? ' ROAST MODE is on: tease both partners about their picks, affectionately.' : ''}${body.rematch ? ' This is a REMATCH with swapped sides: each partner defended the OTHER one\'s film, so mention it.' : ''}\nYou are the final judge of a movie-night tournament. Two finalists. Each partner wrote a 60-second pitch defending their film. Judge the PERSUASION of the pitches (specific, funny, honest beats long and generic), plus a small nudge for how well each film fits the couple. If a pitch is empty, that side forfeits unless both are empty. Declare a winner and give a verdict of at most two short sentences, theatrical, kind to the loser.\n` +

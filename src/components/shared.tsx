@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { BY_ID, poster, type Movie, type State } from '@/lib/game';
+import { BY_ID, poster, heatLabel, type Mood, type Movie, type State } from '@/lib/game';
 
 export function useNow(skew: number) {
   const [n, setN] = useState(() => Date.now() + skew);
@@ -62,4 +62,48 @@ export async function shareReceipts(s: State) {
   const nav = navigator as Navigator & { canShare?: (d: object) => boolean };
   if (nav.canShare?.({ files: [file] })) { try { await nav.share({ files: [file], title: 'CineSync night' }); return; } catch { /* fall through */ } }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cinesync-night.png'; a.click();
+}
+
+export function Heat({ h, big = false }: { h: number; big?: boolean }) {
+  return <div className={'cs-heat' + (big ? ' cs-heat--big' : '')} title="Sync heat"><div className="cs-heat-track"><i style={{ width: `${Math.max(4, h)}%` }} /></div><b>{heatLabel(h)}</b></div>;
+}
+export function Scores({ m }: { m: Movie }) {
+  const tone = (v: number | null | undefined, hi: number, lo: number) => (v == null ? 'na' : v >= hi ? 'hi' : v >= lo ? 'mid' : 'lo');
+  const cells: [string, string, string][] = [
+    ['ROTTEN TOM.', m.rt != null ? `${m.rt}%` : '–', tone(m.rt, 75, 50)],
+    ['METACRITIC', m.mc != null ? `${m.mc}` : '–', tone(m.mc, 65, 45)],
+    ['IMDB', m.imdb != null ? m.imdb.toFixed(1) : '–', tone(m.imdb, 7.2, 6)],
+    ['TMDB', m.r.toFixed(1), tone(m.r, 7.2, 6)],
+  ];
+  return <div className="cs-scores">{cells.map(([l, v, c]) => <div key={l} className={'cs-score-tile ' + c}><b>{v}</b><span>{l}</span></div>)}</div>;
+}
+
+export function OrsonFace({ mood, talking }: { mood: Mood; talking: boolean }) {
+  const brow: Record<Mood, [string, string]> = { idle: ['M31 36 Q38 33 45 36', 'M55 34 Q62 31 69 34'], smug: ['M31 37 Q38 35 45 38', 'M55 31 Q62 28 69 32'], shock: ['M31 32 Q38 27 45 32', 'M55 30 Q62 25 69 30'], glee: ['M31 34 Q38 30 45 34', 'M55 34 Q62 30 69 34'], scheme: ['M31 33 L45 38', 'M55 38 L69 33'], sad: ['M31 38 Q38 34 45 33', 'M55 33 Q62 34 69 38'] };
+  const mouthOpen = talking || mood === 'shock' || mood === 'glee';
+  return (
+    <svg className={'cs-oface is-' + mood + (talking ? ' is-talking' : '')} viewBox="0 0 100 100" aria-label="Orson">
+      <ellipse cx="50" cy="97" rx="30" ry="12" fill="#161222" />
+      <path d="M38 84 L50 92 L62 84 L58 96 L42 96 Z" fill="#c2371a" /><circle cx="50" cy="88" r="3.2" fill="#8d2410" />
+      <ellipse cx="50" cy="50" rx="25" ry="29" fill="#f0c9a0" /><ellipse cx="25" cy="52" rx="3.5" ry="6" fill="#e3b88c" /><ellipse cx="75" cy="52" rx="3.5" ry="6" fill="#e3b88c" />
+      <path d="M24 42 Q22 14 50 14 Q78 14 76 42 Q70 26 50 26 Q30 26 24 42Z" fill="#1a1420" />
+      <path d={brow[mood][0]} stroke="#1a1420" strokeWidth="2.6" fill="none" strokeLinecap="round" /><path d={brow[mood][1]} stroke="#1a1420" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <g className="cs-eyes"><ellipse cx="38" cy="45" rx="4.2" ry={mood === 'glee' ? 2 : 4.4} fill="#fff" /><ellipse cx="62" cy="45" rx="4.2" ry={mood === 'glee' ? 2 : 4.4} fill="#fff" /><circle cx={mood === 'scheme' ? 40 : 38} cy="45.5" r="2" fill="#1a1420" /><circle cx={mood === 'scheme' ? 64 : 62} cy="45.5" r="2" fill="#1a1420" /></g>
+      <circle cx="62" cy="45" r="8.2" fill="none" stroke="#ffcf40" strokeWidth="1.6" /><path d="M68 51 Q76 66 70 80" stroke="#ffcf40" strokeWidth="1" fill="none" />
+      <path d="M50 46 L47 56 Q50 58 53 56" stroke="#d9a67a" strokeWidth="1.6" fill="none" />
+      <path d="M28 62 Q38 56 50 62 Q62 56 72 62 Q64 72 50 66 Q36 72 28 62Z" fill="#1a1420" />
+      {mouthOpen ? <ellipse className="cs-mouth" cx="50" cy="73" rx="5.5" ry="4.2" fill="#5a1a1a" /> : mood === 'sad' ? <path d="M43 74 Q50 70 57 74" stroke="#5a1a1a" strokeWidth="2" fill="none" /> : <path d="M43 72 Q50 77 57 72" stroke="#5a1a1a" strokeWidth="2" fill="none" />}
+    </svg>
+  );
+}
+export function OrsonBar({ o, tv = false }: { o: { line: string; mood: Mood; n: number }; tv?: boolean }) {
+  const [shown, setShown] = useState(o.line.length);
+  useEffect(() => { setShown(0); const t = setInterval(() => setShown((x) => { if (x >= o.line.length) { clearInterval(t); return x; } return x + 2; }), 28); return () => clearInterval(t); }, [o.n, o.line]);
+  const talking = shown < o.line.length;
+  return (
+    <div className={'cs-obar' + (tv ? ' cs-obar--tv' : '')} key={o.n}>
+      <div className="cs-oavatar"><OrsonFace mood={o.mood} talking={talking} /></div>
+      <p className="cs-obubble">{o.line.slice(0, shown)}<span className="cs-caret" /></p>
+    </div>
+  );
 }
