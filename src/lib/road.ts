@@ -26,9 +26,8 @@ export const engineEloFor = (level: number): number | null => {
 export const isHandicapLevel = (level: number) => level >= 1 && level <= 3;
 /** BUILD 148 (restored): the human-style casual-pick blend, layered ON TOP of the handicap dice so Level 1 plays like a beginner (85% at level 1, fading to 0 at 1320 Elo). */
 export function casualChanceForLevel(level: number): number {
-  const e = eloForLevel(level);
-  if (e === null || e >= 1320) return 0;
-  return Math.min(0.85, ((1320 - e) / (1320 - ROAD_FLOOR_ELO)) * 0.85);
+  // BUILD 149: his retest - L1 right, L2 far too hard. Gentler ramp: 85 / 78 / 60 / 30 then engine only.
+  return ({ 1: 0.85, 2: 0.78, 3: 0.6, 4: 0.3 } as Record<number, number>)[level] || 0;
 }
 export const HANDICAP_DEPTH: Record<number, number> = { 1: 1, 2: 1, 3: 2 };
 /** Cumulative odds for [best, 2nd, 3rd]. */

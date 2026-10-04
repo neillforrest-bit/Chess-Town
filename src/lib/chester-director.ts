@@ -63,6 +63,8 @@ function greatWhy(f: MoveFacts): { name: string; line: string } {
   return { name: 'SOUND PLAN', line: 'It does the right job and leaves nothing loose behind it.' };
 }
 
+/** BUILD 149: red cards fire from 0.7 pawns lost (was 1.5) - he asked for them more often. */
+export const RED_FREEZE_CP = 70;
 export const FREEZE_PAWNS = 1.5; // his number: +-1.5 pawns
 
 // His "stockfish_eval_swing", from the player's side, in pawns: eval after the move
@@ -92,7 +94,7 @@ export function direct(f: MoveFacts): Directed {
   try { return directRich(f); } catch (e) {
     console.warn('[director] fallback card', e);
     const loss = f.evalDelta ?? 0; const cls = (f.classification || '').toUpperCase();
-    if ((cls === 'MISTAKE' || cls === 'BLUNDER') && loss >= FREEZE_PAWNS * 100) {
+    if ((cls === 'INACCURACY' || cls === 'MISTAKE' || cls === 'BLUNDER') && loss >= RED_FREEZE_CP) {
       return { ui_action: 'freeze_red', chester_immediate_chat: 'Oh, Forrest 🌲. I almost feel bad. Almost.', strategy: 'COSTLY MOVE', pawns: Math.max(1, Math.round(loss / 100)), better: null, freeze_explanation: `${WHO}, THAT MOVE COST YOU ABOUT ${Math.max(1, Math.round(loss / 100))} PAWNS. Before you move, ask what the move is FOR and what it leaves undefended.${f.bestMovePhrase ? ` The move you wanted was ${f.bestMovePhrase}.` : ''}` };
     }
     if (cls === 'BRILLIANT' || cls === 'GREAT' || cls === 'BEST') return { ui_action: 'freeze_green', chester_immediate_chat: 'Hm. Not bad, Forrest 🌲.', strategy: 'STRONG MOVE', pawns: 0, better: null, freeze_explanation: `${WHO}, THAT IS A STRONG MOVE - it matches the best idea in the position.` };
@@ -104,10 +106,10 @@ function directRich(f: MoveFacts): Directed {
   const swing = f.evalDelta == null && f.evaluationAfter == null ? null : (evalSwingPawns(f) ?? 0);
   const cls = (f.classification || '').toUpperCase();
   const seed = (f.ply || 0) * 7 + loss;
-  const bad = (cls === 'MISTAKE' || cls === 'BLUNDER') && loss >= FREEZE_PAWNS * 100;
+  const bad = (cls === 'INACCURACY' || cls === 'MISTAKE' || cls === 'BLUNDER') && loss >= RED_FREEZE_CP;
   // His veto: green fires on any great move, not just +1.5 swings.
   const good = !bad && (cls === 'BRILLIANT' || cls === 'GREAT' || cls === 'BEST' || (swing !== null && swing >= FREEZE_PAWNS && loss <= 60));
-  const slip = !bad && (cls === 'INACCURACY' || (loss >= 80 && loss < FREEZE_PAWNS * 100));
+  const slip = !bad && (cls === 'INACCURACY' || loss >= 40);
   // His notation rule: every move reference carries its standard algebraic notation next to the words.
   const withSan = (phrase: string | null | undefined, san: string | null | undefined) => (phrase && san ? `${phrase} (${san})` : phrase || san || null);
   const bestRef = withSan(f.bestMovePhrase, f.bestSan);
