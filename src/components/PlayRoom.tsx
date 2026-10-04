@@ -52,7 +52,7 @@ export default function PlayRoom({ code }: { code: string }) {
       {s.mem.last && <p className="cs-small">Last time: {s.mem.last}. I remember everything.</p>}
       {led && <p className="cs-small cs-gold">{led}</p>}
       {pid === 'A' && <button className={'cs-toggle' + (s.roast ? ' is-on' : '')} onClick={() => send({ t: 'roast', on: !s.roast })}>ROAST MODE · {s.roast ? 'ON' : 'OFF'}</button>}
-      <button className="cs-btn" onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'COPIED' : 'COPY INVITE LINK'}</button>
+      <button className="cs-btn" onClick={() => { const msg = `Join my CineSync movie night! Room code: ${code}\n${link}`; if (navigator.share) { navigator.share({ text: msg }).catch(() => navigator.clipboard?.writeText(msg)); } else navigator.clipboard?.writeText(msg); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'COPIED' : 'COPY INVITE LINK'}</button>
       <p className="cs-small">TV: open <b>/tv/{code}</b></p>
     </div>);
   }
