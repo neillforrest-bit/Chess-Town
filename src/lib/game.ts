@@ -173,6 +173,8 @@ export function learnScore(m: Movie, base: number[], pr: Prof, nos: string[]): n
   let sc = wdist(vecOf(m), t) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012;
   for (const g of m.g) sc -= 0.9 * Math.max(-3, Math.min(3, pr.g[g] || 0));
   for (const c of (m.c || []).slice(0, 3)) sc -= 0.8 * Math.max(-3, Math.min(3, pr.c[c] || 0));
+  sc -= 0.7 * Math.max(-3, Math.min(3, pr.g['E' + Math.floor(m.y / 10) * 10] || 0));
+  for (const k of (m.kw || []).slice(0, 4)) sc -= 0.35 * Math.max(-3, Math.min(3, pr.g['K:' + k.toLowerCase()] || 0));
   if (excluded(m, t, nos)) sc += 6;
   return sc;
 }
@@ -182,7 +184,10 @@ export function learnFrom(pr: Prof, m: Movie, yes: boolean, why: string[]) {
   const dc = (v: number) => (m.c || []).slice(0, 3).forEach((c) => { pr.c[c] = (pr.c[c] || 0) + v; });
   const v = vecOf(m);
   for (const g of m.g) dg(g, yes ? 0.7 : -0.5);
-  if (yes) for (let i = 0; i < 4; i++) pr.ax[i] += (v[i] - 5) * 0.03; // quiet drift toward what they take
+  // implicit learning (no menus): drift toward what they take, push away from what they pass; pacing + runtime learn fastest
+  for (const i of [0, 1, 2, 3]) pr.ax[i] += (v[i] - 5) * (yes ? 0.05 : -0.04) * (i === 0 || i === 3 ? 2.5 : 1);
+  const era = 'E' + Math.floor(m.y / 10) * 10; pr.g[era] = (pr.g[era] || 0) + (yes ? 0.6 : -0.45);
+  for (const k of (m.kw || []).slice(0, 4)) { const kk = 'K:' + k.toLowerCase(); pr.g[kk] = (pr.g[kk] || 0) + (yes ? 0.35 : -0.3); }
   for (const w of why) {
     if (w === 'Not my genre') m.g.forEach((g) => dg(g, -1.8)); else if (w === 'Love the genre') m.g.forEach((g) => dg(g, 1.6));
     else if (w === 'Dislike the cast') dc(-2); else if (w === 'Great cast') dc(1.5);
