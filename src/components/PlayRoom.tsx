@@ -9,6 +9,9 @@ import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Con
 const DRUMROLL_MS = 2800;
 
 
+type CardInfo = { hook: string; loved: string; catch: string; providers: { region: string; names: string[] } | null } | 'err' | 'wait';
+const CARD_CACHE = new Map<number, CardInfo>();
+
 function SubDeck({ deck, mine, other, onSwipe, themName }: { deck: string[]; mine: Record<string, boolean>; other: Record<string, boolean>; onSwipe: (n: string, yes: boolean) => void; themName: string }) {
   const idx = Object.keys(mine).length; const name = deck[idx]; const x = useMotionValue(0); const rot = useTransform(x, [-160, 160], [-12, 12]);
   const locks = deck.filter((n) => mine[n] && other[n]); const [flash, setFlash] = useState(''); const seen = useRef(0);
@@ -49,6 +52,8 @@ export default function PlayRoom({ code }: { code: string }) {
   const [go, setGo] = useState(0);
   const [cd, setCd] = useState(0);
   const [cont, setCont] = useState(false);
+  const [more, setMore] = useState<number | null>(null);
+  const [, bump] = useState(0);
   const [tg, setTg] = useState<string[]>([]);
   const [nos, setNos] = useState<string[]>([]);
   const [pend, setPend] = useState<boolean | null>(null);
@@ -184,6 +189,8 @@ export default function PlayRoom({ code }: { code: string }) {
         <Scores m={m} />
         {critic && <p className="cs-critics"><em>CRITICS SAID</em> {critic}{m.rt != null && m.mc != null ? `, ${m.rt}% fresh, Metacritic ${m.mc}` : ''}.</p>}
         <p className="cs-why"><em>WHY YOU&apos;LL LIKE IT</em> {s.draft.pitches[id] || m.o}</p>
+        <button className="cs-more" onClick={() => { setMore(id); if (!CARD_CACHE.has(id)) { CARD_CACHE.set(id, 'wait'); fetch('/api/orson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'card', movie: { id: m.id, t: m.t, y: m.y, g: m.g, o: m.o, c: m.c, rt: m.rt, mc: m.mc, imdb: m.imdb, r: m.r, aw: m.aw, kw: m.kw, tag: m.tag, k: m.k } }) }).then((r) => r.json()).then((d) => { if (d && d.hook) { CARD_CACHE.set(id, d); if (d.usd) send({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd }); } else CARD_CACHE.set(id, 'err'); bump((x) => x + 1); }).catch(() => { CARD_CACHE.set(id, 'err'); bump((x) => x + 1); }); } }}>THE FULL STORY</button>
+        {more === id && (() => { const ci = CARD_CACHE.get(id); return <div className="cs-sheet cs-story" onClick={() => setMore(null)}><b>{m.t}</b>{ci && ci !== 'wait' && ci !== 'err' ? <><p className="cs-hook">{ci.hook}</p><p><em>WHY CRITICS LOVED IT</em> {ci.loved}</p><p><em>THE CATCH</em> {ci.catch}</p>{ci.providers && <p><em>WATCH ({ci.providers.region})</em> {ci.providers.names.length ? ci.providers.names.join(', ') : 'Not on subscription streaming right now'}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : ci === 'err' ? <p>{m.o}</p> : <p>Orson is reading up on it...</p>}<small>tap to close</small></div>; })()}
       </div>
       {pend === null ? <>
         <div className="cs-powers cs-powers--big">
