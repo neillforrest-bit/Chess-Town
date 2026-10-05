@@ -298,7 +298,7 @@ export type State = {
   pool: number[];
   purse: { A: number; B: number };
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
-  fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string } | null; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
+  fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
   winner: number | null;
   roast: boolean;
   mem: { nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean; recorded: boolean };
@@ -412,7 +412,7 @@ export type Intent =
   | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
-  | { t: 'verdict'; winner: number; reason: string } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
+  | { t: 'verdict'; winner: number; reason: string; lines?: string[] } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
@@ -565,14 +565,14 @@ export function reduce(prev: State, it: Intent): State {
       const { A, B } = s.fin.choice;
       if (A !== undefined && B !== undefined) {
         if (A === B) { s.fin.verdict = { winner: A, reason: 'You both picked the same film. No pitch needed. Orson is almost disappointed.' }; s.winner = A; s.fin.tie = true; s.phase = 'done'; }
-        else s.fin.pitchEnds = now + PITCH_MS;
+        else { s.fin.pitchEnds = now; s.fin.judging = true; }
       }
       break;
     }
     case 'pitch': { if (s.phase !== 'final' || s.fin.verdict) break; s.fin.pitch[it.pid] = it.text.slice(0, 600); if (it.submit) s.fin.submitted[it.pid] = true; break; }
     case 'judgereq': s.fin.judgeRequested = true; break;
     case 'verdict': {
-      s.fin.verdict = { winner: it.winner, reason: it.reason }; s.fin.judging = false; s.winner = it.winner; s.phase = 'done';
+      s.fin.verdict = { winner: it.winner, reason: it.reason, lines: it.lines }; s.fin.judging = false; s.winner = it.winner; s.phase = 'done';
       const wp: PID = s.fin.choice.A === it.winner ? 'A' : 'B'; s.fin.wpid = wp; s.fin.loser = wp === 'A' ? 'B' : 'A'; s.fin.tie = false; s.mem.recorded = false;
       break;
     }
@@ -594,7 +594,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'rematch': {
       if (s.phase !== 'done' || !s.fin.loser || s.fin.rematchUsed || s.fin.tie) break;
       const cA = s.fin.choice.A, cB = s.fin.choice.B;
-      s.fin = { ...s.fin, choice: { A: cB, B: cA }, pitch: {}, submitted: {}, verdict: null, judging: false, judgeRequested: false, pitchEnds: now + PITCH_MS, rematchUsed: true, loser: null, wpid: null };
+      s.fin = { ...s.fin, choice: { A: cB, B: cA }, pitch: {}, submitted: {}, verdict: null, judging: false, judgeRequested: false, pitchEnds: now, rematchUsed: true, loser: null, wpid: null };
       s.winner = null; s.phase = 'final'; s.mem.recorded = false;
       break;
     }

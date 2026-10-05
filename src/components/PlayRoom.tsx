@@ -4,7 +4,7 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
 import { BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
-import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
+import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 2800;
 
@@ -67,6 +67,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const other: PID = pid === 'A' ? 'B' : 'A';
   const [copied, setCopied] = useState(false);
   const [pitchText, setPitchText] = useState('');
+  const [tkDone, setTkDone] = useState('');
   const [tapN, setTapN] = useState(0);
   const [swap, setSwap] = useState<number | null>(null);
   const lastTapSend = useRef(0);
@@ -292,7 +293,7 @@ export default function PlayRoom({ code }: { code: string }) {
     if (!f.pitchEnds) return shell(<div className="cs-bracket"><div className="cs-round">THE FINAL TWO</div>
       <div className="cs-vs cs-titlecard">{[f.a, f.b].map((id) => <button key={id} className={'cs-match-card' + (myChoice === id ? ' is-mine' : '')} disabled={myChoice !== undefined} onClick={() => send({ t: 'fchoice', pid, id })}><Poster id={id} /><b>{BY_ID[id].t}</b><span>{BY_ID[id].y}</span></button>)}</div>
       <p className="cs-small">{myChoice === undefined ? 'Pick the film you will fight for.' : `Locked. Waiting for ${them.name}.`}</p></div>);
-    if (f.judging) return shell(<div className="cs-center"><div className="cs-orson">THE JUDGE</div><Typing text="Orson is deliberating. Please do not breathe on the judge" /></div>);
+    if (f.judging) return <Takeover a={f.a} b={f.b} />;
     const left = secs(f.pitchEnds, now); const submitted = f.submitted[pid];
     return shell(<div className="cs-pitch"><div className="cs-round">{f.rematchUsed ? 'REMATCH · SIDES SWAPPED' : 'PITCH-OFF'}<i>{left}s</i></div>
       <p className="cs-aside">Defend <b>{BY_ID[myChoice as number]?.t}</b>. Sixty seconds. Make Orson believe.</p>
@@ -304,6 +305,8 @@ export default function PlayRoom({ code }: { code: string }) {
   const w = s.winner !== null ? BY_ID[s.winner] : null;
   const r = receipts(s);
   const iLost = s.fin.loser === pid;
+  const showTk = !!(s.fin.verdict?.lines?.length) && !s.fin.tie && tkDone !== s.fin.rematchUsed + '' + s.winner;
+  if (showTk && w) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict?.lines} winner={w.id} onDone={() => setTkDone(s.fin.rematchUsed + '' + s.winner)} />;
   return shell(<div className="cs-done">
     <Confetti />
     <div className="cs-orson">TONIGHT YOU WATCH</div>

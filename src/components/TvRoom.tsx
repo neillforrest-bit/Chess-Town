@@ -1,7 +1,8 @@
 'use client';
 import { useRoom } from '@/lib/useRoom';
 import { BY_ID, ROUND_LABEL, DRAFT_SIZE, type State } from '@/lib/game';
-import { Poster, OrsonBar, secs, useNow, Meter, BUILD, ledgerLine, receipts } from './shared';
+import { useState } from 'react';
+import { Takeover, Poster, OrsonBar, secs, useNow, Meter, BUILD, ledgerLine, receipts } from './shared';
 
 // Ringside Orson: boxing-announcer commentary derived purely from state. The TV stages; phones play.
 function ringside(s: State, now: number): string {
@@ -23,12 +24,15 @@ function ringside(s: State, now: number): string {
 export default function TvRoom({ code }: { code: string }) {
   const { state: s, skew, online } = useRoom(code, null, 'TV');
   const now = useNow(skew);
+  const [tkDone, setTkDone] = useState('');
   if (!s) return <main className="cs-tv"><div className="cs-tv-big">CINE<b>SYNC</b></div><p className="cs-tv-sub">{online ? `Looking for room ${code}...` : 'Connecting...'}</p></main>;
   const mt = s.phase === 'bracket' ? s.br.matches[s.br.cur] : null;
   const names = `${s.players.A.name} & ${s.players.B.name}`;
   const led = ledgerLine(s);
   const r = receipts(s);
   const say = ringside(s, now);
+  if (s.phase === 'final' && s.fin.judging) return <Takeover a={s.fin.a} b={s.fin.b} />;
+  if (s.phase === 'done' && s.winner !== null && s.fin.verdict?.lines?.length && !s.fin.tie && tkDone !== s.fin.rematchUsed + '' + s.winner) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict.lines} winner={s.winner} onDone={() => setTkDone(s.fin.rematchUsed + '' + s.winner)} />;
   return <main className="cs-tv">
     <header className="cs-tv-head"><span>CINE<b>SYNC</b></span><span>{names}</span><span>ROOM {code}</span></header>
     <OrsonBar o={s.orson} tv /><section className="cs-tv-body">

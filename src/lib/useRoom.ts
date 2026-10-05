@@ -136,12 +136,12 @@ export function useRoom(code: string, pid: PID | null, name: string, kind: 'movi
       // each player defends the film they chose; map to film A/B
       const defender = (id: number) => (f.choice.A === id ? 'A' : 'B') as PID;
       const side = (id: number) => { const p = defender(id); return { t: BY_ID[id].t, y: BY_ID[id].y, r: BY_ID[id].r, by: state.players[p].name, pitch: f.pitch[p] || '' }; };
-      const fallback = () => { const w = A.r >= B.r ? A.id : B.id; apply({ t: 'verdict', winner: w, reason: 'Orson lost the signal, so the higher rated film takes it.' }); };
-      fetch('/api/orson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'judge', roast: state.roast, rematch: state.fin.rematchUsed, a: side(A.id), b: side(B.id) }) })
+      const fallback = () => { const w = A.r >= B.r ? A.id : B.id; apply({ t: 'verdict', winner: w, reason: 'Orson lost the signal, so the higher rated film takes it.', lines: [`${A.t} against ${B.t}. A fight for the ages, or at least for tonight.`, `${(A.r >= B.r ? B : A).t}, I say this with love: no.`, 'Drumroll, please. I have never been wrong. Mostly.'] }); };
+      fetch('/api/orson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'judge', roast: state.roast, rematch: state.fin.rematchUsed, takeover: true, a: side(A.id), b: side(B.id) }) })
         .then((r) => r.json()).then((d) => {
           if (!d.winner) return fallback();
           apply({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
-          apply({ t: 'verdict', winner: d.winner === 'A' ? A.id : B.id, reason: d.verdict || '' });
+          apply({ t: 'verdict', winner: d.winner === 'A' ? A.id : B.id, reason: d.verdict || '', lines: Array.isArray(d.lines) ? d.lines.slice(0, 4) : undefined });
         }).catch(fallback);
     }
   }, [host, state, apply]);

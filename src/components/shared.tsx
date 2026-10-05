@@ -109,3 +109,22 @@ export function OrsonBar({ o, tv = false }: { o: { line: string; mood: Mood; n: 
     </div>
   );
 }
+
+// Orson takeover: full-screen theatre. Shows on the judging screen (waiting) and plays the scripted lines once the verdict lands.
+export function Takeover({ a, b, lines, winner, onDone }: { a: number; b: number; lines?: string[]; winner?: number; onDone?: () => void }) {
+  const [step, setStep] = useState(0);
+  const script = lines && lines.length ? lines : [];
+  useEffect(() => {
+    if (winner === undefined) return;
+    const total = script.length + 1;
+    if (step >= total) { const t = setTimeout(() => onDone && onDone(), 1800); return () => clearTimeout(t); }
+    const t = setTimeout(() => setStep((x) => x + 1), step === script.length ? 1700 : 2300);
+    return () => clearTimeout(t);
+  }, [step, winner]); // eslint-disable-line react-hooks/exhaustive-deps
+  const slam = winner !== undefined && step >= script.length;
+  return <div className="cs-takeover">
+    <div className="cs-tk-tag">ORSON HAS TAKEN OVER THE SCREEN</div>
+    <div className="cs-tk-vs">{[a, b].map((id) => <div key={id} className={'cs-tk-film' + (slam && winner !== id ? ' is-out' : '') + (slam && winner === id ? ' is-in' : '')}><Poster id={id} /><b>{BY_ID[id].t}</b></div>)}</div>
+    <p className="cs-tk-line" key={step}>{winner === undefined ? 'Both of you chose. Now I decide. Nobody breathe.' : slam ? 'THE DECISION IS MADE.' : script[Math.min(step, script.length - 1)]}</p>
+  </div>;
+}

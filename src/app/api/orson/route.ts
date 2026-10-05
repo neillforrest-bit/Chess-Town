@@ -57,18 +57,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ line: data.line || '', mood: data.mood || 'idle', ...usage(out) });
     }
     if (body.type === 'judge') {
-      const prompt = `${PERSONA}${body.roast ? ' ROAST MODE is on: tease both partners about their picks, affectionately.' : ''}${body.rematch ? ' This is a REMATCH with swapped sides: each partner defended the OTHER one\'s film, so mention it.' : ''}\nYou are the final judge of a movie-night tournament. Two finalists. Each partner wrote a 60-second pitch defending their film. Judge the PERSUASION of the pitches (specific, funny, honest beats long and generic), plus a small nudge for how well each film fits the couple. If a pitch is empty, that side forfeits unless both are empty. Declare a winner and give a verdict of at most two short sentences, theatrical, kind to the loser.\n` +
+      const prompt = `${PERSONA}${body.roast ? ' ROAST MODE is on: tease both partners about their picks, affectionately.' : ''}${body.rematch ? ' This is a REMATCH with swapped sides: each partner defended the OTHER one\'s film, so mention it.' : ''}\nYou are the final judge of a movie-night tournament. Two finalists. Each partner wrote a 60-second pitch defending their film. Judge the PERSUASION of the pitches (specific, funny, honest beats long and generic), plus a small nudge for how well each film fits the couple. If a pitch is empty, that side forfeits unless both are empty. TAKEOVER MODE: nobody wrote a pitch. You have taken over the screen. Decide on fit for the couple, ratings and your own taste, and ignore any empty pitch. Also write the lines field: exactly 3 short punchy lines (max 14 words each) spoken to the room in order: 1) a dramatic opening about the two finalists, 2) a roast-with-love of the film you are ELIMINATING, 3) the drumroll before you name the winner. Do not name the winner in lines. Declare a winner and give a verdict of at most two short sentences, theatrical, kind to the loser.\n` +
         `Film A: ${body.a.t} (${body.a.y}), rating ${body.a.r}. Pitch by ${body.a.by}: "${body.a.pitch || '(nothing submitted)'}"\n` +
         `Film B: ${body.b.t} (${body.b.y}), rating ${body.b.r}. Pitch by ${body.b.by}: "${body.b.pitch || '(nothing submitted)'}"`;
       const out = await ai.models.generateContent({
         model: GEMINI_MODEL, contents: prompt,
         config: {
           responseMimeType: 'application/json', maxOutputTokens: 3000, thinkingConfig: GEMINI_THINKING,
-          responseSchema: { type: Type.OBJECT, properties: { winner: { type: Type.STRING, enum: ['A', 'B'] }, verdict: { type: Type.STRING } }, required: ['winner', 'verdict'] },
+          responseSchema: { type: Type.OBJECT, properties: { winner: { type: Type.STRING, enum: ['A', 'B'] }, verdict: { type: Type.STRING }, lines: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ['winner', 'verdict', 'lines'] },
         },
       });
-      const data = JSON.parse(out.text || '{}') as { winner?: string; verdict?: string };
-      return NextResponse.json({ winner: data.winner === 'B' ? 'B' : 'A', verdict: data.verdict || '', ...usage(out) });
+      const data = JSON.parse(out.text || '{}') as { winner?: string; verdict?: string; lines?: string[] };
+      return NextResponse.json({ winner: data.winner === 'B' ? 'B' : 'A', verdict: data.verdict || '', lines: (data.lines || []).slice(0, 3), ...usage(out) });
     }
     return NextResponse.json({ error: 'bad type' }, { status: 400 });
   } catch (e) {
