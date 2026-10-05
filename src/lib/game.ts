@@ -28,42 +28,45 @@ export type Question = { q: string; lo: string; hi: string };
 // Four sliders per set (0-10): energy, darkness, fantasy-vs-real, scale. Last set is the lightning set.
 export const QUESTION_SETS: Question[][] = [
   [
-    { q: 'Tonight your pulse should be...', lo: 'Resting', hi: 'Full sprint' },
-    { q: 'How dark can we go?', lo: 'Pure sunshine', hi: 'Pitch black' },
-    { q: 'Which world are we visiting?', lo: 'Real life', hi: 'Pure fantasy or space' },
-    { q: 'How big is the story?', lo: 'Kitchen table', hi: 'Planet-sized' },
+    { q: 'Chill night or adrenaline night?', lo: 'Chill', hi: 'Adrenaline' },
+    { q: 'Laugh or scream? Comedy or horror?', lo: 'Comedy', hi: 'Horror' },
+    { q: 'Real or made-up?', lo: 'True stories, real life', hi: 'Pure invention' },
+    { q: 'Small or epic?', lo: 'Two people in a room', hi: 'The whole world at stake' },
   ],
   [
-    { q: 'Be honest: how much energy is left in the tank?', lo: 'Nap-adjacent', hi: 'Bring it on' },
-    { q: 'You want to leave feeling...', lo: 'Warm and giggly', hi: 'Wrecked, in a good way' },
-    { q: 'Reality check?', lo: 'Keep it grounded', hi: 'Rules are for losers' },
-    { q: 'Scale of the thing?', lo: 'Intimate', hi: 'Epic spectacle' },
+    { q: 'How much energy is left in the tank?', lo: 'Nap-adjacent', hi: 'Bring it on' },
+    { q: 'Funny or frightening?', lo: 'Make me laugh', hi: 'Make me scared' },
+    { q: 'Documentary or dragons?', lo: 'Documentary', hi: 'Dragons' },
+    { q: 'Intimate or spectacle?', lo: 'Intimate', hi: 'Spectacle' },
   ],
   [
-    { q: 'The sofa is calling. Your posture?', lo: 'Horizontal', hi: 'Perched on the edge' },
-    { q: 'What kind of villain can you tolerate?', lo: 'None, thanks', hi: 'Pure evil' },
-    { q: 'How much make-believe?', lo: 'None at all', hi: 'Dragons, ideally' },
-    { q: 'How loud should the speakers get?', lo: 'Whisper', hi: 'Neighbours will hear' },
+    { q: 'The sofa is calling. Your posture?', lo: 'Horizontal', hi: 'Edge of the seat' },
+    { q: 'Giggles or goosebumps?', lo: 'Giggles', hi: 'Goosebumps' },
+    { q: 'Based on fact or total fiction?', lo: 'Based on fact', hi: 'Total fiction' },
+    { q: 'Quiet drama or blockbuster?', lo: 'Quiet drama', hi: 'Blockbuster' },
   ],
   [
     { q: 'How much do you want your heart racing?', lo: 'Not at all', hi: 'Out of my chest' },
-    { q: 'Tears or screams?', lo: 'Laughing tears', hi: 'Screams, please' },
-    { q: 'Where is the story set?', lo: 'My street', hi: 'Not on this planet' },
-    { q: 'Runtime attitude?', lo: 'Short and sweet', hi: 'Make it an event' },
+    { q: 'Tears of laughter or screams?', lo: 'Laughing tears', hi: 'Screams' },
+    { q: 'Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
+    { q: 'Short and sweet or an event?', lo: 'Short and sweet', hi: 'An event' },
   ],
   [
     { q: 'What is the stress level in this house?', lo: 'Zen', hi: 'Critical' },
-    { q: 'Pick a soundtrack.', lo: 'Gentle piano', hi: 'Tense strings and dread' },
-    { q: 'Pick a backdrop.', lo: 'A kitchen table', hi: 'A galaxy' },
-    { q: 'Ending style?', lo: 'Quiet and sweet', hi: 'Explosive' },
+    { q: 'Light-hearted or tense?', lo: 'Light-hearted', hi: 'Tense' },
+    { q: 'This world or another one?', lo: 'This world', hi: 'Another one' },
+    { q: 'Cosy or colossal?', lo: 'Cosy', hi: 'Colossal' },
   ],
   [
-    { q: 'LIGHTNING. Energy, go.', lo: 'Low', hi: 'Max' },
-    { q: 'LIGHTNING. Darkness, go.', lo: 'Sunny', hi: 'Pitch black' },
-    { q: 'LIGHTNING. Realism, go.', lo: 'Documentary', hi: 'Fantasy' },
-    { q: 'LIGHTNING. Size, go.', lo: 'Tiny', hi: 'Enormous' },
+    { q: 'LIGHTNING. Chill or adrenaline?', lo: 'Chill', hi: 'Adrenaline' },
+    { q: 'LIGHTNING. Comedy or horror?', lo: 'Comedy', hi: 'Horror' },
+    { q: 'LIGHTNING. Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
+    { q: 'LIGHTNING. Small or epic?', lo: 'Small', hi: 'Epic' },
   ],
 ];
+// ask order is broad to narrow: genre fork first (comedy/horror), then fact/fiction, then energy, then scale. Axis indices stay [energy, dark, fantasy, scale].
+export const ASK_ORDER = [1, 2, 0, 3];
+export const AXQ_NAME = ['Chill or adrenaline', 'Comedy or horror', 'Fact or fiction', 'Small or epic'];
 export const ORSON_REACTIONS = ['Noted. I will not judge. Out loud.', 'Interesting. Your partner will find that very interesting.', 'Bold. Locking it in.', 'Sure. Cinema forgives all.', 'A strong choice. Or a cry for help.', 'I have seen worse. Not often.'];
 export const ROAST_REACTIONS = ['Ah. A person of questionable taste.', 'Your partner will hear about this.', 'I have filed that under "concerning".', 'Brave, in the way a bin fire is brave.', 'Truly the choice of someone who has stopped trying.', 'I expected less, and still I am let down.'];
 export const reactionFor = (roast: boolean, seed: number) => { const l = roast ? ROAST_REACTIONS : ORSON_REACTIONS; return l[Math.abs(seed) % l.length]; };

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { sb } from '@/lib/supa';
 import { loadMem, recordNight, coupleKey, nightsKey } from '@/lib/memory';
-import { newState, reduce, BY_ID, fallbackPitch, AXES, type Mood, type Intent, type PID, type State } from '@/lib/game';
+import { newState, reduce, BY_ID, fallbackPitch, AXES, AXQ_NAME, type Mood, type Intent, type PID, type State } from '@/lib/game';
 
 /** pid 'A' is the host (runs the reducer). 'B' and the TV (pid null) only send intents / render state. */
 export function useRoom(code: string, pid: PID | null, name: string) {
@@ -96,8 +96,8 @@ export function useRoom(code: string, pid: PID | null, name: string) {
     if (s.vibe.score !== null && s.vibe.doneAt) {
       const A = s.vibe.ans.A, B = s.vibe.ans.B; const gaps = [0, 1, 2, 3].map((i) => Math.abs((A[i] as number) - (B[i] as number)));
       const wi = gaps.indexOf(Math.max(...gaps));
-      say(k + 'gate' + s.vibe.attempts, s.vibe.passed ? `The gate just PASSED at ${Math.round(s.vibe.score * 100)}% alignment.` : `The gate FAILED at ${Math.round(s.vibe.score * 100)}% alignment.`, `Widest gap: ${AXES[wi]}, ${s.players.A.name} said ${A[wi]}/10 and ${s.players.B.name} said ${B[wi]}/10. ${s.vibe.passed ? 'Tease about how suspiciously alike they are.' : 'Name the exact clash and enjoy it.'}`,
-        s.vibe.passed ? [`${Math.round(s.vibe.score * 100)}%. You two are alarmingly compatible. I am going to need a moment.`, 'glee'] : [`${AXES[wi]}: ${A[wi]} against ${B[wi]}. I have seen peace treaties collapse over less.`, 'shock']);
+      say(k + 'gate' + s.vibe.attempts, s.vibe.passed ? `The gate just PASSED at ${Math.round(s.vibe.score * 100)}% alignment.` : `The gate FAILED at ${Math.round(s.vibe.score * 100)}% alignment.`, `Widest gap: ${AXQ_NAME[wi]}, ${s.players.A.name} said ${A[wi]}/10 and ${s.players.B.name} said ${B[wi]}/10. ${s.vibe.passed ? 'Tease about how suspiciously alike they are.' : 'Name the exact clash and enjoy it.'}`,
+        s.vibe.passed ? [`${Math.round(s.vibe.score * 100)}%. You two are alarmingly compatible. I am going to need a moment.`, 'glee'] : [`${AXQ_NAME[wi]}: ${A[wi]} against ${B[wi]}. I have seen peace treaties collapse over less.`, 'shock']);
     }
     if (s.phase === 'draft' && !s.draft.loading) say(k + 'draft', 'The blind draft is starting: each picks 10 films in secret.', `Tonight's mood target: energy ${s.vibe.target?.[0].toFixed(0)}, darkness ${s.vibe.target?.[1].toFixed(0)}, fantasy ${s.vibe.target?.[2].toFixed(0)}, scale ${s.vibe.target?.[3].toFixed(0)} out of 10.`, ['Ten films each, in secret. I will be watching your thumbs. Judging, mostly.', 'scheme']);
     if (s.phase === 'draft' && !s.draft.loading) for (const p of ['A', 'B'] as const) { const pr = s.draft.learn[p]; if (pr.n >= 5 && pr.yes === 0) say(k + 'pass' + p, `${s.players[p].name} has passed on their first ${pr.n} films in a row.`, 'Deck is re-ranking toward what they actually like. Tease them.', [`${s.players[p].name} has rejected ${pr.n} straight. I am recalibrating. Quietly. With tears.`, 'shock']); }

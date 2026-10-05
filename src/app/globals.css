@@ -179,3 +179,8 @@ em{font-style:normal;color:var(--gold)}
 .cs-why-q button{background:none;border:0}
 .cs-oemo{position:absolute;right:-8px;bottom:-6px;font-size:1.5rem;animation:emopop .7s cubic-bezier(.2,1.6,.4,1);filter:drop-shadow(0 2px 4px #000a)}@keyframes emopop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
 .cs-obar--tv .cs-oemo{font-size:5vh}
+
+.cs-journey{display:flex;justify-content:center;gap:4px;padding:3px 8px;flex:none}.cs-journey i{font-style:normal;font-size:.56rem;letter-spacing:.08em;font-weight:800;padding:2px 7px;border-radius:9px;background:#1b1429;color:#6f6385}.cs-journey i.is-done{color:#ffcf40;background:#2a2040}.cs-journey i.is-now{color:#1a1000;background:#ffcf40}
+.cs-intro{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;text-align:center}.cs-intro .cs-q{font-size:1.2rem}
+.cs-map{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;text-align:left}.cs-map li{display:flex;flex-direction:column;gap:1px;padding:7px 11px;border-radius:10px;background:#1b1429;border-left:4px solid #3a2d52}.cs-map li.is-now{border-left-color:#ffcf40;background:#2a2040}.cs-map b{font-size:.78rem;letter-spacing:.1em;color:#ffcf40}.cs-map span{font-size:.74rem;color:#cfc6dc}
+.cs-rsg-w{font-family:var(--serif);font-size:3.4rem;font-weight:900;color:#ffcf40;text-shadow:0 0 24px #ffcf40aa;animation:rsg .7s ease-out both}@keyframes rsg{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { BY_ID, QUESTION_SETS, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID } from '@/lib/game';
+import { BY_ID, QUESTION_SETS, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID } from '@/lib/game';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 2800;
@@ -22,6 +22,8 @@ export default function PlayRoom({ code }: { code: string }) {
   const tapKey = useRef('');
   const startX = useRef<number | null>(null);
   const [sl, setSl] = useState(5);
+  const [go, setGo] = useState(0);
+  const [cd, setCd] = useState(0);
   const [cont, setCont] = useState(false);
   const [tg, setTg] = useState<string[]>([]);
   const [nos, setNos] = useState<string[]>([]);
@@ -41,7 +43,9 @@ export default function PlayRoom({ code }: { code: string }) {
   const me = s.players[pid], them = s.players[other];
   const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span></header>;
   const foot = <footer className="cs-foot"><Meter cost={s.cost} /><i>{BUILD}</i></footer>;
-  const shell = (body: React.ReactNode, cls = '') => <main className="cs-play">{head}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}</main>;
+  const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'bracket' ? 2 : 3;
+  const journey = <nav className="cs-journey">{['GATE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
+  const shell = (body: React.ReactNode, cls = '') => <main className="cs-play">{head}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}</main>;
   const led = ledgerLine(s);
 
   // ---- LOBBY
@@ -62,14 +66,27 @@ export default function PlayRoom({ code }: { code: string }) {
 
   // ---- PHASE 1: vibe, one question at a time
   if (s.phase === 'vibe') {
-    const mine = s.vibe.ans[pid]; const nextQ = mine.findIndex((x) => x === null);
+    const mine = s.vibe.ans[pid]; const nextQ = (() => { const k = ASK_ORDER.find((i) => mine[i] === null); return k === undefined ? -1 : k; })(); const stepN = ASK_ORDER.indexOf(nextQ);
+    const fresh = s.vibe.attempts === 0 && mine.every((x) => x === null);
+    if (fresh && go < 2) return shell(go === 0 ? <div className="cs-intro">
+      <div className="cs-orson">HOW TONIGHT WORKS</div>
+      <h2 className="cs-q">Find a movie you both want. Make it fun.</h2>
+      <ol className="cs-map">
+        <li className="is-now"><b>1 · THE GATE</b><span>Four quick sliders in private. Hit 70% alignment to unlock stage 2.</span></li>
+        <li><b>2 · THE DRAFT</b><span>Swipe films. Each of you picks 10 in secret.</span></li>
+        <li><b>3 · THE BRACKET</b><span>Your picks fight head to head.</span></li>
+        <li><b>4 · TONIGHT YOU WATCH</b><span>One winner. Maybe one you would never have chosen.</span></li>
+      </ol>
+      <p className="cs-small">Alignment = how close your answers are. Miss it and only the clashing questions come back.</p>
+      <button className="cs-btn cs-btn--gold" onClick={() => { setGo(1); setCd(1); setTimeout(() => setCd(2), 700); setTimeout(() => setCd(3), 1400); setTimeout(() => { setGo(2); setCd(0); }, 2100); }}>I AM READY</button>
+    </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
     if (nextQ >= 0) {
       const q = QUESTION_SETS[s.vibe.sets[nextQ]][nextQ];
       const redo = s.vibe.attempts > 0;
-      const intro = redo && mine.filter((x) => x === null).length === 4 - mine.filter((x) => x !== null).length && nextQ === mine.findIndex((x) => x === null) && !mine.slice(0, nextQ).some((x, i) => x === null) && mine.filter((x) => x === null).length < 4 && mine.slice(0, nextQ).every((x) => x !== null) && nextQ === Math.min(...mine.map((x, i) => (x === null ? i : 9))) && !(mine.slice(0, nextQ).length === 0 && false) ? 'Only the questions where you two clash come back. The rest stay locked.' : nextQ === 0 && !redo ? (q.q.startsWith('LIGHTNING') ? 'Lightning round. No thinking. Instinct only.' : 'Four sliders, in private. I am hunting for common ground, and I do not scold.') : reactionFor(s.roast, ((mine[nextQ - 1] as number) ?? 0) + nextQ * 3);
+      const intro = redo && mine.filter((x) => x === null).length === 4 - mine.filter((x) => x !== null).length && nextQ === mine.findIndex((x) => x === null) && !mine.slice(0, nextQ).some((x, i) => x === null) && mine.filter((x) => x === null).length < 4 && mine.slice(0, nextQ).every((x) => x !== null) && nextQ === Math.min(...mine.map((x, i) => (x === null ? i : 9))) && !(mine.slice(0, nextQ).length === 0 && false) ? 'Only the questions where you two clash come back. The rest stay locked.' : stepN === 0 && !redo ? (q.q.startsWith('LIGHTNING') ? 'Lightning round. No thinking. Instinct only.' : 'Broad first, then narrower. In private. Get to 70% together to unlock the draft.') : reactionFor(s.roast, ((mine[nextQ - 1] as number) ?? 0) + nextQ * 3);
       return shell(<div className="cs-ask" key={nextQ + ':' + s.vibe.set}>
-        <div className="cs-dots4">{[0, 1, 2, 3].map((i) => <i key={i} className={mine[i] !== null ? 'is-done' : i === nextQ ? 'is-now' : ''} />)}</div>
-        <div className="cs-orson">ORSON · {AXES[nextQ].toUpperCase()}</div>
+        <div className="cs-dots4">{ASK_ORDER.map((i) => <i key={i} className={mine[i] !== null ? 'is-done' : i === nextQ ? 'is-now' : ''} />)}</div>
+        <div className="cs-orson">STAGE 1 · QUESTION {stepN + 1} OF 4 · {AXQ_NAME[nextQ].toUpperCase()}</div>
         <p className="cs-aside">{intro}</p>
         <h2 className="cs-q">{q.q}</h2>
         <div className="cs-slider">
@@ -95,7 +112,7 @@ export default function PlayRoom({ code }: { code: string }) {
       </div>);
     }
     if (s.vibe.passed && s.vibe.tastes[pid] !== null && s.vibe.tastes[other] === null) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
-    const playback = bd > 0 ? `Widest gap, ${AXES[bi].toLowerCase()}: you said ${mine[bi]}, ${them.name} said ${theirs[bi]}.` : 'You answered like a single organism. Suspicious.';
+    const playback = bd > 0 ? `Widest gap, ${AXQ_NAME[bi].toLowerCase()}: you said ${mine[bi]}, ${them.name} said ${theirs[bi]}.` : 'You answered like a single organism. Suspicious.';
     return shell(<div className="cs-center">
       {s.vibe.passed && <Confetti />}
       <div className={'cs-result ' + (s.vibe.passed ? 'cs-result--ok' : 'cs-result--no')}>
