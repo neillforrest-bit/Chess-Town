@@ -4,7 +4,7 @@ import catalog from '@/data/catalog.json';
 export type PID = 'A' | 'B';
 export type Mood = 'idle' | 'smug' | 'shock' | 'glee' | 'scheme' | 'sad';
 export type Movie = { id: number; t: string; y: number; r: number; g: string[]; o: string; p: string; w: boolean; pop: number; c?: string[]; k?: string; rn?: number; tag?: string; im?: string; kw?: string[]; rt?: number | null; mc?: number | null; imdb?: number | null; aw?: string };
-export const MOVIES: Movie[] = (catalog as { movies: Movie[] }).movies;
+export const MOVIES: Movie[] = (catalog as { movies: Movie[] }).movies.filter((m) => m.y >= 1990);
 export const BY_ID: Record<number, Movie> = Object.fromEntries(MOVIES.map((m) => [m.id, m]));
 export const poster = (m: Movie, size = 'w342') => `https://image.tmdb.org/t/p/${size}${m.p}`;
 
@@ -16,7 +16,7 @@ export type Prof = { streak: number; g: Record<string, number>; c: Record<string
 export const newProf = (): Prof => ({ streak: 0, g: {}, c: {}, ax: [0, 0, 0, 0], n: 0, yes: 0, notes: [] });
 export const PASS_WHY = ['Seen it', 'Too dark', 'Too light', 'Not my genre', 'Dislike the cast', 'Not in the mood', 'Too long'] as const;
 export const YES_WHY = ['Love the genre', 'Great cast', 'Great reviews', 'Right mood', 'Havent seen it'] as const;
-export const AXES = ['Energy', 'Darkness', 'Fantasy', 'Scale'] as const;
+export const AXES = ['Pacing', 'Weight', 'Reality', 'Runtime'] as const;
 export const TAP_MS = 10000;
 export const PITCH_MS = 60000;
 export const NEXT_MS = 2200;
@@ -28,54 +28,78 @@ export type Question = { q: string; lo: string; hi: string };
 // Four sliders per set (0-10): energy, darkness, fantasy-vs-real, scale. Last set is the lightning set.
 export const QUESTION_SETS: Question[][] = [
   [
-    { q: 'Chill night or adrenaline night?', lo: 'Chill', hi: 'Adrenaline' },
-    { q: 'Laugh or scream? Comedy or horror?', lo: 'Comedy', hi: 'Horror' },
-    { q: 'Real or made-up?', lo: 'True stories, real life', hi: 'Pure invention' },
-    { q: 'Small or epic?', lo: 'Two people in a room', hi: 'The whole world at stake' },
+    { q: 'How much plot can your brain take?', lo: 'Breezy popcorn', hi: 'Brain-melting plot' },
+    { q: 'How heavy should it feel?', lo: 'Lighthearted / comedy', hi: 'Grim / horror' },
+    { q: 'How true to life?', lo: '100% true story', hi: 'Pure fiction' },
+    { q: 'How long can you stay?', lo: '90 minutes', hi: 'Epic 2.5+ hrs' },
   ],
   [
-    { q: 'How much energy is left in the tank?', lo: 'Nap-adjacent', hi: 'Bring it on' },
-    { q: 'Funny or frightening?', lo: 'Make me laugh', hi: 'Make me scared' },
-    { q: 'Documentary or dragons?', lo: 'Documentary', hi: 'Dragons' },
-    { q: 'Intimate or spectacle?', lo: 'Intimate', hi: 'Spectacle' },
+    { q: 'Think or switch off?', lo: 'Switch off', hi: 'Think hard' },
+    { q: 'Laugh or lose sleep?', lo: 'Make me laugh', hi: 'Keep me up at night' },
+    { q: 'Real people or invented worlds?', lo: 'Real people', hi: 'Invented worlds' },
+    { q: 'Quick watch or the full night?', lo: 'Quick', hi: 'The full night' },
   ],
   [
-    { q: 'The sofa is calling. Your posture?', lo: 'Horizontal', hi: 'Edge of the seat' },
+    { q: 'Popcorn or puzzle?', lo: 'Popcorn', hi: 'Puzzle' },
     { q: 'Giggles or goosebumps?', lo: 'Giggles', hi: 'Goosebumps' },
     { q: 'Based on fact or total fiction?', lo: 'Based on fact', hi: 'Total fiction' },
-    { q: 'Quiet drama or blockbuster?', lo: 'Quiet drama', hi: 'Blockbuster' },
-  ],
-  [
-    { q: 'How much do you want your heart racing?', lo: 'Not at all', hi: 'Out of my chest' },
-    { q: 'Tears of laughter or screams?', lo: 'Laughing tears', hi: 'Screams' },
-    { q: 'Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
     { q: 'Short and sweet or an event?', lo: 'Short and sweet', hi: 'An event' },
   ],
   [
-    { q: 'What is the stress level in this house?', lo: 'Zen', hi: 'Critical' },
-    { q: 'Light-hearted or tense?', lo: 'Light-hearted', hi: 'Tense' },
-    { q: 'This world or another one?', lo: 'This world', hi: 'Another one' },
-    { q: 'Cosy or colossal?', lo: 'Cosy', hi: 'Colossal' },
+    { q: 'Easy ride or plot maze?', lo: 'Easy ride', hi: 'Plot maze' },
+    { q: 'Light-hearted or tense?', lo: 'Light-hearted', hi: 'Tense and grim' },
+    { q: 'Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
+    { q: 'How much time have we got?', lo: 'Under 100 min', hi: 'Over 150 min' },
   ],
   [
-    { q: 'LIGHTNING. Chill or adrenaline?', lo: 'Chill', hi: 'Adrenaline' },
+    { q: 'Pay attention or half-watch?', lo: 'Half-watch', hi: 'Full attention' },
+    { q: 'Cosy or dark?', lo: 'Cosy', hi: 'Dark' },
+    { q: 'This world or another?', lo: 'This world', hi: 'Another world' },
+    { q: 'Runtime appetite?', lo: 'Brief', hi: 'Epic' },
+  ],
+  [
+    { q: 'LIGHTNING. Popcorn or puzzle?', lo: 'Popcorn', hi: 'Puzzle' },
     { q: 'LIGHTNING. Comedy or horror?', lo: 'Comedy', hi: 'Horror' },
     { q: 'LIGHTNING. Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
-    { q: 'LIGHTNING. Small or epic?', lo: 'Small', hi: 'Epic' },
+    { q: 'LIGHTNING. Short or epic?', lo: 'Short', hi: 'Epic' },
   ],
 ];
 // ask order is broad to narrow: genre fork first (comedy/horror), then fact/fiction, then energy, then scale. Axis indices stay [energy, dark, fantasy, scale].
-export const ASK_ORDER = [1, 2, 0, 3];
-export const AXQ_NAME = ['Chill or adrenaline', 'Comedy or horror', 'Fact or fiction', 'Small or epic'];
+export const ASK_ORDER = [2, 1, 0, 3];
+export const AXQ_NAME = ['Pacing', 'Emotional weight', 'Reality', 'Runtime'];
 export const ORSON_REACTIONS = ['Noted. I will not judge. Out loud.', 'Interesting. Your partner will find that very interesting.', 'Bold. Locking it in.', 'Sure. Cinema forgives all.', 'A strong choice. Or a cry for help.', 'I have seen worse. Not often.'];
 export const ROAST_REACTIONS = ['Ah. A person of questionable taste.', 'Your partner will hear about this.', 'I have filed that under "concerning".', 'Brave, in the way a bin fire is brave.', 'Truly the choice of someone who has stopped trying.', 'I expected less, and still I am let down.'];
 export const reactionFor = (roast: boolean, seed: number) => { const l = roast ? ROAST_REACTIONS : ORSON_REACTIONS; return l[Math.abs(seed) % l.length]; };
 
+// ---------- Subgenre swipe deck (V2). Matches use genre + keywords + era.
+export type Sub = { n: string; tag: string; m: (m: Movie) => boolean };
+const kwOf = (m: Movie) => (m.kw || []).join('|').toLowerCase();
+export const SUBS: Sub[] = [
+  { n: '90s Neo-Noir', tag: 'Rain, shadows, bad decisions', m: (m) => (m.g.includes('Crime') || m.g.includes('Mystery') || m.g.includes('Thriller')) && (/noir/.test(kwOf(m)) || (m.y >= 1990 && m.y <= 2002 && m.g.includes('Crime'))) },
+  { n: 'Psychological Thriller', tag: 'Is it real? Is it her? Is it you?', m: (m) => m.g.includes('Thriller') && /psychological|mind|paranoia|obsession|twist/.test(kwOf(m)) },
+  { n: 'Heist & Con Capers', tag: 'A plan. A crew. It goes sideways.', m: (m) => /heist|con artist|robbery|casino|bank robbery|thief/.test(kwOf(m)) },
+  { n: 'Space Odysseys', tag: 'Silence, stars and big questions', m: (m) => m.g.includes('Science Fiction') && /space|astronaut|outer space|alien|spacecraft/.test(kwOf(m)) },
+  { n: 'Rom-Com Comfort', tag: 'You know how it ends. You still want it', m: (m) => m.g.includes('Romance') && m.g.includes('Comedy') },
+  { n: 'Slow-Burn Drama', tag: 'Quiet, patient, devastating', m: (m) => m.g.includes('Drama') && ((m.rn || 0) >= 125 || /slow burn/.test(kwOf(m))) && !m.g.includes('Action') },
+  { n: 'Creature & Scare Night', tag: 'Hide behind a cushion', m: (m) => m.g.includes('Horror') },
+  { n: 'True Stories', tag: 'It actually happened', m: (m) => m.g.includes('History') || m.g.includes('Documentary') || /true story|biography|true crime|real person/.test(kwOf(m)) },
+  { n: 'Mind-Benders', tag: 'Rewind and argue about it', m: (m) => /time travel|dream|alternate reality|simulation|memory|parallel|twist|loop/.test(kwOf(m)) },
+  { n: 'Buddy & Ensemble Comedy', tag: 'Great company, terrible decisions', m: (m) => m.g.includes('Comedy') && /buddy|friendship|ensemble|road trip|best friend|group/.test(kwOf(m)) },
+  { n: 'War & Epic History', tag: 'Sweeping, serious, big sound', m: (m) => m.g.includes('War') || (m.g.includes('History') && (m.rn || 0) >= 130) },
+  { n: 'Superhero Spectacle', tag: 'Capes, quips, city-sized explosions', m: (m) => /superhero|super power/.test(kwOf(m)) },
+  { n: 'Animated Adventures', tag: 'Not just for kids. Honest', m: (m) => m.g.includes('Animation') },
+  { n: 'Crime Sagas', tag: 'Family, loyalty, a body in the boot', m: (m) => m.g.includes('Crime') && m.g.includes('Drama') },
+];
+const subCount = (s: Sub) => MOVIES.filter(s.m).length;
+export const subDeck = (code: string): string[] => shuffled(SUBS.filter((s) => subCount(s) >= 8).map((s) => s.n), code, 'subs').slice(0, 10);
+export const subOf = (n: string) => SUBS.find((s) => s.n === n)!;
+export const subHits = (m: Movie, names: string[]) => names.filter((n) => { const s = SUBS.find((x) => x.n === n); return s ? s.m(m) : false; });
+
 // genre -> [energy, dark, fantasy, scale], each 0-10
 const GV: Record<string, number[]> = {
-  Action: [8.5, 5, 4.5, 8], Adventure: [7, 3, 7, 8], Animation: [5, 1.5, 8.5, 5.5], Comedy: [4.5, 0.5, 1.5, 3.5], Crime: [6, 7.5, 1.5, 4],
-  Documentary: [3, 4.5, 0, 1.5], Drama: [3, 7, 0.5, 1.5], Family: [3.5, 1, 6, 4], Fantasy: [6, 3, 9, 7.5], History: [3, 7, 0.5, 4.5], Horror: [8.5, 9, 4.5, 3.5],
-  Music: [3.5, 2.5, 1.5, 4], Mystery: [5.5, 7, 1.5, 2.5], Romance: [1.5, 1.5, 1, 2.5], 'Science Fiction': [7, 6, 9, 8.5], Thriller: [8.5, 7.5, 1.5, 4], War: [7.5, 9, 0.5, 7.5], Western: [6, 6, 0.5, 4.5],
+  Action: [3, 5, 4.5, 8], Adventure: [4, 3, 7, 8], Animation: [3, 1.5, 8.5, 5.5], Comedy: [2, 0.5, 1.5, 3.5], Crime: [6, 7.5, 1.5, 4],
+  Documentary: [6, 4.5, 0, 1.5], Drama: [6, 7, 0.5, 1.5], Family: [2, 1, 6, 4], Fantasy: [5, 3, 9, 7.5], History: [6, 7, 0.5, 4.5], Horror: [4, 9, 4.5, 3.5],
+  Music: [2.5, 2.5, 1.5, 4], Mystery: [8, 7, 1.5, 2.5], Romance: [2, 1.5, 1, 2.5], 'Science Fiction': [7, 6, 9, 8.5], Thriller: [6, 7.5, 1.5, 4], War: [5.5, 9, 0.5, 7.5], Western: [4, 6, 0.5, 4.5],
 };
 const DARK_KW = ['murder', 'serial killer', 'revenge', 'survival', 'dystopia', 'psychological', 'gore', 'slasher', 'haunted', 'torture', 'kidnapping', 'death', 'violence', 'drug', 'crime boss', 'hitman', 'noir', 'neo-noir', 'cult', 'demon', 'possession', 'war', 'terror', 'psychopath', 'loss of loved one', 'found footage', 'gangster', 'heist'];
 const LIGHT_KW = ['musical', 'friendship', 'coming of age', 'cartoon', 'anthropomorphism', 'feel good', 'romantic comedy', 'holiday', 'christmas', 'talking animal', 'family'];
@@ -118,9 +142,8 @@ export const vecOf = (m: Movie): number[] => {
   const kw = (m.kw || []).map((k) => k.toLowerCase()); const has = (l: string[]) => kw.filter((k) => l.some((x) => k.includes(x))).length;
   base[1] += (CERT_DARK[m.k || ''] ?? 0) + Math.min(2, has(DARK_KW) * 0.7) - Math.min(2, has(LIGHT_KW) * 0.7);
   base[2] += Math.min(2.5, has(FANTASY_KW) * 0.9) - Math.min(3, has(REAL_KW) * 1.5);
-  base[0] += m.g.includes('Action') || m.g.includes('Thriller') || m.g.includes('Horror') ? 0 : -0.3;
-  if (m.rn) base[3] += m.rn > 145 ? 1.2 : m.rn > 125 ? 0.4 : m.rn < 95 ? -0.8 : 0;
-  base[3] += Math.min(1.5, has(EPIC_KW) * 0.7);
+  base[3] = m.rn ? clamp((m.rn - 85) / 6.5) : 4.5;
+  base[0] += Math.min(1.5, has(['twist', 'mind', 'conspiracy', 'dream', 'time travel', 'puzzle', 'complex', 'nonlinear', 'psychological', 'mystery']) * 0.6) - Math.min(1, has(['slapstick', 'buddy', 'road trip', 'action hero', 'car chase']) * 0.5);
   const v = base.map(clamp); vcache.set(m.id, v); return v;
 };
 const dist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + (x - b[i]) ** 2, 0));
@@ -197,7 +220,7 @@ export type State = {
   code: string; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
-  vibe: { tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
+  vibe: { subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
   draft: { deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
@@ -218,7 +241,7 @@ export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2
 export const newState = (code: string): State => ({
   code, v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
-  vibe: { tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
+  vibe: { subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
   draft: { deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
@@ -251,9 +274,11 @@ export function clashAxes(a: (number | null)[], b: (number | null)[]): number[] 
   const out = d.filter((x) => x.d >= 4).map((x) => x.i); for (const x of d) { if (out.length >= 2) break; if (!out.includes(x.i)) out.push(x.i); }
   return out.sort();
 }
-export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = []): number[] {
+export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }): number[] {
+  const lockedN = Object.keys(subs.A).filter((k) => subs.A[k] && subs.B[k]); const oneN = Object.keys(subs.A).filter((k) => subs.A[k] !== subs.B[k] && (subs.A[k] || subs.B[k])); const noN = Object.keys(subs.A).filter((k) => subs.A[k] === false && subs.B[k] === false);
+  const subBonus = (m: Movie) => subHits(m, lockedN).length * 2.4 + subHits(m, oneN).length * 0.7 - subHits(m, noN).length * 1.4;
   const ok = MOVIES.filter((m) => !m.w && !banned.includes(m.id));
-  const score = (m: Movie) => wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors);
+  const score = (m: Movie) => wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors) - subBonus(m);
   const good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8).sort((x, y) => score(x) - score(y));
   const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
   const ids = [...good, ...rest].slice(0, 90).map((m) => m.id);
@@ -318,7 +343,7 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'tick'; now: number } | { t: 'reset' };
+  | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'reset' };
 
 function maybeLock(s: State) {
   if (s.draft.picks.A.length >= DRAFT_SIZE && s.draft.picks.B.length >= DRAFT_SIZE) {
@@ -361,9 +386,10 @@ export function reduce(prev: State, it: Intent): State {
       for (const i of axes) { s.vibe.sets[i] = s.vibe.set; s.vibe.ans.A[i] = null; s.vibe.ans.B[i] = null; }
       s.vibe.score = null; s.vibe.doneAt = null; break;
     }
+    case 'subs': { if (s.phase === 'vibe' && s.vibe.passed) s.vibe.subs[it.pid] = it.map; break; }
     case 'begin': {
-      if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) break;
-      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, [], { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B]))); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
+      if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B || !s.vibe.subs.A || !s.vibe.subs.B) break;
+      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, [], { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), s.vibe.subs as { A: Record<string, boolean>; B: Record<string, boolean> }); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
       break;
     }
     case 'draftreq': s.draft.requested = true; break;

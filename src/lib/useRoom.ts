@@ -120,7 +120,7 @@ export function useRoom(code: string, pid: PID | null, name: string) {
       busy.current.pitches = true;
       const ids = Array.from(new Set(state.draft.deck)).slice(0, 70);
       const t = state.vibe.target || [1.5, 1.5, 1.5, 1.5];
-      const vibe = `energy ${t[0].toFixed(1)}/10, darkness ${t[1].toFixed(1)}/10, fantasy-vs-real ${t[2].toFixed(1)}/10 (low = grounded), scale ${t[3].toFixed(1)}/10`;
+      const vibe = `pacing ${t[0].toFixed(1)}/10 (high = dense plot), emotional weight ${t[1].toFixed(1)}/10 (high = grim), fiction ${t[2].toFixed(1)}/10 (low = true story), runtime ${t[3].toFixed(1)}/10 (high = long)`;
       const movies = ids.map((id) => ({ id, t: BY_ID[id].t, y: BY_ID[id].y, g: BY_ID[id].g, o: BY_ID[id].o, c: BY_ID[id].c, rt: BY_ID[id].rt, k: BY_ID[id].k }));
       const fallback = Object.fromEntries(ids.map((id) => [id, fallbackPitch(id)]));
       const timer = setTimeout(() => apply({ t: 'pitches', map: fallback }), 22000);

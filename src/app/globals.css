@@ -187,3 +187,9 @@ em{font-style:normal;color:var(--gold)}
 
 .cs-ask,.cs-intro,.cs-center{min-height:min-content}
 .cs-body .cs-btn--gold{position:sticky;bottom:0;z-index:3}
+
+.cs-dots10 i{width:20px}.cs-subd{justify-content:flex-start}.cs-subwrap{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:200px}
+.cs-subcard{width:100%;max-width:320px;min-height:200px;border-radius:20px;background:linear-gradient(160deg,#2d2210,#1b1429 70%);border:2px solid #ffcf40;box-shadow:0 0 28px #ffcf4033;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px;text-align:center;touch-action:pan-y;cursor:grab}
+.cs-subcard h2{font-family:var(--serif);font-size:1.6rem;color:#fff1c2}.cs-subcard p{font-style:italic;color:#cfc6dc;font-size:.9rem}
+.cs-subbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cs-lock{position:absolute;inset:0;margin:auto;width:86%;height:96px;border-radius:16px;background:#ffcf40;color:#1a1000;font-family:var(--serif);font-weight:900;font-size:1.7rem;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 40px #ffcf40;z-index:4}.cs-lock span{font-size:.8rem;font-family:ui-sans-serif,system-ui;font-weight:700}

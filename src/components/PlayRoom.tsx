@@ -1,11 +1,35 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { BY_ID, QUESTION_SETS, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID } from '@/lib/game';
+import { BY_ID, QUESTION_SETS, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID } from '@/lib/game';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 2800;
+
+
+function SubDeck({ deck, mine, other, onSwipe, themName }: { deck: string[]; mine: Record<string, boolean>; other: Record<string, boolean>; onSwipe: (n: string, yes: boolean) => void; themName: string }) {
+  const idx = Object.keys(mine).length; const name = deck[idx]; const x = useMotionValue(0); const rot = useTransform(x, [-160, 160], [-12, 12]);
+  const locks = deck.filter((n) => mine[n] && other[n]); const [flash, setFlash] = useState(''); const seen = useRef(0);
+  useEffect(() => { if (locks.length > seen.current) { setFlash(locks[locks.length - 1]); const t = setTimeout(() => setFlash(''), 1700); seen.current = locks.length; return () => clearTimeout(t); } seen.current = locks.length; }, [locks.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { x.set(0); }, [idx, x]);
+  if (!name) return null;
+  const sub = subOf(name);
+  const go = (yes: boolean) => { buzz(yes ? 16 : 8); animate(x, yes ? 420 : -420, { duration: 0.22 }); setTimeout(() => onSwipe(name, yes), 200); };
+  return <div className="cs-ask cs-ask--tight cs-subd">
+    <div className="cs-dots4 cs-dots10">{deck.map((n, i) => <i key={n} className={i < idx ? 'is-done' : i === idx ? 'is-now' : ''} />)}</div>
+    <div className="cs-orson">STAGE 1 · PICK YOUR SUBGENRES · {idx + 1} OF {deck.length}</div>
+    <p className="cs-aside">Swipe right for yes, left for no. If you and {themName} both swipe right, it locks.</p>
+    <div className="cs-subwrap">
+      <motion.div key={name} className="cs-subcard" style={{ x, rotate: rot }} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.9} onDragEnd={(_, i) => { if (i.offset.x > 90) go(true); else if (i.offset.x < -90) go(false); else animate(x, 0); }} initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+        <h2>{sub.n}</h2><p>{sub.tag}</p>
+      </motion.div>
+      {flash && <motion.div className="cs-lock" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>GENRE LOCK!<span>{flash}</span></motion.div>}
+    </div>
+    <div className="cs-subbtns"><button className="cs-btn" onClick={() => go(false)}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => go(true)}>YES</button></div>
+  </div>;
+}
 
 export default function PlayRoom({ code }: { code: string }) {
   const sp = useSearchParams();
@@ -111,7 +135,10 @@ export default function PlayRoom({ code }: { code: string }) {
         <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'taste', pid, tags: tg, nos, actor }); }}>LOCK MY TASTE</button>
       </div>);
     }
-    if (s.vibe.passed && s.vibe.tastes[pid] !== null && s.vibe.tastes[other] === null) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
+    const deckN = subDeck(code); const sA = s.vibe.subs?.[pid] || {}; const sO = s.vibe.subs?.[other] || {};
+    const subDone = (m: Record<string, boolean>) => Object.keys(m).length >= deckN.length;
+    if (s.vibe.passed && s.vibe.tastes[pid] !== null && !subDone(sA)) return shell(<SubDeck deck={deckN} mine={sA} other={sO} themName={them.name} onSwipe={(n, yes) => send({ t: 'subs', pid, map: { ...sA, [n]: yes } })} />);
+    if (s.vibe.passed && s.vibe.tastes[pid] !== null && (s.vibe.tastes[other] === null || !subDone(sO))) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
     const playback = bd > 0 ? `Widest gap, ${AXQ_NAME[bi].toLowerCase()}: you said ${mine[bi]}, ${them.name} said ${theirs[bi]}.` : 'You answered like a single organism. Suspicious.';
     return shell(<div className="cs-center">
       {s.vibe.passed && <Confetti />}
@@ -121,7 +148,7 @@ export default function PlayRoom({ code }: { code: string }) {
         <div className="cs-axes">{AXES.map((nm, i) => { const d = Math.abs((mine[i] as number) - (theirs[i] as number)); return <div key={nm} className={'cs-axis' + (d >= CLASH ? ' is-clash' : '')}><span>{nm}</span><div className="cs-atrack"><i className="me" style={{ left: `${(mine[i] as number) * 10}%` }} /><i className="them" style={{ left: `${(theirs[i] as number) * 10}%` }} /></div><b>{d >= CLASH ? 'CLASH' : d <= 1 ? 'in sync' : ''}</b></div>; })}</div>
         <p className="cs-say">{s.vibe.passed ? 'In sync. I am almost moved.' : `${Math.round(RESPONSE_GATE * 100)}% was the bar and you missed it. That is my cue, not your failure.`}</p>
         <p className="cs-small">{playback} <span className="cs-legend">gold = you</span></p>
-        {s.vibe.passed ? (s.vibe.tastes.A && s.vibe.tastes.B ? <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'begin' })}>BEGIN THE DRAFT</button> : <button className="cs-btn cs-btn--gold" onClick={() => setCont(true)}>CONTINUE · TASTE MAP</button>) : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>RE-ASK THE CLASHES</button>}
+        {s.vibe.passed ? (s.vibe.tastes.A && s.vibe.tastes.B && s.vibe.subs?.A && s.vibe.subs?.B ? <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'begin' })}>BEGIN THE DRAFT</button> : <button className="cs-btn cs-btn--gold" onClick={() => setCont(true)}>CONTINUE · TASTE MAP</button>) : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>RE-ASK THE CLASHES</button>}
       </div></div>);
   }
 
