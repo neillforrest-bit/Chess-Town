@@ -89,9 +89,17 @@ export const SUBS: Sub[] = [
   { n: 'Superhero Spectacle', tag: 'Capes, quips, city-sized explosions', m: (m) => /superhero|super power/.test(kwOf(m)) },
   { n: 'Animated Adventures', tag: 'Not just for kids. Honest', m: (m) => m.g.includes('Animation') },
   { n: 'Crime Sagas', tag: 'Family, loyalty, a body in the boot', m: (m) => m.g.includes('Crime') && m.g.includes('Drama') },
+  { n: 'Fantasy Quests', tag: 'Swords, spells, a long walk', m: (m) => m.g.includes('Fantasy') },
+  { n: 'Underdog & Sports', tag: 'Nobody believes. Then they do', m: (m) => /sport|boxing|underdog|football|baseball|racing|basketball/.test(kwOf(m)) },
+  { n: 'Coming-of-Age', tag: 'Awkward, tender, true', m: (m) => /coming of age|teenager|high school|growing up/.test(kwOf(m)) },
+  { n: 'Survival & Disaster', tag: 'Stay alive. Barely', m: (m) => /survival|disaster|stranded|apocalypse|post-apocalyptic/.test(kwOf(m)) },
+  { n: 'Dark Comedy', tag: 'You laugh, then wonder why', m: (m) => m.g.includes('Comedy') && (m.g.includes('Crime') || /dark comedy|satire|black comedy/.test(kwOf(m))) },
+  { n: 'Whodunits & Mysteries', tag: 'Everyone is lying', m: (m) => m.g.includes('Mystery') },
+  { n: 'Action Blockbusters', tag: 'Turn it up, switch off', m: (m) => m.g.includes('Action') && !m.g.includes('Science Fiction') },
+  { n: 'Feel-Good Family', tag: 'Warm, easy, everyone in', m: (m) => m.g.includes('Family') || (m.g.includes('Comedy') && m.g.includes('Adventure')) },
 ];
 const subCount = (s: Sub) => MOVIES.filter(s.m).length;
-export const subDeck = (code: string): string[] => shuffled(SUBS.filter((s) => subCount(s) >= 8).map((s) => s.n), code, 'subs').slice(0, 10);
+export const subDeck = (code: string): string[] => shuffled(SUBS.filter((s) => subCount(s) >= 8).map((s) => s.n), code, 'subs').slice(0, 20);
 export const subOf = (n: string) => SUBS.find((s) => s.n === n)!;
 export const subHits = (m: Movie, names: string[]) => names.filter((n) => { const s = SUBS.find((x) => x.n === n); return s ? s.m(m) : false; });
 

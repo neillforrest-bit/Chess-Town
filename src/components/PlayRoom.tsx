@@ -10,6 +10,19 @@ const DRUMROLL_MS = 2800;
 
 
 type CardInfo = { hook: string; loved: string; catch: string; providers: { region: string; names: string[] } | null } | 'err' | 'wait';
+function DraftTimer({ k, paused, onZero }: { k: number; paused: boolean; onZero: () => void }) {
+  const [t, setT] = useState(10); const z = useRef(onZero); z.current = onZero;
+  useEffect(() => { setT(10); }, [k]);
+  useEffect(() => { if (paused) return; const i = setInterval(() => setT((x) => { if (x <= 1) { clearInterval(i); setTimeout(() => z.current(), 0); return 0; } return x - 1; }), 1000); return () => clearInterval(i); }, [k, paused]);
+  return <span className={'cs-timer' + (t <= 3 ? ' is-hot' : '')}>{t}s</span>;
+}
+function ScrollCard({ children }: { children: React.ReactNode }) {
+  const r = useRef<HTMLDivElement>(null); const [more, setMore] = useState(false);
+  const chk = () => { const e = r.current; if (e) setMore(e.scrollHeight - e.scrollTop - e.clientHeight > 12); };
+  useEffect(() => { chk(); const i = setInterval(chk, 700); return () => clearInterval(i); }, []);
+  return <div className="cs-cardwrap"><div className="cs-card" ref={r} onScroll={chk}>{children}</div>{more && <div className="cs-more">SCROLL FOR MORE ▼</div>}</div>;
+}
+
 const CARD_CACHE = new Map<number, CardInfo>();
 
 function loadCard(id: number, send: (i: Intent) => void, bump: () => void) {
@@ -40,6 +53,7 @@ function SubDeck({ deck, mine, other, onSwipe, themName }: { deck: string[]; min
     <div className="cs-orson">STAGE 1 · PICK YOUR SUBGENRES · {idx + 1} OF {deck.length}</div>
     <p className="cs-aside">Swipe right for yes, left for no. If you and {themName} both swipe right, it locks.</p>
     <SubCard key={name} name={name} onGo={(yes) => onSwipe(name, yes)} />
+    {(() => { const both = deck.filter((n) => n in mine && n in other); const agree = both.filter((n) => mine[n] === other[n]).length; const pc = both.length ? Math.round((agree / both.length) * 100) : null; return <div className="cs-board"><div className="cs-bar"><i style={{ width: `${pc ?? 0}%` }} /></div><span><b>{pc === null ? '--' : pc + '%'}</b> ALIGNED · {themName} has done {Object.keys(other).length}/{deck.length}</span><div className="cs-chips">{locks.map((n) => <i key={n} className="lk">{n}</i>)}{deck.filter((n) => n in mine && n in other && !mine[n] && !other[n]).map((n) => <i key={n} className="dead">{n}</i>)}</div></div>; })()}
     {flash && <div className="cs-lock cs-lock--top">GENRE LOCK!<span>{flash}</span></div>}
   </div>;
 }
@@ -62,6 +76,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const [go, setGo] = useState(0);
   const [cd, setCd] = useState(0);
   const [cont, setCont] = useState(false);
+  const [det, setDet] = useState<number | null>(null);
   const [alloc, setAlloc] = useState<number[]>([0, 0, 0]);
   const [more, setMore] = useState<number | null>(null);
   const [, bump] = useState(0);
@@ -77,6 +92,7 @@ export default function PlayRoom({ code }: { code: string }) {
   useEffect(() => { const k = mt?.tap ? mt.id : ''; if (k !== tapKey.current) { tapKey.current = k; setTapN(0); if (k) buzz([30, 40, 30]); } }, [mt?.id, mt?.tap]);
   useEffect(() => { if (!s || s.phase !== 'final' || !s.fin.pitchEnds) return; const t = setTimeout(() => send({ t: 'pitch', pid, text: pitchText }), 600); return () => clearTimeout(t); }, [pitchText]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (s?.phase === 'done' && s.winner !== null) loadCard(s.winner, send as (i: Intent) => void, () => bump((x) => x + 1)); }, [s?.phase, s?.winner]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (det !== null) loadCard(det, send as (i: Intent) => void, () => bump((x) => x + 1)); }, [det]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setBp(''); setAlloc([0, 0, 0]); }, [mt?.id]);
   useEffect(() => { if (!s || s.phase !== 'draft' || s.draft.loading) return; const q = [...s.draft.inbox[pid], ...s.draft.q[pid]]; q.slice(0, 2).forEach((i) => loadCard(i, send as (i: Intent) => void, () => bump((x) => x + 1))); }, [s?.phase, s?.draft.idx?.[pid], s?.draft.loading, s?.draft.inbox?.[pid]?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (s?.phase === 'final' && s.fin.rematchUsed) setPitchText(''); }, [s?.fin.rematchUsed, s?.phase]);
@@ -132,9 +148,9 @@ export default function PlayRoom({ code }: { code: string }) {
         <p className="cs-aside">{intro}</p>
         <h2 className="cs-q">{q.q}</h2>
         <div className="cs-slider">
-          <div className="cs-sval">{sl}</div>
+          <div className="cs-sval">{sl}<small>{sl <= 3 ? q.lo : sl >= 7 ? q.hi : 'right in the middle'}</small></div><p className="cs-drag">DRAG THE SLIDER, THEN LOCK IT IN. 0 = {q.lo}, 10 = {q.hi}</p>
           <input type="range" min={0} max={10} step={1} value={sl} onChange={(e) => { setSl(Number(e.target.value)); buzz(6); }} aria-label={q.q} />
-          <div className="cs-sends"><span>{q.lo}</span><span>{q.hi}</span></div>
+          <div className="cs-ticks">{Array.from({ length: 11 }, (_, i) => <i key={i} className={i === sl ? 'is-on' : ''} />)}</div><div className="cs-sends"><span><b>0</b> {q.lo}</span><span>{q.hi} <b>10</b></span></div>
         </div>
         <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'ans', pid, q: nextQ, val: sl }); setSl(5); }}>LOCK IT IN</button>
       </div>);
@@ -186,8 +202,8 @@ export default function PlayRoom({ code }: { code: string }) {
     return shell(<div className="cs-draft"
       onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
       onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70 && pend === null) ask(dx > 0); }}>
-      <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><span className="cs-fit">{fit}% TONIGHT&apos;S MOOD</span></div>
-      <div className="cs-card" key={id}>
+      <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><DraftTimer k={id} paused={pend !== null} onZero={() => go(false)} /><span className="cs-fit">{fit}% TONIGHT&apos;S MOOD</span></div>
+      <ScrollCard key={id}>
         {sur && <div className="cs-surprise">SURPRISE FROM {s.players[sur].name.toUpperCase()}</div>}
         <div className="cs-card-top">
           <Poster id={id} big />
@@ -205,7 +221,7 @@ export default function PlayRoom({ code }: { code: string }) {
           <p className="cs-hook">{ok ? ok.hook : (s.draft.pitches[id] || m.o)}</p>
           {ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : ci === 'wait' ? <p className="cs-small">Orson is reading up on it...</p> : null}
         </div>; })()}
-      </div>
+      </ScrollCard>
       {pend === null ? <>
         <div className="cs-powers cs-powers--big">
           <button className={'cs-pw cs-pw--bullet' + (pw.bullet ? ' is-ready' : '') + (arm === 'veto:' + id ? ' is-armed' : '')} disabled={!pw.bullet} onClick={() => press('veto')}><b>{!pw.bullet ? 'BULLET SPENT' : arm === 'veto:' + id ? 'TAP TO FIRE' : 'SILVER BULLET'}</b><small>{pw.bullet ? 'erase this film for both of you' : 'one per game'}</small></button>
@@ -245,6 +261,7 @@ export default function PlayRoom({ code }: { code: string }) {
     const card = (id: number | null, i: number) => id === null ? null : (
       <div key={id} className={'cs-tcard' + (mt.winner === id ? ' is-win' : '') + (mt.winner !== null && mt.winner !== id ? ' is-out' : '') + (i === 2 ? ' is-orson' : '')}>
         <i className="cs-who">{owner(id) || (i === 2 ? 'ORSON' : '')}</i>
+        <button className="cs-info" onClick={() => setDet(id)}>i</button>
         <Poster id={id} /><b>{BY_ID[id].t}</b>
         <span>{BY_ID[id].y} · {BY_ID[id].rt != null ? BY_ID[id].rt + '% RT' : BY_ID[id].r.toFixed(1)}</span>
         {tot ? <em className="cs-tot">{tot[i]}</em> : mineW ? <em className="cs-tot">{free ? (mineW[i] ? 'YOU' : '') : mineW[i]}</em>
@@ -265,6 +282,7 @@ export default function PlayRoom({ code }: { code: string }) {
       {mt.winner === null && mineW && <p className="cs-small">Locked. Waiting for {them.name}.{!free ? ` Purse left: ${purse}.` : ''}</p>}
       {free && mt.winner === null && !mineW && <p className="cs-small">Round 1 is free. Tap PICK on the film you want most. Tokens start in round 2 ({purse} each).</p>}
       {mt.winner !== null && <div className="cs-won">{BY_ID[mt.winner].t} advances <small>{mt.via}{mt.winner === mt.c ? ' · ORSON WINS A ROUND' : ''}</small></div>}
+      {det !== null && (() => { const dm = BY_ID[det]; const ci = CARD_CACHE.get(det); const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div className="cs-sheet" onClick={() => setDet(null)}><div className="cs-sheet-in" onClick={(e) => e.stopPropagation()}><b>{dm.t}</b><span className="cs-meta">{[dm.y, dm.k, dm.rn ? `${dm.rn} min` : ''].filter(Boolean).join(' · ')}</span>{dm.c && dm.c.length > 0 && <span className="cs-cast"><em>Starring</em> {dm.c.slice(0, 3).join(', ')}</span>}<Scores m={dm} /><p className="cs-hook">{ok ? ok.hook : dm.o}</p>{ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : <p className="cs-small">Orson is reading up on it...</p>}<button className="cs-btn cs-btn--gold" onClick={() => setDet(null)}>CLOSE</button></div></div>; })()}
     </div>);
   }
 

@@ -215,3 +215,22 @@ em{font-style:normal;color:var(--gold)}
 .cs-pickbtn{padding:6px 10px;font-size:.72rem;min-height:0}.cs-tot{font-style:normal;font-weight:900;font-size:1.1rem;color:#ffcf40;min-height:30px}
 .cs-tug{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#241a33;flex:none}.cs-tug0{background:#ffcf40}.cs-tug1{background:#4cd0ff}.cs-tug2{background:#b05cff}
 .cs-roast{font-size:.78rem;font-style:italic;color:#e4dcef;flex:none}.cs-roast em{font-style:normal;color:#b05cff;font-weight:900;letter-spacing:.12em;font-size:.6rem;margin-right:5px}.cs-purse b{color:#ffcf40}
+
+.cs-cardwrap{flex:1;min-height:0;display:flex;position:relative}.cs-cardwrap .cs-card{flex:1}
+.cs-more{position:absolute;left:0;right:0;bottom:0;text-align:center;padding:16px 0 6px;font-size:.62rem;font-weight:900;letter-spacing:.16em;color:#ffcf40;background:linear-gradient(transparent,#150f20 70%);pointer-events:none;border-radius:0 0 14px 14px;animation:bob 1.2s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-3px)}}
+.cs-timer{font-weight:900;font-size:1.05rem;color:#ffcf40;min-width:34px;text-align:center}.cs-timer.is-hot{color:#ff4455;animation:hot .5s steps(2) infinite}
+@keyframes hot{50%{opacity:.25;transform:scale(1.25)}}
+
+.cs-board{display:flex;flex-direction:column;gap:3px;flex:none;font-size:.62rem;letter-spacing:.06em;color:var(--dim)}.cs-board b{color:#ffcf40;font-size:.9rem}
+.cs-bar{height:8px;border-radius:4px;background:#241a33;overflow:hidden}.cs-bar i{display:block;height:100%;background:linear-gradient(90deg,#ff4455,#ffcf40,#4cd08a);transition:width .4s}
+.cs-chips{display:flex;flex-wrap:wrap;gap:3px;max-height:34px;overflow:hidden}.cs-chips i{font-style:normal;font-size:.54rem;padding:1px 6px;border-radius:8px}.cs-chips .lk{background:#4cd08a33;color:#4cd08a}.cs-chips .dead{background:#ff445522;color:#ff7788;text-decoration:line-through}
+
+.cs-sval small{display:block;font-size:.72rem;font-weight:700;color:#e9e1f4;letter-spacing:.04em;margin-top:2px}
+.cs-drag{font-size:.64rem;letter-spacing:.1em;color:#ffcf40;text-align:center;margin:0;font-weight:800}
+.cs-ticks{display:flex;justify-content:space-between;padding:0 4px}.cs-ticks i{width:2px;height:7px;background:#5a4b73}.cs-ticks i.is-on{background:#ffcf40;height:11px}
+.cs-sends span{font-size:.8rem;font-weight:700;color:#e9e1f4}.cs-sends b{color:#ffcf40}
+
+.cs-info{position:absolute;top:4px;right:4px;z-index:3;width:22px;height:22px;border-radius:50%;background:#000a;border:1px solid #ffcf40;color:#ffcf40;font-weight:900;font-size:.75rem;padding:0}
+.cs-sheet{position:fixed;inset:0;z-index:50;background:#000b;display:flex;align-items:flex-end}.cs-sheet-in{width:100%;max-height:82dvh;overflow-y:auto;background:#150f20;border-top:2px solid #ffcf40;border-radius:18px 18px 0 0;padding:14px;display:flex;flex-direction:column;gap:8px}
+.cs-sheet-in p{font-size:.86rem;line-height:1.38;margin:0}.cs-sheet-in em{display:block;font-style:normal;font-size:.6rem;letter-spacing:.14em;color:#ffcf40;font-weight:800}
