@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { BY_ID, QUESTION_SETS, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID } from '@/lib/game';
+import { BY_ID, QUESTION_SETS, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 2800;
@@ -12,25 +12,35 @@ const DRUMROLL_MS = 2800;
 type CardInfo = { hook: string; loved: string; catch: string; providers: { region: string; names: string[] } | null } | 'err' | 'wait';
 const CARD_CACHE = new Map<number, CardInfo>();
 
+function loadCard(id: number, send: (i: Intent) => void, bump: () => void) {
+  if (CARD_CACHE.has(id)) return; const m = BY_ID[id]; if (!m) return; CARD_CACHE.set(id, 'wait');
+  fetch('/api/orson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'card', movie: { id: m.id, t: m.t, y: m.y, g: m.g, o: m.o, c: m.c, rt: m.rt, mc: m.mc, imdb: m.imdb, r: m.r, aw: m.aw, kw: m.kw, tag: m.tag, k: m.k } }) })
+    .then((r) => r.json()).then((d) => { if (d && d.hook) { CARD_CACHE.set(id, d); if (d.usd) send({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd }); } else CARD_CACHE.set(id, 'err'); bump(); })
+    .catch(() => { CARD_CACHE.set(id, 'err'); bump(); });
+}
+
+function SubCard({ name, onGo }: { name: string; onGo: (yes: boolean) => void }) {
+  const x = useMotionValue(0); const rot = useTransform(x, [-160, 160], [-12, 12]); const sub = subOf(name); const busy = useRef(false);
+  const fly = (yes: boolean) => { if (busy.current) return; busy.current = true; buzz(yes ? 16 : 8); animate(x, yes ? 460 : -460, { duration: 0.2, onComplete: () => onGo(yes) }); };
+  return <div className="cs-subwrap2">
+    <motion.div className="cs-subcard" style={{ x, rotate: rot }} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.9} onDragEnd={(_, i) => { if (i.offset.x > 90) fly(true); else if (i.offset.x < -90) fly(false); else animate(x, 0); }}>
+      <h2>{sub.n}</h2><p>{sub.tag}</p>
+    </motion.div>
+    <div className="cs-subbtns"><button className="cs-btn" onClick={() => fly(false)}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => fly(true)}>YES</button></div>
+  </div>;
+}
+
 function SubDeck({ deck, mine, other, onSwipe, themName }: { deck: string[]; mine: Record<string, boolean>; other: Record<string, boolean>; onSwipe: (n: string, yes: boolean) => void; themName: string }) {
-  const idx = Object.keys(mine).length; const name = deck[idx]; const x = useMotionValue(0); const rot = useTransform(x, [-160, 160], [-12, 12]);
+  const idx = Object.keys(mine).length; const name = deck[idx];
   const locks = deck.filter((n) => mine[n] && other[n]); const [flash, setFlash] = useState(''); const seen = useRef(0);
   useEffect(() => { if (locks.length > seen.current) { setFlash(locks[locks.length - 1]); const t = setTimeout(() => setFlash(''), 1700); seen.current = locks.length; return () => clearTimeout(t); } seen.current = locks.length; }, [locks.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { x.set(0); }, [idx, x]);
   if (!name) return null;
-  const sub = subOf(name);
-  const go = (yes: boolean) => { buzz(yes ? 16 : 8); animate(x, yes ? 420 : -420, { duration: 0.22 }); setTimeout(() => onSwipe(name, yes), 200); };
   return <div className="cs-ask cs-ask--tight cs-subd">
     <div className="cs-dots4 cs-dots10">{deck.map((n, i) => <i key={n} className={i < idx ? 'is-done' : i === idx ? 'is-now' : ''} />)}</div>
     <div className="cs-orson">STAGE 1 · PICK YOUR SUBGENRES · {idx + 1} OF {deck.length}</div>
     <p className="cs-aside">Swipe right for yes, left for no. If you and {themName} both swipe right, it locks.</p>
-    <div className="cs-subwrap">
-      <motion.div key={name} className="cs-subcard" style={{ x, rotate: rot }} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.9} onDragEnd={(_, i) => { if (i.offset.x > 90) go(true); else if (i.offset.x < -90) go(false); else animate(x, 0); }} initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-        <h2>{sub.n}</h2><p>{sub.tag}</p>
-      </motion.div>
-      {flash && <motion.div className="cs-lock" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>GENRE LOCK!<span>{flash}</span></motion.div>}
-    </div>
-    <div className="cs-subbtns"><button className="cs-btn" onClick={() => go(false)}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => go(true)}>YES</button></div>
+    <SubCard key={name} name={name} onGo={(yes) => onSwipe(name, yes)} />
+    {flash && <div className="cs-lock cs-lock--top">GENRE LOCK!<span>{flash}</span></div>}
   </div>;
 }
 
@@ -66,6 +76,7 @@ export default function PlayRoom({ code }: { code: string }) {
   useEffect(() => { const k = mt?.tap ? mt.id : ''; if (k !== tapKey.current) { tapKey.current = k; setTapN(0); if (k) buzz([30, 40, 30]); } }, [mt?.id, mt?.tap]);
   useEffect(() => { if (!s || s.phase !== 'final' || !s.fin.pitchEnds) return; const t = setTimeout(() => send({ t: 'pitch', pid, text: pitchText }), 600); return () => clearTimeout(t); }, [pitchText]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setBp(''); }, [mt?.id]);
+  useEffect(() => { if (!s || s.phase !== 'draft' || s.draft.loading) return; const q = [...s.draft.inbox[pid], ...s.draft.q[pid]]; q.slice(0, 2).forEach((i) => loadCard(i, send as (i: Intent) => void, () => bump((x) => x + 1))); }, [s?.phase, s?.draft.idx?.[pid], s?.draft.loading, s?.draft.inbox?.[pid]?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (s?.phase === 'final' && s.fin.rematchUsed) setPitchText(''); }, [s?.fin.rematchUsed, s?.phase]);
 
   if (!s) return <main className="cs-play"><div className="cs-wait">{online ? 'Looking for the room...' : 'Connecting...'}</div></main>;
@@ -188,9 +199,10 @@ export default function PlayRoom({ code }: { code: string }) {
         </div>
         <Scores m={m} />
         {critic && <p className="cs-critics"><em>CRITICS SAID</em> {critic}{m.rt != null && m.mc != null ? `, ${m.rt}% fresh, Metacritic ${m.mc}` : ''}.</p>}
-        <p className="cs-why"><em>WHY YOU&apos;LL LIKE IT</em> {s.draft.pitches[id] || m.o}</p>
-        <button className="cs-more" onClick={() => { setMore(id); if (!CARD_CACHE.has(id)) { CARD_CACHE.set(id, 'wait'); fetch('/api/orson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'card', movie: { id: m.id, t: m.t, y: m.y, g: m.g, o: m.o, c: m.c, rt: m.rt, mc: m.mc, imdb: m.imdb, r: m.r, aw: m.aw, kw: m.kw, tag: m.tag, k: m.k } }) }).then((r) => r.json()).then((d) => { if (d && d.hook) { CARD_CACHE.set(id, d); if (d.usd) send({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd }); } else CARD_CACHE.set(id, 'err'); bump((x) => x + 1); }).catch(() => { CARD_CACHE.set(id, 'err'); bump((x) => x + 1); }); } }}>THE FULL STORY</button>
-        {more === id && (() => { const ci = CARD_CACHE.get(id); return <div className="cs-sheet cs-story" onClick={() => setMore(null)}><b>{m.t}</b>{ci && ci !== 'wait' && ci !== 'err' ? <><p className="cs-hook">{ci.hook}</p><p><em>WHY CRITICS LOVED IT</em> {ci.loved}</p><p><em>THE CATCH</em> {ci.catch}</p>{ci.providers && <p><em>WATCH ({ci.providers.region})</em> {ci.providers.names.length ? ci.providers.names.join(', ') : 'Not on subscription streaming right now'}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : ci === 'err' ? <p>{m.o}</p> : <p>Orson is reading up on it...</p>}<small>tap to close</small></div>; })()}
+        {(() => { const ci = CARD_CACHE.get(id); const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div className="cs-story-inline">
+          <p className="cs-hook">{ok ? ok.hook : (s.draft.pitches[id] || m.o)}</p>
+          {ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : ci === 'wait' ? <p className="cs-small">Orson is reading up on it...</p> : null}
+        </div>; })()}
       </div>
       {pend === null ? <>
         <div className="cs-powers cs-powers--big">
