@@ -19,6 +19,7 @@ export default function Home() {
       <input className="cs-input" placeholder="Your name" maxLength={14} value={name} onChange={(e) => setName(e.target.value)} />
       <div className="cs-kind"><button className={kind === 'movie' ? 'is-on' : ''} onClick={() => setKind('movie')}>MOVIE NIGHT</button><button className={kind === 'series' ? 'is-on' : ''} onClick={() => setKind('series')}>SERIES BINGE</button></div>
       <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}${kind === 'series' ? '&k=series' : ''}`)}>START A {kind === 'series' ? 'SERIES' : 'MOVIE'} ROOM</button>
+      <button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO GAUNTLET · YOU VS ORSON</button>
       <div className="cs-or">or join your partner</div>
       <div className="cs-row">
         <input className="cs-input cs-input--code" placeholder="CODE" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
