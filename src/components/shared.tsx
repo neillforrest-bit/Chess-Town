@@ -75,7 +75,8 @@ export function Scores({ m }: { m: Movie }) {
     ['IMDB', m.imdb != null ? m.imdb.toFixed(1) : '–', tone(m.imdb, 7.2, 6)],
     ['TMDB', m.r.toFixed(1), tone(m.r, 7.2, 6)],
   ];
-  return <div className="cs-scores">{cells.map(([l, v, c]) => <div key={l} className={'cs-score-tile ' + c}><b>{v}</b><span>{l}</span></div>)}</div>;
+  const shown = m.sr ? [...cells.slice(3), ['SEASONS', String(m.sr.s), 'mid'] as [string, string, string], ['EPISODES', String(m.sr.e), 'mid'] as [string, string, string], [m.sr.st === 'Ended' || m.sr.st === 'Canceled' ? 'FINISHED' : 'RUNNING', m.sr.last ? String(m.sr.last) : '', 'mid'] as [string, string, string]] : cells;
+  return <div className="cs-scores">{shown.map(([l, v, c]) => <div key={l} className={'cs-score-tile ' + c}><b>{v}</b><span>{l}</span></div>)}</div>;
 }
 
 export function OrsonFace({ mood, talking }: { mood: Mood; talking: boolean }) {

@@ -31,9 +31,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ map, ...usage(out) });
     }
     if (body.type === 'card') {
-      const m = body.movie as { id: number; t: string; y: number; g: string[]; o: string; c?: string[]; rt?: number | null; mc?: number | null; imdb?: number | null; r?: number; aw?: string; kw?: string[]; tag?: string; k?: string };
-      const facts = `${m.t} (${m.y}) | genres ${m.g.join('/')} | cert ${m.k || 'n/a'} | stars ${(m.c || []).join(', ')} | Rotten Tomatoes ${m.rt ?? 'n/a'}% | Metacritic ${m.mc ?? 'n/a'} | IMDb ${m.imdb ?? 'n/a'} | TMDB audience ${m.r ?? 'n/a'}/10 | awards: ${m.aw || 'none listed'} | keywords: ${(m.kw || []).slice(0, 10).join(', ')} | tagline: ${m.tag || ''} | synopsis: ${m.o}`;
-      const prompt = `${PERSONA}\nWrite for a movie card. Use ONLY the facts supplied below. Do not invent plot points, quotes, scenes or review text. No spoilers.\n1) hook: 3 to 4 sentences, a gripping narrative hook for the film (Orson voice, no emojis).\n2) loved: one sentence (max 22 words) on why critics loved it, grounded in the supplied scores, awards and genre.\n3) catch: one sentence (max 22 words) on why it divides audiences or the catch, grounded in the supplied facts; if the facts show no divide, name the honest caveat (length, tone, pace).\nFACTS: ${facts}`;
+      const m = body.movie as { id: number; t: string; y: number; g: string[]; o: string; c?: string[]; rt?: number | null; mc?: number | null; imdb?: number | null; r?: number; aw?: string; kw?: string[]; tag?: string; k?: string; sr?: { s: number; e: number; st: string; net: string } };
+      const isTv = !!m.sr; const tvId = isTv ? m.id - 10000000 : m.id;
+      const facts = `${isTv && m.sr ? `TV SERIES | ${m.sr.s} seasons, ${m.sr.e} episodes, status ${m.sr.st}, network ${m.sr.net} | ` : ''}${m.t} (${m.y}) | genres ${m.g.join('/')} | cert ${m.k || 'n/a'} | stars ${(m.c || []).join(', ')} | Rotten Tomatoes ${m.rt ?? 'n/a'}% | Metacritic ${m.mc ?? 'n/a'} | IMDb ${m.imdb ?? 'n/a'} | TMDB audience ${m.r ?? 'n/a'}/10 | awards: ${m.aw || 'none listed'} | keywords: ${(m.kw || []).slice(0, 10).join(', ')} | tagline: ${m.tag || ''} | synopsis: ${m.o}`;
+      const prompt = `${PERSONA}\nWrite for a ${isTv ? 'TV series' : 'movie'} card. Use ONLY the facts supplied below. Do not invent plot points, quotes, scenes or review text. No spoilers.\n1) hook: 3 to 4 sentences, a gripping narrative hook for the ${isTv ? 'series' : 'film'} (Orson voice, no emojis).\n2) loved: one sentence (max 22 words) on why critics loved it, grounded in the supplied scores, awards and genre.\n3) catch: one sentence (max 22 words) on why it divides audiences or the catch, grounded in the supplied facts; if the facts show no divide, name the honest caveat (${isTv ? 'commitment, number of seasons, pace, whether it finished well' : 'length, tone, pace'}).\nFACTS: ${facts}`;
       const out = await ai.models.generateContent({
         model: GEMINI_MODEL, contents: prompt,
         config: { responseMimeType: 'application/json', maxOutputTokens: 3000, thinkingConfig: GEMINI_THINKING,
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       const data = JSON.parse(out.text || '{}') as { hook?: string; loved?: string; catch?: string };
       let providers: { region: string; names: string[] } | null = null;
       const tk = process.env.TMDB_API_KEY;
-      if (tk) { try { const j = await (await fetch(`https://api.themoviedb.org/3/movie/${m.id}/watch/providers?api_key=${tk}`)).json() as { results?: Record<string, { flatrate?: { provider_name: string }[] }> }; for (const rg of ['GB', 'US']) { const f = j.results?.[rg]?.flatrate; if (f && f.length) { providers = { region: rg, names: f.slice(0, 5).map((x) => x.provider_name) }; break; } } if (!providers) providers = { region: 'GB', names: [] }; } catch { /* ignore */ } }
+      if (tk) { try { const j = await (await fetch(`https://api.themoviedb.org/3/${isTv ? 'tv' : 'movie'}/${tvId}/watch/providers?api_key=${tk}`)).json() as { results?: Record<string, { flatrate?: { provider_name: string }[] }> }; for (const rg of ['GB', 'US']) { const f = j.results?.[rg]?.flatrate; if (f && f.length) { providers = { region: rg, names: f.slice(0, 5).map((x) => x.provider_name) }; break; } } if (!providers) providers = { region: 'GB', names: [] }; } catch { /* ignore */ } }
       return NextResponse.json({ hook: data.hook || '', loved: data.loved || '', catch: data.catch || '', providers, ...usage(out) });
     }
     if (body.type === 'quip') {

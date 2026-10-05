@@ -234,3 +234,5 @@ em{font-style:normal;color:var(--gold)}
 .cs-info{position:absolute;top:4px;right:4px;z-index:3;width:22px;height:22px;border-radius:50%;background:#000a;border:1px solid #ffcf40;color:#ffcf40;font-weight:900;font-size:.75rem;padding:0}
 .cs-sheet{position:fixed;inset:0;z-index:50;background:#000b;display:flex;align-items:flex-end}.cs-sheet-in{width:100%;max-height:82dvh;overflow-y:auto;background:#150f20;border-top:2px solid #ffcf40;border-radius:18px 18px 0 0;padding:14px;display:flex;flex-direction:column;gap:8px}
 .cs-sheet-in p{font-size:.86rem;line-height:1.38;margin:0}.cs-sheet-in em{display:block;font-style:normal;font-size:.6rem;letter-spacing:.14em;color:#ffcf40;font-weight:800}
+
+.cs-kind{display:flex;gap:8px;width:100%;max-width:340px}.cs-kind button{flex:1;padding:12px 6px;border-radius:12px;border:2px solid #3b2f52;background:#1a1226;color:#a79bbd;font-weight:900;font-size:.78rem;letter-spacing:.08em}.cs-kind button.is-on{border-color:#ffcf40;color:#ffcf40;background:#2a2010}

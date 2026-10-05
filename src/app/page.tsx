@@ -10,13 +10,15 @@ export default function Home() {
   const [name, setName] = useState('');
   useEffect(() => { setName(localStorage.getItem('cs-name') || ''); }, []);
   const [code, setCode] = useState('');
+  const [kind, setKind] = useState<'movie' | 'series'>('movie');
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };
   return (
     <main className="cs-home">
       <div className="cs-logo">CINE<b>SYNC</b></div>
-      <p className="cs-tag">Two phones. Thirty films. One winner. No more couch gridlock.</p>
+      <p className="cs-tag">Two phones. One winner. No more couch gridlock.</p>
       <input className="cs-input" placeholder="Your name" maxLength={14} value={name} onChange={(e) => setName(e.target.value)} />
-      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}`)}>START A ROOM</button>
+      <div className="cs-kind"><button className={kind === 'movie' ? 'is-on' : ''} onClick={() => setKind('movie')}>MOVIE NIGHT</button><button className={kind === 'series' ? 'is-on' : ''} onClick={() => setKind('series')}>SERIES BINGE</button></div>
+      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}${kind === 'series' ? '&k=series' : ''}`)}>START A {kind === 'series' ? 'SERIES' : 'MOVIE'} ROOM</button>
       <div className="cs-or">or join your partner</div>
       <div className="cs-row">
         <input className="cs-input cs-input--code" placeholder="CODE" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />

@@ -1,11 +1,15 @@
 // CINESYNC game engine: a pure reducer. The host phone runs it; everyone else sends intents.
 import catalog from '@/data/catalog.json';
+import seriesCat from '@/data/series.json';
 
 export type PID = 'A' | 'B';
 export type Mood = 'idle' | 'smug' | 'shock' | 'glee' | 'scheme' | 'sad';
-export type Movie = { id: number; t: string; y: number; r: number; g: string[]; o: string; p: string; w: boolean; pop: number; c?: string[]; k?: string; rn?: number; tag?: string; im?: string; kw?: string[]; rt?: number | null; mc?: number | null; imdb?: number | null; aw?: string };
+export type Movie = { id: number; t: string; y: number; r: number; g: string[]; o: string; p: string; w: boolean; pop: number; c?: string[]; k?: string; rn?: number; tag?: string; im?: string; kw?: string[]; sr?: { s: number; e: number; st: string; net: string; last: number }; rt?: number | null; mc?: number | null; imdb?: number | null; aw?: string };
+export type Kind = 'movie' | 'series';
 export const MOVIES: Movie[] = (catalog as { movies: Movie[] }).movies.filter((m) => m.y >= 1990);
-export const BY_ID: Record<number, Movie> = Object.fromEntries(MOVIES.map((m) => [m.id, m]));
+export const SERIES: Movie[] = (seriesCat as { shows: Movie[] }).shows;
+export const poolOf = (k: Kind | undefined): Movie[] => (k === 'series' ? SERIES : MOVIES);
+export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SERIES].map((m) => [m.id, m]));
 export const poster = (m: Movie, size = 'w342') => `https://image.tmdb.org/t/p/${size}${m.p}`;
 
 export const RESPONSE_GATE = 0.7;
@@ -64,6 +68,39 @@ export const QUESTION_SETS: Question[][] = [
     { q: 'LIGHTNING. Short or epic?', lo: 'Short', hi: 'Epic' },
   ],
 ];
+export const SERIES_SETS: Question[][] = [
+  [
+    { q: 'How much plot can your brain take?', lo: 'Easy to follow', hi: 'Twisty, keep notes' },
+    { q: 'How heavy should it feel?', lo: 'Lighthearted / comedy', hi: 'Grim / horror' },
+    { q: 'How true to life?', lo: 'Real world', hi: 'Invented worlds' },
+    { q: 'How big a commitment?', lo: 'One short season', hi: 'Many seasons, long episodes' },
+  ],
+  [
+    { q: 'Binge or one-a-night?', lo: 'One a night, savour', hi: 'Cliffhanger binge' },
+    { q: 'Laugh or lose sleep?', lo: 'Make me laugh', hi: 'Keep me up at night' },
+    { q: 'Real people or invented worlds?', lo: 'Real people', hi: 'Invented worlds' },
+    { q: 'How many episodes deep?', lo: 'A handful', hi: 'Fifty plus' },
+  ],
+  [
+    { q: 'Slow-burn or edge-of-seat?', lo: 'Slow-burn', hi: 'Edge of seat' },
+    { q: 'Giggles or goosebumps?', lo: 'Giggles', hi: 'Goosebumps' },
+    { q: 'Based on fact or total fiction?', lo: 'Based on fact', hi: 'Total fiction' },
+    { q: 'Episode length?', lo: '20-minute episodes', hi: 'Hour-long episodes' },
+  ],
+  [
+    { q: 'Easy ride or plot maze?', lo: 'Easy ride', hi: 'Plot maze' },
+    { q: 'Cosy or dark?', lo: 'Cosy', hi: 'Dark' },
+    { q: 'This world or another?', lo: 'This world', hi: 'Another world' },
+    { q: 'Seasons we can face?', lo: '1 season', hi: '6+ seasons' },
+  ],
+  [
+    { q: 'LIGHTNING. Slow-burn or binge?', lo: 'Slow-burn', hi: 'Binge' },
+    { q: 'LIGHTNING. Comedy or horror?', lo: 'Comedy', hi: 'Horror' },
+    { q: 'LIGHTNING. Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
+    { q: 'LIGHTNING. Short run or long run?', lo: 'Short run', hi: 'Long run' },
+  ],
+];
+export const qsets = (k?: Kind): Question[][] => (k === 'series' ? SERIES_SETS : QUESTION_SETS);
 // ask order is broad to narrow: genre fork first (comedy/horror), then fact/fiction, then energy, then scale. Axis indices stay [energy, dark, fantasy, scale].
 export const ASK_ORDER = [2, 1, 0, 3];
 export const AXQ_NAME = ['Pacing', 'Emotional weight', 'Reality', 'Runtime'];
@@ -98,10 +135,31 @@ export const SUBS: Sub[] = [
   { n: 'Action Blockbusters', tag: 'Turn it up, switch off', m: (m) => m.g.includes('Action') && !m.g.includes('Science Fiction') },
   { n: 'Feel-Good Family', tag: 'Warm, easy, everyone in', m: (m) => m.g.includes('Family') || (m.g.includes('Comedy') && m.g.includes('Adventure')) },
 ];
-const subCount = (s: Sub) => MOVIES.filter(s.m).length;
-export const subDeck = (code: string): string[] => shuffled(SUBS.filter((s) => subCount(s) >= 8).map((s) => s.n), code, 'subs').slice(0, 20);
-export const subOf = (n: string) => SUBS.find((s) => s.n === n)!;
-export const subHits = (m: Movie, names: string[]) => names.filter((n) => { const s = SUBS.find((x) => x.n === n); return s ? s.m(m) : false; });
+const kwS = (m: Movie) => (m.kw || []).join('|').toLowerCase() + ' ' + m.o.toLowerCase();
+export const SSUBS: Sub[] = [
+  { n: 'Prestige Crime', tag: 'Slow, brilliant, morally grey', m: (m) => m.g.includes('Crime') && m.g.includes('Drama') },
+  { n: 'Sitcom Comfort', tag: 'Short episodes. Easy company', m: (m) => m.g.includes('Comedy') && (m.rn || 30) <= 35 },
+  { n: 'One-and-Done Limited Series', tag: 'One season. A proper ending', m: (m) => (m.sr?.s || 9) === 1 },
+  { n: 'Sci-Fi Epics', tag: 'Big ideas, bigger stakes', m: (m) => m.g.includes('Science Fiction') },
+  { n: 'Fantasy Worlds', tag: 'Dragons, magic, long summers', m: (m) => m.g.includes('Fantasy') },
+  { n: 'Anime & Animation', tag: 'Drawn, not lesser', m: (m) => m.g.includes('Animation') },
+  { n: 'Mystery Boxes', tag: 'Answers? Not before episode six', m: (m) => m.g.includes('Mystery') },
+  { n: 'Dark & Disturbing', tag: 'You will not sleep after', m: (m) => /serial killer|murder|psycholog|disturb|cult|horror|dark/.test(kwS(m)) || m.g.includes('Horror') },
+  { n: 'Workplace & Procedural', tag: 'Hospitals, courtrooms, cases of the week', m: (m) => /hospital|doctor|lawyer|police|detective|office|courtroom|medical|investigat/.test(kwS(m)) },
+  { n: 'Superhero & Comic Worlds', tag: 'Capes on a TV budget. Often better', m: (m) => /superhero|comic|super power|marvel|dc comics/.test(kwS(m)) },
+  { n: 'Teen & Coming-of-Age', tag: 'Awkward, tender, loud', m: (m) => /teen|high school|coming of age|teenager/.test(kwS(m)) },
+  { n: 'Long-Runners (5+ seasons)', tag: 'A commitment. A relationship', m: (m) => (m.sr?.s || 0) >= 5 },
+  { n: 'Period & History', tag: 'Costumes, candles, scheming', m: (m) => m.g.includes('History') || /period drama|world war|historical|1[0-9]{3}s|king|queen|victorian/.test(kwS(m)) },
+  { n: 'Action & Adventure Serials', tag: 'Chase scenes with a season arc', m: (m) => m.g.includes('Action') },
+  { n: 'Dramedy', tag: 'Funny until it really isn\'t', m: (m) => m.g.includes('Comedy') && m.g.includes('Drama') },
+  { n: 'Spy & Political Thrillers', tag: 'Everyone has an agenda', m: (m) => /spy|espionage|politic|conspiracy|government|president|cia|intelligence/.test(kwS(m)) },
+  { n: 'Family & Feel-Good', tag: 'Warm enough for everyone', m: (m) => m.g.includes('Family') || /feel good|heartwarming|family/.test(kwS(m)) },
+];
+const subList = (k?: Kind) => (k === 'series' ? SSUBS : SUBS);
+const subCount = (s: Sub, k?: Kind) => poolOf(k).filter(s.m).length;
+export const subDeck = (code: string, kind?: Kind): string[] => shuffled(subList(kind).filter((s) => subCount(s, kind) >= 8).map((s) => s.n), code, 'subs').slice(0, 20);
+export const subOf = (n: string) => [...SUBS, ...SSUBS].find((s) => s.n === n)!;
+export const subHits = (m: Movie, names: string[]) => names.filter((n) => { const s = [...SUBS, ...SSUBS].find((x) => x.n === n); return s ? s.m(m) : false; });
 
 // genre -> [energy, dark, fantasy, scale], each 0-10
 const GV: Record<string, number[]> = {
@@ -150,7 +208,7 @@ export const vecOf = (m: Movie): number[] => {
   const kw = (m.kw || []).map((k) => k.toLowerCase()); const has = (l: string[]) => kw.filter((k) => l.some((x) => k.includes(x))).length;
   base[1] += (CERT_DARK[m.k || ''] ?? 0) + Math.min(2, has(DARK_KW) * 0.7) - Math.min(2, has(LIGHT_KW) * 0.7);
   base[2] += Math.min(2.5, has(FANTASY_KW) * 0.9) - Math.min(3, has(REAL_KW) * 1.5);
-  base[3] = m.rn ? clamp((m.rn - 85) / 6.5) : 4.5;
+  base[3] = m.sr ? clamp((((m.rn || 45) - 20) / 4 + ((m.sr.s || 1) - 1) * 1.4) / 2) : m.rn ? clamp((m.rn - 85) / 6.5) : 4.5;
   base[0] += Math.min(1.5, has(['twist', 'mind', 'conspiracy', 'dream', 'time travel', 'puzzle', 'complex', 'nonlinear', 'psychological', 'mystery']) * 0.6) - Math.min(1, has(['slapstick', 'buddy', 'road trip', 'action hero', 'car chase']) * 0.5);
   const v = base.map(clamp); vcache.set(m.id, v); return v;
 };
@@ -230,7 +288,7 @@ export function swipeLine(pr: Prof, m: Movie, yes: boolean, why: string[], seed:
 // ---------- state
 export type Matchup = { id: string; a: number; b: number; c: number | null; wg: { A?: number[]; B?: number[] }; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
 export type State = {
-  code: string; v: number; now: number;
+  code: string; kind: Kind; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
   vibe: { subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
@@ -253,7 +311,7 @@ export type State = {
 export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2: 'ROUND 2 · 15 to 8 · GOLDEN BYE', 3: 'ROUND 3 · 8 to 4', 4: 'SEMIS · 4 to 2' };
 
 export const newState = (code: string): State => ({
-  code, v: 0, now: Date.now(), phase: 'lobby',
+  code, kind: 'movie', v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
   vibe: { subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
   draft: { deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
@@ -288,10 +346,10 @@ export function clashAxes(a: (number | null)[], b: (number | null)[]): number[] 
   const out = d.filter((x) => x.d >= 4).map((x) => x.i); for (const x of d) { if (out.length >= 2) break; if (!out.includes(x.i)) out.push(x.i); }
   return out.sort();
 }
-export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }): number[] {
+export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }, kind: Kind = 'movie'): number[] {
   const lockedN = Object.keys(subs.A).filter((k) => subs.A[k] && subs.B[k]); const oneN = Object.keys(subs.A).filter((k) => subs.A[k] !== subs.B[k] && (subs.A[k] || subs.B[k])); const noN = Object.keys(subs.A).filter((k) => subs.A[k] === false && subs.B[k] === false);
   const subBonus = (m: Movie) => subHits(m, lockedN).length * 2.4 + subHits(m, oneN).length * 0.7 - subHits(m, noN).length * 1.4;
-  const ok = MOVIES.filter((m) => !m.w && !banned.includes(m.id));
+  const ok = poolOf(kind).filter((m) => !m.w && !banned.includes(m.id));
   const score = (m: Movie) => wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors) - subBonus(m);
   const good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8).sort((x, y) => score(x) - score(y));
   const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
@@ -299,12 +357,12 @@ export function buildDeck(target: number[], code: string, banned: number[] = [],
   if (ids.length < 30) for (const m of ok.sort((x, y) => score(x) - score(y))) { if (ids.length >= 40) break; if (!ids.includes(m.id)) ids.push(m.id); }
   return shuffled(ids, code, 'deck');
 }
-export function pickWildcards(exclude: Set<number>, target: number[], n: number, code: string): number[] {
-  const wild = MOVIES.filter((m) => m.w && !exclude.has(m.id) && !excluded(m, target)).sort((a, b) => b.r - a.r || a.id - b.id);
+export function pickWildcards(exclude: Set<number>, target: number[], n: number, code: string, kind: Kind = 'movie'): number[] {
+  const wild = poolOf(kind).filter((m) => m.w && !exclude.has(m.id) && !excluded(m, target)).sort((a, b) => b.r - a.r || a.id - b.id);
   const top = wild.slice(0, Math.max(n * 3, 30)).map((m) => ({ id: m.id, s: dist(vecOf(m), target) * 0.15 - (BY_ID[m.id].r - 7.5) }));
   top.sort((x, y) => x.s - y.s);
   const out = top.slice(0, n).map((x) => x.id);
-  if (out.length < n) for (const m of MOVIES) { if (out.length >= n) break; if (!exclude.has(m.id) && !out.includes(m.id)) out.push(m.id); }
+  if (out.length < n) for (const m of poolOf(kind)) { if (out.length >= n) break; if (!exclude.has(m.id) && !out.includes(m.id)) out.push(m.id); }
   return out;
 }
 export function fallbackPitch(id: number): string {
@@ -323,7 +381,7 @@ function startRound(s: State, round: 1 | 2 | 3 | 4, ids: number[]) {
   let list = ids; let golden: number | null = null;
   if (round === 2) { golden = [...ids].sort((a, b) => (higher(a, b) === a ? -1 : 1))[0]; list = ids.filter((x) => x !== golden); }
   s.br = { round, matches: pairUp(shuffled(list, s.code, 'r' + round), round), cur: 0, golden, bullets: round === 3 ? { A: true, B: true } : s.br.bullets, winners: golden ? [golden] : [] };
-  { const used = new Set<number>([...s.pool, ...s.vetoed, ...ids]); const ws = pickWildcards(used, s.vibe.target || [5, 5, 5, 5], s.br.matches.length + 2, s.code + 'c' + round); s.br.matches.forEach((m, i) => { m.c = ws[i] ?? null; }); }
+  { const used = new Set<number>([...s.pool, ...s.vetoed, ...ids]); const ws = pickWildcards(used, s.vibe.target || [5, 5, 5, 5], s.br.matches.length + 2, s.code + 'c' + round, s.kind); s.br.matches.forEach((m, i) => { m.c = ws[i] ?? null; }); }
   if (golden) s.log.unshift(`Golden Bye: ${BY_ID[golden].t} is the top rated film and walks through.`);
 }
 
@@ -350,7 +408,7 @@ function advance(s: State, now: number) {
 }
 
 export type Intent =
-  | { t: 'join'; pid: PID; name?: string } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
+  | { t: 'join'; pid: PID; name?: string; kind?: Kind } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
   | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
@@ -363,7 +421,7 @@ export type Intent =
 function maybeLock(s: State) {
   if (s.draft.picks.A.length >= DRAFT_SIZE && s.draft.picks.B.length >= DRAFT_SIZE) {
     const union = Array.from(new Set([...s.draft.picks.A, ...s.draft.picks.B]));
-    const wild = pickWildcards(new Set([...union, ...s.vetoed]), s.vibe.target || [5, 5, 5, 5], Math.max(10, POOL_SIZE - union.length), s.code);
+    const wild = pickWildcards(new Set([...union, ...s.vetoed]), s.vibe.target || [5, 5, 5, 5], Math.max(10, POOL_SIZE - union.length), s.code, s.kind);
     s.pool = [...union, ...wild].slice(0, Math.max(POOL_SIZE, union.length + 10));
     s.pool = s.pool.slice(0, POOL_SIZE);
     s.log.unshift(`Pool locked: ${union.length} drafted, ${s.pool.length - union.length} wildcards Orson slipped in.`);
@@ -380,6 +438,7 @@ export function reduce(prev: State, it: Intent): State {
   switch (it.t) {
     case 'join': {
       s.players[it.pid] = { name: (it.name || s.players[it.pid].name).slice(0, 14), joined: true };
+      if (it.pid === 'A' && it.kind && s.phase === 'lobby') s.kind = it.kind === 'series' ? 'series' : 'movie';
       if (s.players.A.joined && s.players.B.joined && s.phase === 'lobby') s.phase = 'vibe';
       break;
     }
@@ -404,7 +463,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'subs': { if (s.phase === 'vibe' && s.vibe.passed) s.vibe.subs[it.pid] = it.map; break; }
     case 'begin': {
       if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B || !s.vibe.subs.A || !s.vibe.subs.B) break;
-      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, [], { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), s.vibe.subs as { A: Record<string, boolean>; B: Record<string, boolean> }); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
+      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, [], { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), s.vibe.subs as { A: Record<string, boolean>; B: Record<string, boolean> }, s.kind); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
       break;
     }
     case 'draftreq': s.draft.requested = true; break;
@@ -459,7 +518,7 @@ export function reduce(prev: State, it: Intent): State {
       if (s.phase !== 'bracket' || !mt || mt.winner !== null || mt.tap || s.tempt.stage === 'offer' || !s.pw[it.pid].veto) break;
       if (it.id !== mt.a && it.id !== mt.b) break;
       const t = s.vibe.target || [5, 5, 5, 5];
-      const inn = MOVIES.filter((m) => m.w && !s.pool.includes(m.id) && !s.vetoed.includes(m.id) && !excluded(m, t)).sort((a, b) => b.r - a.r || a.id - b.id)[0]; if (!inn) break;
+      const inn = poolOf(s.kind).filter((m) => m.w && !s.pool.includes(m.id) && !s.vetoed.includes(m.id) && !excluded(m, t)).sort((a, b) => b.r - a.r || a.id - b.id)[0]; if (!inn) break;
       s.pw[it.pid].veto = false; s.vetoed.push(it.id);
       s.pool = s.pool.map((x) => (x === it.id ? inn.id : x)); if (mt.a === it.id) mt.a = inn.id; else mt.b = inn.id; mt.votes = {};
       s.log.unshift(`${s.players[it.pid].name} used a Veto: ${BY_ID[it.id].t} is out, a mystery wildcard takes its seat.`);
@@ -524,7 +583,7 @@ export function reduce(prev: State, it: Intent): State {
       if (s.phase !== 'bracket' || s.tempt.stage !== 'offer' || it.pid !== s.tempt.to) break;
       const other: PID = it.pid === 'A' ? 'B' : 'A';
       if (it.out === null || !s.draft.picks[other].includes(it.out) || s.draft.picks[it.pid].includes(it.out) || !s.pool.includes(it.out)) { s.tempt.stage = 'done'; s.log.unshift('Orson made a private offer. It was declined.'); break; }
-      const inn = MOVIES.filter((m) => m.w && !s.pool.includes(m.id) && !excluded(m, s.vibe.target || [5, 5, 5, 5])).sort((a, b) => b.r - a.r || a.id - b.id)[0];
+      const inn = poolOf(s.kind).filter((m) => m.w && !s.pool.includes(m.id) && !excluded(m, s.vibe.target || [5, 5, 5, 5])).sort((a, b) => b.r - a.r || a.id - b.id)[0];
       if (!inn) { s.tempt.stage = 'done'; break; }
       s.pool = s.pool.map((x) => (x === it.out ? inn.id : x));
       s.br.matches.forEach((m) => { if (m.winner === null) { if (m.a === it.out) m.a = inn.id; if (m.b === it.out) m.b = inn.id; } });
@@ -556,7 +615,7 @@ export function reduce(prev: State, it: Intent): State {
       }
       break;
     }
-    case 'reset': return { ...newState(s.code), v: s.v + 1, players: s.players, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
+    case 'reset': return { ...newState(s.code), kind: s.kind, v: s.v + 1, players: s.players, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
   }
   return s;
 }

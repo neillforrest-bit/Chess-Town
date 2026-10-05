@@ -6,7 +6,7 @@ import { loadMem, recordNight, coupleKey, nightsKey } from '@/lib/memory';
 import { newState, reduce, BY_ID, fallbackPitch, AXES, AXQ_NAME, type Mood, type Intent, type PID, type State } from '@/lib/game';
 
 /** pid 'A' is the host (runs the reducer). 'B' and the TV (pid null) only send intents / render state. */
-export function useRoom(code: string, pid: PID | null, name: string) {
+export function useRoom(code: string, pid: PID | null, name: string, kind: 'movie' | 'series' = 'movie') {
   const host = pid === 'A';
   const [state, setState] = useState<State | null>(null);
   const [skew, setSkew] = useState(0);
@@ -42,7 +42,7 @@ export function useRoom(code: string, pid: PID | null, name: string) {
     ch.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         setOnline(true);
-        if (host) { if (stRef.current) { const s = stRef.current; chRef.current?.send({ type: 'broadcast', event: 'state', payload: s }); } apply({ t: 'join', pid: 'A', name }); }
+        if (host) { if (stRef.current) { const s = stRef.current; chRef.current?.send({ type: 'broadcast', event: 'state', payload: s }); } apply({ t: 'join', pid: 'A', name, kind }); }
         else { ch.send({ type: 'broadcast', event: 'hello', payload: {} }); if (pid) ch.send({ type: 'broadcast', event: 'intent', payload: { t: 'join', pid, name } }); }
       }
     });

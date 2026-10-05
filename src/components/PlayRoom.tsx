@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { BY_ID, QUESTION_SETS, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
+import { BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 2800;
@@ -27,7 +27,7 @@ const CARD_CACHE = new Map<number, CardInfo>();
 
 function loadCard(id: number, send: (i: Intent) => void, bump: () => void) {
   if (CARD_CACHE.has(id)) return; const m = BY_ID[id]; if (!m) return; CARD_CACHE.set(id, 'wait');
-  fetch('/api/orson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'card', movie: { id: m.id, t: m.t, y: m.y, g: m.g, o: m.o, c: m.c, rt: m.rt, mc: m.mc, imdb: m.imdb, r: m.r, aw: m.aw, kw: m.kw, tag: m.tag, k: m.k } }) })
+  fetch('/api/orson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'card', movie: { id: m.id, t: m.t, y: m.y, g: m.g, o: m.o, c: m.c, rt: m.rt, mc: m.mc, imdb: m.imdb, r: m.r, aw: m.aw, kw: m.kw, tag: m.tag, k: m.k, sr: m.sr } }) })
     .then((r) => r.json()).then((d) => { if (d && d.hook) { CARD_CACHE.set(id, d); if (d.usd) send({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd }); } else CARD_CACHE.set(id, 'err'); bump(); })
     .catch(() => { CARD_CACHE.set(id, 'err'); bump(); });
 }
@@ -62,7 +62,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const sp = useSearchParams();
   const pid = (sp.get('p') === 'B' ? 'B' : 'A') as PID;
   const name = sp.get('n') || '';
-  const { state: s, send, skew, online } = useRoom(code, pid, name);
+  const { state: s, send, skew, online } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie');
   const now = useNow(skew);
   const other: PID = pid === 'A' ? 'B' : 'A';
   const [copied, setCopied] = useState(false);
@@ -139,7 +139,7 @@ export default function PlayRoom({ code }: { code: string }) {
       <button className="cs-btn cs-btn--gold" onClick={() => { setGo(1); setCd(1); setTimeout(() => setCd(2), 700); setTimeout(() => setCd(3), 1400); setTimeout(() => { setGo(2); setCd(0); }, 2100); }}>I AM READY</button>
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
     if (nextQ >= 0) {
-      const q = QUESTION_SETS[s.vibe.sets[nextQ]][nextQ];
+      const q = qsets(s.kind)[s.vibe.sets[nextQ]][nextQ];
       const redo = s.vibe.attempts > 0;
       const intro = redo && mine.filter((x) => x === null).length === 4 - mine.filter((x) => x !== null).length && nextQ === mine.findIndex((x) => x === null) && !mine.slice(0, nextQ).some((x, i) => x === null) && mine.filter((x) => x === null).length < 4 && mine.slice(0, nextQ).every((x) => x !== null) && nextQ === Math.min(...mine.map((x, i) => (x === null ? i : 9))) && !(mine.slice(0, nextQ).length === 0 && false) ? 'Only the questions where you two clash come back. The rest stay locked.' : stepN === 0 && !redo ? (q.q.startsWith('LIGHTNING') ? 'Lightning round. No thinking. Instinct only.' : 'Broad first, then narrower. In private. Get to 70% together to unlock the draft.') : reactionFor(s.roast, ((mine[nextQ - 1] as number) ?? 0) + nextQ * 3);
       return shell(<div className="cs-ask" key={nextQ + ':' + s.vibe.set}>
@@ -169,7 +169,7 @@ export default function PlayRoom({ code }: { code: string }) {
         <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'taste', pid, tags: tg, nos, actor }); }}>LOCK MY TASTE</button>
       </div>);
     }
-    const deckN = subDeck(code); const sA = s.vibe.subs?.[pid] || {}; const sO = s.vibe.subs?.[other] || {};
+    const deckN = subDeck(code, s.kind); const sA = s.vibe.subs?.[pid] || {}; const sO = s.vibe.subs?.[other] || {};
     const subDone = (m: Record<string, boolean>) => Object.keys(m).length >= deckN.length;
     if (s.vibe.passed && s.vibe.tastes[pid] !== null && !subDone(sA)) return shell(<SubDeck deck={deckN} mine={sA} other={sO} themName={them.name} onSwipe={(n, yes) => send({ t: 'subs', pid, map: { ...sA, [n]: yes } })} />);
     if (s.vibe.passed && s.vibe.tastes[pid] !== null && (s.vibe.tastes[other] === null || !subDone(sO))) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
@@ -197,7 +197,7 @@ export default function PlayRoom({ code }: { code: string }) {
     const go = (yes: boolean, w: string[] = []) => { setPend(null); setWhy([]); send({ t: 'swipe', pid, id, yes, why: w }); };
     const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]);
     const critic = m.rt != null ? (m.rt >= 85 ? 'Critics raved' : m.rt >= 70 ? 'Critics liked it' : m.rt >= 50 ? 'Critics were split' : 'Critics were not kind') : m.mc != null ? (m.mc >= 70 ? 'Critics liked it' : m.mc >= 50 ? 'Critics were mixed' : 'Critics were not kind') : null;
-    const runtime = m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
+    const runtime = m.sr ? `${m.sr.s} season${m.sr.s === 1 ? '' : 's'} · ${m.sr.e} eps · ~${m.rn} min` : m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
     const press = (kind: 'veto' | 'surprise') => { const key = kind + ':' + id; if (arm === key) { buzz([40, 30, 60]); setArm(''); send({ t: kind, pid, id }); } else setArm(key); };
     return shell(<div className="cs-draft"
       onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
