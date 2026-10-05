@@ -76,6 +76,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const mt = s && s.phase === 'bracket' ? s.br.matches[s.br.cur] : null;
   useEffect(() => { const k = mt?.tap ? mt.id : ''; if (k !== tapKey.current) { tapKey.current = k; setTapN(0); if (k) buzz([30, 40, 30]); } }, [mt?.id, mt?.tap]);
   useEffect(() => { if (!s || s.phase !== 'final' || !s.fin.pitchEnds) return; const t = setTimeout(() => send({ t: 'pitch', pid, text: pitchText }), 600); return () => clearTimeout(t); }, [pitchText]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (s?.phase === 'done' && s.winner !== null) loadCard(s.winner, send as (i: Intent) => void, () => bump((x) => x + 1)); }, [s?.phase, s?.winner]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setBp(''); setAlloc([0, 0, 0]); }, [mt?.id]);
   useEffect(() => { if (!s || s.phase !== 'draft' || s.draft.loading) return; const q = [...s.draft.inbox[pid], ...s.draft.q[pid]]; q.slice(0, 2).forEach((i) => loadCard(i, send as (i: Intent) => void, () => bump((x) => x + 1))); }, [s?.phase, s?.draft.idx?.[pid], s?.draft.loading, s?.draft.inbox?.[pid]?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (s?.phase === 'final' && s.fin.rematchUsed) setPitchText(''); }, [s?.fin.rematchUsed, s?.phase]);
@@ -289,6 +290,7 @@ export default function PlayRoom({ code }: { code: string }) {
     <Confetti />
     <div className="cs-orson">TONIGHT YOU WATCH</div>
     {w && <><Poster id={w.id} big cls="cs-poster--win" /><h2>{w.t}</h2></>}
+    {w && (() => { const ci = CARD_CACHE.get(w.id); return ci && ci !== 'err' && ci !== 'wait' && ci.providers && ci.providers.names.length > 0 ? <p className="cs-small cs-watch"><em>WATCH ON</em> {ci.providers.names.slice(0, 4).join(' · ')} <span className="cs-jw">({ci.providers.region}) Streaming data by JustWatch</span></p> : null; })()}
     {s.fin.verdict?.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
     {!s.fin.tie && s.fin.loser && <p className="cs-small cs-gold">{s.players[s.fin.loser].name} owes the popcorn. {led || ''}</p>}
     <div className="cs-receipts">

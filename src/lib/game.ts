@@ -382,7 +382,7 @@ export function reduce(prev: State, it: Intent): State {
       if (A.every((x) => x !== null) && B.every((x) => x !== null)) {
         s.vibe.score = alignment(A, B); s.vibe.doneAt = now;
         s.vibe.attempts++;
-        if (s.vibe.score >= RESPONSE_GATE) { s.vibe.passed = true; s.vibe.target = [0, 1, 2, 3].map((i) => (((A[i] as number) + (B[i] as number)) / 2)); }
+        if (s.vibe.score >= RESPONSE_GATE) { s.vibe.passed = true; s.vibe.tastes = { A: [], B: [] }; s.vibe.target = [0, 1, 2, 3].map((i) => (((A[i] as number) + (B[i] as number)) / 2)); }
       }
       break;
     }
