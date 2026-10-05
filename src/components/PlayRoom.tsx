@@ -62,6 +62,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const [go, setGo] = useState(0);
   const [cd, setCd] = useState(0);
   const [cont, setCont] = useState(false);
+  const [alloc, setAlloc] = useState<number[]>([0, 0, 0]);
   const [more, setMore] = useState<number | null>(null);
   const [, bump] = useState(0);
   const [tg, setTg] = useState<string[]>([]);
@@ -75,7 +76,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const mt = s && s.phase === 'bracket' ? s.br.matches[s.br.cur] : null;
   useEffect(() => { const k = mt?.tap ? mt.id : ''; if (k !== tapKey.current) { tapKey.current = k; setTapN(0); if (k) buzz([30, 40, 30]); } }, [mt?.id, mt?.tap]);
   useEffect(() => { if (!s || s.phase !== 'final' || !s.fin.pitchEnds) return; const t = setTimeout(() => send({ t: 'pitch', pid, text: pitchText }), 600); return () => clearTimeout(t); }, [pitchText]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setBp(''); }, [mt?.id]);
+  useEffect(() => { setBp(''); setAlloc([0, 0, 0]); }, [mt?.id]);
   useEffect(() => { if (!s || s.phase !== 'draft' || s.draft.loading) return; const q = [...s.draft.inbox[pid], ...s.draft.q[pid]]; q.slice(0, 2).forEach((i) => loadCard(i, send as (i: Intent) => void, () => bump((x) => x + 1))); }, [s?.phase, s?.draft.idx?.[pid], s?.draft.loading, s?.draft.inbox?.[pid]?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (s?.phase === 'final' && s.fin.rematchUsed) setPitchText(''); }, [s?.fin.rematchUsed, s?.phase]);
 
@@ -233,28 +234,36 @@ export default function PlayRoom({ code }: { code: string }) {
       </div>);
     }
     const label = ROUND_LABEL[s.br.round]; const n = s.br.matches.length;
-    const myVote = mt.votes[pid]; const bothVoted = mt.votes.A !== undefined && mt.votes.B !== undefined;
-    const tap = mt.tap; const left = tap ? secs(tap.until, now) : 0;
-    const card = (id: number) => (
-      <button key={id} className={'cs-match-card' + (myVote === id ? ' is-mine' : '') + (bp && mt.winner === null ? ' is-target' : '') + (mt.winner === id ? ' is-win' : '') + (mt.winner !== null && mt.winner !== id ? ' is-out' : '')}
-        disabled={mt.winner !== null || (bp ? !!tap : myVote !== undefined)} onClick={() => { if (bp) { buzz([90, 40, 160]); send({ t: bp === 'bullet' ? 'bullet' : 'bveto', pid, id }); setBp(''); } else { buzz(15); send({ t: 'vote', pid, pick: id }); } }}>
-        <Poster id={id} /><b>{BY_ID[id].t}</b><span>{BY_ID[id].y} · {BY_ID[id].r.toFixed(1)}</span>
-      </button>);
-    return shell(<div className="cs-bracket" key={mt.id}>
+    const ids = [mt.a, mt.b, mt.c]; const mineW = mt.wg[pid]; const theirW = mt.wg[other]; const free = s.br.round === 1; const purse = s.purse?.[pid] ?? 0;
+    const draftTot = alloc.reduce((x, y) => x + y, 0);
+    const submit = () => { buzz(20); send({ t: 'wager', pid, alloc: free ? alloc : alloc }); setAlloc([0, 0, 0]); };
+    const bump3 = (i: number, d: number) => { const nx = [...alloc]; nx[i] = Math.max(0, nx[i] + d); if (nx.reduce((x, y) => x + y, 0) > purse) return; setAlloc(nx); buzz(6); };
+    const owner = (id: number | null) => (id === null ? '' : s.draft.picks.A.includes(id) && s.draft.picks.B.includes(id) ? 'BOTH' : s.draft.picks[pid].includes(id) ? 'YOURS' : s.draft.picks[other].includes(id) ? them.name.toUpperCase() : id === mt.c ? 'ORSON' : '');
+    const tot = mt.winner !== null && mt.wg.A && mt.wg.B ? [0, 1, 2].map((i) => (mt.wg.A as number[])[i] + (mt.wg.B as number[])[i]) : null;
+    const wc = mt.c !== null ? BY_ID[mt.c] : null;
+    const card = (id: number | null, i: number) => id === null ? null : (
+      <div key={id} className={'cs-tcard' + (mt.winner === id ? ' is-win' : '') + (mt.winner !== null && mt.winner !== id ? ' is-out' : '') + (i === 2 ? ' is-orson' : '')}>
+        <i className="cs-who">{owner(id) || (i === 2 ? 'ORSON' : '')}</i>
+        <Poster id={id} /><b>{BY_ID[id].t}</b>
+        <span>{BY_ID[id].y} · {BY_ID[id].rt != null ? BY_ID[id].rt + '% RT' : BY_ID[id].r.toFixed(1)}</span>
+        {tot ? <em className="cs-tot">{tot[i]}</em> : mineW ? <em className="cs-tot">{free ? (mineW[i] ? 'YOU' : '') : mineW[i]}</em>
+          : free ? <button className="cs-btn cs-btn--gold cs-pickbtn" onClick={() => { buzz(15); send({ t: 'wager', pid, alloc: [0, 1, 2].map((k) => (k === i ? 1 : 0)) }); }}>PICK</button>
+          : <div className="cs-step"><button onClick={() => bump3(i, -1)}>-</button><span>{alloc[i]}</span><button onClick={() => bump3(i, 1)}>+</button></div>}
+      </div>);
+    const totSum = alloc[0] + alloc[1] + alloc[2] || 1;
+    return shell(<div className="cs-bracket cs-triple" key={mt.id}>
       <div className="cs-round">{label}<i>{s.br.cur + 1}/{n}</i></div>
       {s.br.round === 2 && s.br.golden && <div className="cs-golden">GOLDEN BYE · {BY_ID[s.br.golden].t}</div>}
-      <div className="cs-vs cs-titlecard">{card(mt.a)}<div className="cs-vs-mid">VS</div>{card(mt.b)}</div>
-      {mt.winner !== null && <div className="cs-won">{BY_ID[mt.winner].t} advances <small>{mt.via}</small></div>}
-      {mt.winner === null && !tap && <p className="cs-small">{myVote === undefined ? 'Pick the one you would rather watch.' : bothVoted ? '' : `Locked. Waiting for ${them.name}.`}</p>}
-      {tap && mt.winner === null && <div className="cs-tap">
-        <div className="cs-tapfight">TAP BATTLE · back {BY_ID[myVote as number]?.t.slice(0, 22)} · {left}s</div>
-        <button className="cs-tapbtn" onPointerDown={() => { buzz(8); const n2 = tapN + 1; setTapN(n2); const t = Date.now(); if (t - lastTapSend.current > 180) { lastTapSend.current = t; send({ t: 'tapcount', pid, n: n2 }); } }}>TAP<br />{tapN}</button>
-      </div>}
-      {tap && <TapSync n={tapN} send={send} pid={pid} />}
-      {mt.winner === null && !tap && <div className="cs-powers">
-        <button className={'cs-pw cs-pw--bullet' + (bp === 'bullet' ? ' is-armed' : '')} disabled={!s.pw[pid].bullet} onClick={() => setBp(bp === 'bullet' ? '' : 'bullet')}>{!s.pw[pid].bullet ? 'BULLET SPENT' : bp === 'bullet' ? 'TAP A FILM TO KILL IT' : 'SILVER BULLET'}</button>
-        <button className={'cs-pw' + (bp === 'veto' ? ' is-armed' : '')} disabled={!s.pw[pid].veto} onClick={() => setBp(bp === 'veto' ? '' : 'veto')}>{!s.pw[pid].veto ? 'VETO SPENT' : bp === 'veto' ? 'TAP A FILM TO VETO' : 'VETO · wildcard swaps in'}</button>
-      </div>}
+      <div className="cs-tgrid">{ids.map((id, i) => card(id, i))}</div>
+      {wc && mt.winner === null && <p className="cs-roast"><em>ORSON</em> {`${wc.t} is mine. You two will pretend not to want it.`}</p>}
+      {!free && mt.winner === null && !mineW && <>
+        <div className="cs-tug">{[0, 1, 2].map((i) => <i key={i} className={'cs-tug' + i} style={{ flex: Math.max(alloc[i], 0.0001) / totSum }} />)}</div>
+        <p className="cs-small cs-purse">PURSE <b>{purse - draftTot}</b> of 50 tokens left · spend {draftTot}</p>
+        <button className="cs-btn cs-btn--gold" disabled={draftTot < 1} onClick={submit}>LOCK WAGER</button>
+      </>}
+      {mt.winner === null && mineW && <p className="cs-small">Locked. Waiting for {them.name}.{!free ? ` Purse left: ${purse}.` : ''}</p>}
+      {free && mt.winner === null && !mineW && <p className="cs-small">Round 1 is free. Tap PICK on the film you want most. Tokens start in round 2 ({purse} each).</p>}
+      {mt.winner !== null && <div className="cs-won">{BY_ID[mt.winner].t} advances <small>{mt.via}{mt.winner === mt.c ? ' · ORSON WINS A ROUND' : ''}</small></div>}
     </div>);
   }
 

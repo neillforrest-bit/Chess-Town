@@ -220,7 +220,7 @@ export function swipeLine(pr: Prof, m: Movie, yes: boolean, why: string[], seed:
   const L = ['Next. The film will survive.', 'Brutal. I respect it.', 'Gone. Not even a goodbye.']; return { line: L[seed % L.length], mood: 'idle', emo: '🎬' };
 }
 // ---------- state
-export type Matchup = { id: string; a: number; b: number; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
+export type Matchup = { id: string; a: number; b: number; c: number | null; wg: { A?: number[]; B?: number[] }; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
 export type State = {
   code: string; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'bracket' | 'final' | 'done';
@@ -230,6 +230,7 @@ export type State = {
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
   pool: number[];
+  purse: { A: number; B: number };
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
   fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string } | null; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
   winner: number | null;
@@ -249,7 +250,7 @@ export const newState = (code: string): State => ({
   vibe: { subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
   draft: { deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
-  pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
+  purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
   fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
   winner: null, roast: false,
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
@@ -303,7 +304,7 @@ export function fallbackPitch(id: number): string {
   return first.length > 150 ? first.slice(0, 147) + '...' : first;
 }
 
-const mk = (id: string, a: number, b: number): Matchup => ({ id, a, b, votes: {}, tap: null, winner: null, via: null, nextAt: null });
+const mk = (id: string, a: number, b: number): Matchup => ({ id, a, b, c: null, wg: {}, votes: {}, tap: null, winner: null, via: null, nextAt: null });
 const higher = (a: number, b: number) => (BY_ID[a].r > BY_ID[b].r || (BY_ID[a].r === BY_ID[b].r && a < b) ? a : b);
 
 function pairUp(ids: number[], round: number): Matchup[] {
@@ -314,6 +315,7 @@ function startRound(s: State, round: 1 | 2 | 3 | 4, ids: number[]) {
   let list = ids; let golden: number | null = null;
   if (round === 2) { golden = [...ids].sort((a, b) => (higher(a, b) === a ? -1 : 1))[0]; list = ids.filter((x) => x !== golden); }
   s.br = { round, matches: pairUp(shuffled(list, s.code, 'r' + round), round), cur: 0, golden, bullets: round === 3 ? { A: true, B: true } : s.br.bullets, winners: golden ? [golden] : [] };
+  { const used = new Set<number>([...s.pool, ...s.vetoed, ...ids]); const ws = pickWildcards(used, s.vibe.target || [5, 5, 5, 5], s.br.matches.length + 2, s.code + 'c' + round); s.br.matches.forEach((m, i) => { m.c = ws[i] ?? null; }); }
   if (golden) s.log.unshift(`Golden Bye: ${BY_ID[golden].t} is the top rated film and walks through.`);
 }
 
@@ -348,7 +350,7 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'reset' };
+  | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'reset' };
 
 function maybeLock(s: State) {
   if (s.draft.picks.A.length >= DRAFT_SIZE && s.draft.picks.B.length >= DRAFT_SIZE) {
@@ -453,6 +455,22 @@ export function reduce(prev: State, it: Intent): State {
       s.pw[it.pid].veto = false; s.vetoed.push(it.id);
       s.pool = s.pool.map((x) => (x === it.id ? inn.id : x)); if (mt.a === it.id) mt.a = inn.id; else mt.b = inn.id; mt.votes = {};
       s.log.unshift(`${s.players[it.pid].name} used a Veto: ${BY_ID[it.id].t} is out, a mystery wildcard takes its seat.`);
+      break;
+    }
+    case 'wager': {
+      const mt = s.br.matches[s.br.cur]; if (s.phase !== 'bracket' || !mt || mt.winner !== null || s.tempt.stage === 'offer' || mt.wg[it.pid]) break;
+      const al = (it.alloc || []).slice(0, 3).map((x) => Math.max(0, Math.floor(Number(x) || 0))); while (al.length < 3) al.push(0);
+      if (mt.c === null) al[2] = 0; const sum = al[0] + al[1] + al[2];
+      if (s.br.round === 1) { if (sum !== 1) break; } else { if (sum < 1 || sum > s.purse[it.pid]) break; s.purse[it.pid] -= sum; }
+      mt.wg[it.pid] = al;
+      const wa = mt.wg.A, wb = mt.wg.B;
+      if (wa && wb) {
+        const ids = [mt.a, mt.b, mt.c]; const tot = [0, 1, 2].map((i) => wa[i] + wb[i]); const mx = Math.max(...tot);
+        const top = [0, 1, 2].filter((i) => tot[i] === mx && ids[i] !== null);
+        const pick = top.length === 1 ? top[0] : top.filter((i) => i < 2).sort((x, y) => (BY_ID[ids[x] as number].r === BY_ID[ids[y] as number].r ? 0 : BY_ID[ids[x] as number].r > BY_ID[ids[y] as number].r ? -1 : 1))[0] ?? top[0];
+        finishMatch(s, mt, ids[pick] as number, `${tot[pick]} tokens${top.length > 1 ? ', tie broken by rating' : ''}`, now);
+        if (ids[pick] === mt.c) s.stats.wildWins++;
+      }
       break;
     }
     case 'vote': {

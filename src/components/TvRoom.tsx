@@ -10,6 +10,7 @@ function ringside(s: State, now: number): string {
   if (s.phase === 'bracket' && mt) {
     const fa = BY_ID[mt.a], fb = BY_ID[mt.b];
     if (mt.winner !== null) { const w = BY_ID[mt.winner]; const l = mt.winner === mt.a ? fb : fa; return `${w.t} takes it! ${l.t} is down. ${mt.nextAt ? `Next bout in ${secs(mt.nextAt, now)}...` : ''}`; }
+    if (mt.winner === null && mt.c !== null) return `Three films, two players, one Orson. ${[mt.wg.A, mt.wg.B].filter(Boolean).length}/2 wagers locked. I fancy ${BY_ID[mt.c].t}.`;
     if (mt.tap) return `TAP BATTLE! ${A} and ${B} cannot agree. ${secs(mt.tap.until, now)} seconds. Fingers, please!`;
     if (s.br.round === 3) return `Silver Bullets are loaded. ${fa.t} against ${fb.t}. Someone is about to be shot.`;
     if (mt.votes.A !== undefined || mt.votes.B !== undefined) return `One of them has locked in. The other is sweating.`;
@@ -37,8 +38,8 @@ export default function TvRoom({ code }: { code: string }) {
       {s.phase === 'bracket' && mt && <div className="cs-tv-match">
         <p className="cs-tv-sub">{ROUND_LABEL[s.br.round]} · bout {s.br.cur + 1}/{s.br.matches.length}</p>
         {s.br.round === 2 && s.br.golden && <p className="cs-tv-gold">GOLDEN BYE: {BY_ID[s.br.golden].t}</p>}
-        {s.tempt.stage !== 'offer' && <div className="cs-tv-vs" key={mt.id}>{[mt.a, mt.b].map((id) => <div key={id} className={'cs-tv-film' + (mt.winner === id ? ' is-win' : '') + (mt.winner !== null && mt.winner !== id ? ' is-out' : '')}>
-          <Poster id={id} big /><b>{BY_ID[id].t}</b><span>{BY_ID[id].y} · {BY_ID[id].r.toFixed(1)}</span>
+        {s.tempt.stage !== 'offer' && <div className="cs-tv-vs" key={mt.id}>{[mt.a, mt.b, mt.c].filter((x): x is number => x !== null).map((id) => <div key={id} className={'cs-tv-film' + (mt.winner === id ? ' is-win' : '') + (mt.winner !== null && mt.winner !== id ? ' is-out' : '')}>
+          <Poster id={id} big /><b>{BY_ID[id].t}</b><span>{BY_ID[id].y} · {BY_ID[id].r.toFixed(1)}{id === mt.c ? ' · ORSON' : ''}</span>
           {mt.tap && <div className="cs-tv-tap"><i style={{ width: `${Math.min(100, ((mt.votes.A === id ? mt.tap.A : mt.tap.B) / 40) * 100)}%` }} /></div>}
         </div>)}</div>}
         <p className="cs-tv-ring">{say}</p>
