@@ -4,6 +4,7 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
 import { BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
+import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 2800;
@@ -102,7 +103,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const me = s.players[pid], them = s.players[other];
   const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span></header>;
   const foot = <footer className="cs-foot"><Meter cost={s.cost} /><i>{BUILD}</i></footer>;
-  const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'bracket' ? 2 : 3;
+  const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
   const journey = <nav className="cs-journey">{['GATE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
   const shell = (body: React.ReactNode, cls = '') => <main className="cs-play">{head}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}</main>;
   const led = ledgerLine(s);
@@ -191,10 +192,14 @@ export default function PlayRoom({ code }: { code: string }) {
   if (s.phase === 'draft') {
     const picks = s.draft.picks[pid]; const idx = s.draft.idx[pid]; const id = s.draft.inbox[pid][0] ?? s.draft.q[pid][0];
     if (s.draft.loading) return shell(<div className="cs-center"><div className="cs-spin" /><Typing text="Orson is writing a pitch for every film. He is dramatic about it" /></div>);
+    if (s.draft.gren.id !== null) { const gm = BY_ID[s.draft.gren.id]; const mine = s.draft.gren.votes[pid];
+      return shell(<div className="cs-gren"><div className="cs-orson">UNRESOLVED TENSION</div><p className="cs-say">I&apos;m seeing a lot of unresolved tension. Let&apos;s throw a grenade.</p>
+        <div className="cs-gren-card"><Poster id={gm.id} /><b>{gm.t}</b><span>{gm.y} · {gm.r.toFixed(1)}{gm.rt != null ? ` · RT ${gm.rt}%` : ''}</span></div>
+        {mine === undefined ? <div className="cs-row"><button className="cs-btn cs-btn--no" onClick={() => send({ t: 'grenvote', pid, yes: false })}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'grenvote', pid, yes: true })}>I&apos;LL TAKE IT</button></div> : <p className="cs-small">Locked. Waiting for {them.name}.</p>}</div>); }
     if (picks.length >= DRAFT_SIZE) return shell(<div className="cs-center"><p className="cs-say">Ten drafted and locked. Your picks stay secret.</p><p className="cs-small">{s.draft.picks[other].length >= DRAFT_SIZE ? 'Both done.' : `${them.name} has ${s.draft.picks[other].length}/${DRAFT_SIZE}.`}</p></div>);
     if (id === undefined) return shell(<div className="cs-center">Out of films.</div>);
     const m = BY_ID[id]; const sur = s.draft.inbox[pid][0] === id ? s.draft.sur[id] : undefined;
-    const ask = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); setWhy([]); setPend(yes); };
+    const ask = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); setWhy([]); setPend(null); send({ t: 'swipe', pid, id, yes, why: [] }); };
     const go = (yes: boolean, w: string[] = []) => { setPend(null); setWhy([]); send({ t: 'swipe', pid, id, yes, why: w }); };
     const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]);
     const critic = m.rt != null ? (m.rt >= 85 ? 'Critics raved' : m.rt >= 70 ? 'Critics liked it' : m.rt >= 50 ? 'Critics were split' : 'Critics were not kind') : m.mc != null ? (m.mc >= 70 ? 'Critics liked it' : m.mc >= 50 ? 'Critics were mixed' : 'Critics were not kind') : null;
@@ -237,7 +242,9 @@ export default function PlayRoom({ code }: { code: string }) {
     </div>);
   }
 
-  // ---- PHASE 3: bracket
+  // ---- PHASE 3: Hit List then the 8-seed bracket
+  if (s.phase === 'hitlist') return shell(<HitScreen s={s} pid={pid} send={send} now={now} />);
+  if (s.phase === 'bracket' && s.b8) return shell(<BracketScreen s={s} pid={pid} send={send} now={now} />);
   if (s.phase === 'bracket' && mt) {
     // Orson's private offer comes before the first vote
     if (s.tempt.stage === 'offer') {
@@ -305,8 +312,9 @@ export default function PlayRoom({ code }: { code: string }) {
   const w = s.winner !== null ? BY_ID[s.winner] : null;
   const r = receipts(s);
   const iLost = s.fin.loser === pid;
-  const showTk = !!(s.fin.verdict?.lines?.length) && !s.fin.tie && tkDone !== s.fin.rematchUsed + '' + s.winner;
-  if (showTk && w) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict?.lines} winner={w.id} onDone={() => setTkDone(s.fin.rematchUsed + '' + s.winner)} />;
+  const showTk = !!(s.fin.verdict?.lines?.length) && !s.fin.tie && tkDone !== 'x';
+  if (s.b8 && s.reroll.stage === 'ask' && !showTk && w) return shell(<RerollScreen s={s} pid={pid} send={send} />);
+  if (showTk && w) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict?.lines} winner={w.id} onDone={() => setTkDone('x')} />;
   return shell(<div className="cs-done">
     <Confetti />
     <div className="cs-orson">TONIGHT YOU WATCH</div>
@@ -320,7 +328,7 @@ export default function PlayRoom({ code }: { code: string }) {
       <div><b>{r.cavedA}·{r.cavedB}</b><span>caved {s.players.A.name.slice(0, 5)}·{s.players.B.name.slice(0, 5)}</span></div>
     </div>
     <div className="cs-row">
-      {iLost && !s.fin.rematchUsed && !s.fin.tie && <button className="cs-btn cs-btn--bullet" onClick={() => { buzz(60); send({ t: 'rematch' }); }}>REMATCH</button>}
+      {!s.b8 && iLost && !s.fin.rematchUsed && !s.fin.tie && <button className="cs-btn cs-btn--bullet" onClick={() => { buzz(60); send({ t: 'rematch' }); }}>REMATCH</button>}
       <button className="cs-btn" onClick={() => shareReceipts(s)}>SHARE</button>
       <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'reset' })}>AGAIN</button>
     </div>

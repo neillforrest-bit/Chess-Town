@@ -1,4 +1,5 @@
 // CINESYNC game engine: a pure reducer. The host phone runs it; everyone else sends intents.
+import { startHit, hitIntent, resolveHit, wagerIntent, triviaTap, bustIntent, bustDone, rerollVote, tick8, type Hit, type B8, type Reroll } from './b8';
 import catalog from '@/data/catalog.json';
 import seriesCat from '@/data/series.json';
 
@@ -32,16 +33,16 @@ export type Question = { q: string; lo: string; hi: string };
 // Four sliders per set (0-10): energy, darkness, fantasy-vs-real, scale. Last set is the lightning set.
 export const QUESTION_SETS: Question[][] = [
   [
-    { q: 'How much plot can your brain take?', lo: 'Breezy popcorn', hi: 'Brain-melting plot' },
-    { q: 'How heavy should it feel?', lo: 'Lighthearted / comedy', hi: 'Grim / horror' },
-    { q: 'How true to life?', lo: '100% true story', hi: 'Pure fiction' },
-    { q: 'How long can you stay?', lo: '90 minutes', hi: 'Epic 2.5+ hrs' },
+    { q: 'Tonight, how much focus can you spare?', lo: 'Scroll My Phone', hi: '100% Focus Required' },
+    { q: 'What do you want the film to do to you?', lo: 'Make Me Laugh', hi: 'Keep Me Up At Night' },
+    { q: 'Where should it take you?', lo: 'Real World', hi: 'Total Escapism' },
+    { q: 'What kind of tension?', lo: 'Non-Stop Explosions', hi: 'Slow-Burn Tension' },
   ],
   [
-    { q: 'Think or switch off?', lo: 'Switch off', hi: 'Think hard' },
-    { q: 'Laugh or lose sleep?', lo: 'Make me laugh', hi: 'Keep me up at night' },
-    { q: 'Real people or invented worlds?', lo: 'Real people', hi: 'Invented worlds' },
-    { q: 'Quick watch or the full night?', lo: 'Quick', hi: 'The full night' },
+    { q: 'Pillow-fort or full attention?', lo: 'Half-watch, half-snack', hi: 'Phones in the bin' },
+    { q: 'Cosy or chilling?', lo: 'Blanket and a smile', hi: 'Lights on afterwards' },
+    { q: 'Believable or bonkers?', lo: 'Could happen to us', hi: 'Could never happen' },
+    { q: 'Sprint or marathon?', lo: 'Quick hit', hi: 'Slow-burn epic' },
   ],
   [
     { q: 'Popcorn or puzzle?', lo: 'Popcorn', hi: 'Puzzle' },
@@ -77,8 +78,8 @@ export const SERIES_SETS: Question[][] = [
   ],
   [
     { q: 'Binge or one-a-night?', lo: 'One a night, savour', hi: 'Cliffhanger binge' },
-    { q: 'Laugh or lose sleep?', lo: 'Make me laugh', hi: 'Keep me up at night' },
-    { q: 'Real people or invented worlds?', lo: 'Real people', hi: 'Invented worlds' },
+    { q: 'Cosy or chilling?', lo: 'Blanket and a smile', hi: 'Lights on afterwards' },
+    { q: 'Believable or bonkers?', lo: 'Could happen to us', hi: 'Could never happen' },
     { q: 'How many episodes deep?', lo: 'A handful', hi: 'Fifty plus' },
   ],
   [
@@ -232,7 +233,7 @@ export function excluded(m: Movie, t: number[], nos: string[] = []): boolean {
 // 0-100: how well a film fits the shared vibe (for the card)
 export const fitPct = (m: Movie, t: number[]) => Math.max(0, Math.min(99, Math.round(100 - dist(vecOf(m), t) * 3.6)));
 export const W = [1.15, 1.15, 1, 0.8];
-const wdist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + W[i] * (x - b[i]) ** 2, 0));
+export const wdist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + W[i] * (x - b[i]) ** 2, 0));
 
 export function learnScore(m: Movie, base: number[], pr: Prof, nos: string[]): number {
   const t = base.map((x, i) => clamp(x + pr.ax[i]));
@@ -289,16 +290,16 @@ export function swipeLine(pr: Prof, m: Movie, yes: boolean, why: string[], seed:
 export type Matchup = { id: string; a: number; b: number; c: number | null; wg: { A?: number[]; B?: number[] }; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
 export type State = {
   code: string; kind: Kind; v: number; now: number;
-  phase: 'lobby' | 'vibe' | 'draft' | 'bracket' | 'final' | 'done';
+  phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
   vibe: { subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
-  draft: { deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
+  draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
   pool: number[];
   purse: { A: number; B: number };
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
-  fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
+  fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
   winner: number | null;
   roast: boolean;
   mem: { nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean; recorded: boolean };
@@ -306,6 +307,7 @@ export type State = {
   stats: { caved: { A: number; B: number }; wildWins: number; wildBouts: number };
   cost: { calls: number; inTok: number; outTok: number; usd: number };
   fx: { seen: string[] };
+  hit: Hit | null; b8: B8 | null; reroll: Reroll; b8Bonus: { A: number; B: number }; taste: string | null;
   orson: { line: string; mood: Mood; n: number; emo?: string };
   log: string[];
 };
@@ -315,7 +317,7 @@ export const newState = (code: string): State => ({
   code, kind: 'movie', v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
   vibe: { subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
-  draft: { deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
+  draft: { gren: { used: false, id: null, votes: {} }, deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
   fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
@@ -323,7 +325,7 @@ export const newState = (code: string): State => ({
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
-  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
+  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
 });
 
 // seeded shuffle so every client sees the same order
@@ -417,20 +419,29 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'reset' };
+  | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
+
+// Orson's Devil's Advocate Pause: when the two taste profiles diverge hard, throw a polarising wildcard at both players. Once per draft.
+function cosProf(a: Prof, b: Prof): number {
+  const keys = Array.from(new Set([...Object.keys(a.g), ...Object.keys(a.c), ...Object.keys(b.g), ...Object.keys(b.c)]));
+  let d = 0, x = 0, y = 0;
+  for (const k of keys) { const u = (a.g[k] || 0) + (a.c[k] || 0), v = (b.g[k] || 0) + (b.c[k] || 0); d += u * v; x += u * u; y += v * v; }
+  return x && y ? d / Math.sqrt(x * y) : 1;
+}
+export const GREN_MIN_SWIPES = 6; export const GREN_SIM = 0.2;
+function maybeGrenade(s: State) {
+  const g = s.draft.gren; if (g.used || g.id !== null || s.phase !== 'draft') return;
+  const A = s.draft.learn.A, B = s.draft.learn.B; if (A.n < GREN_MIN_SWIPES || B.n < GREN_MIN_SWIPES) return;
+  if (cosProf(A, B) >= GREN_SIM) return;
+  const taken = new Set([...s.draft.deck, ...s.draft.picks.A, ...s.draft.picks.B, ...s.vetoed]);
+  const t = s.vibe.target || [5, 5, 5, 5];
+  const cand = poolOf(s.kind).filter((m) => !taken.has(m.id) && m.r >= 7).map((m) => ({ m, sc: m.r + wdist(vecOf(m), t) * 0.4 })).sort((a, b) => b.sc - a.sc || a.m.id - b.m.id)[0];
+  if (!cand) return;
+  g.used = true; g.id = cand.m.id; g.votes = {};
+}
 
 function maybeLock(s: State) {
-  if (s.draft.picks.A.length >= DRAFT_SIZE && s.draft.picks.B.length >= DRAFT_SIZE) {
-    const union = Array.from(new Set([...s.draft.picks.A, ...s.draft.picks.B]));
-    const wild = pickWildcards(new Set([...union, ...s.vetoed]), s.vibe.target || [5, 5, 5, 5], Math.max(10, POOL_SIZE - union.length), s.code, s.kind);
-    s.pool = [...union, ...wild].slice(0, Math.max(POOL_SIZE, union.length + 10));
-    s.pool = s.pool.slice(0, POOL_SIZE);
-    s.log.unshift(`Pool locked: ${union.length} drafted, ${s.pool.length - union.length} wildcards Orson slipped in.`);
-    s.phase = 'bracket'; startRound(s, 1, s.pool);
-    { const to: PID = seeded(s.code, 'tempt')() < 0.5 ? 'A' : 'B'; const o: PID = to === 'A' ? 'B' : 'A';
-      const cand = s.draft.picks[o].filter((x) => !s.draft.picks[to].includes(x));
-      s.tempt = { to, stage: cand.length ? 'offer' : 'done', accepted: false, out: null, inn: null }; }
-  }
+  if (s.draft.picks.A.length >= DRAFT_SIZE && s.draft.picks.B.length >= DRAFT_SIZE) startHit(s, s.now);
 }
 
 export function reduce(prev: State, it: Intent): State {
@@ -469,8 +480,25 @@ export function reduce(prev: State, it: Intent): State {
     }
     case 'draftreq': s.draft.requested = true; break;
     case 'pitches': s.draft.pitches = { ...s.draft.pitches, ...it.map }; s.draft.loading = false; break;
+    case 'hit': hitIntent(s, it, now); break;
+    case 'w8': wagerIntent(s, it, now); break;
+    case 'ttap': triviaTap(s, it, now); break;
+    case 'bust': bustIntent(s, it, now); break;
+    case 'bustdone': bustDone(s, it.roast, now); break;
+    case 'rr': rerollVote(s, it, now); break;
+    case 'tasteroast': s.taste = it.line; break;
+    case 'grenvote': {
+      const g = s.draft.gren; if (s.phase !== 'draft' || g.id === null || g.votes[it.pid] !== undefined) break;
+      g.votes[it.pid] = it.yes;
+      if (g.votes.A !== undefined && g.votes.B !== undefined) {
+        for (const p of ['A', 'B'] as PID[]) if (g.votes[p] && s.draft.picks[p].length < DRAFT_SIZE && !s.draft.picks[p].includes(g.id)) s.draft.picks[p].push(g.id);
+        s.log.unshift(`Grenade: ${BY_ID[g.id].t}. ${g.votes.A && g.votes.B ? 'You both took it, somehow.' : g.votes.A || g.votes.B ? 'One of you took it.' : 'Neither of you wanted it.'}`);
+        g.id = null; maybeLock(s);
+      }
+      break;
+    }
     case 'swipe': {
-      if (s.phase !== 'draft' || s.draft.loading) break;
+      if (s.phase !== 'draft' || s.draft.loading || s.draft.gren.id !== null) break;
       const picks = s.draft.picks[it.pid];
       if (picks.length >= DRAFT_SIZE) break;
       const ib = s.draft.inbox[it.pid]; const q = s.draft.q[it.pid];
@@ -487,7 +515,7 @@ export function reduce(prev: State, it: Intent): State {
       if (picks.length < DRAFT_SIZE && !ib.length && s.draft.q[it.pid].length === 0) {
         for (const id of s.draft.deck) { if (picks.length >= DRAFT_SIZE) break; if (!picks.includes(id)) picks.push(id); }
       }
-      maybeLock(s);
+      maybeLock(s); maybeGrenade(s);
       break;
     }
     case 'veto': {
@@ -574,7 +602,8 @@ export function reduce(prev: State, it: Intent): State {
     case 'judgereq': s.fin.judgeRequested = true; break;
     case 'verdict': {
       s.fin.verdict = { winner: it.winner, reason: it.reason, lines: it.lines }; s.fin.judging = false; s.winner = it.winner; s.phase = 'done';
-      const wp: PID = s.fin.choice.A === it.winner ? 'A' : 'B'; s.fin.wpid = wp; s.fin.loser = wp === 'A' ? 'B' : 'A'; s.fin.tie = false; s.mem.recorded = false;
+      const wp: PID = s.b8 ? (s.b8.backed.A >= s.b8.backed.B ? 'A' : 'B') : s.fin.choice.A === it.winner ? 'A' : 'B'; s.fin.wpid = wp; s.fin.loser = wp === 'A' ? 'B' : 'A'; s.fin.tie = false; s.mem.recorded = false;
+      if (s.b8 && !s.reroll.used) s.reroll = { stage: 'ask', votes: {}, used: false, to: null };
       break;
     }
     case 'roast': s.roast = it.on; break;
@@ -603,6 +632,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'quip': s.orson = { line: it.line.slice(0, 200), mood: it.mood, n: s.orson.n + 1, emo: it.emo }; break;
     case 'cost': s.cost = { calls: s.cost.calls + 1, inTok: s.cost.inTok + it.inTok, outTok: s.cost.outTok + it.outTok, usd: s.cost.usd + it.usd }; break;
     case 'tick': {
+      if (s.phase === 'hitlist' || s.b8) { tick8(s, now); break; }
       const mt = s.br.matches[s.br.cur];
       if (s.phase === 'bracket' && mt) {
         if (mt.tap && now >= mt.tap.until) {
@@ -616,7 +646,7 @@ export function reduce(prev: State, it: Intent): State {
       }
       break;
     }
-    case 'reset': return { ...newState(s.code), kind: s.kind, v: s.v + 1, players: s.players, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
+    case 'reset': return { ...newState(s.code), kind: s.kind, v: s.v + 1, players: s.players, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
   }
   return s;
 }

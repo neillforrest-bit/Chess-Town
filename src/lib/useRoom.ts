@@ -37,7 +37,7 @@ export function useRoom(code: string, pid: PID | null, name: string, kind: 'movi
 
   // timers: any connected client nudges the server clock once a second while a timed phase is live (the server ignores no-op ticks)
   useEffect(() => {
-    const t = setInterval(() => { const s = stRef.current; if (s && (s.phase === 'bracket' || s.phase === 'final')) send({ t: 'tick', now: Date.now() } as Intent); }, 1000);
+    const t = setInterval(() => { const s = stRef.current; if (s && (s.phase === 'bracket' || s.phase === 'final' || s.phase === 'hitlist')) send({ t: 'tick', now: Date.now() } as Intent); }, 1000);
     return () => clearInterval(t);
   }, [send]);
 

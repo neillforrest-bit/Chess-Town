@@ -77,7 +77,7 @@ export async function effects(code: string, origin: string): Promise<void> {
       if (s.phase === 'bracket' && s.br.round === 1 && s.br.cur === 0) { const ov = s.draft.picks.A.filter((x) => s.draft.picks.B.includes(x)); say(k + 'pool', `The pool is locked: ${ov.length} of the drafts overlapped.`, ov.length ? `Both drafted: ${ov.map((x) => BY_ID[x].t).slice(0, 3).join(', ')}` : 'Zero overlap.', ov.length ? [`${ov.length} films in common. A flicker of hope. I refuse to enjoy it.`, 'smug'] : ['Zero overlap. You two have never met, have you?', 'shock']); }
   const top = s.log[0] || '';
   if (top) {
-    if (/Veto|Surprise|Silver Bullet|Temptation|offer/.test(top)) say(k + 'log' + top, top, 'React to this power move. Be theatrical.', [/offer|Temptation/.test(top) ? 'Someone is being tempted. I arranged it, of course.' : top.includes('Surprise') ? 'A gift. How suspicious. How romantic. How suspicious again.' : top.includes('Veto') ? 'A veto. Somebody woke up and chose violence.' : 'Blood on the carpet. I will send the bill.', /offer|Temptation|Surprise/.test(top) ? 'scheme' : 'shock']);
+    if (/Veto|Surprise|Silver Bullet|Temptation|offer|Red Strike|Grenade|Bracket Buster|UPSET|Reroll/.test(top)) say(k + 'log' + top, top, 'React to this power move. Be theatrical.', [/offer|Temptation/.test(top) ? 'Someone is being tempted. I arranged it, of course.' : top.includes('Surprise') ? 'A gift. How suspicious. How romantic. How suspicious again.' : top.includes('Veto') ? 'A veto. Somebody woke up and chose violence.' : 'Blood on the carpet. I will send the bill.', /offer|Temptation|Surprise/.test(top) ? 'scheme' : 'shock']);
     if (/ beats /.test(top)) { const nb = s.log.filter((l) => / beats /.test(l)).length; if (nb % 4 === 0 || /tap-battle/.test(top)) say(k + 'm' + nb, top, 'A bracket result. Comment on the winner, loser or how it was decided.', [top.includes('tap-battle') ? 'A tap battle. Dignity left the building three taps ago.' : 'Another one falls. The carpet remembers.', 'glee']); }
   }
   if (s.phase === 'final' && !s.fin.pitchEnds) say(k + 'final' + s.fin.rematchUsed, `The final two are ${BY_ID[s.fin.a].t} versus ${BY_ID[s.fin.b].t}.`, 'Build tension.', [`${BY_ID[s.fin.a].t} against ${BY_ID[s.fin.b].t}. Pick your hill. Prepare to die on it.`, 'scheme']);
@@ -98,9 +98,40 @@ export async function effects(code: string, origin: string): Promise<void> {
     const f = s.fin; const A = BY_ID[f.a], B = BY_ID[f.b];
     const defender = (id: number) => (f.choice.A === id ? 'A' : 'B') as 'A' | 'B';
     const side = (id: number) => { const p = defender(id); return { t: BY_ID[id].t, y: BY_ID[id].y, r: BY_ID[id].r, by: s.players[p].name, pitch: f.pitch[p] || '' }; };
-    const d = await orson(origin, { type: 'judge', roast: s.roast, rematch: f.rematchUsed, takeover: true, a: side(A.id), b: side(B.id) }, 25000);
+    const d = await orson(origin, { type: 'judge', roast: s.roast, rematch: f.rematchUsed, takeover: true, forced: f.forced !== undefined ? (f.forced === A.id ? 'A' : 'B') : undefined, a: side(A.id), b: side(B.id) }, 25000);
     if (d && d.winner) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'verdict', winner: d.winner === 'A' ? A.id : B.id, reason: d.verdict || '', lines: Array.isArray(d.lines) ? d.lines.slice(0, 4) : undefined }); }
-    else { const w = A.r >= B.r ? A.id : B.id; await ap({ t: 'verdict', winner: w, reason: 'Orson lost the signal, so the higher rated film takes it.', lines: [`${A.t} against ${B.t}. A fight for the ages, or at least for tonight.`, `${(A.r >= B.r ? B : A).t}, I say this with love: no.`, 'Drumroll, please. I have never been wrong. Mostly.'] }); }
+    else { const w = f.forced !== undefined ? f.forced : A.r >= B.r ? A.id : B.id; await ap({ t: 'verdict', winner: w, reason: 'Orson lost the signal, so the higher rated film takes it.', lines: [`${A.t} against ${B.t}. A fight for the ages, or at least for tonight.`, `${(A.r >= B.r ? B : A).t}, I say this with love: no.`, 'Drumroll, please. I have never been wrong. Mostly.'] }); }
+  })());
+
+  // Hit List and bracket: Orson writes a "why you'd like it" for every title that is on the table and has no pitch yet
+  if ((s.phase === 'hitlist' || (s.phase === 'bracket' && s.b8)) && !s.draft.loading) {
+    const ids = (s.phase === 'hitlist' ? (s.hit?.grid || []) : Object.keys(s.b8?.seed || {}).map(Number)).filter((id) => !s.draft.pitches[id]);
+    if (ids.length) ps.push((async () => {
+      const c = await claim(code, 'bp:' + s.phase + ids.length); if (!c.ok) return;
+      const t = s.vibe.target || [5, 5, 5, 5];
+      const vibe = `pacing ${t[0].toFixed(1)}/10, emotional weight ${t[1].toFixed(1)}/10, fiction ${t[2].toFixed(1)}/10, runtime ${t[3].toFixed(1)}/10`;
+      const movies = ids.map((id) => ({ id, t: BY_ID[id].t, y: BY_ID[id].y, g: BY_ID[id].g, o: BY_ID[id].o, c: BY_ID[id].c, rt: BY_ID[id].rt, k: BY_ID[id].k }));
+      const fb = Object.fromEntries(ids.map((id) => [id, fallbackPitch(id)]));
+      const d = await orson(origin, { type: 'pitches', vibe, movies }, 25000);
+      if (d && d.map) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'pitches', map: { ...fb, ...d.map } }); } else await ap({ t: 'pitches', map: fb });
+    })());
+  }
+  // Bracket Buster: the screen is glitch-locked while Orson writes the roast; then the wildcard is injected
+  if (s.phase === 'bracket' && s.b8) { const m = s.b8.matches[s.b8.cur]; if (m && m.status === 'LOCKED_FOR_VETO' && m.busting) { const bu = m.busting; ps.push((async () => {
+    const c = await claim(code, 'bust' + m.id + bu.at); if (!c.ok) return;
+    const fb = `${s.players[bu.by].name} just torched ${BY_ID[bu.id].t}. Bold. Petty. I am rather moved.`;
+    const d = await orson(origin, { type: 'quip', names, event: `${s.players[bu.by].name} used the Bracket Buster veto on ${BY_ID[bu.id].t} mid-tournament, so Orson replaces it with a polarising wildcard and fines them 10 tokens.`, ctx: 'Roast the vetoer for their punishment. Max 28 words.', roast: s.roast }, 8000);
+    if (d && d.line) await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
+    await ap({ t: 'bustdone', roast: d && d.line ? d.line : fb });
+  })()); } }
+  // Match report: one vicious sentence about the couple's taste
+  if (s.phase === 'done' && s.winner !== null && !s.taste) ps.push((async () => {
+    const c = await claim(code, 'tasteroast'); if (!c.ok) return;
+    const up = s.b8?.upsets.slice().sort((a, b) => b.gap - a.gap)[0];
+    const fb = `${BY_ID[s.winner as number].t}. A film for two people who agreed to disagree and then both gave up.`;
+    const d = await orson(origin, { type: 'quip', names, event: `The night is decided: ${BY_ID[s.winner as number].t}.${up ? ` Biggest upset: ${BY_ID[up.winner].t} over ${BY_ID[up.loser].t}.` : ''}`, ctx: 'Write ONE sentence, max 26 words, roasting this couple\'s overall taste, lovingly.', roast: true }, 8000);
+    if (d && d.line) await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
+    await ap({ t: 'tasteroast', line: d && d.line ? d.line : fb });
   })());
 
   await Promise.all(ps);
