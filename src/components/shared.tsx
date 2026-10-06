@@ -55,7 +55,11 @@ export async function shareReceipts(s: State) {
   g.fillStyle = '#f4efe6'; g.font = '36px sans-serif';
   g.fillText(`Drafts overlapped on ${r.overlap}/10 · Wildcards won ${r.wildWins}/${r.wildBouts}`, 540, 1110);
   g.fillText(`Caved: ${s.players.A.name} ${r.cavedA} · ${s.players.B.name} ${r.cavedB}`, 540, 1165);
-  g.fillStyle = '#6f6483'; g.font = '28px sans-serif'; g.fillText('Orson is almost never wrong.', 540, 1260);
+  const up = s.b8?.upsets ? [...s.b8.upsets].sort((x, y) => y.gap - x.gap)[0] : null;
+  g.fillStyle = '#c9bfd6'; g.font = '30px sans-serif';
+  if (up && BY_ID[up.winner] && BY_ID[up.loser]) g.fillText(`Biggest upset: ${BY_ID[up.winner].t.slice(0, 20)} over ${BY_ID[up.loser].t.slice(0, 20)}`.slice(0, 60), 540, 1210);
+  if (s.taste) { g.font = 'italic 28px Georgia, serif'; g.fillText(s.taste.slice(0, 70), 540, 1245); }
+  g.fillStyle = '#6f6483'; g.font = '28px sans-serif'; g.fillText('Orson is almost never wrong.', 540, 1305);
   const blob: Blob | null = await new Promise((ok) => c.toBlob(ok, 'image/png'));
   if (!blob) return;
   const file = new File([blob], 'cinesync-night.png', { type: 'image/png' });

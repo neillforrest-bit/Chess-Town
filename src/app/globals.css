@@ -263,8 +263,8 @@ em{font-style:normal;color:var(--gold)}
 .cs8-hit,.cs8-br,.cs8-rr,.cs8-triv{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;align-items:stretch;text-align:center}
 .cs8-hit-top,.cs8-top{display:flex;justify-content:space-between;align-items:center}
 .cs8-clock{font-size:1.5rem;color:#ffc83d;font-variant-numeric:tabular-nums}.cs8-clock.is-hot{color:#ff4d6d;animation:tkPulse .5s infinite}
-.cs8-grid{display:grid;gap:5px;flex:1;min-height:0;align-content:start}
-.cs8-tile{position:relative;border:2px solid #3a2a55;border-radius:8px;padding:0;background:#120a20;overflow:hidden;min-height:0;aspect-ratio:2/3;max-height:19vh;justify-self:center;width:100%}
+.cs8-grid{display:grid;gap:5px;flex:1;min-height:0;grid-auto-rows:minmax(0,1fr);overflow:hidden}
+.cs8-tile{position:relative;border:2px solid #3a2a55;border-radius:8px;padding:0;background:#120a20;overflow:hidden;min-height:0;height:100%;width:100%}
 .cs8-tile img{width:100%;height:100%;object-fit:cover;display:block}
 .cs8-tile.is-sel{border-color:#c084fc;box-shadow:0 0 12px #c084fc}.cs8-tile.is-strike{border-color:#ff4d6d}.cs8-tile.is-shield{border-color:#ffc83d}
 .cs8-tile.is-dead img{filter:grayscale(1) brightness(.35)}
