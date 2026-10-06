@@ -305,6 +305,7 @@ export type State = {
   tempt: { to: PID; stage: 'off' | 'offer' | 'done'; accepted: boolean; out: number | null; inn: number | null };
   stats: { caved: { A: number; B: number }; wildWins: number; wildBouts: number };
   cost: { calls: number; inTok: number; outTok: number; usd: number };
+  fx: { seen: string[] };
   orson: { line: string; mood: Mood; n: number; emo?: string };
   log: string[];
 };
@@ -322,7 +323,7 @@ export const newState = (code: string): State => ({
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
-  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
+  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
 });
 
 // seeded shuffle so every client sees the same order
