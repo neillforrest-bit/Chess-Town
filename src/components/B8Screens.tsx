@@ -73,7 +73,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
         : m.wg[pid] ? <p className="cs8-say">Locked. Waiting for {s.players[other].name}.</p>
         : <div className="cs8-act">
           {m.round > 1 ? <div className="cs8-step"><button onClick={() => setTok(Math.max(1, tok - 5))}>−</button><b>{Math.min(tok, b.purse[pid])}</b><button onClick={() => setTok(Math.min(b.purse[pid], tok + 5))}>+</button><em>purse {b.purse[pid]}</em></div> : <em className="cs8-free">Round 1 is free. Pick the one you want.</em>}
-          <button className="cs-btn cs-btn--gold" disabled={pick === null || (m.round > 1 && b.purse[pid] < 1)} onClick={() => send({ t: 'w8', pid, id: pick as number, tok })}>LOCK {m.round > 1 ? 'WAGER' : 'PICK'}</button>
+          <button className="cs-btn cs-btn--gold" disabled={pick === null || (pick !== m.a && pick !== m.b) || (m.round > 1 && b.purse[pid] < 1)} onClick={() => send({ t: 'w8', pid, id: pick as number, tok })}>LOCK {m.round > 1 ? 'WAGER' : 'PICK'}</button>
           <button className="cs8-bust" disabled={!b.buster[pid] || (pick !== null && !!b.shield[pick])} onClick={() => { if (pick !== null) send({ t: 'bust', pid, id: pick }); }} title="Select a film first">{b.buster[pid] ? 'BRACKET BUSTER' : 'BUSTER USED'}</button>
         </div>}
       {m.bust && <p className="cs8-roast">{m.bust}</p>}
