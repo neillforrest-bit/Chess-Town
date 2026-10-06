@@ -307,7 +307,7 @@ export type State = {
   stats: { caved: { A: number; B: number }; wildWins: number; wildBouts: number };
   cost: { calls: number; inTok: number; outTok: number; usd: number };
   fx: { seen: string[] };
-  hit: Hit | null; b8: B8 | null; reroll: Reroll; b8Bonus: { A: number; B: number }; taste: string | null;
+  hit: Hit | null; b8: B8 | null; reroll: Reroll; b8Bonus: { A: number; B: number }; taste: string | null; seenBan: number[]; seenLoaded: boolean;
   orson: { line: string; mood: Mood; n: number; emo?: string };
   log: string[];
 };
@@ -325,7 +325,7 @@ export const newState = (code: string): State => ({
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
-  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
+  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, seenBan: [], seenLoaded: false, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
 });
 
 // seeded shuffle so every client sees the same order
@@ -349,14 +349,23 @@ export function clashAxes(a: (number | null)[], b: (number | null)[]): number[] 
   const out = d.filter((x) => x.d >= 4).map((x) => x.i); for (const x of d) { if (out.length >= 2) break; if (!out.includes(x.i)) out.push(x.i); }
   return out.sort();
 }
+/** Seen-together titles are banned from the deck, but never so many that the deck runs dry: drop the OLDEST bans first until 150 candidates remain. */
+export function relaxBan(ban: number[], kind: Kind): number[] {
+  const base = poolOf(kind).filter((m) => !m.w); const inPool = new Set(base.map((m) => m.id));
+  let b = ban.filter((x) => inPool.has(x));
+  while (b.length && base.length - b.length < 150) b = b.slice(1);
+  return b;
+}
 export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }, kind: Kind = 'movie'): number[] {
   const lockedN = Object.keys(subs.A).filter((k) => subs.A[k] && subs.B[k]); const oneN = Object.keys(subs.A).filter((k) => subs.A[k] !== subs.B[k] && (subs.A[k] || subs.B[k])); const noN = Object.keys(subs.A).filter((k) => subs.A[k] === false && subs.B[k] === false);
   const subBonus = (m: Movie) => subHits(m, lockedN).length * 2.4 + subHits(m, oneN).length * 0.7 - subHits(m, noN).length * 1.4;
   const ok = poolOf(kind).filter((m) => !m.w && !banned.includes(m.id));
-  const score = (m: Movie) => wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors) - subBonus(m);
+  const jr = seeded(code, 'variety');
+  const jit: Record<number, number> = {}; for (const m of poolOf(kind)) jit[m.id] = (jr() - 0.5) * 1.8; // per-night randomness: different titles surface each room
+  const score = (m: Movie) => (jit[m.id] || 0) + wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors) - subBonus(m);
   const good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8).sort((x, y) => score(x) - score(y));
   const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
-  const ids = [...good, ...rest].slice(0, 90).map((m) => m.id);
+  const ids = [...good, ...rest].slice(0, 150).map((m) => m.id);
   if (ids.length < 30) for (const m of ok.sort((x, y) => score(x) - score(y))) { if (ids.length >= 40) break; if (!ids.includes(m.id)) ids.push(m.id); }
   return shuffled(ids, code, 'deck');
 }
@@ -412,7 +421,7 @@ function advance(s: State, now: number) {
 
 export type Intent =
   | { t: 'join'; pid: PID; name?: string; kind?: Kind } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
-  | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
+  | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
   | { t: 'verdict'; winner: number; reason: string; lines?: string[] } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
@@ -475,7 +484,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'subs': { if (s.phase === 'vibe' && s.vibe.passed) s.vibe.subs[it.pid] = it.map; break; }
     case 'begin': {
       if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B || !s.vibe.subs.A || !s.vibe.subs.B) break;
-      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, [], { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), s.vibe.subs as { A: Record<string, boolean>; B: Record<string, boolean> }, s.kind); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
+      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), s.vibe.subs as { A: Record<string, boolean>; B: Record<string, boolean> }, s.kind); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
       break;
     }
     case 'draftreq': s.draft.requested = true; break;
@@ -608,6 +617,7 @@ export function reduce(prev: State, it: Intent): State {
     }
     case 'roast': s.roast = it.on; break;
     case 'mem': { s.mem = { ...s.mem, nights: it.nights, ledger: it.ledger, last: it.last, durable: it.durable }; if (s.phase === 'lobby' || (s.phase === 'vibe' && s.vibe.attempts === 0)) s.vibe.set = it.nights % (QUESTION_SETS.length - 1); s.vibe.sets = [s.vibe.set, s.vibe.set, s.vibe.set, s.vibe.set]; break; }
+    case 'seenload': if (!s.seenLoaded) { s.seenBan = (it.ids || []).filter((x) => Number.isFinite(x)); s.seenLoaded = true; } break;
     case 'recorded': s.mem.recorded = true; break;
     case 'tempt': {
       if (s.phase !== 'bracket' || s.tempt.stage !== 'offer' || it.pid !== s.tempt.to) break;

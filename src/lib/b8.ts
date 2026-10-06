@@ -3,8 +3,8 @@
 import { BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
-  HIT_MS: 15000, HIT_REVEAL_MS: 5200, GRID_EACH: 8, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, REVEAL_MS: 7000, SEED_MS: 10000,
-  PURSE: 50, FREE_WEIGHT: 10, OVERDRIVE: 1.2, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 2600,
+  HIT_MS: 15000, HIT_REVEAL_MS: 5200, GRID_EACH: 8, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, REVEAL_MS: 14000, SEED_MS: 30000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  PURSE: 50, FREE_WEIGHT: 10, OVERDRIVE: 1.2, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
 export type HitWeap = { veto: number | null; shields: number[]; done: boolean };
@@ -21,7 +21,7 @@ export type B8 = {
   matches: M8[]; cur: number; seed: Record<number, number>; shield: Record<number, PID>; purse: { A: number; B: number };
   buster: { A: boolean; B: boolean }; upsets: { winner: number; loser: number; gap: number }[]; vetoLog: { by: PID; id: number; score: number; line?: string }[];
   wilds: number[]; backed: { A: number; B: number }; bonus: { A: number; B: number };
-  show?: { until: number; kind: 'seed' | 'round'; round: number } | null;
+  show?: { until: number; kind: 'seed' | 'round'; round: number; line?: string } | null;
 };
 export type Reroll = { stage: 'off' | 'ask' | 'done'; votes: { A?: boolean; B?: boolean }; used: boolean; to: number | null };
 
@@ -116,16 +116,17 @@ export function buildBracket(s: State, now: number) {
 const say8 = (s: State, line: string, mood: 'smug' | 'shock' | 'glee' | 'scheme' = 'smug') => { s.orson = { ...s.orson, line, mood, n: s.orson.n + 1 }; };
 const NAMES = ['Round of 16', 'Quarterfinal', 'Semifinal', 'The Final'];
 /** Matchup commentary: written from the seeds, ratings and shields so every bout gets its own billing. */
-function intro8(s: State, m: M8) {
-  const b = s.b8; if (!b || m.a === null || m.b === null) return; const A = BY_ID[m.a], B = BY_ID[m.b]; const gap = Math.abs(m.seedA - m.seedB);
+function introLine(s: State, m: M8): { line: string; mood: 'smug' | 'scheme' } | null {
+  const b = s.b8; if (!b || m.a === null || m.b === null) return null; const A = BY_ID[m.a], B = BY_ID[m.b]; const gap = Math.abs(m.seedA - m.seedB);
   const hi = m.seedA < m.seedB ? A : B, lo = hi === A ? B : A; const sh = b.shield[m.a] || b.shield[m.b];
   const pool = m.round === 4 ? [`THE FINAL. ${A.t} against ${B.t}. Everything you have ever agreed on comes down to this.`, `Two titles left. One of you is about to be very smug. ${A.t} versus ${B.t}.`]
     : gap >= 8 ? [`#${m.seedA < m.seedB ? m.seedA : m.seedB} ${hi.t} against #${Math.max(m.seedA, m.seedB)} ${lo.t}. David and Goliath, except David has a worse trailer.`, `${lo.t} was not supposed to be here. Neither was I, but here we are.`]
     : gap <= 1 ? [`${A.t} against ${B.t}. Practically twins. Pick carefully, one of you is wrong.`, `Neck and neck: #${m.seedA} against #${m.seedB}. Hearts will break.`]
     : sh ? [`${A.t} versus ${B.t}. One of them is wearing a Gold Shield. Cheating, but legal.`]
     : [`${NAMES[m.round - 1]}: #${m.seedA} ${A.t} versus #${m.seedB} ${B.t}. Choose violently.`, `${A.t} meets ${B.t}. Rated ${A.r.toFixed(1)} and ${B.r.toFixed(1)}. Taste is subjective, and you are both wrong.`];
-  say8(s, pool[Math.abs(m.slot * 7 + s.code.length) % pool.length], gap >= 8 || m.round === 4 ? 'scheme' : 'smug');
+  return { line: pool[Math.abs(m.slot * 7 + s.code.length) % pool.length], mood: gap >= 8 || m.round === 4 ? 'scheme' : 'smug' };
 }
+function intro8(s: State, m: M8) { const l = introLine(s, m); if (l) say8(s, l.line, l.mood); }
 const MATCH_WEIGHT = (m: M8, p: PID, tok: number) => (m.round === 1 ? R.FREE_WEIGHT : tok);
 
 export function wagerIntent(s: State, it: { pid: PID; id: number; tok: number }, now: number) {
@@ -244,7 +245,7 @@ function advance8(s: State, now: number) {
   if (b.cur < 14) {
     m.nextAt = null; const nx = b.matches[b.cur + 1];
     // bracket, matchup, bracket, matchup: the full bracket returns after EVERY match (longer at the end of a round)
-    b.show = { until: now + (nx.round !== m.round ? R.REVEAL_MS : m.round === 1 ? 3500 : 4800), kind: 'round', round: m.round }; return;
+    b.show = { until: now + (nx.round !== m.round ? R.REVEAL_MS : m.round === 1 ? R.SHOW_BLITZ : R.SHOW_MATCH), kind: 'round', round: m.round, line: introLine(s, nx)?.line }; return;
   }
   // Final decided: Orson takes over the screen to crown it (script written server-side; winner is fixed by the bracket)
   const w = m.winner as number; const l = w === m.a ? (m.b as number) : (m.a as number);

@@ -12,6 +12,10 @@ async function readRoom(code: string): Promise<State | null> {
 }
 export const getRoom = async (code: string) => { const s = await readRoom(code); return s ? { ...s, now: Date.now() } : newState(code); };
 
+const svc = () => createClient<any>(process.env.NEXT_PUBLIC_SUPABASE_URL as string, (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) as string, { auth: { persistSession: false } });
+const coupleOf = (s: State) => [s.players.A.name, s.players.B.name].map((x) => x.trim().toLowerCase()).sort().join('+');
+/** What counts as "seen together". DEFAULT (awaiting Forrest's call): everything shown on the Hit List / bracket plus everything drafted. */
+const seenShown = (s: State): number[] => Array.from(new Set([...(s.hit?.grid || []), ...Object.keys(s.b8?.seed || {}).map(Number), ...s.draft.picks.A, ...s.draft.picks.B, ...(s.winner !== null ? [s.winner as number] : [])]));
 const strip = (s: State) => JSON.stringify({ ...s, v: 0, now: 0 });
 
 async function write(cur: State | null, next: State): Promise<boolean> {
@@ -124,6 +128,17 @@ export async function effects(code: string, origin: string): Promise<void> {
     if (d && d.line) await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
     await ap({ t: 'bustdone', roast: d && d.line ? d.line : fb });
   })()); } }
+  // Couple memory of seen titles (Variety Engine): load at the gate, write at the end of the night. Server-side, service key, never fatal.
+  if ((s.phase === 'vibe' || s.phase === 'lobby') && !s.seenLoaded && s.players.A.name && s.players.B.name) ps.push((async () => {
+    const c = await claim(code, 'seenload'); if (!c.ok) return;
+    let ids: number[] = [];
+    try { const { data } = await svc().from('cinesync_seen').select('seen_ids').eq('couple', coupleOf(s)).eq('kind', s.kind).maybeSingle(); ids = ((data as any)?.seen_ids as number[]) || []; } catch { /* table not there yet */ }
+    await ap({ t: 'seenload', ids });
+  })());
+  if (s.phase === 'done' && s.winner !== null) ps.push((async () => {
+    const c = await claim(code, 'seenwrite'); if (!c.ok) return;
+    try { await svc().rpc('cinesync_seen_add', { c: coupleOf(s), k: s.kind, ids: seenShown(s) }); } catch { /* table not there yet */ }
+  })());
   // Match report: one vicious sentence about the couple's taste
   if (s.phase === 'done' && s.winner !== null && !s.taste) ps.push((async () => {
     const c = await claim(code, 'tasteroast'); if (!c.ok) return;

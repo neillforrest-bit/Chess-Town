@@ -52,23 +52,41 @@ export function BracketMap({ s, onClose, tv }: { s: State; onClose?: () => void;
   </div>;
 }
 
-/** Full-screen bracket page: seed rankings first, then the tree after every round. */
+const ROUND_INFO: Record<number, { name: string; says: string }> = {
+  1: { name: 'ROUND OF 16 · THE BLITZ', says: 'Eight fast bouts. One tap each, eight seconds on the clock, no tokens. A dead heat goes to the higher seed. Do not overthink it. I will.' },
+  2: { name: 'QUARTERFINALS · NOW IT COSTS', says: 'Four bouts, and now your tokens talk. Stake them on your favourite: back the winner and the stake comes back. Back an upset, a gap of three seeds or more, and it comes back DOUBLE. Your Bracket Buster is live, so use it on a title you cannot stand.' },
+  3: { name: 'SEMIFINALS · THE PURSE THINS', says: 'Two bouts and four titles left. Whatever you have not spent is all you have. One last chance to bust a bracket. Choose like you mean it.' },
+  4: { name: 'THE FINAL · EVERYTHING ON IT', says: 'One bout. Two titles. Whatever is left in your purse goes in. The winner is tonight\'s film, and I will crown it myself.' },
+};
+
+/** Full-screen bracket page: Orson explains the seeding, then the rankings, then the tree after every match. */
 export function BracketPage({ s, now, tv }: { s: State; now: number; tv?: boolean }) {
   const b = s.b8; const sh = b?.show; if (!b || !sh) return null;
   const owner = s.hit?.owner || {};
   const tag = (id: number) => (owner[id] === 'O' ? 'ORSON' : owner[id] === 'AB' ? 'BOTH' : owner[id] ? s.players[owner[id] as PID].name.slice(0, 5).toUpperCase() : '');
   const ranked = Object.keys(b.seed).map(Number).sort((x, y) => b.seed[x] - b.seed[y]);
-  const left = secs(sh.until, now);
-  const rankView = sh.kind === 'seed' && sh.until - now > 5000;
+  const left = secs(sh.until, now); const rem = sh.until - now;
+  const stage: 'explain' | 'rank' | 'tree' = sh.kind === 'seed' ? (rem > R.SEED_MS - 12000 ? 'explain' : rem > 7000 ? 'rank' : 'tree') : 'tree';
   const done = sh.kind === 'round' ? sh.round : 0;
   const nxt = sh.kind === 'round' ? b.matches[b.cur + 1] : null; const endRound = !!nxt && nxt.round !== done; const lm = b.matches[b.cur];
+  const explainNext = endRound && rem <= 7000;
   const ups = b.upsets.filter((u) => b.matches.some((m) => m.round === done && m.winner === u.winner && (m.a === u.loser || m.b === u.loser)));
-  const title = sh.kind === 'seed' ? (rankView ? 'THE SEEDS ARE IN' : 'THE BRACKET') : endRound ? `${RNDN[done - 1]} COMPLETE` : `UP NEXT · ${RNDN[(nxt as M8).round - 1]}`;
-  const sub = sh.kind === 'seed' ? (rankView ? 'Ranked by RT, TMDB and how fast you grabbed it.' : 'Sixteen enter. One survives.') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances. Next: ${clip(BY_ID[(nxt as M8).a as number]?.t || '?', 14)} vs ${clip(BY_ID[(nxt as M8).b as number]?.t || '?', 14)}` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
-  return <div className={'cs8-page' + (tv ? ' is-tv' : '') + (endRound ? ' cs8-flash' : '')}>
+  const title = sh.kind === 'seed' ? (stage === 'explain' ? 'HOW THE BRACKET WORKS' : stage === 'rank' ? 'THE SEEDS ARE IN' : 'THE BRACKET') : explainNext ? 'NEXT UP' : endRound ? `${RNDN[done - 1]} COMPLETE` : `UP NEXT · ${RNDN[(nxt as M8).round - 1]}`;
+  const sub = sh.kind === 'seed' ? (stage === 'rank' ? 'Ranked by RT, TMDB and how fast you grabbed it.' : stage === 'tree' ? 'Sixteen enter. One survives. Round of 16 starts now.' : '') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances.` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
+  const tvSeries = s.kind === 'series';
+  return <div className={'cs8-page' + (tv ? ' is-tv' : '') + (endRound && !explainNext ? ' cs8-flash' : '')}>
     <div className="cs8-top"><span className="cs-orson">{title}</span><b className="cs8-clock">{left}s</b></div>
-    <p className="cs8-sub">{sub}</p>
-    {rankView ? <div className="cs8-rank">{ranked.map((id) => <div key={id} className="cs8-rk"><i>{b.seed[id]}</i><b>{clip(BY_ID[id].t, tv ? 30 : 17)}</b><em>{tag(id)}</em></div>)}</div> : <BracketMap s={s} tv={tv} />}
+    {sub && <p className="cs8-sub">{sub}</p>}
+    {stage === 'explain' && <div className="cs8-explain">
+      <div className="cs8-ex"><b>1 · THE SEEDING</b><p>Sixteen titles survived the Hit List. I ranked them: {tvSeries ? 'TMDB score 70%' : 'Rotten Tomatoes 40%, TMDB 30%'}, and how fast you grabbed it, {tvSeries ? '30%' : '30%'}. Number one is the one you both rated highest.</p></div>
+      <div className="cs8-ex"><b>2 · THE PATH</b><p>#1 plays #16, #2 plays #15, and so on. The top two seeds cannot meet until the final. Win four bouts and your title is tonight&apos;s film.</p></div>
+      <div className="cs8-ex"><b>3 · WHAT HAPPENS NEXT</b><p>Round of 16 is a blitz: one tap, eight seconds, free. From the quarters you stake tokens, back an upset for double, and bust a title you hate.</p></div>
+      <div className="cs8-ex"><b>4 · THE BRACKET RETURNS</b><p>After every bout we come back here. Green means through. Struck out means gone.</p></div>
+    </div>}
+    {stage === 'rank' && <div className="cs8-rank">{ranked.map((id) => <div key={id} className="cs8-rk"><i>{b.seed[id]}</i><b>{clip(BY_ID[id].t, tv ? 30 : 17)}</b><em>{tag(id)}</em></div>)}</div>}
+    {stage === 'tree' && !explainNext && <BracketMap s={s} tv={tv} />}
+    {explainNext && nxt && <div className="cs8-explain"><div className="cs8-ex is-big"><b>{ROUND_INFO[nxt.round].name}</b><p>{ROUND_INFO[nxt.round].says}</p></div></div>}
+    {stage === 'tree' && !endRound && sh.line && <p className="cs8-sayline">{sh.line}</p>}
   </div>;
 }
 
