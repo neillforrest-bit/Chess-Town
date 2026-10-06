@@ -339,3 +339,7 @@ em{font-style:normal;color:var(--gold)}
 .cs8-ex p{margin:0;font-size:13px;line-height:1.3;color:#e9e1f5}
 .cs8-ex.is-big p{font-size:16px;line-height:1.4}.cs8-ex.is-big b{font-size:13px}
 .cs8-sayline{margin:0;text-align:center;font:italic 14px/1.3 Georgia,serif;color:#ffe9a8;padding:4px 6px;border-top:1px solid #3a2a55;animation:cs8in .6s ease-out}
+
+.cs8-tuglab{font-size:.6rem;letter-spacing:.14em;color:#f5c542;margin:2px 0 -2px;text-align:center}
+.cs8-tokc{font-size:.66rem;color:#f5c542;font-weight:800;white-space:nowrap}
+.cs8-tokc{text-align:center;margin:0}

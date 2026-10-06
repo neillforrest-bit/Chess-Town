@@ -60,22 +60,22 @@ const ROUND_INFO: Record<number, { name: string; says: string }> = {
 };
 
 /** Full-screen bracket page: Orson explains the seeding, then the rankings, then the tree after every match. */
-export function BracketPage({ s, now, tv }: { s: State; now: number; tv?: boolean }) {
+export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; tv?: boolean; pid?: PID; send?: (i: Intent) => void }) {
   const b = s.b8; const sh = b?.show; if (!b || !sh) return null;
   const owner = s.hit?.owner || {};
   const tag = (id: number) => (owner[id] === 'O' ? 'ORSON' : owner[id] === 'AB' ? 'BOTH' : owner[id] ? s.players[owner[id] as PID].name.slice(0, 5).toUpperCase() : '');
   const ranked = Object.keys(b.seed).map(Number).sort((x, y) => b.seed[x] - b.seed[y]);
-  const left = secs(sh.until, now); const rem = sh.until - now;
-  const stage: 'explain' | 'rank' | 'tree' = sh.kind === 'seed' ? (rem > R.SEED_MS - 12000 ? 'explain' : rem > 7000 ? 'rank' : 'tree') : 'tree';
+  const left = secs(sh.until, now); const rem = sh.until - now; const hold = sh.kind === 'explain' || sh.kind === 'rank';
+  const stage: 'explain' | 'rank' | 'tree' = sh.kind === 'explain' ? 'explain' : sh.kind === 'rank' ? 'rank' : 'tree';
   const done = sh.kind === 'round' ? sh.round : 0;
   const nxt = sh.kind === 'round' ? b.matches[b.cur + 1] : null; const endRound = !!nxt && nxt.round !== done; const lm = b.matches[b.cur];
   const explainNext = endRound && rem <= 7000;
   const ups = b.upsets.filter((u) => b.matches.some((m) => m.round === done && m.winner === u.winner && (m.a === u.loser || m.b === u.loser)));
-  const title = sh.kind === 'seed' ? (stage === 'explain' ? 'HOW THE BRACKET WORKS' : stage === 'rank' ? 'THE SEEDS ARE IN' : 'THE BRACKET') : explainNext ? 'NEXT UP' : endRound ? `${RNDN[done - 1]} COMPLETE` : `UP NEXT · ${RNDN[(nxt as M8).round - 1]}`;
-  const sub = sh.kind === 'seed' ? (stage === 'rank' ? 'Ranked by RT, TMDB and how fast you grabbed it.' : stage === 'tree' ? 'Sixteen enter. One survives. Round of 16 starts now.' : '') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances.` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
+  const title = (sh.kind === 'seed' || hold) ? (stage === 'explain' ? 'HOW THE BRACKET WORKS' : stage === 'rank' ? 'THE SEEDS ARE IN' : 'THE BRACKET') : explainNext ? 'NEXT UP' : endRound ? `${RNDN[done - 1]} COMPLETE` : `UP NEXT · ${RNDN[(nxt as M8).round - 1]}`;
+  const sub = (sh.kind === 'seed' || hold) ? (stage === 'rank' ? 'Ranked by RT, TMDB and how fast you grabbed it. Take your time.' : stage === 'tree' ? 'Sixteen enter. One survives. Round of 16 starts now.' : '') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances.` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
   const tvSeries = s.kind === 'series';
   return <div className={'cs8-page' + (tv ? ' is-tv' : '') + (endRound && !explainNext ? ' cs8-flash' : '')}>
-    <div className="cs8-top"><span className="cs-orson">{title}</span><b className="cs8-clock">{left}s</b></div>
+    <div className="cs8-top"><span className="cs-orson">{title}</span>{!hold && <b className="cs8-clock">{left}s</b>}</div>
     {sub && <p className="cs8-sub">{sub}</p>}
     {stage === 'explain' && <div className="cs8-explain">
       <div className="cs8-ex"><b>1 · THE SEEDING</b><p>Sixteen titles survived the Hit List. I ranked them: {tvSeries ? 'TMDB score 70%' : 'Rotten Tomatoes 40%, TMDB 30%'}, and how fast you grabbed it, {tvSeries ? '30%' : '30%'}. Number one is the one you both rated highest.</p></div>
@@ -86,21 +86,24 @@ export function BracketPage({ s, now, tv }: { s: State; now: number; tv?: boolea
     {stage === 'rank' && <div className="cs8-rank">{ranked.map((id) => <div key={id} className="cs8-rk"><i>{b.seed[id]}</i><b>{clip(BY_ID[id].t, tv ? 30 : 17)}</b><em>{tag(id)}</em></div>)}</div>}
     {stage === 'tree' && !explainNext && <BracketMap s={s} tv={tv} />}
     {explainNext && nxt && <div className="cs8-explain"><div className="cs8-ex is-big"><b>{ROUND_INFO[nxt.round].name}</b><p>{ROUND_INFO[nxt.round].says}</p></div></div>}
+    {hold && (() => { const a = b.ack || { A: false, B: false }; const me = pid; const done = me ? a[me] : false; return tv || !me ? <p className="cs8-sayline">{s.players.A.name}: {a.A ? 'ready' : 'reading'} · {s.players.B.name}: {a.B ? 'ready' : 'reading'}</p> : <><button className="cs-btn cs-btn--gold" disabled={done} onClick={() => send?.({ t: 'ack', pid: me })}>{done ? 'WAITING FOR ' + s.players[me === 'A' ? 'B' : 'A'].name.toUpperCase() + '...' : stage === 'explain' ? "GOT IT, LET'S GO" : 'READY FOR THE BRACKET'}</button></>; })()}
     {stage === 'tree' && !endRound && sh.line && <p className="cs8-sayline">{sh.line}</p>}
   </div>;
 }
 
 /** PHASE 3: the March Madness bracket, one matchup at a time, with the compact map one tap away. */
 export function BracketScreen({ s, pid, send, now }: P) {
-  const b = s.b8; const [pick, setPick] = useState<number | null>(null); const [tok, setTok] = useState(5); const [map, setMap] = useState(false);
+  const b = s.b8; const [pick, setPick] = useState<number | null>(null); const [tok, setTok] = useState(1); const [mid, setMid] = useState(''); const [map, setMap] = useState(false);
   if (!b) return null;
-  if (b.show) return <BracketPage s={s} now={now} />;
+  if (b.show) return <BracketPage s={s} now={now} pid={pid} send={send} />;
   const m = b.matches[b.cur]; const other: PID = pid === 'A' ? 'B' : 'A';
+  if (mid !== m.id) { setMid(m.id); setTok(1); setPick(null); }
   const a = m.a as number, c = m.b as number; const br = bars(b, m); 
 
   const upsetNow = m.status === 'RESOLVED' && m.winner !== null && b.upsets.some((u) => u.winner === m.winner && u.gap >= R.UPSET_GAP && (u.loser === m.a || u.loser === m.b));
   return <div className={'cs8-br' + (m.status === 'RESOLVED' ? (upsetNow ? ' cs8-flash-up' : ' cs8-flash') : '') + (m.round === 4 ? ' cs8-final' : '')}>
     <div className="cs8-top"><span className="cs-orson">{RNDN[m.round - 1]}{m.round < 4 ? ` · ${m.slot - OFF[m.round - 1] + 1}/${[8, 4, 2][m.round - 1]}` : ''}{m.round === 1 && m.endsAt && m.status === 'VOTING_ACTIVE' ? ` · ${secs(m.endsAt, now)}s` : ''}</span><button className="cs8-mapbtn" onClick={() => setMap(true)}>BRACKET</button></div>
+    <p className="cs8-tokc">◈ YOU {b.purse[pid]} TOKENS · {s.players[other].name} {b.purse[other]}{m.round === 1 ? ' · blitz is free' : ''}</p>
     {map && <div className="cs-sheet" onClick={() => setMap(false)}><div className="cs-sheet-in"><BracketMap s={s} /></div></div>}
     {m.status === 'LOCKED_FOR_VETO' && <div className="cs8-glitch"><b>ORSON IS RUINING YOUR BRACKET...</b></div>}
     {m.trivia ? <Trivia s={s} pid={pid} send={send} now={now} m={m} /> : <>
@@ -110,16 +113,16 @@ export function BracketScreen({ s, pid, send, now }: P) {
           <Poster id={id} /><b>{clip(BY_ID[id].t, 20)}</b>
           <span>{BY_ID[id].y} · TMDB {BY_ID[id].r.toFixed(1)}{BY_ID[id].rt != null ? ` · RT ${BY_ID[id].rt}%` : ''}</span>
           <p>{clip(pitchOf(s, id), 96)}</p></button>; })}</div>
-      <div className="cs8-tug"><i style={{ width: `${Math.round((br.a / Math.max(1, br.a + br.b)) * 100) || 50}%` }} /><span>{Math.round(br.a)}</span><span>{Math.round(br.b)}</span></div>
+      <p className="cs8-tuglab">TUG OF WAR · live bids</p><div className="cs8-tug"><i style={{ width: `${Math.round((br.a / Math.max(1, br.a + br.b)) * 100) || 50}%` }} /><span>{Math.round(br.a)}</span><span>{Math.round(br.b)}</span></div>
       {m.status === 'RESOLVED' ? <p className="cs8-say">{BY_ID[m.winner as number].t} advances. {m.via}.{b.upsets.some((u) => u.winner === m.winner && u.loser === (m.winner === a ? c : a) && u.gap >= R.UPSET_GAP) ? ' UPSET.' : ''}</p>
         : m.wg[pid] ? <p className="cs8-say">Locked. Waiting for {s.players[other].name}.</p>
         : <div className="cs8-act">
-          {m.round === 1 ? <em className="cs8-free">Blitz. Tap the one you want, 8 seconds.</em> : <div className="cs8-step"><button onClick={() => setTok(Math.max(1, tok - 5))}>−</button><b>{Math.min(tok, b.purse[pid])}</b><button onClick={() => setTok(Math.min(b.purse[pid], tok + 5))}>+</button><em>purse {b.purse[pid]}</em></div>}
+          {m.round === 1 ? <em className="cs8-free">Blitz. Tap the one you want, 8 seconds.</em> : <div className="cs8-step"><button onClick={() => setTok(Math.max(1, tok - 1))}>−</button><b>{Math.min(tok, b.purse[pid])}</b><button onClick={() => setTok(Math.min(b.purse[pid], tok + 1))}>+</button><button onClick={() => setTok(Math.min(b.purse[pid], tok + 5))}>+5</button><em>of {b.purse[pid]} left</em></div>}
           {m.round > 1 && <button className="cs-btn cs-btn--gold" disabled={pick === null || (pick !== m.a && pick !== m.b) || (m.round > 1 && b.purse[pid] < 1)} onClick={() => send({ t: 'w8', pid, id: pick as number, tok })}>LOCK WAGER</button>}
           {m.round > 1 && <button className="cs8-bust" disabled={!b.buster[pid] || (pick !== null && !!b.shield[pick])} onClick={() => { if (pick !== null) send({ t: 'bust', pid, id: pick }); }} title="Select a film first">{b.buster[pid] ? 'BRACKET BUSTER' : 'BUSTER USED'}</button>}
         </div>}
       {m.bust && <p className="cs8-roast">{m.bust}</p>}
-      <p className="cs8-purse">{s.players.A.name} {b.purse.A} · {s.players.B.name} {b.purse.B} tokens</p></>}
+      </>}
   </div>;
 }
 

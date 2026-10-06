@@ -3,7 +3,7 @@
 import { BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
-  HIT_MS: 15000, HIT_REVEAL_MS: 5200, GRID_EACH: 8, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, REVEAL_MS: 14000, SEED_MS: 30000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  HIT_MS: 15000, HIT_REVEAL_MS: 5200, GRID_EACH: 8, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, REVEAL_MS: 14000, SEED_MS: 9000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
   PURSE: 50, FREE_WEIGHT: 10, OVERDRIVE: 1.2, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
@@ -21,7 +21,7 @@ export type B8 = {
   matches: M8[]; cur: number; seed: Record<number, number>; shield: Record<number, PID>; purse: { A: number; B: number };
   buster: { A: boolean; B: boolean }; upsets: { winner: number; loser: number; gap: number }[]; vetoLog: { by: PID; id: number; score: number; line?: string }[];
   wilds: number[]; backed: { A: number; B: number }; bonus: { A: number; B: number };
-  show?: { until: number; kind: 'seed' | 'round'; round: number; line?: string } | null;
+  show?: { until: number; kind: 'explain' | 'rank' | 'seed' | 'round'; round: number; line?: string } | null; ack?: { A: boolean; B: boolean };
 };
 export type Reroll = { stage: 'off' | 'ask' | 'done'; votes: { A?: boolean; B?: boolean }; used: boolean; to: number | null };
 
@@ -91,9 +91,11 @@ export function buildBracket(s: State, now: number) {
   const score = (id: number) => seedScore(s, id);
   // cut to 8: shielded titles are protected, Orson wildcards capped at 3, lowest seeding score goes first
   const prot = new Set(Object.keys(res.shield).map(Number));
+  // every player's top picks (draft order) are protected from the cut so each person's films always reach the bracket
+  for (const p of ['A', 'B'] as PID[]) for (const id of s.draft.picks[p].slice(0, 6)) if (surv.includes(id)) prot.add(id);
   const wilds = () => surv.filter((id) => h.owner[id] === 'O');
   while (wilds().length > R.MAX_WILD_IN_BRACKET && surv.length > 0) { const w = wilds().filter((x) => !prot.has(x)).sort((a, b) => score(a) - score(b))[0]; if (w === undefined) break; surv = surv.filter((x) => x !== w); }
-  while (surv.length > R.BRACKET) { const c = surv.filter((x) => !prot.has(x)).sort((a, b) => score(a) - score(b))[0]; if (c === undefined) break; surv = surv.filter((x) => x !== c); }
+  while (surv.length > R.BRACKET) { const c = surv.filter((x) => !prot.has(x)).sort((a, b) => (h.owner[b] === 'O' ? 1 : 0) - (h.owner[a] === 'O' ? 1 : 0) || score(a) - score(b))[0]; if (c === undefined) break; surv = surv.filter((x) => x !== c); }
   if (surv.length < R.BRACKET) { // too many deaths: top up with extra wildcards
     const extra = pickWildcards(new Set([...surv, ...h.grid, ...s.vetoed, ...s.draft.picks.A, ...s.draft.picks.B]), s.vibe.target || [5, 5, 5, 5], R.BRACKET - surv.length + 2, s.code + 'top', s.kind);
     for (const id of extra) { if (surv.length >= R.BRACKET) break; surv.push(id); h.owner[id] = 'O'; }
@@ -107,7 +109,7 @@ export function buildBracket(s: State, now: number) {
   for (let k = 0; k < 4; k++) ms.push(mk('q' + k, 2, 8 + k, null, null));
   ms.push(mk('s0', 3, 12, null, null), mk('s1', 3, 13, null, null), mk('f1', 4, 14, null, null));
   const bonus = s.b8Bonus || { A: 0, B: 0 };
-  s.b8 = { matches: ms, cur: 0, seed, shield: res.shield, purse: { A: R.PURSE, B: R.PURSE }, buster: { A: true, B: true }, upsets: [], vetoLog: (s as { _vl?: B8['vetoLog'] })._vl || [], wilds: surv.filter((x) => h.owner[x] === 'O'), backed: { A: 0, B: 0 }, bonus, show: { until: now + R.SEED_MS, kind: 'seed', round: 0 } };
+  s.b8 = { matches: ms, cur: 0, seed, shield: res.shield, purse: { A: R.PURSE, B: R.PURSE }, buster: { A: true, B: true }, upsets: [], vetoLog: (s as { _vl?: B8['vetoLog'] })._vl || [], wilds: surv.filter((x) => h.owner[x] === 'O'), backed: { A: 0, B: 0 }, bonus, show: { until: now + R.HOLD_MS, kind: 'explain', round: 0 }, ack: { A: false, B: false } };
   delete (s as { _vl?: unknown })._vl;
   s.pool = ranked; s.phase = 'bracket';
   s.log.unshift(`Bracket set: ${BY_ID[at(1)].t} is the number one seed.`);
@@ -188,6 +190,8 @@ function finish(s: State, m: M8, winner: number, via: string, now: number) {
   else say8(s, `${BY_ID[winner].t} advances. ${gap > 0 ? 'Mild upset.' : 'The seeding holds.'} ${BY_ID[loser].t} goes quietly.`, 'smug');
 }
 
+export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || (b.show.kind !== 'explain' && b.show.kind !== 'rank')) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }
+
 export function bustIntent(s: State, it: { pid: PID; id: number }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
   if (!m || m.round === 1 || m.status !== 'VOTING_ACTIVE' || m.trivia || !b.buster[it.pid] || (it.id !== m.a && it.id !== m.b) || b.shield[it.id]) return;
@@ -220,7 +224,10 @@ export function tick8(s: State, now: number) {
   }
   const b = s.b8; if (!b || s.phase !== 'bracket') return;
   if (b.show) {
-    if (now < b.show.until) return;
+    const wait = b.show.kind === 'explain' || b.show.kind === 'rank';
+    if (wait ? !(b.ack && b.ack.A && b.ack.B) && now < b.show.until : now < b.show.until) return;
+    if (b.show.kind === 'explain') { b.ack = { A: false, B: false }; b.show = { until: now + R.HOLD_MS, kind: 'rank', round: 0 }; return; }
+    if (b.show.kind === 'rank') { b.show = { until: now + R.SEED_MS, kind: 'seed', round: 0 }; return; }
     const k = b.show; b.show = null; if (k.kind === 'round') b.cur++;
     const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS;
     intro8(s, nx); return;
