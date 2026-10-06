@@ -296,3 +296,39 @@ em{font-style:normal;color:var(--gold)}
 .cs8-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cs8-opts .cs-btn{font-size:.72rem;padding:10px 4px}
 .cs8-rr .cs-poster{max-height:34vh;width:auto;align-self:center}
 .cs8-tvgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;max-width:90%}.cs8-tvt{display:flex;flex-direction:column;align-items:center;font-size:.8rem}.cs8-tvt img{max-height:20vh;width:auto}.cs8-tvt.is-dead{opacity:.25;filter:grayscale(1)}.cs8-tvt.is-shield img{box-shadow:0 0 14px #ffc83d}
+/* 16-seed bracket */
+.cs8-tree{display:flex;gap:3px;flex:1;min-height:0;width:100%}
+.cs8-tcol{flex:1;display:flex;flex-direction:column;justify-content:space-around;min-width:0;gap:2px}
+.cs8-tcol>b{font-size:9px;letter-spacing:.12em;color:#c084fc;text-align:center}
+.cs8-tm{display:flex;flex-direction:column;gap:2px;border-left:2px solid #3a2a55;padding-left:2px}
+.cs8-tm.is-cur{border-left-color:#ffc83d;animation:cs8pulse 1s ease-in-out infinite}
+.cs8-tc{font-size:9.5px;line-height:1.1;padding:3px 3px;border:1px solid #3a2a55;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#120a20;color:#e9e1f5;display:block}
+.cs8-tc i{font-style:normal;color:#ffc83d;font-weight:700;margin-right:2px}
+.cs8-tc.is-win{background:#14532d;border-color:#22c55e;color:#dcfce7;box-shadow:0 0 8px #22c55e88}
+.cs8-tc.is-lose{text-decoration:line-through;opacity:.45}
+.cs8-tc.is-tbd{opacity:.35;text-align:center}
+.cs8-tree.is-tv .cs8-tc{font-size:15px;padding:5px 6px}
+.cs8-page{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;align-items:stretch;animation:cs8in .5s ease-out}
+.cs8-page .cs8-top{display:flex;justify-content:space-between;align-items:center}
+.cs8-sub{margin:0;text-align:center;font-size:12px;color:#c9bfd6;font-style:italic}
+.cs8-rank{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:column;grid-template-rows:repeat(8,1fr);gap:3px 6px;flex:1;min-height:0}
+.cs8-rk{display:flex;align-items:center;gap:4px;font-size:11px;border:1px solid #3a2a55;border-radius:6px;padding:0 5px;background:#120a20;min-width:0}
+.cs8-rk i{font-style:normal;color:#ffc83d;font-weight:800;min-width:16px}
+.cs8-rk b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.cs8-rk em{font-style:normal;font-size:8px;color:#c084fc}
+.cs8-page.is-tv .cs8-rk{font-size:20px}
+.cs8-vs .cs8-card:first-child{animation:cs8l .55s cubic-bezier(.2,.9,.3,1.1)}
+.cs8-vs .cs8-card:last-child{animation:cs8r .55s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes cs8pulse{50%{box-shadow:0 0 10px #ffc83d;}}
+@keyframes cs8in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes cs8l{from{opacity:0;transform:translateX(-60px) rotate(-4deg)}to{opacity:1;transform:none}}
+@keyframes cs8r{from{opacity:0;transform:translateX(60px) rotate(4deg)}to{opacity:1;transform:none}}
+.cs8-flash{animation:cs8f .7s ease-out 1}
+.cs8-flash-up{animation:cs8fu .5s steps(2,end) 3}
+.cs8-final .cs8-card{box-shadow:0 0 18px #ffc83d66}
+.cs8-final .cs8-top .cs-orson{animation:cs8pulse 1s infinite}
+.cs8-card.is-win{animation:cs8win .6s ease-out}
+.cs8-card.is-lose{filter:grayscale(1) brightness(.5);transition:filter .5s}
+@keyframes cs8f{0%{box-shadow:inset 0 0 0 100vmax #22c55e55}100%{box-shadow:inset 0 0 0 100vmax #22c55e00}}
+@keyframes cs8fu{0%{box-shadow:inset 0 0 0 100vmax #ffc83d99}50%{box-shadow:inset 0 0 0 100vmax #ff4d6d88}100%{box-shadow:inset 0 0 0 100vmax #0000}}
+@keyframes cs8win{0%{transform:scale(1)}40%{transform:scale(1.06)}100%{transform:scale(1)}}
