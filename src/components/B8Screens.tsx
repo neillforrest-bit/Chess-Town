@@ -8,46 +8,52 @@ type P = { s: State; pid: PID; send: (i: Intent) => void; now: number };
 const pitchOf = (s: State, id: number) => (s.draft.pitches[id] || BY_ID[id].o || '').replace(/\s+/g, ' ');
 const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
-/** PHASE 2: The Hit List. 15 seconds, one grid, one Red Strike, one Gold Shield each. */
+/** PHASE 2: The War Room. Spend hype tokens, pick a Golden Ticket, load a Silver Bullet. */
 export function HitScreen({ s, pid, send, now }: P) {
-  const h = s.hit; const [sel, setSel] = useState<number | null>(null);
+  const h = s.hit; const [tab, setTab] = useState<'mine' | 'bullet'>('mine'); const [sel, setSel] = useState<number | null>(null);
   if (!h) return null;
-  const me = h.weap[pid]; const left = secs(h.endsAt, now); const res = h.res;
+  const me = h.weap[pid]; const left = secs(h.endsAt, now); const res = h.res; const other: PID = pid === 'A' ? 'B' : 'A';
   const mineOrBoth = (id: number) => h.owner[id] === pid || h.owner[id] === 'AB';
-  const tag = (id: number) => (h.owner[id] === 'O' ? 'ORSON' : h.owner[id] === 'AB' ? 'BOTH' : s.players[h.owner[id] as PID].name.slice(0, 6).toUpperCase());
-  const cols = h.grid.length > 12 ? 6 : h.grid.length > 9 ? 4 : 3;
-  return <div className="cs8-hit">
-    <div className="cs8-hit-top"><span className="cs-orson">THE HIT LIST</span><b className={'cs8-clock' + (left <= 5 && !res ? ' is-hot' : '')}>{res ? 'JUDGEMENT' : `${left}s`}</b></div>
-    <div className="cs8-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-      {h.grid.map((id) => {
-        const dead = res?.dead.includes(id); const sh = res ? res.shield[id] : undefined; const mineStrike = me.veto === id; const mineShield = me.shields.includes(id);
-        return <button key={id} disabled={!!res || me.done} className={'cs8-tile' + (sel === id ? ' is-sel' : '') + (dead ? ' is-dead' : '') + (sh ? ' is-shield' : '') + (mineStrike ? ' is-strike' : '') + (mineShield && !res ? ' is-shield' : '')} onClick={() => { buzz(8); setSel(sel === id ? null : id); }}>
-          <Poster id={id} /><i className={'cs8-own cs8-own--' + h.owner[id]}>{tag(id)}</i>
-          {dead && <em className="cs8-x">✕</em>}{(sh || (mineShield && !res)) && <em className="cs8-gold">◆</em>}{mineStrike && !res && <em className="cs8-x">⌖</em>}
-        </button>;
-      })}
+  const mineList = h.grid.filter(mineOrBoth); const theirs = h.grid.filter((id) => h.owner[id] === other);
+  const tk = h.tok[pid]; const spent = Object.values(tk).reduce((n, x) => n + x, 0); const budget = h.budget[pid]; const lefty = budget - spent;
+  const tag = (id: number) => (h.owner[id] === 'AB' ? 'BOTH' : s.players[h.owner[id] as PID].name.slice(0, 6).toUpperCase());
+  const set = (id: number, amt: number) => { buzz(6); send({ t: 'hit', pid, tok: { id, amt } }); };
+  const golden = me.shields[0];
+  if (res) return <div className="cs8-hit">
+    <div className="cs8-hit-top"><span className="cs-orson">THE WAR ROOM</span><b className="cs8-clock">{secs(res.until, now)}s</b></div>
+    <div className="cs8-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+      {h.grid.map((id) => { const dead = res.dead.includes(id); return <div key={id} className={'cs8-tile' + (dead ? ' is-dead' : '')}><Poster id={id} /><i className={'cs8-own cs8-own--' + h.owner[id]}>{tag(id)}</i>{dead && <em className="cs8-x">✕</em>}{!dead && res.shield[id] && <em className="cs8-gold">★</em>}</div>; })}
     </div>
-    {res ? <p className="cs8-say">{res.mocked !== null ? `You BOTH wanted ${BY_ID[res.mocked].t} dead. Shared hatred. How touching.` : res.dead.length ? `${res.dead.map((d) => BY_ID[d].t).join(' and ')} ${res.dead.length > 1 ? 'are' : 'is'} dead.` : 'Nobody died. Cowards.'}{res.blocked.length ? ' A Gold Shield turned a Veto into confetti.' : ''}</p>
-      : <>
-        <p className="cs8-sel">{sel === null ? 'Tap a title, then strike it or shield it.' : <><b>{BY_ID[sel].t}</b> · {BY_ID[sel].y} · {BY_ID[sel].r.toFixed(1)}{BY_ID[sel].rt != null ? ` · RT ${BY_ID[sel].rt}%` : ''}</>}</p>
-        <div className="cs-row">
-          <button className="cs-btn cs-btn--no" disabled={me.done || sel === null || mineOrBoth(sel as number)} onClick={() => { send({ t: 'hit', pid, veto: me.veto === sel ? null : sel }); }}>{me.veto !== null ? (me.veto === sel ? 'UNDO STRIKE' : 'MOVE STRIKE') : 'RED STRIKE'}</button>
-          <button className="cs-btn cs-btn--gold" disabled={me.done || sel === null || !mineOrBoth(sel as number)} onClick={() => { send({ t: 'hit', pid, shield: sel }); }}>GOLD SHIELD</button>
-        </div>
-        <button className="cs-btn" disabled={me.done} onClick={() => send({ t: 'hit', pid, done: true })}>{me.done ? 'LOCKED. WAITING...' : 'LOCK IN'}</button>
-      </>}
+    <p className="cs8-say">{res.dead.length ? `${res.dead.map((d) => BY_ID[d].t).join(' and ')} ${res.dead.length > 1 ? 'are' : 'is'} dead.` : 'Nobody was shot. Cowards.'}{Object.keys(res.shield).length ? ` Golden Tickets: ${Object.keys(res.shield).map((id) => BY_ID[Number(id)].t + (res.dead.includes(Number(id)) ? ' (shot dead)' : '')).join(', ')}.` : ''}</p>
+  </div>;
+  return <div className="cs8-hit">
+    <div className="cs8-hit-top"><span className="cs-orson">THE WAR ROOM</span><b className={'cs8-clock' + (left <= 10 ? ' is-hot' : '')}>{left}s</b></div>
+    <div className="cs8-wtabs"><button className={tab === 'mine' ? 'is-on' : ''} onClick={() => setTab('mine')}>MY TITLES · ◈ {lefty} LEFT</button><button className={tab === 'bullet' ? 'is-on' : ''} onClick={() => setTab('bullet')}>SILVER BULLET {me.veto !== null ? '✓' : ''}</button></div>
+    {tab === 'mine' ? <div className="cs8-wlist">
+      {mineList.map((id) => <div key={id} className={'cs8-wrow' + (golden === id ? ' is-gold' : '')}>
+        <span className="cs8-wt"><b>{clip(BY_ID[id].t, 22)}</b><em>{BY_ID[id].y} · {BY_ID[id].r.toFixed(1)}{h.owner[id] === 'AB' ? ' · BOTH PICKED' : ''}</em></span>
+        <span className="cs8-wstep"><button disabled={me.done || !(tk[id] > 0)} onClick={() => set(id, (tk[id] || 0) - 5)}>−</button><b>{tk[id] || 0}</b><button disabled={me.done || lefty <= 0} onClick={() => set(id, (tk[id] || 0) + 5)}>+</button></span>
+        <button className={'cs8-star' + (golden === id ? ' is-on' : '')} disabled={me.done} onClick={() => { buzz(8); send({ t: 'hit', pid, shield: id }); }} title="Golden Ticket">★</button>
+      </div>)}
+    </div> : <div className="cs8-wlist cs8-wbul">
+      <p className="cs8-sel">{me.veto === null ? `Pick one of ${s.players[other].name}'s titles to shoot. It dies before the bracket.` : `Loaded: ${BY_ID[me.veto].t}. Tap again to unload.`}</p>
+      <div className="cs8-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>{theirs.map((id) => <button key={id} disabled={me.done} className={'cs8-tile' + (me.veto === id ? ' is-strike' : '')} onClick={() => { buzz(8); send({ t: 'hit', pid, veto: me.veto === id ? null : id }); setSel(id); }}><Poster id={id} />{me.veto === id && <em className="cs8-x">⌖</em>}</button>)}</div>
+      {sel !== null && theirs.includes(sel) && <p className="cs8-sel"><b>{BY_ID[sel].t}</b> · {BY_ID[sel].y} · {BY_ID[sel].r.toFixed(1)}</p>}
+    </div>}
+    <p className="cs8-sel">{golden !== undefined ? `★ Golden Ticket: ${clip(BY_ID[golden].t, 24)} (seed 1)` : '★ = your Golden Ticket, locked as seed 1.'}</p>
+    <button className="cs-btn" disabled={me.done} onClick={() => send({ t: 'hit', pid, done: true })}>{me.done ? 'LOCKED. WAITING...' : 'LOCK IN'}</button>
   </div>;
 }
 
 export const RNDN = ['ROUND OF 16', 'QUARTERFINAL', 'SEMIFINAL', 'THE FINAL'];
-const OFF = [0, 8, 12, 14];
+const OFFR = (b: { base: number }, r: number) => [0, b.base, b.base + 4, b.base + 6][r - 1];
 /** Full 16-seed tree: one column per round, strikethrough on the eliminated, green on the progressed. */
 export function BracketMap({ s, onClose, tv }: { s: State; onClose?: () => void; tv?: boolean }) {
   const b = s.b8; if (!b) return null;
-  const cell = (id: number | null, m: M8) => id === null ? <span className="cs8-tc is-tbd">TBD</span> : <span className={'cs8-tc' + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')}><i>{b.seed[id]}</i> {clip(BY_ID[id].t, tv ? 22 : 12)}{b.shield[id] ? ' ◆' : ''}</span>;
+  const cell = (id: number | null, m: M8) => id === null ? <span className="cs8-tc is-tbd">TBD</span> : <span className={'cs8-tc' + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')}><i>{b.conf?.[id] ? (b.conf[id].p === 'A' ? 'A' : 'B') + b.conf[id].rank : b.seed[id]}</i> {clip(BY_ID[id].t, tv ? 22 : 13)}{b.shield[id] ? ' ★' : ''}</span>;
   const cur = b.show ? (b.show.kind === 'round' ? b.cur + 1 : -1) : b.cur;
   return <div className={'cs8-tree' + (tv ? ' is-tv' : '')} onClick={onClose}>
-    {[1, 2, 3, 4].map((r) => <div key={r} className="cs8-tcol"><b>{['R16', 'QF', 'SF', 'FINAL'][r - 1]}</b>
+    {[1, 2, 3, 4].filter((r) => b.matches.some((m) => m.round === r)).map((r) => <div key={r} className="cs8-tcol"><b>{['R16', 'QF', 'SF', 'FINAL'][r - 1]}</b>
       {b.matches.filter((m) => m.round === r).map((m) => <div key={m.id} className={'cs8-tm' + (cur === m.slot ? ' is-cur' : '')}>{cell(m.a, m)}{cell(m.b, m)}</div>)}</div>)}
   </div>;
 }
@@ -68,7 +74,7 @@ export function CallsPage({ s, now, tv, pid, send }: { s: State; now: number; tv
   const st = (p: PID) => (ack[p] ? 'locked' : 'thinking');
   return <div className={'cs8-page' + (tv ? ' is-tv' : '')}>
     <div className="cs8-top"><span className="cs-orson">{champ ? 'CALL THE CHAMPION' : `CALL THE ${RNDN[sh.round - 1].toUpperCase()}`}</span><b className="cs8-clock">{left}s</b></div>
-    <p className="cs8-sub">{champ ? 'Who wins it all? Right call earns a Silver Bullet next game. Wrong: Orson laughs.' : `Right calls pay ${R.CALL_BONUS[sh.round - 1]} tokens each, streaks pay extra.`} A prediction, not a wager.</p>
+    <p className="cs8-sub">{champ ? 'Who wins it all? Right call earns +10 hype tokens next game. Wrong: Orson laughs.' : `Right calls pay ${R.CALL_BONUS[sh.round - 1]} tokens each, streaks pay extra.`} A prediction, not a wager.</p>
     {tv || !me ? <div className="cs8-explain"><div className="cs8-ex is-big"><b>{nm('A')}: {st('A')} · {nm('B')}: {st('B')}</b><p>{champ ? 'Phones out. Pick the film you think wins the whole bracket.' : 'Phones out. Pick a winner for each bout.'}</p></div></div>
     : champ ? <div className="cs8-calls cs8-calls-champ">{ranked.map((id) => <button key={id} disabled={dn} className={'cs8-cb' + (cl.champ[me] === id ? ' is-pick' : '')} onClick={() => { buzz(8); send?.({ t: 'champ', pid: me, id }); }}><i>{b.seed[id]}</i>{clip(BY_ID[id].t, 13)}</button>)}</div>
     : <div className="cs8-calls">{ms.map((m) => <div key={m.slot} className="cs8-cr">{[m.a, m.b].map((id) => id !== null && <button key={id} disabled={dn} className={'cs8-cb' + (cl.pick[me][m.slot] === id ? ' is-pick' : '')} onClick={() => { buzz(8); send?.({ t: 'call', pid: me, slot: m.slot, id }); }}><i>{b.seed[id]}</i>{clip(BY_ID[id].t, 15)}</button>)}</div>)}</div>}
@@ -81,7 +87,7 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
   const b = s.b8; const sh = b?.show; if (!b || !sh) return null;
   if (sh.kind === 'champ' || sh.kind === 'calls') return <CallsPage s={s} now={now} tv={tv} pid={pid} send={send} />;
   const owner = s.hit?.owner || {};
-  const tag = (id: number) => (owner[id] === 'O' ? 'ORSON' : owner[id] === 'AB' ? 'BOTH' : owner[id] ? s.players[owner[id] as PID].name.slice(0, 5).toUpperCase() : '');
+  const tag = (id: number) => (b.conf?.[id] ? `${s.players[b.conf[id].p].name.slice(0, 5).toUpperCase()} #${b.conf[id].rank}${b.conf[id].golden ? ' ★' : ''}` : (owner[id] === 'O' ? 'ORSON' : ''));
   const ranked = Object.keys(b.seed).map(Number).sort((x, y) => b.seed[x] - b.seed[y]);
   const left = secs(sh.until, now); const rem = sh.until - now; const hold = sh.kind === 'explain' || sh.kind === 'rank';
   const stage: 'explain' | 'rank' | 'tree' = sh.kind === 'explain' ? 'explain' : sh.kind === 'rank' ? 'rank' : 'tree';
@@ -90,16 +96,17 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
   const explainNext = endRound && rem <= 7000;
   const ups = b.upsets.filter((u) => b.matches.some((m) => m.round === done && m.winner === u.winner && (m.a === u.loser || m.b === u.loser)));
   const title = (sh.kind === 'seed' || hold) ? (stage === 'explain' ? 'HOW THE BRACKET WORKS' : stage === 'rank' ? 'THE SEEDS ARE IN' : 'THE BRACKET') : explainNext ? 'NEXT UP' : endRound ? `${RNDN[done - 1]} COMPLETE` : `UP NEXT · ${RNDN[(nxt as M8).round - 1]}`;
-  const sub = (sh.kind === 'seed' || hold) ? (stage === 'rank' ? 'Ranked by RT, TMDB and how fast you grabbed it. Take your time.' : stage === 'tree' ? 'Sixteen enter. One survives. Round of 16 starts now.' : '') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances.` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
+  const sub = (sh.kind === 'seed' || hold) ? (stage === 'rank' ? 'Ranked by hype tokens. Golden Tickets lead each conference. Take your time.' : stage === 'tree' ? 'Eight enter. One survives. The quarterfinals start now.' : '') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances.` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
   const tvSeries = s.kind === 'series';
   return <div className={'cs8-page' + (tv ? ' is-tv' : '') + (endRound && !explainNext ? ' cs8-flash' : '')}>
     <div className="cs8-top"><span className="cs-orson">{title}</span>{!hold && <b className="cs8-clock">{left}s</b>}</div>
     {sub && <p className="cs8-sub">{sub}</p>}
     {stage === 'explain' && <div className="cs8-explain">
-      <div className="cs8-ex"><b>1 · THE SEEDING</b><p>Sixteen titles survived the Hit List. I ranked them: {tvSeries ? 'TMDB score 70%' : 'Rotten Tomatoes 40%, TMDB 30%'}, and how fast you grabbed it, {tvSeries ? '30%' : '30%'}. Number one is the one you both rated highest.</p></div>
-      <div className="cs8-ex"><b>2 · THE PATH</b><p>#1 plays #16, #2 plays #15, and so on. The top two seeds cannot meet until the final. Win four bouts and your title is tonight&apos;s film.</p></div>
-      <div className="cs8-ex"><b>3 · WHAT HAPPENS NEXT</b><p>Round of 16 is a blitz: one tap, eight seconds, free. From the quarters you stake tokens, back an upset for double, and bust a title you hate.</p></div>
-      <div className="cs8-ex"><b>4 · THE BRACKET RETURNS</b><p>After every bout we come back here. Green means through. Struck out means gone.</p></div>
+      <div className="cs8-ex"><b>1 · THE WAR ROOM</b><p>You spent 100 hype tokens, held a Golden Ticket and loaded a Silver Bullet. Four titles each survived. Two conferences, one winner.</p></div>
+      <div className="cs8-ex"><b>2 · THE SEEDING</b><p>Pure hype. Your Golden Ticket is your seed 1, the rest rank by tokens spent. Nobody else decides this, so blame yourselves.</p></div>
+      <div className="cs8-ex"><b>3 · THE PATH</b><p>Quarterfinals cross the conferences: your #1 faces their #4, your #2 faces their #3. Win three bouts and your title is tonight&apos;s film.</p></div>
+      <div className="cs8-ex"><b>4 · THE BIDS</b><p>Every bout is a tug of war. Stake wager tokens from 1 up. Back the winner and the stake returns, back an upset and it returns double. A Golden Ticket wins any dead heat.</p></div>
+      <div className="cs8-ex"><b>5 · THE BRACKET RETURNS</b><p>After every bout we come back here. Green means through. Struck out means gone.</p></div>
     </div>}
     {stage === 'rank' && <div className="cs8-rank">{ranked.map((id) => <div key={id} className="cs8-rk"><i>{b.seed[id]}</i><b>{clip(BY_ID[id].t, tv ? 30 : 17)}</b><em>{tag(id)}</em></div>)}</div>}
     {stage === 'tree' && !explainNext && <BracketMap s={s} tv={tv} />}
@@ -120,14 +127,14 @@ export function BracketScreen({ s, pid, send, now }: P) {
 
   const upsetNow = m.status === 'RESOLVED' && m.winner !== null && b.upsets.some((u) => u.winner === m.winner && u.gap >= R.UPSET_GAP && (u.loser === m.a || u.loser === m.b));
   return <div className={'cs8-br' + (m.status === 'RESOLVED' ? (upsetNow ? ' cs8-flash-up' : ' cs8-flash') : '') + (m.round === 4 ? ' cs8-final' : '')}>
-    <div className="cs8-top"><span className="cs-orson">{RNDN[m.round - 1]}{m.round < 4 ? ` · ${m.slot - OFF[m.round - 1] + 1}/${[8, 4, 2][m.round - 1]}` : ''}{m.round === 1 && m.endsAt && m.status === 'VOTING_ACTIVE' ? ` · ${secs(m.endsAt, now)}s` : ''}</span><button className="cs8-mapbtn" onClick={() => setMap(true)}>BRACKET</button></div>
-    <p className="cs8-tokc">◈ YOU {b.purse[pid]} TOKENS · {s.players[other].name} {b.purse[other]}{m.round === 1 ? ' · blitz is free' : ''}</p>
+    <div className="cs8-top"><span className="cs-orson">{RNDN[m.round - 1]}{m.round < 4 ? ` · ${m.slot - OFFR(b, m.round) + 1}/${b.matches.filter((x) => x.round === m.round).length}` : ''}{m.round === 1 && m.endsAt && m.status === 'VOTING_ACTIVE' ? ` · ${secs(m.endsAt, now)}s` : ''}</span><button className="cs8-mapbtn" onClick={() => setMap(true)}>BRACKET</button></div>
+    <p className="cs8-tokc">◈ YOU {b.purse[pid]} WAGER TOKENS · {s.players[other].name} {b.purse[other]}{m.round === 1 ? ' · blitz is free' : ''}</p>
     {map && <div className="cs-sheet" onClick={() => setMap(false)}><div className="cs-sheet-in"><BracketMap s={s} /></div></div>}
     {m.status === 'LOCKED_FOR_VETO' && <div className="cs8-glitch"><b>ORSON IS RUINING YOUR BRACKET...</b></div>}
     {m.trivia ? <Trivia s={s} pid={pid} send={send} now={now} m={m} /> : <>
       <div className="cs8-vs">{[a, c].map((id, i) => { const mine = m.wg[pid]?.id === id; const upset = (i === 0 ? m.seedA > m.seedB : m.seedB > m.seedA) && Math.abs(m.seedA - m.seedB) >= R.UPSET_GAP;
         return <button key={id} className={'cs8-card' + (pick === id || mine ? ' is-pick' : '') + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')} disabled={m.status !== 'VOTING_ACTIVE' || !!m.wg[pid]} onClick={() => { buzz(8); if (m.round === 1) send({ t: 'w8', pid, id, tok: 0 }); else setPick(id); }}>
-          <i className="cs8-seed">#{b.seed[id]}</i>{b.shield[id] && <i className="cs8-sb">◆ +20%</i>}{upset && <i className="cs8-up">x{R.UPSET_MULT}</i>}
+          <i className="cs8-seed">#{b.seed[id]}</i>{b.shield[id] && <i className="cs8-sb">★ GOLDEN</i>}{upset && <i className="cs8-up">x{R.UPSET_MULT}</i>}
           <Poster id={id} /><b>{clip(BY_ID[id].t, 20)}</b>
           <span>{BY_ID[id].y} · TMDB {BY_ID[id].r.toFixed(1)}{BY_ID[id].rt != null ? ` · RT ${BY_ID[id].rt}%` : ''}</span>
           <p>{clip(pitchOf(s, id), 96)}</p></button>; })}</div>

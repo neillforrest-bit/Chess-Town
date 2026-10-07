@@ -353,3 +353,23 @@ em{font-style:normal;color:var(--gold)}
 .cs8-cb.is-pick{border-color:#f5c542;background:#f5c54230}
 .cs8-cb:disabled{opacity:.75}
 .cs8-called{margin:0;text-align:center;color:#7dffa0;font-weight:800;letter-spacing:.12em;font-size:.72rem;animation:cs8in .4s ease-out both}
+
+.cs8-wtabs{display:grid;grid-template-columns:1.4fr 1fr;gap:4px}
+.cs8-wtabs button{padding:6px 4px;border-radius:8px;border:1.5px solid #ffffff30;background:#ffffff0c;color:#fff;font-family:inherit;font-weight:800;font-size:.62rem;letter-spacing:.06em}
+.cs8-wtabs button.is-on{border-color:#f5c542;background:#f5c54226;color:#f5c542}
+.cs8-wlist{display:flex;flex-direction:column;gap:3px;width:100%}
+.cs8-wrow{display:grid;grid-template-columns:1fr auto auto;gap:5px;align-items:center;padding:2px 5px;border-radius:8px;border:1px solid #ffffff22;background:#ffffff08;min-height:31px}
+.cs8-wrow.is-gold{border-color:#f5c542;background:#f5c54220}
+.cs8-wt{display:flex;flex-direction:column;min-width:0}.cs8-wt b{font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cs8-wt em{font-style:normal;font-size:.52rem;color:#bbb}
+.cs8-wstep{display:flex;align-items:center;gap:3px}.cs8-wstep b{min-width:22px;text-align:center;font-size:.76rem;color:#f5c542}
+.cs8-wstep button{width:24px;height:24px;border-radius:6px;border:1px solid #ffffff40;background:#ffffff14;color:#fff;font-size:.9rem;line-height:1}
+.cs8-wstep button:disabled{opacity:.3}
+.cs8-star{width:26px;height:26px;border-radius:50%;border:1.5px solid #ffffff40;background:transparent;color:#888;font-size:.9rem}
+.cs8-star.is-on{border-color:#f5c542;background:#f5c542;color:#1a1420}
+.cs8-wbul .cs8-tile{aspect-ratio:2/3}
+.cs8-wlist{gap:2px}.cs8-wrow{min-height:26px;padding:1px 5px}.cs8-wstep button{width:22px;height:22px}.cs8-star{width:23px;height:23px;font-size:.8rem}.cs8-wt b{font-size:.66rem}.cs8-wt em{font-size:.5rem;line-height:1}.cs8-wtabs button{padding:4px}
+.cs8-hit{gap:4px}
+.cs8-explain:has(.cs8-ex:nth-child(5)) .cs8-ex{padding:6px 9px}
+.cs8-explain:has(.cs8-ex:nth-child(5)) .cs8-ex p{font-size:11.5px;line-height:1.25}
+.cs8-explain:has(.cs8-ex:nth-child(5)) .cs8-ex b{font-size:10px;margin-bottom:1px}
+.cs8-explain:has(.cs8-ex:nth-child(5)) .cs8-ex:nth-child(5){animation-delay:3.6s}
