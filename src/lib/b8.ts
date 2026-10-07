@@ -3,7 +3,7 @@
 import { BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
-  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, CHAMP_MS: 20000, CALLS_MS: [26000, 18000, 12000, 9000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 9000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, CHAMP_MS: 20000, CALLS_MS: [26000, 18000, 12000, 9000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
   PURSE: 50, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
@@ -15,7 +15,7 @@ export type M8 = {
   id: string; round: 1 | 2 | 3 | 4; slot: number; a: number | null; b: number | null; seedA: number; seedB: number;
   status: 'PENDING' | 'VOTING_ACTIVE' | 'LOCKED_FOR_VETO' | 'RESOLVED';
   wg: { A?: { id: number; tok: number }; B?: { id: number; tok: number } };
-  winner: number | null; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[];
+  winner: number | null; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
 };
 export type B8 = {
   matches: M8[]; cur: number; seed: Record<number, number>; shield: Record<number, PID>; purse: { A: number; B: number };
@@ -126,7 +126,8 @@ const say8 = (s: State, line: string, mood: 'smug' | 'shock' | 'glee' | 'scheme'
 const NAMES = ['Round of 16', 'Quarterfinal', 'Semifinal', 'The Final'];
 /** Matchup commentary: written from the seeds, ratings and shields so every bout gets its own billing. */
 function introLine(s: State, m: M8): { line: string; mood: 'smug' | 'scheme' } | null {
-  const b = s.b8; if (!b || m.a === null || m.b === null) return null; const A = BY_ID[m.a], B = BY_ID[m.b]; const gap = Math.abs(m.seedA - m.seedB);
+  const b = s.b8; if (!b || m.a === null || m.b === null) return null;
+  if (m.tape) return { line: m.tape, mood: m.round === 4 ? 'scheme' : 'smug' }; const A = BY_ID[m.a], B = BY_ID[m.b]; const gap = Math.abs(m.seedA - m.seedB);
   const hi = m.seedA < m.seedB ? A : B, lo = hi === A ? B : A; const sh = b.shield[m.a] || b.shield[m.b];
   const pool = m.round === 4 ? [`THE FINAL. ${A.t} against ${B.t}. Everything you have ever agreed on comes down to this.`, `Two titles left. One of you is about to be very smug. ${A.t} versus ${B.t}.`]
     : gap >= 8 ? [`#${m.seedA < m.seedB ? m.seedA : m.seedB} ${hi.t} against #${Math.max(m.seedA, m.seedB)} ${lo.t}. David and Goliath, except David has a worse trailer.`, `${lo.t} was not supposed to be here. Neither was I, but here we are.`]
@@ -212,6 +213,8 @@ export function callIntent(s: State, it: { pid: PID; slot: number; id: number })
 }
 const callsShow = (b: B8, round: number, now: number) => { b.ack = { A: false, B: false }; b.show = { until: now + R.CALLS_MS[round - 1], kind: 'calls', round }; };
 const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; intro8(s, nx); };
+export function tapeIntent(s: State, it: { slot: number; line: string }) { const m = s.b8?.matches[it.slot]; if (!m || m.tape || !it.line) return; m.tape = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 240); }
+
 export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || !['explain', 'rank', 'champ', 'calls'].includes(b.show.kind)) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }
 
 export function bustIntent(s: State, it: { pid: PID; id: number }, now: number) {

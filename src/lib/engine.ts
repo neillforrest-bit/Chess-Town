@@ -120,6 +120,13 @@ export async function effects(code: string, origin: string): Promise<void> {
       if (d && d.map) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'pitches', map: { ...fb, ...d.map } }); } else await ap({ t: 'pitches', map: fb });
     })());
   }
+  // Tale of the tape: one pre-fight broadcast line per matchup, generated as soon as both titles are known (templated line stays as fallback)
+  if (s.phase === 'bracket' && s.b8) for (const m of s.b8.matches) if (m.a !== null && m.b !== null && !m.tape && m.status !== 'RESOLVED') ps.push((async () => {
+    const b8 = s.b8!; const c = await claim(code, 'tape' + m.id + m.a + m.b); if (!c.ok) return;
+    const side = (id: number) => { const cf = b8.conf[id]; const ptxt = cf ? `${s.players[cf.p].name} (${cf.golden ? 'GOLDEN TICKET CHAMPION' : 'conference seed #' + cf.rank})` : 'a player'; return `${ptxt}: "${BY_ID[id].t}" (${BY_ID[id].y}, TMDB ${BY_ID[id].r.toFixed(1)}), hype tokens invested: ${cf ? cf.tok : 0}`; };
+    const d = await orson(origin, { type: 'quip', names, roast: s.roast, event: `Pre-fight broadcast for a ${['', 'blitz', 'quarterfinal', 'semifinal', 'FINAL'][m.round]} grudge match. ${side(m.a as number)}. VERSUS ${side(m.b as number)}.`, ctx: 'Maximum 2 sentences. Contrast their taste directly. Treat a conference seed #1 or Golden Ticket pick as a king to be guillotined and a seed #4 pick as a desperate underdog. Never corny cheerleading: you want domestic cinematic chaos. Use only the facts supplied, invent no plot.' }, 20000);
+    if (d && d.line) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'tape', slot: m.slot, line: d.line }); }
+  })());
   // Bracket Buster: the screen is glitch-locked while Orson writes the roast; then the wildcard is injected
   if (s.phase === 'bracket' && s.b8) { const m = s.b8.matches[s.b8.cur]; if (m && m.status === 'LOCKED_FOR_VETO' && m.busting) { const bu = m.busting; ps.push((async () => {
     const c = await claim(code, 'bust' + m.id + bu.at); if (!c.ok) return;

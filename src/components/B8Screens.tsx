@@ -95,7 +95,7 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
   const nxt = sh.kind === 'round' ? b.matches[b.cur + 1] : null; const endRound = !!nxt && nxt.round !== done; const lm = b.matches[b.cur];
   const explainNext = endRound && rem <= 7000;
   const ups = b.upsets.filter((u) => b.matches.some((m) => m.round === done && m.winner === u.winner && (m.a === u.loser || m.b === u.loser)));
-  const title = (sh.kind === 'seed' || hold) ? (stage === 'explain' ? 'HOW THE BRACKET WORKS' : stage === 'rank' ? 'THE SEEDS ARE IN' : 'THE BRACKET') : explainNext ? 'NEXT UP' : endRound ? `${RNDN[done - 1]} COMPLETE` : `UP NEXT · ${RNDN[(nxt as M8).round - 1]}`;
+  const title = (sh.kind === 'seed' || hold) ? (stage === 'explain' ? 'HOW THE BRACKET WORKS' : stage === 'rank' ? 'THE SEEDS ARE IN' : 'MATCHUP ' + Math.min(4, Math.floor((R.SEED_MS - rem) / 2600) + 1) + ' LOCKED') : explainNext ? 'NEXT UP' : endRound ? `${RNDN[done - 1]} COMPLETE` : `UP NEXT · ${RNDN[(nxt as M8).round - 1]}`;
   const sub = (sh.kind === 'seed' || hold) ? (stage === 'rank' ? 'Ranked by hype tokens. Golden Tickets lead each conference. Take your time.' : stage === 'tree' ? 'Eight enter. One survives. The quarterfinals start now.' : '') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances.` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
   const tvSeries = s.kind === 'series';
   return <div className={'cs8-page' + (tv ? ' is-tv' : '') + (endRound && !explainNext ? ' cs8-flash' : '')}>
@@ -109,10 +109,11 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
       <div className="cs8-ex"><b>5 · THE BRACKET RETURNS</b><p>After every bout we come back here. Green means through. Struck out means gone.</p></div>
     </div>}
     {stage === 'rank' && <div className="cs8-rank">{ranked.map((id) => <div key={id} className="cs8-rk"><i>{b.seed[id]}</i><b>{clip(BY_ID[id].t, tv ? 30 : 17)}</b><em>{tag(id)}</em></div>)}</div>}
-    {stage === 'tree' && !explainNext && <BracketMap s={s} tv={tv} />}
+    {sh.kind === 'seed' && <div className="cs8-reveal">{b.matches.filter((m) => m.round === 2).map((m, i) => { const step = Math.floor((R.SEED_MS - rem) / 2600); const on = i <= step; return <div key={m.id} className={'cs8-rv' + (on ? ' is-on' : '')}><span className="is-a"><i>{b.conf[m.a as number] ? `${s.players[b.conf[m.a as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.a as number].rank}${b.conf[m.a as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.a as number].t, 17)}</b></span><em>VS</em><span className="is-b"><i>{b.conf[m.b as number] ? `${s.players[b.conf[m.b as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.b as number].rank}${b.conf[m.b as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.b as number].t, 17)}</b></span></div>; })}</div>}
+    {sh.kind !== 'seed' && stage === 'tree' && !explainNext && <BracketMap s={s} tv={tv} />}
     {explainNext && nxt && <div className="cs8-explain"><div className="cs8-ex is-big"><b>{ROUND_INFO[nxt.round].name}</b><p>{ROUND_INFO[nxt.round].says}</p></div></div>}
     {hold && (() => { const a = b.ack || { A: false, B: false }; const me = pid; const done = me ? a[me] : false; return tv || !me ? <p className="cs8-sayline">{s.players.A.name}: {a.A ? 'ready' : 'reading'} · {s.players.B.name}: {a.B ? 'ready' : 'reading'}</p> : <><button className="cs-btn cs-btn--gold" disabled={done} onClick={() => send?.({ t: 'ack', pid: me })}>{done ? 'WAITING FOR ' + s.players[me === 'A' ? 'B' : 'A'].name.toUpperCase() + '...' : stage === 'explain' ? "GOT IT, LET'S GO" : 'READY FOR THE BRACKET'}</button></>; })()}
-    {stage === 'tree' && !endRound && sh.line && <p className="cs8-sayline">{sh.line}</p>}
+    {stage === 'tree' && !endRound && (nxt?.tape || sh.line) && <p className="cs8-sayline">{nxt?.tape || sh.line}</p>}
   </div>;
 }
 
