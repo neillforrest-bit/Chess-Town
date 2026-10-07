@@ -3,7 +3,7 @@
 import { BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
-  HIT_MS: 15000, HIT_REVEAL_MS: 5200, GRID_EACH: 8, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, REVEAL_MS: 14000, SEED_MS: 9000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  HIT_MS: 15000, HIT_REVEAL_MS: 5200, GRID_EACH: 8, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, CHAMP_MS: 20000, CALLS_MS: [26000, 18000, 12000, 9000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 9000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
   PURSE: 50, FREE_WEIGHT: 10, OVERDRIVE: 1.2, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
@@ -15,14 +15,15 @@ export type M8 = {
   id: string; round: 1 | 2 | 3 | 4; slot: number; a: number | null; b: number | null; seedA: number; seedB: number;
   status: 'PENDING' | 'VOTING_ACTIVE' | 'LOCKED_FOR_VETO' | 'RESOLVED';
   wg: { A?: { id: number; tok: number }; B?: { id: number; tok: number } };
-  winner: number | null; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number;
+  winner: number | null; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[];
 };
 export type B8 = {
   matches: M8[]; cur: number; seed: Record<number, number>; shield: Record<number, PID>; purse: { A: number; B: number };
   buster: { A: boolean; B: boolean }; upsets: { winner: number; loser: number; gap: number }[]; vetoLog: { by: PID; id: number; score: number; line?: string }[];
   wilds: number[]; backed: { A: number; B: number }; bonus: { A: number; B: number };
-  show?: { until: number; kind: 'explain' | 'rank' | 'seed' | 'round'; round: number; line?: string } | null; ack?: { A: boolean; B: boolean };
+  show?: { until: number; kind: 'explain' | 'rank' | 'seed' | 'champ' | 'calls' | 'round'; round: number; line?: string } | null; ack?: { A: boolean; B: boolean }; calls?: Calls;
 };
+export type Calls = { champ: { A?: number; B?: number }; pick: { A: Record<number, number>; B: Record<number, number> }; score: { A: number; B: number }; streak: { A: number; B: number } };
 export type Reroll = { stage: 'off' | 'ask' | 'done'; votes: { A?: boolean; B?: boolean }; used: boolean; to: number | null };
 
 const sc = (m: Movie) => (m.rt ?? m.r * 10) / 100;
@@ -109,7 +110,7 @@ export function buildBracket(s: State, now: number) {
   for (let k = 0; k < 4; k++) ms.push(mk('q' + k, 2, 8 + k, null, null));
   ms.push(mk('s0', 3, 12, null, null), mk('s1', 3, 13, null, null), mk('f1', 4, 14, null, null));
   const bonus = s.b8Bonus || { A: 0, B: 0 };
-  s.b8 = { matches: ms, cur: 0, seed, shield: res.shield, purse: { A: R.PURSE, B: R.PURSE }, buster: { A: true, B: true }, upsets: [], vetoLog: (s as { _vl?: B8['vetoLog'] })._vl || [], wilds: surv.filter((x) => h.owner[x] === 'O'), backed: { A: 0, B: 0 }, bonus, show: { until: now + R.HOLD_MS, kind: 'explain', round: 0 }, ack: { A: false, B: false } };
+  s.b8 = { matches: ms, cur: 0, seed, shield: res.shield, purse: { A: R.PURSE, B: R.PURSE }, buster: { A: true, B: true }, upsets: [], vetoLog: (s as { _vl?: B8['vetoLog'] })._vl || [], wilds: surv.filter((x) => h.owner[x] === 'O'), backed: { A: 0, B: 0 }, bonus, show: { until: now + R.HOLD_MS, kind: 'explain', round: 0 }, ack: { A: false, B: false }, calls: { champ: {}, pick: { A: {}, B: {} }, score: { A: 0, B: 0 }, streak: { A: 0, B: 0 } } };
   delete (s as { _vl?: unknown })._vl;
   s.pool = ranked; s.phase = 'bracket';
   s.log.unshift(`Bracket set: ${BY_ID[at(1)].t} is the number one seed.`);
@@ -186,11 +187,26 @@ function finish(s: State, m: M8, winner: number, via: string, now: number) {
   for (const p of ['A', 'B'] as PID[]) { const w = m.wg[p]; if (w && w.id === winner) { b.backed[p]++; if (m.round > 1) b.purse[p] += w.tok * mult; } }
   if (BY_ID[winner] && b.wilds.includes(winner)) s.stats.wildWins++;
   s.log.unshift(`${BY_ID[winner].t} beats ${BY_ID[loser].t} (${via}).${gap >= R.UPSET_GAP ? ' UPSET!' : ''}`);
+  const cl = b.calls; let champMock = '';
+  if (cl) for (const p of ['A', 'B'] as PID[]) {
+    const pk = cl.pick[p][m.slot];
+    if (pk !== undefined) { if (pk === winner) { cl.streak[p]++; const bon = R.CALL_BONUS[m.round - 1] + (cl.streak[p] >= 3 ? 1 : 0); b.purse[p] += bon; cl.score[p] += bon; m.calledBy = [...(m.calledBy || []), p]; } else cl.streak[p] = 0; }
+    if (cl.champ[p] === loser) champMock += `${s.players[p].name} called ${BY_ID[loser].t} to win it all. It is dead. `;
+    if (m.round === 4 && cl.champ[p] === winner) { s.b8Bonus = { ...(s.b8Bonus || { A: 0, B: 0 }), [p]: ((s.b8Bonus || { A: 0, B: 0 })[p] || 0) + 1 }; s.log.unshift(`${s.players[p].name} called the champion. Silver Bullet next game.`); }
+  }
+  if (champMock) say8(s, champMock + 'Weep quietly.', 'glee'); else
   if (gap >= R.UPSET_GAP) say8(s, `UPSET! #${sw} ${BY_ID[winner].t} knocks out #${sl} ${BY_ID[loser].t}. The bracket weeps. I am delighted.`, 'glee');
-  else say8(s, `${BY_ID[winner].t} advances. ${gap > 0 ? 'Mild upset.' : 'The seeding holds.'} ${BY_ID[loser].t} goes quietly.`, 'smug');
+  if (!champMock && gap < R.UPSET_GAP) say8(s, `${BY_ID[winner].t} advances. ${gap > 0 ? 'Mild upset.' : 'The seeding holds.'} ${BY_ID[loser].t} goes quietly.`, 'smug');
 }
 
-export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || (b.show.kind !== 'explain' && b.show.kind !== 'rank')) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }
+export function champIntent(s: State, it: { pid: PID; id: number }) { const b = s.b8; if (!b || !b.calls || b.show?.kind !== 'champ' || b.ack?.[it.pid] || b.seed[it.id] === undefined) return; b.calls.champ[it.pid] = it.id; }
+export function callIntent(s: State, it: { pid: PID; slot: number; id: number }) {
+  const b = s.b8; const sh = b?.show; if (!b || !b.calls || !sh || sh.kind !== 'calls' || b.ack?.[it.pid]) return;
+  const m = b.matches[it.slot]; if (!m || m.round !== sh.round || (it.id !== m.a && it.id !== m.b)) return; b.calls.pick[it.pid][it.slot] = it.id;
+}
+const callsShow = (b: B8, round: number, now: number) => { b.ack = { A: false, B: false }; b.show = { until: now + R.CALLS_MS[round - 1], kind: 'calls', round }; };
+const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; intro8(s, nx); };
+export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || !['explain', 'rank', 'champ', 'calls'].includes(b.show.kind)) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }
 
 export function bustIntent(s: State, it: { pid: PID; id: number }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
@@ -224,13 +240,15 @@ export function tick8(s: State, now: number) {
   }
   const b = s.b8; if (!b || s.phase !== 'bracket') return;
   if (b.show) {
-    const wait = b.show.kind === 'explain' || b.show.kind === 'rank';
-    if (wait ? !(b.ack && b.ack.A && b.ack.B) && now < b.show.until : now < b.show.until) return;
+    const kd = b.show.kind; const wait = kd === 'explain' || kd === 'rank'; const early = (wait || kd === 'champ' || kd === 'calls') && !!b.ack && b.ack.A && b.ack.B;
+    if (!early && now < b.show.until) return;
     if (b.show.kind === 'explain') { b.ack = { A: false, B: false }; b.show = { until: now + R.HOLD_MS, kind: 'rank', round: 0 }; return; }
     if (b.show.kind === 'rank') { b.show = { until: now + R.SEED_MS, kind: 'seed', round: 0 }; return; }
-    const k = b.show; b.show = null; if (k.kind === 'round') b.cur++;
-    const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS;
-    intro8(s, nx); return;
+    const k = b.show; b.show = null;
+    if (k.kind === 'seed' && b.calls) { b.ack = { A: false, B: false }; b.show = { until: now + R.CHAMP_MS, kind: 'champ', round: 0 }; return; }
+    if (k.kind === 'champ') { callsShow(b, 1, now); return; }
+    if (k.kind === 'round') { b.cur++; const nr = b.matches[b.cur].round; if (nr !== k.round && b.calls) { callsShow(b, nr, now); return; } }
+    startMatch(s, b, now); return;
   }
   const m = b.matches[b.cur]; if (!m) return;
   if (m.status === 'VOTING_ACTIVE' && m.round === 1 && !m.trivia && m.endsAt && now >= m.endsAt) {

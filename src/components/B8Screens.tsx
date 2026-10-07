@@ -60,8 +60,26 @@ const ROUND_INFO: Record<number, { name: string; says: string }> = {
 };
 
 /** Full-screen bracket page: Orson explains the seeding, then the rankings, then the tree after every match. */
+export function CallsPage({ s, now, tv, pid, send }: { s: State; now: number; tv?: boolean; pid?: PID; send?: (i: Intent) => void }) {
+  const b = s.b8; const sh = b?.show; const cl = b?.calls; if (!b || !sh || !cl) return null;
+  const champ = sh.kind === 'champ'; const left = secs(sh.until, now); const ack = b.ack || { A: false, B: false };
+  const ranked = Object.keys(b.seed).map(Number).sort((x, y) => b.seed[x] - b.seed[y]);
+  const ms = b.matches.filter((m) => m.round === sh.round); const me = pid; const dn = me ? ack[me] : true; const nm = (p: PID) => s.players[p].name;
+  const st = (p: PID) => (ack[p] ? 'locked' : 'thinking');
+  return <div className={'cs8-page' + (tv ? ' is-tv' : '')}>
+    <div className="cs8-top"><span className="cs-orson">{champ ? 'CALL THE CHAMPION' : `CALL THE ${RNDN[sh.round - 1].toUpperCase()}`}</span><b className="cs8-clock">{left}s</b></div>
+    <p className="cs8-sub">{champ ? 'Who wins it all? Right call earns a Silver Bullet next game. Wrong: Orson laughs.' : `Right calls pay ${R.CALL_BONUS[sh.round - 1]} tokens each, streaks pay extra.`} A prediction, not a wager.</p>
+    {tv || !me ? <div className="cs8-explain"><div className="cs8-ex is-big"><b>{nm('A')}: {st('A')} · {nm('B')}: {st('B')}</b><p>{champ ? 'Phones out. Pick the film you think wins the whole bracket.' : 'Phones out. Pick a winner for each bout.'}</p></div></div>
+    : champ ? <div className="cs8-calls cs8-calls-champ">{ranked.map((id) => <button key={id} disabled={dn} className={'cs8-cb' + (cl.champ[me] === id ? ' is-pick' : '')} onClick={() => { buzz(8); send?.({ t: 'champ', pid: me, id }); }}><i>{b.seed[id]}</i>{clip(BY_ID[id].t, 13)}</button>)}</div>
+    : <div className="cs8-calls">{ms.map((m) => <div key={m.slot} className="cs8-cr">{[m.a, m.b].map((id) => id !== null && <button key={id} disabled={dn} className={'cs8-cb' + (cl.pick[me][m.slot] === id ? ' is-pick' : '')} onClick={() => { buzz(8); send?.({ t: 'call', pid: me, slot: m.slot, id }); }}><i>{b.seed[id]}</i>{clip(BY_ID[id].t, 15)}</button>)}</div>)}</div>}
+    {!tv && me && <button className="cs-btn cs-btn--gold" disabled={dn} onClick={() => send?.({ t: 'ack', pid: me })}>{dn ? 'LOCKED. WAITING...' : 'LOCK MY CALLS'}</button>}
+    {(cl.score.A > 0 || cl.score.B > 0) && <p className="cs8-sayline">Calls: {nm('A')} {cl.score.A} · {nm('B')} {cl.score.B}</p>}
+  </div>;
+}
+
 export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; tv?: boolean; pid?: PID; send?: (i: Intent) => void }) {
   const b = s.b8; const sh = b?.show; if (!b || !sh) return null;
+  if (sh.kind === 'champ' || sh.kind === 'calls') return <CallsPage s={s} now={now} tv={tv} pid={pid} send={send} />;
   const owner = s.hit?.owner || {};
   const tag = (id: number) => (owner[id] === 'O' ? 'ORSON' : owner[id] === 'AB' ? 'BOTH' : owner[id] ? s.players[owner[id] as PID].name.slice(0, 5).toUpperCase() : '');
   const ranked = Object.keys(b.seed).map(Number).sort((x, y) => b.seed[x] - b.seed[y]);
@@ -114,6 +132,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
           <span>{BY_ID[id].y} · TMDB {BY_ID[id].r.toFixed(1)}{BY_ID[id].rt != null ? ` · RT ${BY_ID[id].rt}%` : ''}</span>
           <p>{clip(pitchOf(s, id), 96)}</p></button>; })}</div>
       <p className="cs8-tuglab">TUG OF WAR · live bids</p><div className="cs8-tug"><i style={{ width: `${Math.round((br.a / Math.max(1, br.a + br.b)) * 100) || 50}%` }} /><span>{Math.round(br.a)}</span><span>{Math.round(br.b)}</span></div>
+      {m.status === 'RESOLVED' && !!m.calledBy?.length && <p className="cs8-called">CALLED IT: {m.calledBy.map((p) => s.players[p].name).join(' + ')}</p>}
       {m.status === 'RESOLVED' ? <p className="cs8-say">{BY_ID[m.winner as number].t} advances. {m.via}.{b.upsets.some((u) => u.winner === m.winner && u.loser === (m.winner === a ? c : a) && u.gap >= R.UPSET_GAP) ? ' UPSET.' : ''}</p>
         : m.wg[pid] ? <p className="cs8-say">Locked. Waiting for {s.players[other].name}.</p>
         : <div className="cs8-act">

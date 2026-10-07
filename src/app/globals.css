@@ -343,3 +343,13 @@ em{font-style:normal;color:var(--gold)}
 .cs8-tuglab{font-size:.6rem;letter-spacing:.14em;color:#f5c542;margin:2px 0 -2px;text-align:center}
 .cs8-tokc{font-size:.66rem;color:#f5c542;font-weight:800;white-space:nowrap}
 .cs8-tokc{text-align:center;margin:0}
+
+.cs8-calls{display:grid;gap:5px;width:100%}
+.cs8-calls-champ{grid-template-columns:repeat(4,1fr)}
+.cs8-cr{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.cs8-cb{position:relative;min-height:34px;padding:4px 3px 4px 18px;border-radius:8px;border:1.5px solid #ffffff30;background:#ffffff0c;color:#fff;font-family:inherit;font-weight:700;font-size:.64rem;line-height:1.1;text-align:left}
+.cs8-calls-champ .cs8-cb{min-height:44px;font-size:.58rem}
+.cs8-cb i{position:absolute;left:3px;top:3px;font-style:normal;font-size:.55rem;color:#f5c542}
+.cs8-cb.is-pick{border-color:#f5c542;background:#f5c54230}
+.cs8-cb:disabled{opacity:.75}
+.cs8-called{margin:0;text-align:center;color:#7dffa0;font-weight:800;letter-spacing:.12em;font-size:.72rem;animation:cs8in .4s ease-out both}
