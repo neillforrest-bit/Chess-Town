@@ -50,11 +50,14 @@ const OFFR = (b: { base: number }, r: number) => [0, b.base, b.base + 4, b.base 
 /** Full 16-seed tree: one column per round, strikethrough on the eliminated, green on the progressed. */
 export function BracketMap({ s, onClose, tv }: { s: State; onClose?: () => void; tv?: boolean }) {
   const b = s.b8; if (!b) return null;
-  const cell = (id: number | null, m: M8) => id === null ? <span className="cs8-tc is-tbd">TBD</span> : <span className={'cs8-tc' + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')}><i>{b.conf?.[id] ? (b.conf[id].p === 'A' ? 'A' : 'B') + b.conf[id].rank : b.seed[id]}</i> {clip(BY_ID[id].t, tv ? 22 : 13)}{b.shield[id] ? ' ★' : ''}</span>;
+  const cell = (id: number | null, m: M8) => { if (id === null) return <span className="cs8-tc is-tbd"><em>TBD</em></span>;
+    const cf = b.conf?.[id]; const who = cf ? s.players[cf.p].name.slice(0, 6).toUpperCase() : '';
+    return <span className={'cs8-tc' + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '') + (cf ? (cf.p === 'A' ? ' is-pa' : ' is-pb') : '')}>
+      <Poster id={id} cls="cs8-tcp" /><span className="cs8-tct"><b>{BY_ID[id].t}</b><i>{who}{cf ? ` #${cf.rank}` : ''}{b.shield[id] ? ' ★' : ''}</i></span></span>; };
   const cur = b.show ? (b.show.kind === 'round' ? b.cur + 1 : -1) : b.cur;
   return <div className={'cs8-tree' + (tv ? ' is-tv' : '')} onClick={onClose}>
-    {[1, 2, 3, 4].filter((r) => b.matches.some((m) => m.round === r)).map((r) => <div key={r} className="cs8-tcol"><b>{['R16', 'QF', 'SF', 'FINAL'][r - 1]}</b>
-      {b.matches.filter((m) => m.round === r).map((m) => <div key={m.id} className={'cs8-tm' + (cur === m.slot ? ' is-cur' : '')}>{cell(m.a, m)}{cell(m.b, m)}</div>)}</div>)}
+    {[1, 2, 3, 4].filter((r) => b.matches.some((m) => m.round === r)).map((r) => <div key={r} className={'cs8-tcol cs8-r' + r}><b>{['ROUND OF 16', 'QUARTERFINALS', 'SEMIFINALS', 'THE FINAL'][r - 1]}</b>
+      <div className="cs8-tms">{b.matches.filter((m) => m.round === r).map((m) => <div key={m.id} className={'cs8-tm' + (cur === m.slot ? ' is-cur' : '')}>{cell(m.a, m)}{cell(m.b, m)}</div>)}</div></div>)}
   </div>;
 }
 
@@ -99,7 +102,7 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
   const sub = (sh.kind === 'seed' || hold) ? (stage === 'rank' ? 'Ranked by hype tokens. Golden Tickets lead each conference. Take your time.' : stage === 'tree' ? 'Eight enter. One survives. The quarterfinals start now.' : '') : !endRound && lm.winner !== null ? `${clip(BY_ID[lm.winner].t, 26)} advances.` : ups.length ? `${ups.length} upset${ups.length > 1 ? 's' : ''}: ${ups.slice(0, 2).map((u) => BY_ID[u.winner].t).join(', ')}` : 'Chalk. Boring. Next.';
   const tvSeries = s.kind === 'series';
   return <div className={'cs8-page' + (tv ? ' is-tv' : '') + (endRound && !explainNext ? ' cs8-flash' : '')}>
-    <div className="cs8-top"><span className="cs-orson">{title}</span>{!hold && <b className="cs8-clock">{left}s</b>}</div>
+    <div className="cs8-top"><span className="cs-orson">{title}</span>{!hold && sh.kind !== 'round' && sh.kind !== 'seed' && <b className="cs8-clock">{left}s</b>}</div>
     {sub && <p className="cs8-sub">{sub}</p>}
     {stage === 'explain' && <div className="cs8-explain">
       <div className="cs8-ex"><b>1 · THE WAR ROOM</b><p>You spent 100 hype tokens, held a Golden Ticket and loaded a Silver Bullet. Four titles each survived. Two conferences, one winner.</p></div>
@@ -112,7 +115,7 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
     {sh.kind === 'seed' && <div className="cs8-reveal">{b.matches.filter((m) => m.round === 2).map((m, i) => { const step = Math.floor((R.SEED_MS - rem) / 2600); const on = i <= step; return <div key={m.id} className={'cs8-rv' + (on ? ' is-on' : '')}><span className="is-a"><i>{b.conf[m.a as number] ? `${s.players[b.conf[m.a as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.a as number].rank}${b.conf[m.a as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.a as number].t, 17)}</b></span><em>VS</em><span className="is-b"><i>{b.conf[m.b as number] ? `${s.players[b.conf[m.b as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.b as number].rank}${b.conf[m.b as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.b as number].t, 17)}</b></span></div>; })}</div>}
     {sh.kind !== 'seed' && stage === 'tree' && !explainNext && <BracketMap s={s} tv={tv} />}
     {explainNext && nxt && <div className="cs8-explain"><div className="cs8-ex is-big"><b>{ROUND_INFO[nxt.round].name}</b><p>{ROUND_INFO[nxt.round].says}</p></div></div>}
-    {hold && (() => { const a = b.ack || { A: false, B: false }; const me = pid; const done = me ? a[me] : false; return tv || !me ? <p className="cs8-sayline">{s.players.A.name}: {a.A ? 'ready' : 'reading'} · {s.players.B.name}: {a.B ? 'ready' : 'reading'}</p> : <><button className="cs-btn cs-btn--gold" disabled={done} onClick={() => send?.({ t: 'ack', pid: me })}>{done ? 'WAITING FOR ' + s.players[me === 'A' ? 'B' : 'A'].name.toUpperCase() + '...' : stage === 'explain' ? "GOT IT, LET'S GO" : 'READY FOR THE BRACKET'}</button></>; })()}
+    {(hold || sh.kind === 'round' || (sh.kind === 'seed' && rem <= 0)) && (() => { const a = b.ack || { A: false, B: false }; const me = pid; const done = me ? a[me] : false; return tv || !me ? <p className="cs8-sayline">{s.players.A.name}: {a.A ? 'ready' : 'reading'} · {s.players.B.name}: {a.B ? 'ready' : 'reading'}</p> : <><button className="cs-btn cs-btn--gold" disabled={done} onClick={() => send?.({ t: 'ack', pid: me })}>{done ? 'WAITING FOR ' + s.players[me === 'A' ? 'B' : 'A'].name.toUpperCase() + '...' : stage === 'explain' ? "GOT IT, LET'S GO" : stage === 'rank' ? 'READY FOR THE BRACKET' : sh.kind === 'seed' ? 'READY · FIRST BOUT' : endRound ? 'READY FOR THE NEXT ROUND' : 'READY FOR THE NEXT BOUT'}</button></>; })()}
     {stage === 'tree' && !endRound && (nxt?.tape || sh.line) && <p className="cs8-sayline">{nxt?.tape || sh.line}</p>}
   </div>;
 }
@@ -129,24 +132,26 @@ export function BracketScreen({ s, pid, send, now }: P) {
   const upsetNow = m.status === 'RESOLVED' && m.winner !== null && b.upsets.some((u) => u.winner === m.winner && u.gap >= R.UPSET_GAP && (u.loser === m.a || u.loser === m.b));
   return <div className={'cs8-br' + (m.status === 'RESOLVED' ? (upsetNow ? ' cs8-flash-up' : ' cs8-flash') : '') + (m.round === 4 ? ' cs8-final' : '')}>
     <div className="cs8-top"><span className="cs-orson">{RNDN[m.round - 1]}{m.round < 4 ? ` · ${m.slot - OFFR(b, m.round) + 1}/${b.matches.filter((x) => x.round === m.round).length}` : ''}{m.round === 1 && m.endsAt && m.status === 'VOTING_ACTIVE' ? ` · ${secs(m.endsAt, now)}s` : ''}</span><button className="cs8-mapbtn" onClick={() => setMap(true)}>BRACKET</button></div>
-    <p className="cs8-tokc">◈ YOU {b.purse[pid]} WAGER TOKENS · {s.players[other].name} {b.purse[other]}{m.round === 1 ? ' · blitz is free' : ''}</p>
+    {m.round > 1 ? <div className="cs8-tokrow">{[pid, other].map((p) => { const l = m.wg[p] || m.live?.[p]; return <div key={p} className={'cs8-tkc' + (p === pid ? ' is-me' : '')}><small>{p === pid ? 'YOU' : s.players[p].name.toUpperCase().slice(0, 8)}{m.wg[p] ? ' · LOCKED' : ''}</small><b>◈ {b.purse[p]}</b><em>{l ? `${l.tok} on ${clip(BY_ID[l.id].t, 12)}` : 'no bid yet'}</em></div>; })}</div> : <p className="cs8-tokc">Blitz is free</p>}
     {map && <div className="cs-sheet" onClick={() => setMap(false)}><div className="cs-sheet-in"><BracketMap s={s} /></div></div>}
     {m.status === 'LOCKED_FOR_VETO' && <div className="cs8-glitch"><b>ORSON IS RUINING YOUR BRACKET...</b></div>}
     {m.trivia ? <Trivia s={s} pid={pid} send={send} now={now} m={m} /> : <>
       <div className="cs8-vs">{[a, c].map((id, i) => { const mine = m.wg[pid]?.id === id; const upset = (i === 0 ? m.seedA > m.seedB : m.seedB > m.seedA) && Math.abs(m.seedA - m.seedB) >= R.UPSET_GAP;
-        return <button key={id} className={'cs8-card' + (pick === id || mine ? ' is-pick' : '') + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')} disabled={m.status !== 'VOTING_ACTIVE' || !!m.wg[pid]} onClick={() => { buzz(8); if (m.round === 1) send({ t: 'w8', pid, id, tok: 0 }); else setPick(id); }}>
-          <i className="cs8-seed">#{b.seed[id]}</i>{b.shield[id] && <i className="cs8-sb">★ GOLDEN</i>}{upset && <i className="cs8-up">x{R.UPSET_MULT}</i>}
+        return <button key={id} className={'cs8-card' + (pick === id || mine ? ' is-pick' : '') + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')} disabled={m.status !== 'VOTING_ACTIVE' || !!m.wg[pid] || (!!m.live?.[pid] && m.live[pid]!.id !== id)} onClick={() => { buzz(8); if (m.round === 1) send({ t: 'w8', pid, id, tok: 0 }); else setPick(id); }}>
+          <i className="cs8-seed">#{b.seed[id]}</i>{m.round > 1 && (['A', 'B'] as PID[]).map((p) => { const l = m.wg[p] || m.live?.[p]; return l && l.id === id ? <u key={p} className={'cs8-stake ' + (p === pid ? 'is-me' : 'is-them')}>{p === pid ? 'YOU' : s.players[p].name.slice(0, 5).toUpperCase()} ◈{l.tok}</u> : null; })}{b.shield[id] && <i className="cs8-sb">★ GOLDEN</i>}{upset && <i className="cs8-up">x{R.UPSET_MULT}</i>}
           <Poster id={id} /><b>{clip(BY_ID[id].t, 20)}</b>
           <span>{BY_ID[id].y} · TMDB {BY_ID[id].r.toFixed(1)}{BY_ID[id].rt != null ? ` · RT ${BY_ID[id].rt}%` : ''}</span>
           <p>{clip(pitchOf(s, id), 96)}</p></button>; })}</div>
       <p className="cs8-tuglab">TUG OF WAR · live bids</p><div className="cs8-tug"><i style={{ width: `${Math.round((br.a / Math.max(1, br.a + br.b)) * 100) || 50}%` }} /><span>{Math.round(br.a)}</span><span>{Math.round(br.b)}</span></div>
       {m.status === 'RESOLVED' && !!m.calledBy?.length && <p className="cs8-called">CALLED IT: {m.calledBy.map((p) => s.players[p].name).join(' + ')}</p>}
       {m.status === 'RESOLVED' ? <p className="cs8-say">{BY_ID[m.winner as number].t} advances. {m.via}.{b.upsets.some((u) => u.winner === m.winner && u.loser === (m.winner === a ? c : a) && u.gap >= R.UPSET_GAP) ? ' UPSET.' : ''}</p>
-        : m.wg[pid] ? <p className="cs8-say">Locked. Waiting for {s.players[other].name}.</p>
+        : m.wg[pid] ? <p className="cs8-say">Locked at {m.wg[pid]!.tok}. {s.players[other].name} can still raise. Watch the rope.</p>
         : <div className="cs8-act">
-          {m.round === 1 ? <em className="cs8-free">Blitz. Tap the one you want, 8 seconds.</em> : <div className="cs8-step"><button onClick={() => setTok(Math.max(1, tok - 1))}>−</button><b>{Math.min(tok, b.purse[pid])}</b><button onClick={() => setTok(Math.min(b.purse[pid], tok + 1))}>+</button><button onClick={() => setTok(Math.min(b.purse[pid], tok + 5))}>+5</button><em>of {b.purse[pid]} left</em></div>}
-          {m.round > 1 && <button className="cs-btn cs-btn--gold" disabled={pick === null || (pick !== m.a && pick !== m.b) || (m.round > 1 && b.purse[pid] < 1)} onClick={() => send({ t: 'w8', pid, id: pick as number, tok })}>LOCK WAGER</button>}
-          {m.round > 1 && <button className="cs8-bust" disabled={!b.buster[pid] || (pick !== null && !!b.shield[pick])} onClick={() => { if (pick !== null) send({ t: 'bust', pid, id: pick }); }} title="Select a film first">{b.buster[pid] ? 'BRACKET BUSTER' : 'BUSTER USED'}</button>}
+          {m.round === 1 ? <em className="cs8-free">Blitz. Tap the one you want, 8 seconds.</em> : (() => { const lv = m.live?.[pid]; const side = lv ? lv.id : pick; const left = b.purse[pid];
+            const raise = (n: number) => { if (side === null || side === undefined || left < 1) return; buzz(10); send({ t: 'bid', pid, id: side as number, add: Math.min(n, left) }); };
+            return <div className="cs8-step cs8-live"><button disabled={side == null || left < 1} onClick={() => raise(1)}>+1</button><button disabled={side == null || left < 1} onClick={() => raise(5)}>+5</button><button disabled={side == null || left < 1} onClick={() => raise(left)}>ALL IN</button><em>{lv ? `${lv.tok} on ${clip(BY_ID[lv.id].t, 14)}` : side == null ? 'tap a film, then raise' : `tap +1 to back ${clip(BY_ID[side as number].t, 14)}`}</em></div>; })()}
+          {m.round > 1 && (m.live?.[pid] ? <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'lockbid', pid }); }}>LOCK IT IN</button> : b.purse[pid] < 1 ? <button className="cs-btn cs-btn--gold" disabled={pick === null} onClick={() => send({ t: 'w8', pid, id: pick as number, tok: 0 })}>PICK (NO TOKENS LEFT)</button> : null)}
+          {m.round > 1 && <button className="cs8-bust" disabled={!b.buster[pid] || (pick !== null && !!b.shield[pick]) || !!m.live?.[pid]} onClick={() => { if (pick !== null) send({ t: 'bust', pid, id: pick }); }} title="Select a film first">{b.buster[pid] ? 'BRACKET BUSTER' : 'BUSTER USED'}</button>}
         </div>}
       {m.bust && <p className="cs8-roast">{m.bust}</p>}
       </>}

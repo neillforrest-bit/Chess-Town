@@ -1,5 +1,5 @@
 // CINESYNC game engine: a pure reducer. The host phone runs it; everyone else sends intents.
-import { startHit, hitIntent, resolveHit, wagerIntent, triviaTap, bustIntent, bustDone, ackIntent, tapeIntent, champIntent, callIntent, rerollVote, nukeTropes, nukeUlt, nukePick, tick8, type Hit, type B8, type Reroll, type Ult } from './b8';
+import { startHit, hitIntent, resolveHit, wagerIntent, bidIntent, lockBid, triviaTap, bustIntent, bustDone, ackIntent, tapeIntent, champIntent, callIntent, rerollVote, nukeTropes, nukeUlt, nukePick, tick8, type Hit, type B8, type Reroll, type Ult } from './b8';
 import catalog from '@/data/catalog.json';
 import seriesCat from '@/data/series.json';
 
@@ -428,7 +428,7 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
+  | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
 
 // Orson's Devil's Advocate Pause: when the two taste profiles diverge hard, throw a polarising wildcard at both players. Once per draft.
 function cosProf(a: Prof, b: Prof): number {
@@ -453,6 +453,11 @@ function maybeLock(s: State) {
   if (s.draft.picks.A.length >= DRAFT_SIZE && s.draft.picks.B.length >= DRAFT_SIZE) startHit(s, s.now);
 }
 
+// Gate streamlined: no swipe deck step. The draft starts the moment both partners have locked their taste map.
+function startDraft(s: State) {
+  if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) return;
+  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
+}
 export function reduce(prev: State, it: Intent): State {
   const s: State = JSON.parse(JSON.stringify(prev)); s.v++;
   const now = (it as { now?: number }).now ?? Date.now(); s.now = now;
@@ -482,15 +487,13 @@ export function reduce(prev: State, it: Intent): State {
       s.vibe.score = null; s.vibe.doneAt = null; break;
     }
     case 'subs': { if (s.phase === 'vibe' && s.vibe.passed) s.vibe.subs[it.pid] = it.map; break; }
-    case 'begin': {
-      if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B || !s.vibe.subs.A || !s.vibe.subs.B) break;
-      s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), s.vibe.subs as { A: Record<string, boolean>; B: Record<string, boolean> }, s.kind); s.draft.loading = true; s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
-      break;
-    }
+    case 'begin': { startDraft(s); break; }
     case 'draftreq': s.draft.requested = true; break;
     case 'pitches': s.draft.pitches = { ...s.draft.pitches, ...it.map }; s.draft.loading = false; break;
     case 'hit': hitIntent(s, it, now); break;
     case 'w8': wagerIntent(s, it, now); break;
+    case 'bid': bidIntent(s, it, now); break;
+    case 'lockbid': lockBid(s, it, now); break;
     case 'ttap': triviaTap(s, it, now); break;
     case 'bust': bustIntent(s, it, now); break;
     case 'ack': ackIntent(s, it); break;
@@ -645,7 +648,7 @@ export function reduce(prev: State, it: Intent): State {
       s.winner = null; s.phase = 'final'; s.mem.recorded = false;
       break;
     }
-    case 'taste': if (s.phase === 'vibe' && s.vibe.passed) { s.vibe.tastes[it.pid] = it.tags.filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.nos[it.pid] = (it.nos || []).filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.actors[it.pid] = it.actor.slice(0, 30); } break;
+    case 'taste': if (s.phase === 'vibe' && s.vibe.passed) { s.vibe.tastes[it.pid] = it.tags.filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.nos[it.pid] = (it.nos || []).filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.actors[it.pid] = it.actor.slice(0, 30); startDraft(s); } break;
     case 'quip': s.orson = { line: it.line.slice(0, 200), mood: it.mood, n: s.orson.n + 1, emo: it.emo }; break;
     case 'cost': s.cost = { calls: s.cost.calls + 1, inTok: s.cost.inTok + it.inTok, outTok: s.cost.outTok + it.outTok, usd: s.cost.usd + it.usd }; break;
     case 'tick': {

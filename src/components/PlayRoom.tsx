@@ -8,7 +8,7 @@ import { BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_L
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
-const DRUMROLL_MS = 2800;
+const DRUMROLL_MS = 1200;
 
 
 type CardInfo = { hook: string; loved: string; catch: string; providers: { region: string; names: string[] } | null } | 'err' | 'wait';
@@ -76,6 +76,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const tapKey = useRef('');
   const startX = useRef<number | null>(null);
   const [sl, setSl] = useState(5);
+  const [sl4, setSl4] = useState<number[]>([5, 5, 5, 5]);
   const [go, setGo] = useState(0);
   const [cd, setCd] = useState(0);
   const [cont, setCont] = useState(false);
@@ -139,23 +140,18 @@ export default function PlayRoom({ code }: { code: string }) {
         <li><b>4 · TONIGHT YOU WATCH</b><span>One winner. Maybe one you would never have chosen.</span></li>
       </ol>
       <p className="cs-small">Alignment = how close your answers are. Miss it and only the clashing questions come back.</p>
-      <button className="cs-btn cs-btn--gold" onClick={() => { setGo(1); setCd(1); setTimeout(() => setCd(2), 700); setTimeout(() => setCd(3), 1400); setTimeout(() => { setGo(2); setCd(0); }, 2100); }}>I AM READY</button>
+      <button className="cs-btn cs-btn--gold" onClick={() => { setGo(2); setCd(0); }}>I AM READY</button>
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
     if (nextQ >= 0) {
-      const q = qsets(s.kind)[s.vibe.sets[nextQ]][nextQ];
+      const todo = ASK_ORDER.filter((i) => mine[i] === null);
       const redo = s.vibe.attempts > 0;
-      const intro = redo && mine.filter((x) => x === null).length === 4 - mine.filter((x) => x !== null).length && nextQ === mine.findIndex((x) => x === null) && !mine.slice(0, nextQ).some((x, i) => x === null) && mine.filter((x) => x === null).length < 4 && mine.slice(0, nextQ).every((x) => x !== null) && nextQ === Math.min(...mine.map((x, i) => (x === null ? i : 9))) && !(mine.slice(0, nextQ).length === 0 && false) ? 'Only the questions where you two clash come back. The rest stay locked.' : stepN === 0 && !redo ? (q.q.startsWith('LIGHTNING') ? 'Lightning round. No thinking. Instinct only.' : 'Broad first, then narrower. In private. Get to 70% together to unlock the draft.') : reactionFor(s.roast, ((mine[nextQ - 1] as number) ?? 0) + nextQ * 3);
-      return shell(<div className="cs-ask" key={nextQ + ':' + s.vibe.set}>
-        <div className="cs-dots4">{ASK_ORDER.map((i) => <i key={i} className={mine[i] !== null ? 'is-done' : i === nextQ ? 'is-now' : ''} />)}</div>
-        <div className="cs-orson">STAGE 1 · QUESTION {stepN + 1} OF 4 · {AXQ_NAME[nextQ].toUpperCase()}</div>
-        <p className="cs-aside">{intro}</p>
-        <h2 className="cs-q">{q.q}</h2>
-        <div className="cs-slider">
-          <div className="cs-sval">{sl}<small>{sl <= 3 ? q.lo : sl >= 7 ? q.hi : 'right in the middle'}</small></div><p className="cs-drag">DRAG THE SLIDER, THEN LOCK IT IN. 0 = {q.lo}, 10 = {q.hi}</p>
-          <input type="range" min={0} max={10} step={1} value={sl} onChange={(e) => { setSl(Number(e.target.value)); buzz(6); }} aria-label={q.q} />
-          <div className="cs-ticks">{Array.from({ length: 11 }, (_, i) => <i key={i} className={i === sl ? 'is-on' : ''} />)}</div><div className="cs-sends"><span><b>0</b> {q.lo}</span><span>{q.hi} <b>10</b></span></div>
-        </div>
-        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'ans', pid, q: nextQ, val: sl }); setSl(5); }}>LOCK IT IN</button>
+      return shell(<div className="cs-ask cs-ask--four" key={'g' + s.vibe.set + ':' + todo.join('')}>
+        <div className="cs-orson">THE GATE · {redo ? 'ONLY THE CLASHES' : 'FOUR QUICK SLIDERS, IN PRIVATE'}</div>
+        <div className="cs-four">{todo.map((i) => { const q = qsets(s.kind)[s.vibe.sets[i]][i]; const v = sl4[i]; return <div className="cs-fq" key={i}>
+          <p className="cs-fq-q">{q.q}</p>
+          <input type="range" min={0} max={10} step={1} value={v} onChange={(e) => { const n = [...sl4]; n[i] = Number(e.target.value); setSl4(n); buzz(6); }} aria-label={q.q} />
+          <div className="cs-fq-e"><span>{q.lo}</span><b>{v}</b><span>{q.hi}</span></div></div>; })}</div>
+        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); todo.forEach((i) => send({ t: 'ans', pid, q: i, val: sl4[i] })); setSl4([5, 5, 5, 5]); }}>LOCK IT IN</button>
       </div>);
     }
     if (s.vibe.score === null) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Locked. Waiting for {them.name} to finish. No peeking.</p><Typing text="Orson is polishing his monocle" /></div>);
@@ -174,8 +170,8 @@ export default function PlayRoom({ code }: { code: string }) {
     }
     const deckN = subDeck(code, s.kind); const sA = s.vibe.subs?.[pid] || {}; const sO = s.vibe.subs?.[other] || {};
     const subDone = (m: Record<string, boolean>) => Object.keys(m).length >= deckN.length;
-    if (s.vibe.passed && s.vibe.tastes[pid] !== null && !subDone(sA)) return shell(<SubDeck deck={deckN} mine={sA} other={sO} themName={them.name} onSwipe={(n, yes) => send({ t: 'subs', pid, map: { ...sA, [n]: yes } })} />);
-    if (s.vibe.passed && s.vibe.tastes[pid] !== null && (s.vibe.tastes[other] === null || !subDone(sO))) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
+    if (s.vibe.passed && s.vibe.tastes[pid] !== null && false) return shell(<SubDeck deck={deckN} mine={sA} other={sO} themName={them.name} onSwipe={(n, yes) => send({ t: 'subs', pid, map: { ...sA, [n]: yes } })} />);
+    if (s.vibe.passed && s.vibe.tastes[pid] !== null && s.vibe.tastes[other] === null) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
     const playback = bd > 0 ? `Widest gap, ${AXQ_NAME[bi].toLowerCase()}: you said ${mine[bi]}, ${them.name} said ${theirs[bi]}.` : 'You answered like a single organism. Suspicious.';
     return shell(<div className="cs-center">
       {s.vibe.passed && <Confetti />}
@@ -185,7 +181,7 @@ export default function PlayRoom({ code }: { code: string }) {
         <div className="cs-axes">{AXES.map((nm, i) => { const d = Math.abs((mine[i] as number) - (theirs[i] as number)); return <div key={nm} className={'cs-axis' + (d >= CLASH ? ' is-clash' : '')}><span>{nm}</span><div className="cs-atrack"><i className="me" style={{ left: `${(mine[i] as number) * 10}%` }} /><i className="them" style={{ left: `${(theirs[i] as number) * 10}%` }} /></div><b>{d >= CLASH ? 'CLASH' : d <= 1 ? 'in sync' : ''}</b></div>; })}</div>
         <p className="cs-say">{s.vibe.passed ? 'In sync. I am almost moved.' : `${Math.round(RESPONSE_GATE * 100)}% was the bar and you missed it. That is my cue, not your failure.`}</p>
         <p className="cs-small">{playback} <span className="cs-legend">gold = you</span></p>
-        {s.vibe.passed ? (s.vibe.tastes.A && s.vibe.tastes.B && s.vibe.subs?.A && s.vibe.subs?.B ? <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'begin' })}>BEGIN THE DRAFT</button> : <button className="cs-btn cs-btn--gold" onClick={() => setCont(true)}>CONTINUE · TASTE MAP</button>) : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>RE-ASK THE CLASHES</button>}
+        {s.vibe.passed ? (<button className="cs-btn cs-btn--gold" onClick={() => setCont(true)}>CONTINUE · TASTE MAP</button>) : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>RE-ASK THE CLASHES</button>}
       </div></div>);
   }
 

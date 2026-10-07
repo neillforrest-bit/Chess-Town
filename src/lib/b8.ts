@@ -16,6 +16,7 @@ export type M8 = {
   status: 'PENDING' | 'VOTING_ACTIVE' | 'LOCKED_FOR_VETO' | 'RESOLVED';
   wg: { A?: { id: number; tok: number }; B?: { id: number; tok: number } };
   winner: number | null; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
+  live?: { A?: { id: number; tok: number }; B?: { id: number; tok: number } }; bidEnds?: number;
 };
 export type B8 = {
   matches: M8[]; cur: number; seed: Record<number, number>; shield: Record<number, PID>; purse: { A: number; B: number };
@@ -154,11 +155,25 @@ function introLine(s: State, m: M8): { line: string; mood: 'smug' | 'scheme' } |
   return { line: pool[Math.abs(m.slot * 7 + s.code.length) % pool.length], mood: gap >= 8 || m.round === 4 ? 'scheme' : 'smug' };
 }
 function intro8(s: State, m: M8) { const l = introLine(s, m); if (l) say8(s, l.line, l.mood); }
+/** LIVE TUG-OF-WAR: open escalating bids. Tokens leave the purse the moment they are bid; both partners see each other's stake in real time. */
+export function bidIntent(s: State, it: { pid: PID; id: number; add: number }, now: number) {
+  const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
+  if (!m || m.round < 2 || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || (it.id !== m.a && it.id !== m.b)) return;
+  const cur = m.live?.[it.pid]; if (cur && cur.id !== it.id) return;
+  const add = Math.max(1, Math.min(Math.floor(it.add || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) return;
+  b.purse[it.pid] -= add; m.live = { ...(m.live || {}), [it.pid]: { id: it.id, tok: (cur ? cur.tok : 0) + add } };
+  if (!m.bidEnds) m.bidEnds = now + 120000;
+}
+export function lockBid(s: State, it: { pid: PID }, now: number) {
+  const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
+  if (!m || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || !m.live?.[it.pid]) return;
+  m.wg[it.pid] = m.live[it.pid]; if (m.wg.A && m.wg.B) settle(s, m, now);
+}
 const MATCH_WEIGHT = (m: M8, p: PID, tok: number) => (m.round === 1 ? R.FREE_WEIGHT : tok);
 
 export function wagerIntent(s: State, it: { pid: PID; id: number; tok: number }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
-  if (!m || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || (it.id !== m.a && it.id !== m.b)) return;
+  if (!m || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || m.live?.[it.pid] || (it.id !== m.a && it.id !== m.b)) return;
   let tok = 0;
   if (m.round > 1) { tok = Math.max(1, Math.min(Math.floor(it.tok || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) tok = 0; if (tok === 0) tok = 0; b.purse[it.pid] -= tok; }
   m.wg[it.pid] = { id: it.id, tok };
@@ -166,7 +181,8 @@ export function wagerIntent(s: State, it: { pid: PID; id: number; tok: number },
 }
 
 export function bars(b: B8, m: M8) {
-  const t = (id: number | null) => (['A', 'B'] as PID[]).reduce((n, p) => n + (m.wg[p] && m.wg[p]!.id === id ? MATCH_WEIGHT(m, p, m.wg[p]!.tok) : 0), 0) * (id !== null && b.shield[id] ? R.OVERDRIVE : 1);
+  const src = (p: PID) => m.wg[p] || m.live?.[p];
+  const t = (id: number | null) => (['A', 'B'] as PID[]).reduce((n, p) => n + (src(p) && src(p)!.id === id ? MATCH_WEIGHT(m, p, src(p)!.tok) : 0), 0) * (id !== null && b.shield[id] ? R.OVERDRIVE : 1);
   return { a: t(m.a), b: t(m.b) };
 }
 
@@ -232,7 +248,7 @@ const callsShow = (b: B8, round: number, now: number) => { b.ack = { A: false, B
 const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; intro8(s, nx); };
 export function tapeIntent(s: State, it: { slot: number; line: string }) { const m = s.b8?.matches[it.slot]; if (!m || m.tape || !it.line) return; m.tape = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 240); }
 
-export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || !['explain', 'rank', 'champ', 'calls'].includes(b.show.kind)) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }
+export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || !['explain', 'rank', 'champ', 'calls', 'round', 'seed'].includes(b.show.kind)) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }
 
 export function bustIntent(s: State, it: { pid: PID; id: number }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
@@ -253,7 +269,7 @@ export function bustDone(s: State, roast: string, now: number) {
   }
   b.purse[by] = Math.max(0, b.purse[by] - R.BUSTER_FINE);
   b.vetoLog.push({ by, id, score: old.r, line: roast });
-  m.bust = roast; m.wg = {}; m.busting = null; m.status = 'VOTING_ACTIVE'; s.orson = { ...s.orson, line: roast, n: s.orson.n + 1 };
+  for (const p of ['A', 'B'] as PID[]) { const lv = m.live?.[p]; if (lv && !m.wg[p]) b.purse[p] += lv.tok; if (m.wg[p] && m.round > 1) b.purse[p] += m.wg[p]!.tok; } m.live = {}; m.bidEnds = undefined; m.wg = {}; m.busting = null; m.status = 'VOTING_ACTIVE'; s.orson = { ...s.orson, line: roast, n: s.orson.n + 1 };
   s.log.unshift(`Bracket Buster: ${old.t} is out${inn ? `, ${inn.x.t} storms in.` : '.'} ${s.players[by].name} pays ${R.BUSTER_FINE} tokens.`);
 }
 
@@ -266,10 +282,11 @@ export function tick8(s: State, now: number) {
   }
   const b = s.b8; if (!b || s.phase !== 'bracket') return;
   if (b.show) {
-    const kd = b.show.kind; const wait = kd === 'explain' || kd === 'rank'; const early = (wait || kd === 'champ' || kd === 'calls') && !!b.ack && b.ack.A && b.ack.B;
-    if (!early && now < b.show.until) return;
+    const kd = b.show.kind; const wait = kd === 'explain' || kd === 'rank'; const early = (wait || kd === 'champ' || kd === 'calls' || kd === 'round' || kd === 'seed') && !!b.ack && b.ack.A && b.ack.B;
+    // seed + round pages wait for both players to tap READY (the timeline is only the reveal beats; 90s safety fallback)
+    if (!early && now < b.show.until + (kd === 'round' || kd === 'seed' ? 90000 : 0)) return;
     if (b.show.kind === 'explain') { b.ack = { A: false, B: false }; b.show = { until: now + R.HOLD_MS, kind: 'rank', round: 0 }; return; }
-    if (b.show.kind === 'rank') { b.show = { until: now + R.SEED_MS, kind: 'seed', round: 0 }; return; }
+    if (b.show.kind === 'rank') { b.ack = { A: false, B: false }; b.show = { until: now + R.SEED_MS, kind: 'seed', round: 0 }; return; }
     const k = b.show; b.show = null;
     if (k.kind === 'seed' && b.calls) { b.ack = { A: false, B: false }; b.show = { until: now + R.CHAMP_MS, kind: 'champ', round: 0 }; return; }
     if (k.kind === 'champ') { callsShow(b, b.matches[0].round, now); return; }
@@ -280,6 +297,10 @@ export function tick8(s: State, now: number) {
   if (m.status === 'VOTING_ACTIVE' && m.round === 1 && !m.trivia && m.endsAt && now >= m.endsAt) {
     const hi = m.seedA < m.seedB ? (m.a as number) : (m.b as number);
     for (const p of ['A', 'B'] as PID[]) if (!m.wg[p]) m.wg[p] = { id: hi, tok: 0 };
+    settle(s, m, now); return;
+  }
+  if (m.status === 'VOTING_ACTIVE' && m.round > 1 && !m.trivia && m.bidEnds && now >= m.bidEnds) {
+    for (const p of ['A', 'B'] as PID[]) if (!m.wg[p] && m.live?.[p]) m.wg[p] = m.live[p];
     settle(s, m, now); return;
   }
   if (m.status === 'LOCKED_FOR_VETO' && m.busting && now - m.busting.at > R.BUSTER_MAX_MS) bustDone(s, 'Orson is lost for words. The wildcard walks in anyway.', now);
@@ -295,7 +316,7 @@ function advance8(s: State, now: number) {
   if (b.cur < b.matches.length - 1) {
     m.nextAt = null; const nx = b.matches[b.cur + 1];
     // bracket, matchup, bracket, matchup: the full bracket returns after EVERY match (longer at the end of a round)
-    b.show = { until: now + (nx.round !== m.round ? R.REVEAL_MS : m.round === 1 ? R.SHOW_BLITZ : R.SHOW_MATCH), kind: 'round', round: m.round, line: introLine(s, nx)?.line }; return;
+    b.ack = { A: false, B: false }; b.show = { until: now + (nx.round !== m.round ? R.REVEAL_MS : m.round === 1 ? R.SHOW_BLITZ : R.SHOW_MATCH), kind: 'round', round: m.round, line: introLine(s, nx)?.line }; return;
   }
   // Final decided: Orson takes over the screen to crown it (script written server-side; winner is fixed by the bracket)
   const w = m.winner as number; const l = w === m.a ? (m.b as number) : (m.a as number);
