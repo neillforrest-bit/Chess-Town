@@ -56,7 +56,7 @@ export function BracketMap({ s, onClose, tv }: { s: State; onClose?: () => void;
       <Poster id={id} cls="cs8-tcp" /><span className="cs8-tct"><b>{BY_ID[id].t}</b><i>{who}{cf ? ` #${cf.rank}` : ''}{b.shield[id] ? ' ★' : ''}</i></span></span>; };
   const cur = b.show ? (b.show.kind === 'round' ? b.cur + 1 : -1) : b.cur;
   return <div className={'cs8-tree' + (tv ? ' is-tv' : '')} onClick={onClose}>
-    {[1, 2, 3, 4].filter((r) => b.matches.some((m) => m.round === r)).map((r) => <div key={r} className={'cs8-tcol cs8-r' + r}><b>{['ROUND OF 16', 'QUARTERFINALS', 'SEMIFINALS', 'THE FINAL'][r - 1]}</b>
+    {[1, 2, 3, 4].filter((r) => b.matches.some((m) => m.round === r)).map((r) => <div key={r} className={'cs8-tcol cs8-r' + r}><b>{r === 4 ? '👑 ' : ''}{['ROUND OF 16', 'QUARTERFINALS', 'SEMIFINALS', 'THE FINAL'][r - 1]}</b>
       <div className="cs8-tms">{b.matches.filter((m) => m.round === r).map((m) => <div key={m.id} className={'cs8-tm' + (cur === m.slot ? ' is-cur' : '')}>{cell(m.a, m)}{cell(m.b, m)}</div>)}</div></div>)}
   </div>;
 }
@@ -142,7 +142,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
           <Poster id={id} /><b>{clip(BY_ID[id].t, 20)}</b>
           <span>{BY_ID[id].y} · TMDB {BY_ID[id].r.toFixed(1)}{BY_ID[id].rt != null ? ` · RT ${BY_ID[id].rt}%` : ''}</span>
           <p>{clip(pitchOf(s, id), 96)}</p></button>; })}</div>
-      <p className="cs8-tuglab">TUG OF WAR · live bids</p><div className="cs8-tug"><i style={{ width: `${Math.round((br.a / Math.max(1, br.a + br.b)) * 100) || 50}%` }} /><span>{Math.round(br.a)}</span><span>{Math.round(br.b)}</span></div>
+      <p className="cs8-tuglab">TUG OF WAR · live bids</p><div className={'cs8-tug' + (br.a > br.b ? ' lead-a' : br.b > br.a ? ' lead-b' : '')} key={'tg' + Math.round(br.a) + '-' + Math.round(br.b)}><i style={{ width: `${Math.round((br.a / Math.max(1, br.a + br.b)) * 100) || 50}%` }} /><u className="cs8-knot" style={{ left: `${Math.round((br.a / Math.max(1, br.a + br.b)) * 100) || 50}%` }}>⚔</u><span>{Math.round(br.a)}</span><span>{Math.round(br.b)}</span></div>
       {m.status === 'RESOLVED' && !!m.calledBy?.length && <p className="cs8-called">CALLED IT: {m.calledBy.map((p) => s.players[p].name).join(' + ')}</p>}
       {m.status === 'RESOLVED' ? <p className="cs8-say">{BY_ID[m.winner as number].t} advances. {m.via}.{b.upsets.some((u) => u.winner === m.winner && u.loser === (m.winner === a ? c : a) && u.gap >= R.UPSET_GAP) ? ' UPSET.' : ''}</p>
         : m.wg[pid] ? <p className="cs8-say">Locked at {m.wg[pid]!.tok}. {s.players[other].name} can still raise. Watch the rope.</p>

@@ -425,3 +425,13 @@ em{font-style:normal;color:var(--gold)}
 .cs8-tct b{font-size:clamp(9px,min(2.7vw,1.9vh),13px)}
 @media (max-height:700px){.cs8-sub{display:none}}
 .cs8-live button{white-space:nowrap;padding:0 8px}
+
+.cs8-tug{position:relative}
+.cs8-tug .cs8-knot{position:absolute;top:50%;transform:translate(-50%,-50%);text-decoration:none;font-size:14px;filter:drop-shadow(0 0 6px #ffb020);animation:cs8shake .45s ease-out;pointer-events:none}
+@keyframes cs8shake{0%{transform:translate(-50%,-50%) scale(1.8) rotate(-18deg)}50%{transform:translate(-50%,-50%) scale(1.2) rotate(12deg)}100%{transform:translate(-50%,-50%) scale(1) rotate(0)}}
+.cs8-tug.lead-a{box-shadow:0 0 10px #ffb02088}.cs8-tug.lead-b{box-shadow:0 0 10px #e879f988}
+.cs8-r4 .cs8-tm{border-left-color:#ffc83d}
+.cs8-r4 .cs8-tc{border-color:#ffc83d66;box-shadow:0 0 12px #ffc83d33}
+.cs8-tc.is-win{animation:cs8winglow 1.6s ease-in-out infinite alternate}
+@keyframes cs8winglow{from{box-shadow:0 0 6px #22c55e66}to{box-shadow:0 0 16px #22c55ecc}}
+.cs8-tm.is-cur .cs8-tc{border-color:#ffc83d;box-shadow:0 0 14px #ffc83d88}
