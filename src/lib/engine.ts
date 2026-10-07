@@ -2,6 +2,7 @@
 // Server-side game engine: ONE Supabase row per room is the single source of truth.
 // Intents are applied by the pure reducer under a compare-and-set on state.v; Orson (Gemini) side effects run here too.
 import { createClient } from '@supabase/supabase-js';
+import { nukeCands, nukeFallback } from '@/lib/b8';
 import { newState, reduce, BY_ID, fallbackPitch, AXQ_NAME, type Mood, type Intent, type State } from '@/lib/game';
 
 const db = () => createClient<any>(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string, { auth: { persistSession: false } });
@@ -126,6 +127,15 @@ export async function effects(code: string, origin: string): Promise<void> {
     const side = (id: number) => { const cf = b8.conf[id]; const ptxt = cf ? `${s.players[cf.p].name} (${cf.golden ? 'GOLDEN TICKET CHAMPION' : 'conference seed #' + cf.rank})` : 'a player'; return `${ptxt}: "${BY_ID[id].t}" (${BY_ID[id].y}, TMDB ${BY_ID[id].r.toFixed(1)}), hype tokens invested: ${cf ? cf.tok : 0}`; };
     const d = await orson(origin, { type: 'quip', names, roast: s.roast, event: `Pre-fight broadcast for a ${['', 'blitz', 'quarterfinal', 'semifinal', 'FINAL'][m.round]} grudge match. ${side(m.a as number)}. VERSUS ${side(m.b as number)}.`, ctx: 'Maximum 2 sentences. Contrast their taste directly. Treat a conference seed #1 or Golden Ticket pick as a king to be guillotined and a seed #4 pick as a desperate underdog. Never corny cheerleading: you want domestic cinematic chaos. Use only the facts supplied, invent no plot.' }, 20000);
     if (d && d.line) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'tape', slot: m.slot, line: d.line }); }
+  })());
+  // Nuclear Veto: emergency ultimatum. Gemini picks a Titan and a Hidden Gem from verified catalogue candidates; templated fallback if it fails.
+  if (s.phase === 'done' && s.b8 && s.reroll.stage === 'wait') ps.push((async () => {
+    const c = await claim(code, 'nuke' + (s.reroll.at || 0)); if (!c.ok) return;
+    const cands = nukeCands(s);
+    const w = s.winner !== null ? BY_ID[s.winner] : null;
+    const d = await orson(origin, { type: 'nuke', names, roast: s.roast, by: s.players[s.reroll.by as 'A' | 'B'].name, winner: w ? `${w.t} (${w.y})` : '', tropes: s.reroll.tropes || [], cands: cands.map((x) => ({ id: x.id, t: x.t, y: x.y, g: x.g.slice(0, 3).join('/'), r: x.r, rt: x.rt ?? null, pop: Math.round(x.pop) })) }, 12000);
+    if (d && d.titan) await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
+    await ap({ t: 'nukeult', ult: d && d.titan && d.gem ? { rant: d.orsonRant || '', titan: d.titan, gem: d.gem } : nukeFallback(s) });
   })());
   // Bracket Buster: the screen is glitch-locked while Orson writes the roast; then the wildcard is injected
   if (s.phase === 'bracket' && s.b8) { const m = s.b8.matches[s.b8.cur]; if (m && m.status === 'LOCKED_FOR_VETO' && m.busting) { const bu = m.busting; ps.push((async () => {

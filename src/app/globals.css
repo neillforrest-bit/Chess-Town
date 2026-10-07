@@ -381,3 +381,13 @@ em{font-style:normal;color:var(--gold)}
 .cs8-rv i{font-style:normal;font-size:.55rem;letter-spacing:.1em}.cs8-rv .is-a i{color:#5ee7ff}.cs8-rv .is-b i{color:#ff6bd6}
 .cs8-rv b{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cs8-rv em{font-style:normal;font-weight:900;color:#777;font-size:.65rem}
+.cs8-nuke .cs-say{font-size:clamp(12px,3.4vw,15px)}
+.cs8-chips{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.cs8-chip{background:#1b1f2a;color:#ddd;border:1px solid #444;border-radius:14px;padding:6px 9px;font-size:12px}
+.cs8-chip.is-on{background:#c0392b;color:#fff;border-color:#ff6b5a}
+.cs8-ults{gap:6px;align-items:stretch}
+.cs8-ult{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:#161a24;border:2px solid #555;border-radius:10px;padding:5px;color:#eee;font-size:11px;min-width:0}
+.cs8-ult .cs-poster{max-height:22vh;width:auto}
+.cs8-ult small{color:#ffb020;letter-spacing:1px}
+.cs8-ult em{font-style:normal;opacity:.85;font-size:10px;line-height:1.2}
+.cs8-ult:disabled{opacity:.85}

@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { BY_ID, type Intent, type PID, type State } from '@/lib/game';
-import { R, bars, type M8 } from '@/lib/b8';
+import { R, bars, TROPES, type M8 } from '@/lib/b8';
 import { Poster, secs, buzz } from './shared';
 
 type P = { s: State; pid: PID; send: (i: Intent) => void; now: number };
@@ -163,9 +163,21 @@ function Trivia({ s, pid, send, now, m }: P & { m: M8 }) {
 
 /** Accept or reroll: shown before streaming links. */
 export function RerollScreen({ s, pid, send }: { s: State; pid: PID; send: (i: Intent) => void }) {
-  const r = s.reroll; const w = BY_ID[s.winner as number]; const mine = r.votes[pid];
+  const r = s.reroll; const w = BY_ID[s.winner as number]; const mine = r.votes[pid]; const by = r.by; const byName = by ? s.players[by].name : ''; const iAmBy = by === pid;
+  const [sel, setSel] = useState<string[]>([]);
+  const tog = (x: string) => setSel((a) => a.includes(x) ? a.filter((y) => y !== x) : a.length >= 6 ? a : [...a, x]);
+  if (r.stage === 'tropes') return <div className="cs8-rr cs8-nuke"><div className="cs-orson">NUCLEAR VETO</div>
+    {iAmBy ? <><p className="cs-say">You pressed the button. Name up to 6 tropes you want. Orson will answer with an ultimatum.</p>
+      <div className="cs8-chips">{TROPES.map((x) => <button key={x} className={'cs8-chip' + (sel.includes(x) ? ' is-on' : '')} onClick={() => tog(x)}>{x}</button>)}</div>
+      <button className="cs-btn cs-btn--no" disabled={!sel.length} onClick={() => send({ t: 'nuketropes', pid, tropes: sel })}>LAUNCH ({sel.length}/6)</button></>
+      : <><p className="cs-say">{byName} just pressed the NUCLEAR VETO on {w.t}. They are choosing tropes. Brace.</p></>}</div>;
+  if (r.stage === 'wait') return <div className="cs8-rr cs8-nuke"><div className="cs-orson">NUCLEAR VETO</div><p className="cs-say">Orson is composing an ultimatum from: {(r.tropes || []).join(', ') || 'chaos'}...</p></div>;
+  if (r.stage === 'pick' && r.ult) { const u = r.ult; const card = (k: 'titan' | 'gem', lab: string) => { const m = BY_ID[u[k].id]; return <button disabled={iAmBy} className="cs8-ult" onClick={() => send({ t: 'nukepick', pid, which: k })}><small>{lab}</small><Poster id={m.id} /><b>{m.t} <i>{m.y}</i></b><span>{m.rt ? `RT ${m.rt}%` : `TMDB ${m.r.toFixed(1)} (RT n/a)`}</span><em>{u[k].why}</em></button>; };
+    return <div className="cs8-rr cs8-nuke"><div className="cs-orson">THE ULTIMATUM</div><p className="cs-say">{u.rant}</p>
+      <div className="cs-row cs8-ults">{card('titan', 'THE TITAN')}{card('gem', 'THE HIDDEN GEM')}</div>
+      {iAmBy ? <p className="cs-small">{s.players[by === 'A' ? 'B' : 'A'].name} chooses. You lit the fuse.</p> : <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'nukepick', pid, which: 'keep' })}>DEFUSE: KEEP {w.t.toUpperCase()}</button>}</div>; }
   return <div className="cs8-rr"><div className="cs-orson">THE GAMBLE</div><Poster id={w.id} big cls="cs-poster--win" /><h2>{w.t}</h2>
-    <p className="cs-say">Fine choice. OR... throw it away, let me pick a complete wildcard, and I&apos;ll start you both with a Silver Bullet next game.</p>
-    {mine === undefined ? <div className="cs-row"><button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'rr', pid, yes: false })}>KEEP IT</button><button className="cs-btn cs-btn--no" onClick={() => send({ t: 'rr', pid, yes: true })}>REROLL</button></div> : <p className="cs-small">Locked. Waiting for {s.players[pid === 'A' ? 'B' : 'A'].name}. Both must agree to reroll.</p>}
+    <p className="cs-say">Fine choice. OR either of you can press the NUCLEAR VETO: blow it up, name your tropes, and I issue an ultimatum.</p>
+    {mine === undefined ? <div className="cs-row"><button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'rr', pid, yes: false })}>KEEP IT</button><button className="cs-btn cs-btn--no" onClick={() => send({ t: 'rr', pid, yes: true })}>NUCLEAR VETO</button></div> : <p className="cs-small">Locked. Waiting for {s.players[pid === 'A' ? 'B' : 'A'].name}. Either of you can still go nuclear.</p>}
   </div>;
 }

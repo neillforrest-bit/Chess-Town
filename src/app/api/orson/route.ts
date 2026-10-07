@@ -56,6 +56,20 @@ export async function POST(req: Request) {
       const data = JSON.parse(out.text || '{}') as { line?: string; mood?: string };
       return NextResponse.json({ line: data.line || '', mood: data.mood || 'idle', ...usage(out) });
     }
+    if (body.type === 'nuke') {
+      const cands = (body.cands || []) as { id: number; t: string; y: number; g: string; r: number; rt: number | null; pop: number }[];
+      const prompt = `${PERSONA}${body.roast ? ' ROAST MODE is on.' : ''}\nEMERGENCY: ${body.by} just pressed the NUCLEAR VETO and blew up tonight's winner, ${body.winner}. Players: ${body.names}. Tropes ${body.by} demands: ${(body.tropes || []).join(', ') || 'none given'}.\nWrite a furious, theatrical two-sentence rant (orsonRant, max 40 words) about the veto. Then issue an ultimatum: pick ONE TITAN (a bold crowd-pleasing prestige pick, highest critical acclaim) and ONE HIDDEN GEM (underseen, lower popularity) ONLY from this candidate list, copying the id exactly. Each gets a 'why' (max 22 words) naming a demanded trope where it fits.\nCandidates (id | title (year) | genres | TMDB | RT | popularity):\n` + cands.map((c) => `${c.id} | ${c.t} (${c.y}) | ${c.g} | ${c.r.toFixed(1)} | ${c.rt ?? 'n/a'} | ${c.pop}`).join('\n');
+      const pickT = { type: Type.OBJECT, properties: { id: { type: Type.INTEGER }, why: { type: Type.STRING } }, required: ['id', 'why'] };
+      const out = await ai.models.generateContent({
+        model: GEMINI_MODEL, contents: prompt,
+        config: { responseMimeType: 'application/json', maxOutputTokens: 3000, thinkingConfig: GEMINI_THINKING,
+          responseSchema: { type: Type.OBJECT, properties: { orsonRant: { type: Type.STRING }, titan: pickT, gem: pickT }, required: ['orsonRant', 'titan', 'gem'] } },
+      });
+      const data = JSON.parse(out.text || '{}') as { orsonRant?: string; titan?: { id: number; why: string }; gem?: { id: number; why: string } };
+      const ok = new Set(cands.map((c) => c.id));
+      const valid = !!(data.titan && data.gem && ok.has(data.titan.id) && ok.has(data.gem.id) && data.titan.id !== data.gem.id);
+      return NextResponse.json({ orsonRant: data.orsonRant || '', titan: valid ? data.titan : null, gem: valid ? data.gem : null, ...usage(out) });
+    }
     if (body.type === 'judge') {
       const forcedTxt = body.forced ? ` THE BRACKET HAS ALREADY DECIDED: the winner is Film ${body.forced}. You MUST declare Film ${body.forced} the winner; your job is the theatre.` : '';
       const prompt = `${PERSONA}${forcedTxt}${body.roast ? ' ROAST MODE is on: tease both partners about their picks, affectionately.' : ''}${body.rematch ? ' This is a REMATCH with swapped sides: each partner defended the OTHER one\'s film, so mention it.' : ''}\nYou are the final judge of a movie-night tournament. Two finalists. Each partner wrote a 60-second pitch defending their film. Judge the PERSUASION of the pitches (specific, funny, honest beats long and generic), plus a small nudge for how well each film fits the couple. If a pitch is empty, that side forfeits unless both are empty. TAKEOVER MODE: nobody wrote a pitch. You have taken over the screen. Decide on fit for the couple, ratings and your own taste, and ignore any empty pitch. Also write the lines field: exactly 3 short punchy lines (max 14 words each) spoken to the room in order: 1) a dramatic opening about the two finalists, 2) a roast-with-love of the film you are ELIMINATING, 3) the drumroll before you name the winner. Do not name the winner in lines. Declare a winner and give a verdict of at most two short sentences, theatrical, kind to the loser.\n` +

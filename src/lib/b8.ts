@@ -24,7 +24,24 @@ export type B8 = {
   show?: { until: number; kind: 'explain' | 'rank' | 'seed' | 'champ' | 'calls' | 'round'; round: number; line?: string } | null; ack?: { A: boolean; B: boolean }; calls?: Calls;
 };
 export type Calls = { champ: { A?: number; B?: number }; pick: { A: Record<number, number>; B: Record<number, number> }; score: { A: number; B: number }; streak: { A: number; B: number } };
-export type Reroll = { stage: 'off' | 'ask' | 'done'; votes: { A?: boolean; B?: boolean }; used: boolean; to: number | null };
+export type Ult = { rant: string; titan: { id: number; why: string }; gem: { id: number; why: string } };
+export type Reroll = { stage: 'off' | 'ask' | 'tropes' | 'wait' | 'pick' | 'done'; votes: { A?: boolean; B?: boolean }; used: boolean; to: number | null; by?: PID; tropes?: string[]; ult?: Ult | null; at?: number };
+export const TROPES = ['Twist ending', 'Heist', 'Time loop', 'Road trip', 'Found family', 'Revenge', 'Underdog', 'Slow burn', 'Unreliable narrator', 'Outer space', 'Small town', 'Heartbreaker', 'One location', 'Cult classic', 'Feel-good', 'Dark comedy'] as const;
+export const rrLive = (s: { b8: unknown; reroll: Reroll }) => !!s.b8 && ['ask', 'tropes', 'wait', 'pick'].includes(s.reroll.stage);
+/** Candidates for the ultimatum: unseen, well rated, from our TMDB-sourced catalogue so every film and score is real. */
+export function nukeCands(s: State, n = 36) {
+  const used = new Set<number>([...s.pool, ...s.vetoed, ...Object.keys(s.b8?.seed || {}).map(Number), ...(s.seenBan || [])]);
+  const tr = (s.reroll.tropes || []).join(' ').toLowerCase();
+  return poolOf(s.kind).filter((x) => !used.has(x.id) && x.r >= 7.2 && x.id !== s.winner)
+    .map((x) => ({ x, sc: x.r + (x.kw || []).filter((k) => tr.includes(k.toLowerCase())).length * 0.6 })).sort((a, c) => c.sc - a.sc || a.x.id - c.x.id).slice(0, n).map((o) => o.x);
+}
+export function nukeFallback(s: State): Ult {
+  const c = nukeCands(s);
+  const titan = [...c].sort((a, b) => (b.rt ?? b.r * 10) - (a.rt ?? a.r * 10) || b.pop - a.pop)[0];
+  const gem = [...c].filter((x) => x.id !== titan?.id).sort((a, b) => a.pop - b.pop || b.r - a.r)[0] || titan;
+  const nm = s.reroll.by ? s.players[s.reroll.by].name : 'Someone';
+  return { rant: `${nm} pulled the pin on my winner. Magnificent. Petty. Here is what the tropes bought you.`, titan: { id: titan?.id ?? 0, why: 'The critics\' darling. Hard to argue with, so argue anyway.' }, gem: { id: gem?.id ?? 0, why: 'Almost nobody has seen it. That is the point.' } };
+}
 
 const sc = (m: Movie) => (m.rt ?? m.r * 10) / 100;
 const other = (p: PID): PID => (p === 'A' ? 'B' : 'A');
@@ -286,13 +303,29 @@ function advance8(s: State, now: number) {
 }
 
 export function rerollVote(s: State, it: { pid: PID; yes: boolean }, now: number) {
-  const r = s.reroll; if (!r || r.stage !== 'ask' || r.votes[it.pid] !== undefined) return; r.votes[it.pid] = it.yes;
+  const r = s.reroll; if (!r) return;
+  // NUCLEAR VETO: either partner can blow up the winner
+  if (r.stage === 'ask' && it.yes) { s.reroll = { ...r, stage: 'tropes', by: it.pid, tropes: [], ult: null, votes: {}, at: now }; s.log.unshift(`${s.players[it.pid].name} pressed the NUCLEAR VETO`); return; }
+  if (r.stage !== 'ask' || r.votes[it.pid] !== undefined) return; r.votes[it.pid] = false;
   if (r.votes.A === undefined || r.votes.B === undefined) return;
   r.stage = 'done';
-  if (r.votes.A && r.votes.B) {
-    const used = new Set<number>([...s.pool, ...s.vetoed, ...Object.keys(s.b8?.seed || {}).map(Number)]);
-    const t = s.vibe.target || [5, 5, 5, 5];
-    const inn = poolOf(s.kind).filter((x) => !used.has(x.id) && x.r >= 7).map((x) => ({ x, sc: x.r - wdist(vecOf(x), t) * 0.15 })).sort((a, c) => c.sc - a.sc || a.x.id - c.x.id)[0];
-    if (inn) { r.to = inn.x.id; r.used = true; s.winner = inn.x.id; s.b8Bonus = { A: 1, B: 1 }; s.fin.verdict = { winner: inn.x.id, reason: `You threw it away. Fine. ${inn.x.t} it is. I will see you both next time with 10 extra hype tokens each.` }; s.log.unshift(`Reroll accepted: Orson picks ${inn.x.t}.`); }
-  }
+}
+export function nukeTropes(s: State, it: { pid: PID; tropes: string[] }, now: number) {
+  const r = s.reroll; if (r.stage !== 'tropes' || r.by !== it.pid) return;
+  r.tropes = it.tropes.filter((x) => (TROPES as readonly string[]).includes(x)).slice(0, 6); r.stage = 'wait'; r.at = now;
+}
+export function nukeUlt(s: State, it: { ult: Ult }) {
+  const r = s.reroll; if (r.stage !== 'wait') return;
+  const ok = new Set(nukeCands(s, 60).map((x) => x.id));
+  let u = it.ult; if (!u || !ok.has(u.titan?.id) || !ok.has(u.gem?.id) || u.titan.id === u.gem.id) u = { ...nukeFallback(s), rant: (u && u.rant) || nukeFallback(s).rant };
+  if (!u.titan.id || !u.gem.id) { r.stage = 'done'; return; }
+  r.ult = { rant: u.rant.slice(0, 260), titan: { id: u.titan.id, why: u.titan.why.slice(0, 160) }, gem: { id: u.gem.id, why: u.gem.why.slice(0, 160) } }; r.stage = 'pick';
+}
+export function nukePick(s: State, it: { pid: PID; which: 'titan' | 'gem' | 'keep' }) {
+  const r = s.reroll; if (r.stage !== 'pick' || !r.ult || r.by === it.pid) return;
+  r.stage = 'done';
+  if (it.which === 'keep') { s.log.unshift('Nuclear veto defused: original winner stays'); return; }
+  const id = r.ult[it.which].id; r.to = id; r.used = true; s.winner = id; s.b8Bonus = { A: 1, B: 1 };
+  s.fin.verdict = { winner: id, reason: `${s.players[it.pid].name} chose the ${it.which === 'titan' ? 'TITAN' : 'HIDDEN GEM'}. ${BY_ID[id].t} it is. Next game you both start with 10 extra hype tokens.` };
+  s.log.unshift(`Nuclear veto: ${BY_ID[id].t} (${it.which})`);
 }

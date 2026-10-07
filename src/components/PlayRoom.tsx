@@ -1,4 +1,5 @@
 'use client';
+import { rrLive } from '@/lib/b8';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -313,7 +314,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const r = receipts(s);
   const iLost = s.fin.loser === pid;
   const showTk = !!(s.fin.verdict?.lines?.length) && !s.fin.tie && tkDone !== 'x';
-  if (s.b8 && s.reroll.stage === 'ask' && !showTk && w) return shell(<RerollScreen s={s} pid={pid} send={send} />);
+  if (rrLive(s) && !showTk && w) return shell(<RerollScreen s={s} pid={pid} send={send} />);
   if (showTk && w) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict?.lines} winner={w.id} onDone={() => setTkDone('x')} />;
   return shell(<div className="cs-done">
     <Confetti />
