@@ -133,7 +133,7 @@ export async function effects(code: string, origin: string): Promise<void> {
     const c = await claim(code, 'nuke' + (s.reroll.at || 0)); if (!c.ok) return;
     const cands = nukeCands(s);
     const w = s.winner !== null ? BY_ID[s.winner] : null;
-    const d = await orson(origin, { type: 'nuke', names, roast: s.roast, by: s.players[s.reroll.by as 'A' | 'B'].name, winner: w ? `${w.t} (${w.y})` : '', tropes: s.reroll.tropes || [], cands: cands.map((x) => ({ id: x.id, t: x.t, y: x.y, g: x.g.slice(0, 3).join('/'), r: x.r, rt: x.rt ?? null, pop: Math.round(x.pop) })) }, 12000);
+    const d = await orson(origin, { type: 'nuke', names, roast: s.roast, by: `${s.players.A.name} and ${s.players.B.name}`, winner: w ? `${w.t} (${w.y})` : '', tropes: s.reroll.tropes || [], cands: cands.map((x) => ({ id: x.id, t: x.t, y: x.y, g: x.g.slice(0, 3).join('/'), r: x.r, rt: x.rt ?? null, pop: Math.round(x.pop) })) }, 12000);
     if (d && d.titan) await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
     await ap({ t: 'nukeult', ult: d && d.titan && d.gem ? { rant: d.orsonRant || '', titan: d.titan, gem: d.gem } : nukeFallback(s) });
   })());

@@ -1,6 +1,6 @@
 // PRD phases 2-4: The Hit List, the 8-seed March Madness bracket, upset multipliers, Bracket Buster, sudden-death trivia, accept-or-reroll.
 // Pure state transitions; game.ts's reducer calls these. Tunable rules live in R.
-import { BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
+import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
   HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, CHAMP_MS: 20000, CALLS_MS: [26000, 18000, 12000, 9000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
@@ -26,8 +26,8 @@ export type B8 = {
 };
 export type Calls = { champ: { A?: number; B?: number }; pick: { A: Record<number, number>; B: Record<number, number> }; score: { A: number; B: number }; streak: { A: number; B: number } };
 export type Ult = { rant: string; titan: { id: number; why: string }; gem: { id: number; why: string } };
-export type Reroll = { stage: 'off' | 'ask' | 'tropes' | 'wait' | 'pick' | 'done'; votes: { A?: boolean; B?: boolean }; used: boolean; to: number | null; by?: PID; tropes?: string[]; ult?: Ult | null; at?: number };
-export const TROPES = ['Twist ending', 'Heist', 'Time loop', 'Road trip', 'Found family', 'Revenge', 'Underdog', 'Slow burn', 'Unreliable narrator', 'Outer space', 'Small town', 'Heartbreaker', 'One location', 'Cult classic', 'Feel-good', 'Dark comedy'] as const;
+export type Reroll = { stage: 'off' | 'ask' | 'tropes' | 'wait' | 'pick' | 'done'; votes: { A?: boolean; B?: boolean }; used: boolean; to: number | null; by?: PID; tropes?: string[]; ult?: Ult | null; at?: number; pk?: { A?: string[]; B?: string[] }; uv?: { A?: 'titan' | 'gem' | 'keep'; B?: 'titan' | 'gem' | 'keep' } };
+export const TROPES_OLD = ['Twist ending', 'Heist', 'Time loop', 'Road trip', 'Found family', 'Revenge', 'Underdog', 'Slow burn', 'Unreliable narrator', 'Outer space', 'Small town', 'Heartbreaker', 'One location', 'Cult classic', 'Feel-good', 'Dark comedy'] as const;
 export const rrLive = (s: { b8: unknown; reroll: Reroll }) => !!s.b8 && ['ask', 'tropes', 'wait', 'pick'].includes(s.reroll.stage);
 /** Candidates for the ultimatum: unseen, well rated, from our TMDB-sourced catalogue so every film and score is real. */
 export function nukeCands(s: State, n = 36) {
@@ -40,8 +40,7 @@ export function nukeFallback(s: State): Ult {
   const c = nukeCands(s);
   const titan = [...c].sort((a, b) => (b.rt ?? b.r * 10) - (a.rt ?? a.r * 10) || b.pop - a.pop)[0];
   const gem = [...c].filter((x) => x.id !== titan?.id).sort((a, b) => a.pop - b.pop || b.r - a.r)[0] || titan;
-  const nm = s.reroll.by ? s.players[s.reroll.by].name : 'Someone';
-  return { rant: `${nm} pulled the pin on my winner. Magnificent. Petty. Here is what the tropes bought you.`, titan: { id: titan?.id ?? 0, why: 'The critics\' darling. Hard to argue with, so argue anyway.' }, gem: { id: gem?.id ?? 0, why: 'Almost nobody has seen it. That is the point.' } };
+  return { rant: `You BOTH hit the button. Six tropes, two verdicts, zero loyalty. Here is the gauntlet: take it or leave it.`, titan: { id: titan?.id ?? 0, why: 'The critics\' darling. Hard to argue with, so argue anyway.' }, gem: { id: gem?.id ?? 0, why: 'Almost nobody has seen it. That is the point.' } };
 }
 
 const sc = (m: Movie) => (m.rt ?? m.r * 10) / 100;
@@ -250,12 +249,8 @@ export function tapeIntent(s: State, it: { slot: number; line: string }) { const
 
 export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || !['explain', 'rank', 'champ', 'calls', 'round', 'seed'].includes(b.show.kind)) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }
 
-export function bustIntent(s: State, it: { pid: PID; id: number }, now: number) {
-  const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
-  if (!m || m.round === 1 || m.status !== 'VOTING_ACTIVE' || m.trivia || !b.buster[it.pid] || (it.id !== m.a && it.id !== m.b) || b.shield[it.id]) return;
-  b.buster[it.pid] = false; m.status = 'LOCKED_FOR_VETO'; m.busting = { by: it.pid, id: it.id, at: now };
-  s.log.unshift(`${s.players[it.pid].name} used the Bracket Buster on ${BY_ID[it.id].t}.`);
-}
+// Bracket Buster retired in the Pure Rivalry format (it needed an Orson wildcard); the Silver Bullet is the only kill shot.
+export function bustIntent(_s: State, _it: { pid: PID; id: number }, _now: number) { void _s; void _it; void _now; }
 export function bustDone(s: State, roast: string, now: number) {
   const b = s.b8; if (!b) return; const m = b.matches[b.cur]; if (!m || !m.busting) return;
   const { by, id } = m.busting; const old = BY_ID[id];
@@ -324,16 +319,17 @@ function advance8(s: State, now: number) {
 }
 
 export function rerollVote(s: State, it: { pid: PID; yes: boolean }, now: number) {
-  const r = s.reroll; if (!r) return;
-  // NUCLEAR VETO: either partner can blow up the winner
-  if (r.stage === 'ask' && it.yes) { s.reroll = { ...r, stage: 'tropes', by: it.pid, tropes: [], ult: null, votes: {}, at: now }; s.log.unshift(`${s.players[it.pid].name} pressed the NUCLEAR VETO`); return; }
-  if (r.stage !== 'ask' || r.votes[it.pid] !== undefined) return; r.votes[it.pid] = false;
-  if (r.votes.A === undefined || r.votes.B === undefined) return;
-  r.stage = 'done';
+  const r = s.reroll; if (!r || r.stage !== 'ask' || r.votes[it.pid] !== undefined) return;
+  r.votes[it.pid] = it.yes;
+  // NUCLEAR VETO needs BOTH partners to hate the crowned film. Either one keeping it ends the gamble.
+  if (!it.yes) { r.stage = 'done'; s.log.unshift(`${s.players[it.pid].name} kept the winner`); return; }
+  if (r.votes.A && r.votes.B) { s.reroll = { ...r, stage: 'tropes', tropes: [], pk: {}, uv: {}, ult: null, at: now }; s.log.unshift('Both pressed the NUCLEAR VETO: Genre Gauntlet'); }
 }
 export function nukeTropes(s: State, it: { pid: PID; tropes: string[] }, now: number) {
-  const r = s.reroll; if (r.stage !== 'tropes' || r.by !== it.pid) return;
-  r.tropes = it.tropes.filter((x) => (TROPES as readonly string[]).includes(x)).slice(0, 6); r.stage = 'wait'; r.at = now;
+  const r = s.reroll; if (r.stage !== 'tropes' || r.pk?.[it.pid]) return;
+  const picks = Array.from(new Set(it.tropes.filter((x) => (TROPE_NAMES as readonly string[]).includes(x)))).slice(0, 3); if (picks.length !== 3) return;
+  r.pk = { ...(r.pk || {}), [it.pid]: picks };
+  if (r.pk.A && r.pk.B) { r.tropes = [...r.pk.A, ...r.pk.B]; r.stage = 'wait'; r.at = now; }
 }
 export function nukeUlt(s: State, it: { ult: Ult }) {
   const r = s.reroll; if (r.stage !== 'wait') return;
@@ -343,10 +339,13 @@ export function nukeUlt(s: State, it: { ult: Ult }) {
   r.ult = { rant: u.rant.slice(0, 260), titan: { id: u.titan.id, why: u.titan.why.slice(0, 160) }, gem: { id: u.gem.id, why: u.gem.why.slice(0, 160) } }; r.stage = 'pick';
 }
 export function nukePick(s: State, it: { pid: PID; which: 'titan' | 'gem' | 'keep' }) {
-  const r = s.reroll; if (r.stage !== 'pick' || !r.ult || r.by === it.pid) return;
+  const r = s.reroll; if (r.stage !== 'pick' || !r.ult || r.uv?.[it.pid]) return;
+  r.uv = { ...(r.uv || {}), [it.pid]: it.which };
+  if (!r.uv.A || !r.uv.B) return;
   r.stage = 'done';
-  if (it.which === 'keep') { s.log.unshift('Nuclear veto defused: original winner stays'); return; }
-  const id = r.ult[it.which].id; r.to = id; r.used = true; s.winner = id; s.b8Bonus = { A: 1, B: 1 };
-  s.fin.verdict = { winner: id, reason: `${s.players[it.pid].name} chose the ${it.which === 'titan' ? 'TITAN' : 'HIDDEN GEM'}. ${BY_ID[id].t} it is. Next game you both start with 10 extra hype tokens.` };
-  s.log.unshift(`Nuclear veto: ${BY_ID[id].t} (${it.which})`);
+  // take it or leave it: both must name the same film, otherwise the crowned winner stands
+  if (r.uv.A !== r.uv.B || r.uv.A === 'keep') { s.log.unshift('Nuclear veto defused: original winner stays'); return; }
+  const which = r.uv.A; const id = r.ult[which].id; r.to = id; r.used = true; s.winner = id; s.b8Bonus = { A: 1, B: 1 };
+  s.fin.verdict = { winner: id, reason: `You both took the ${which === 'titan' ? 'BLOCKBUSTER' : 'HIDDEN GEM'}. ${BY_ID[id].t} it is. Next game you both start with 10 extra hype tokens.` };
+  s.log.unshift(`Nuclear veto: ${BY_ID[id].t} (${which})`);
 }

@@ -435,3 +435,8 @@ em{font-style:normal;color:var(--gold)}
 .cs8-tc.is-win{animation:cs8winglow 1.6s ease-in-out infinite alternate}
 @keyframes cs8winglow{from{box-shadow:0 0 6px #22c55e66}to{box-shadow:0 0 16px #22c55ecc}}
 .cs8-tm.is-cur .cs8-tc{border-color:#ffc83d;box-shadow:0 0 14px #ffc83d88}
+.cs-tmap--tropes{display:grid;grid-template-columns:1fr 1fr;gap:5px}.cs-tmap--tropes .cs-tchip{font-size:clamp(10px,2.9vw,13px);padding:7px 4px;line-height:1.1}
+.cs-tmap--tropes{grid-template-columns:1fr 1fr 1fr!important;gap:4px!important}.cs-tmap--tropes .cs-tchip{font-size:clamp(9px,2.55vw,12px)!important;padding:5px 3px!important;line-height:1.05;min-height:0}
+.cs8-nuke .cs8-chips{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+.cs8-nuke .cs8-chip{font-size:clamp(9px,2.55vw,12px);padding:5px 3px;line-height:1.05;border-radius:10px}
+@media (max-height:700px){.cs8-tcp{height:clamp(22px,4.3vh,54px)}.cs8-r4 .cs8-tcp{height:clamp(26px,5vh,60px)}.cs8-tc{padding:1px 3px}.cs8-tm{gap:1px}.cs8-tms{gap:2px}.cs8-tc.is-tbd{min-height:clamp(22px,4.3vh,54px)}.cs8-page{gap:3px}.cs8-page .cs-btn{padding-top:9px;padding-bottom:9px}.cs8-sayline{padding:2px 4px;font-size:13px}}

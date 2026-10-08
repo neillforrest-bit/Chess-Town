@@ -14,6 +14,35 @@ export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SE
 export const poster = (m: Movie, size = 'w342') => `https://image.tmdb.org/t/p/${size}${m.p}`;
 
 export const RESPONSE_GATE = 0.7;
+/** THE VIBE MATRIX: 24 hyper-specific tropes. Each partner picks exactly 3; the six picks are the search query.
+ *  axes = [pacing, weight, reality, runtime] contribution to the shared target; tastes = TASTES tags that bias the deck. */
+export const TROPE_MATRIX: { n: string; ax: number[]; tastes: string[] }[] = [
+  { n: 'Pitch-Black Satire', ax: [5, 6, 3, 4], tastes: ['Comedy', 'Crime'] },
+  { n: 'Claustrophobic Tension', ax: [6, 7, 3, 3], tastes: ['Thriller', 'Horror'] },
+  { n: 'Mind-Bending Twists', ax: [6, 6, 6, 5], tastes: ['Sci-fi', 'Mystery', 'Thriller'] },
+  { n: 'Heist Chemistry', ax: [7, 3, 3, 5], tastes: ['Crime', 'Action', 'Comedy'] },
+  { n: 'Slow-Burn Dread', ax: [2, 8, 4, 5], tastes: ['Horror', 'Mystery', 'Thriller'] },
+  { n: 'Found-Family Warmth', ax: [4, 4, 5, 5], tastes: ['Comedy', 'Drama', 'Animation'] },
+  { n: 'Revenge Spiral', ax: [7, 7, 3, 5], tastes: ['Action', 'Crime', 'Thriller'] },
+  { n: 'Time-Loop Chaos', ax: [6, 4, 8, 3], tastes: ['Sci-fi', 'Comedy'] },
+  { n: 'Unreliable Narrator', ax: [5, 7, 4, 5], tastes: ['Mystery', 'Thriller', 'Drama'] },
+  { n: 'Road-Trip Mayhem', ax: [6, 3, 3, 4], tastes: ['Comedy', 'Action'] },
+  { n: 'Underdog Triumph', ax: [6, 4, 3, 5], tastes: ['Sports', 'Drama', 'Real events'] },
+  { n: 'Cosmic Awe', ax: [4, 6, 9, 7], tastes: ['Sci-fi', 'Fantasy'] },
+  { n: 'Small-Town Secrets', ax: [3, 7, 3, 5], tastes: ['Mystery', 'Crime', 'Drama'] },
+  { n: 'Doomed Romance', ax: [3, 8, 4, 5], tastes: ['Romance', 'Drama'] },
+  { n: 'Pressure-Cooker Room', ax: [5, 6, 3, 3], tastes: ['Thriller', 'Drama'] },
+  { n: 'Cult-Classic Weirdness', ax: [5, 5, 7, 4], tastes: ['Artsy', 'Comedy', 'Horror'] },
+  { n: 'Feel-Good Comfort', ax: [4, 2, 4, 4], tastes: ['Comedy', 'Romance', 'Musical'] },
+  { n: 'Ensemble Whodunnit', ax: [4, 5, 3, 5], tastes: ['Mystery', 'Crime', 'Comedy'] },
+  { n: 'Dystopian Rebellion', ax: [7, 7, 8, 6], tastes: ['Sci-fi', 'Action'] },
+  { n: 'Gonzo Action Spectacle', ax: [9, 3, 6, 5], tastes: ['Action', 'Superhero'] },
+  { n: 'Gothic Atmosphere', ax: [3, 7, 7, 5], tastes: ['Horror', 'Fantasy', 'Artsy'] },
+  { n: 'Con-Artist Cleverness', ax: [6, 3, 3, 5], tastes: ['Crime', 'Comedy', 'Thriller'] },
+  { n: 'Coming-of-Age Ache', ax: [3, 6, 3, 4], tastes: ['Drama', 'Romance'] },
+  { n: 'Moral Dilemma', ax: [4, 8, 3, 6], tastes: ['Drama', 'War', 'Real events'] },
+];
+export const TROPE_NAMES = TROPE_MATRIX.map((t) => t.n);
 export const CLASH = 5; // an axis gap this big fails the gate on its own
 export const TASTES = ['Action', 'Comedy', 'Drama', 'Horror', 'Thriller', 'Romance', 'Sci-fi', 'Fantasy', 'Animation', 'Crime', 'Mystery', 'War', 'Western', 'Musical', 'Superhero', 'Documentary', 'Sports', 'Real events', 'Pure fiction', 'Artsy', 'Award winner'] as const;
 const GENRE_OF: Record<string, string> = { 'Sci-fi': 'Science Fiction', Musical: 'Music' };
@@ -292,7 +321,7 @@ export type State = {
   code: string; kind: Kind; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
-  vibe: { subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
+  vibe: { tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
   draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
@@ -316,7 +345,7 @@ export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2
 export const newState = (code: string): State => ({
   code, kind: 'movie', v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
-  vibe: { subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
+  vibe: { tropes: { A: null, B: null }, subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
   draft: { gren: { used: false, id: null, votes: {} }, deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
@@ -428,7 +457,7 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
+  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
 
 // Orson's Devil's Advocate Pause: when the two taste profiles diverge hard, throw a polarising wildcard at both players. Once per draft.
 function cosProf(a: Prof, b: Prof): number {
@@ -488,6 +517,17 @@ export function reduce(prev: State, it: Intent): State {
     }
     case 'subs': { if (s.phase === 'vibe' && s.vibe.passed) s.vibe.subs[it.pid] = it.map; break; }
     case 'begin': { startDraft(s); break; }
+    case 'tropes': {
+      if (s.phase !== 'vibe' || s.vibe.passed) break;
+      const picks = Array.from(new Set(it.picks.filter((x) => TROPE_NAMES.includes(x)))).slice(0, 3); if (picks.length !== 3) break;
+      s.vibe.tropes = { ...(s.vibe.tropes || { A: null, B: null }), [it.pid]: picks };
+      const tr = s.vibe.tropes; if (!tr.A || !tr.B) break;
+      const all = [...tr.A, ...tr.B].map((n) => TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]);
+      s.vibe.target = [0, 1, 2, 3].map((i) => all.reduce((a, x) => a + x.ax[i], 0) / all.length);
+      const tasteOf = (names: string[]) => Array.from(new Set(names.flatMap((n) => (TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]).tastes)));
+      s.vibe.tastes = { A: tasteOf(tr.A), B: tasteOf(tr.B) }; s.vibe.nos = { A: [], B: [] }; s.vibe.subs = { A: {}, B: {} };
+      s.vibe.passed = true; s.vibe.doneAt = now; startDraft(s); break;
+    }
     case 'draftreq': s.draft.requested = true; break;
     case 'pitches': s.draft.pitches = { ...s.draft.pitches, ...it.map }; s.draft.loading = false; break;
     case 'hit': hitIntent(s, it, now); break;

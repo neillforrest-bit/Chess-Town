@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
+import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
@@ -76,6 +76,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const tapKey = useRef('');
   const startX = useRef<number | null>(null);
   const [sl, setSl] = useState(5);
+  const [trSel, setTrSel] = useState<string[]>([]);
   const [sl4, setSl4] = useState<number[]>([5, 5, 5, 5]);
   const [go, setGo] = useState(0);
   const [cd, setCd] = useState(0);
@@ -106,7 +107,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span></header>;
   const foot = <footer className="cs-foot"><Meter cost={s.cost} /><i>{BUILD}</i></footer>;
   const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
-  const journey = <nav className="cs-journey">{['GATE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
+  const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
   const shell = (body: React.ReactNode, cls = '') => <main className="cs-play">{head}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}</main>;
   const led = ledgerLine(s);
 
@@ -134,55 +135,22 @@ export default function PlayRoom({ code }: { code: string }) {
       <div className="cs-orson">HOW TONIGHT WORKS</div>
       <h2 className="cs-q">Find a movie you both want. Make it fun.</h2>
       <ol className="cs-map">
-        <li className="is-now"><b>1 · THE GATE</b><span>Four quick sliders in private. Hit 70% alignment to unlock stage 2.</span></li>
+        <li className="is-now"><b>1 · THE VIBE MATRIX</b><span>Pick 3 cinematic tropes in private. Six tropes become tonight&apos;s search.</span></li>
         <li><b>2 · THE DRAFT</b><span>Swipe films. Each of you picks 10 in secret.</span></li>
         <li><b>3 · THE BRACKET</b><span>Your picks fight head to head.</span></li>
         <li><b>4 · TONIGHT YOU WATCH</b><span>One winner. Maybe one you would never have chosen.</span></li>
       </ol>
-      <p className="cs-small">Alignment = how close your answers are. Miss it and only the clashing questions come back.</p>
+      
       <button className="cs-btn cs-btn--gold" onClick={() => { setGo(2); setCd(0); }}>I AM READY</button>
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
-    if (nextQ >= 0) {
-      const todo = ASK_ORDER.filter((i) => mine[i] === null);
-      const redo = s.vibe.attempts > 0;
-      return shell(<div className="cs-ask cs-ask--four" key={'g' + s.vibe.set + ':' + todo.join('')}>
-        <div className="cs-orson">THE GATE · {redo ? 'ONLY THE CLASHES' : 'FOUR QUICK SLIDERS, IN PRIVATE'}</div>
-        <div className="cs-four">{todo.map((i) => { const q = qsets(s.kind)[s.vibe.sets[i]][i]; const v = sl4[i]; return <div className="cs-fq" key={i}>
-          <p className="cs-fq-q">{q.q}</p>
-          <input type="range" min={0} max={10} step={1} value={v} onChange={(e) => { const n = [...sl4]; n[i] = Number(e.target.value); setSl4(n); buzz(6); }} aria-label={q.q} />
-          <div className="cs-fq-e"><span>{q.lo}</span><b>{v}</b><span>{q.hi}</span></div></div>; })}</div>
-        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); todo.forEach((i) => send({ t: 'ans', pid, q: i, val: sl4[i] })); setSl4([5, 5, 5, 5]); }}>LOCK IT IN</button>
-      </div>);
-    }
-    if (s.vibe.score === null) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Locked. Waiting for {them.name} to finish. No peeking.</p><Typing text="Orson is polishing his monocle" /></div>);
-    if (s.vibe.doneAt && now - s.vibe.doneAt < DRUMROLL_MS) return shell(<div className="cs-center cs-drum"><div className="cs-orson">THE GATE</div><div className="cs-drumring" /><Typing text="Orson is judging your taste" /></div>);
-    const theirs = s.vibe.ans[other]; let bi = 0, bd = -1; for (let i = 0; i < 4; i++) { const d = Math.abs((mine[i] as number) - (theirs[i] as number)); if (d > bd) { bd = d; bi = i; } }
-    const sc = s.vibe.score as number;
-    if (s.vibe.passed && s.vibe.tastes[pid] === null && cont) {
-      const tog = (t: string) => { if (tg.includes(t)) { setTg(tg.filter((y) => y !== t)); setNos([...nos, t]); } else if (nos.includes(t)) setNos(nos.filter((y) => y !== t)); else setTg([...tg, t]); };
-      return shell(<div className="cs-ask cs-ask--tight">
-        <div className="cs-orson">ORSON · THE TASTE MAP</div>
-        <p className="cs-aside">Private. Tap once to CRAVE, twice to BAN, three times to clear. A ban is a hard no for the whole night.</p>
-        <div className="cs-tmap">{TASTES.map((t) => <button key={t} className={'cs-tchip' + (tg.includes(t) ? ' is-crave' : nos.includes(t) ? ' is-ban' : '')} onClick={() => { buzz(8); tog(t); }}>{nos.includes(t) ? '✕ ' : tg.includes(t) ? '★ ' : ''}{t}</button>)}</div>
-        <input className="cs-input" maxLength={30} placeholder="An actor you want to see (optional)" value={actor} onChange={(e) => setActor(e.target.value)} />
-        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'taste', pid, tags: tg, nos, actor }); }}>LOCK MY TASTE</button>
-      </div>);
-    }
-    const deckN = subDeck(code, s.kind); const sA = s.vibe.subs?.[pid] || {}; const sO = s.vibe.subs?.[other] || {};
-    const subDone = (m: Record<string, boolean>) => Object.keys(m).length >= deckN.length;
-    if (s.vibe.passed && s.vibe.tastes[pid] !== null && false) return shell(<SubDeck deck={deckN} mine={sA} other={sO} themName={them.name} onSwipe={(n, yes) => send({ t: 'subs', pid, map: { ...sA, [n]: yes } })} />);
-    if (s.vibe.passed && s.vibe.tastes[pid] !== null && s.vibe.tastes[other] === null) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your taste is locked. Waiting for {them.name} to confess theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
-    const playback = bd > 0 ? `Widest gap, ${AXQ_NAME[bi].toLowerCase()}: you said ${mine[bi]}, ${them.name} said ${theirs[bi]}.` : 'You answered like a single organism. Suspicious.';
-    return shell(<div className="cs-center">
-      {s.vibe.passed && <Confetti />}
-      <div className={'cs-result ' + (s.vibe.passed ? 'cs-result--ok' : 'cs-result--no')}>
-        <div className="cs-score">{Math.round(sc * 100)}%</div>
-        <Heat h={Math.round(sc * 100)} big />
-        <div className="cs-axes">{AXES.map((nm, i) => { const d = Math.abs((mine[i] as number) - (theirs[i] as number)); return <div key={nm} className={'cs-axis' + (d >= CLASH ? ' is-clash' : '')}><span>{nm}</span><div className="cs-atrack"><i className="me" style={{ left: `${(mine[i] as number) * 10}%` }} /><i className="them" style={{ left: `${(theirs[i] as number) * 10}%` }} /></div><b>{d >= CLASH ? 'CLASH' : d <= 1 ? 'in sync' : ''}</b></div>; })}</div>
-        <p className="cs-say">{s.vibe.passed ? 'In sync. I am almost moved.' : `${Math.round(RESPONSE_GATE * 100)}% was the bar and you missed it. That is my cue, not your failure.`}</p>
-        <p className="cs-small">{playback} <span className="cs-legend">gold = you</span></p>
-        {s.vibe.passed ? (<button className="cs-btn cs-btn--gold" onClick={() => setCont(true)}>CONTINUE · TASTE MAP</button>) : <button className="cs-btn" onClick={() => send({ t: 'retry' })}>RE-ASK THE CLASHES</button>}
-      </div></div>);
+    // THE VIBE MATRIX: 24 tropes, exactly 3 each. No sliders, no gate.
+    const mineT = s.vibe.tropes?.[pid] || null;
+    if (!mineT) return shell(<div className="cs-ask cs-ask--tight">
+      <div className="cs-orson">THE VIBE MATRIX · PICK EXACTLY 3</div>
+      <div className="cs-tmap cs-tmap--tropes">{TROPE_NAMES.map((x) => <button key={x} className={'cs-tchip' + (trSel.includes(x) ? ' is-crave' : '')} onClick={() => { buzz(8); setTrSel((a) => a.includes(x) ? a.filter((y) => y !== x) : a.length >= 3 ? a : [...a, x]); }}>{trSel.includes(x) ? '★ ' : ''}{x}</button>)}</div>
+      <button className="cs-btn cs-btn--gold" disabled={trSel.length !== 3} onClick={() => { buzz(14); send({ t: 'tropes', pid, picks: trSel }); }}>LOCK MY 3 ({trSel.length}/3)</button>
+    </div>);
+    return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your three are locked. Waiting for {them.name} to commit to theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
   }
 
   // ---- PHASE 2: draft
