@@ -8,6 +8,7 @@ import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactio
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import OrsonInterstitial from './OrsonInterstitial';
 import TokenHUD from './TokenHUD';
+import PostMortem from './PostMortem';
 import { OrsonFace, Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 1200;
@@ -92,7 +93,6 @@ export default function PlayRoom({ code }: { code: string }) {
   const [trSel, setTrSel] = useState<string[]>([]);
   const [sl4, setSl4] = useState<number[]>([5, 5, 5, 5]);
   const [dis, setDis] = useState<Record<string, boolean>>({});
-  const [toast, setToast] = useState<{ id: string; line: string } | null>(null); const seenRes = useRef<Set<string> | null>(null);
   useEffect(() => { try { const o: Record<string, boolean> = {}; ['vibe', 'draft'].forEach((k) => { if (sessionStorage.getItem(`cs-int-${code}-${k}`)) o[k] = true; }); setDis(o); } catch { /* no storage */ } }, [code]);
   const [go, setGo] = useState(0);
   const [cd, setCd] = useState(0);
@@ -126,14 +126,8 @@ export default function PlayRoom({ code }: { code: string }) {
   const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
   const ikey = s.phase === 'draft' ? 'vibe' : s.phase === 'hitlist' ? 'draft' : null;
   const ov = ikey && !dis[ikey] ? <OrsonInterstitial title={ikey === 'vibe' ? 'THE VIBE STAGE IS OVER' : 'THE DRAFT IS OVER'} line={ikey === 'vibe' ? s.inter?.vibe : (s.asym ? s.asym[pid] : undefined)} onProceed={() => { try { sessionStorage.setItem(`cs-int-${code}-${ikey}`, '1'); } catch { /* no storage */ } setDis((d) => ({ ...d, [ikey]: true })); }} /> : null;
-  // v2.2 post-mortem toast: a freshly resolved token bout shows Orson's verdict on the wager math for 5 seconds
-  const resolved = (s.b8?.matches || []).filter((m) => m.status === 'RESOLVED' && m.round > 1 && m.winner !== null);
-  const tm = resolved.find((m) => seenRes.current && !seenRes.current.has(m.id) && m.id !== toast?.id);
-  useEffect(() => { if (!seenRes.current) { seenRes.current = new Set(resolved.map((m) => m.id)); return; } if (tm) { seenRes.current.add(tm.id); setToast({ id: tm.id, line: '' }); const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); } }); // eslint-disable-line react-hooks/exhaustive-deps
-  const tmM = toast ? s.b8?.matches.find((m) => m.id === toast.id) : null;
-  const tmLine = tmM ? (tmM.mortem || (() => { const a = tmM.wg.A?.tok || 0, b2 = tmM.wg.B?.tok || 0; const w = tmM.winner === tmM.wg.A?.id ? s.players.A.name : s.players.B.name; return `${s.players.A.name} spent ${a}, ${s.players.B.name} spent ${b2}. ${w} takes it. ${a + b2 === 0 ? 'Pure apathy.' : Math.max(a, b2) > 25 ? 'Desperation was noted.' : 'Restraint, how dull.'}`; })()) : '';
   const hud = s.b8 && s.phase === 'bracket' ? <TokenHUD s={s} me={pid} /> : null;
-  const shell = (body: React.ReactNode, cls = '') => <main className="cs-play">{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}{tmM && <div className="cs-toast"><b>POST-MORTEM</b><span>{tmLine}</span></div>}{ov}</main>;
+  const shell = (body: React.ReactNode, cls = '') => <main className="cs-play">{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}<PostMortem s={s} />{ov}</main>;
   const led = ledgerLine(s);
 
   // ---- LOBBY
