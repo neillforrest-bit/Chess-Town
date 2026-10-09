@@ -8,17 +8,24 @@ const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.r
 export default function Home() {
   const r = useRouter();
   const [name, setName] = useState('');
-  useEffect(() => { setName(localStorage.getItem('cs-name') || ''); }, []);
+  const [p2, setP2] = useState('Jemma'); const [modal, setModal] = useState(false);
+  useEffect(() => { setName(localStorage.getItem('cs-name') || ''); setP2(localStorage.getItem('cs-p2') || 'Jemma'); if (!localStorage.getItem('cs-callsigns')) { setName((n) => n || 'Neill'); setModal(true); } }, []);
+  const saveCallsigns = () => { localStorage.setItem('cs-name', (name || 'Neill').trim()); localStorage.setItem('cs-p2', (p2 || 'Jemma').trim()); localStorage.setItem('cs-callsigns', '1'); setName((name || 'Neill').trim()); setModal(false); };
   const [code, setCode] = useState('');
   const [kind, setKind] = useState<'movie' | 'series'>('movie');
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };
   return (
     <main className="cs-home">
+      {modal && <div className="cs-callsign"><div>
+        <h2>Pre-flight: pick your callsigns</h2>
+        <label>PLAYER 1 CALLSIGN</label><input className="cs-input" maxLength={14} value={name} onChange={(e) => setName(e.target.value)} />
+        <label>PLAYER 2 CALLSIGN</label><input className="cs-input" maxLength={14} value={p2} onChange={(e) => setP2(e.target.value)} />
+        <button className="cs-btn cs-btn--gold" onClick={saveCallsigns}>CLEARED FOR TAKEOFF</button></div></div>}
       <div className="cs-logo">CINE<b>SYNC</b></div>
       <p className="cs-tag">Two phones. One winner. No more couch gridlock.</p>
       <input className="cs-input" placeholder="Your name" maxLength={14} value={name} onChange={(e) => setName(e.target.value)} />
       <div className="cs-kind"><button className={kind === 'movie' ? 'is-on' : ''} onClick={() => setKind('movie')}>MOVIE NIGHT</button><button className={kind === 'series' ? 'is-on' : ''} onClick={() => setKind('series')}>SERIES BINGE</button></div>
-      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}${kind === 'series' ? '&k=series' : ''}`)}>START A {kind === 'series' ? 'SERIES' : 'MOVIE'} ROOM</button>
+      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&n2=${encodeURIComponent(p2.trim())}${kind === 'series' ? '&k=series' : ''}`)}>START A {kind === 'series' ? 'SERIES' : 'MOVIE'} ROOM</button>
       <button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO GAUNTLET · YOU VS ORSON</button>
       <div className="cs-or">or join your partner</div>
       <div className="cs-row">

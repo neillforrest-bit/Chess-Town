@@ -3,7 +3,7 @@
 // Intents are applied by the pure reducer under a compare-and-set on state.v; Orson (Gemini) side effects run here too.
 import { createClient } from '@supabase/supabase-js';
 import { nukeCands, nukeFallback } from '@/lib/b8';
-import { newState, reduce, BY_ID, fallbackPitch, AXQ_NAME, type Mood, type Intent, type State } from '@/lib/game';
+import { newState, reduce, slAvg, registerExtra, BY_ID, fallbackPitch, AXQ_NAME, type Mood, type Intent, type State } from '@/lib/game';
 
 const db = () => createClient<any>(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string, { auth: { persistSession: false } });
 
@@ -56,7 +56,7 @@ async function orson(origin: string, body: unknown, ms: number): Promise<any | n
 
 /** Orson's brain: look at the state, fire any one-shot Gemini effect that is due, write results back as intents. */
 export async function effects(code: string, origin: string): Promise<void> {
-  const s = await readRoom(code); if (!s) return;
+  const s = await readRoom(code); if (!s) return; registerExtra(s.extra);
   const ap = (it: Intent) => runIntent(code, it);
   const ps: Promise<unknown>[] = [];
   const names = `${s.players.A.name} and ${s.players.B.name}`;
@@ -166,5 +166,24 @@ export async function effects(code: string, origin: string): Promise<void> {
     await ap({ t: 'tasteroast', line: d && d.line ? d.line : fb });
   })());
 
+  // v2.0 Vibe Check: both players' sliders -> live TMDB discover (random page 1-5 every run). Always answers the room, even with zero results, so the draft can never hang.
+  if (s.vibe && s.vibe.disc === 'req') ps.push((async () => {
+    const c = await claim(code, 'discover'); if (!c.ok) return;
+    let movies: any[] = [];
+    try { const r = await fetch(origin + '/api/discover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sl: slAvg(s), ban: s.seenBan || [] }), signal: AbortSignal.timeout(15000) }); movies = ((await r.json()) as any).movies || []; } catch { /* fall back to the catalogue */ }
+    await ap({ t: 'extras', movies });
+  })());
+  // Blind Bet: Orson rewrites the two masked synopses (a deterministic redacted overview is already on screen as the fallback)
+  if (s.phase === 'bracket' && s.b8) for (const m of s.b8.matches) if (m.wc === 'blind' && m.cry && !m.cry.ai && m.status !== 'RESOLVED' && m.a !== null && m.b !== null) ps.push((async () => {
+    const c = await claim(code, 'cry' + m.id + m.a + m.b); if (!c.ok) return;
+    const f = (id: number) => `${BY_ID[id].t} (${BY_ID[id].y}): ${BY_ID[id].o}`;
+    const d = await orson(origin, { type: 'cryptic', a: f(m.a as number), b: f(m.b as number) }, 12000);
+    if (d && d.a && d.b) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'cryptic', slot: m.slot, a: d.a, b: d.b }); }
+  })());
+  // Wager banter: context-aware reaction when a big stake lands (callsigns, balances, matchup, pick trends)
+  if (s.phase === 'bracket' && s.b8) { const b8 = s.b8; const m = b8.matches[b8.cur]; if (m && m.round > 1 && m.status === 'VOTING_ACTIVE' && m.a !== null && m.b !== null && m.wc !== 'blind') {
+    const st = (['A', 'B'] as const).map((p) => ({ p, l: m.live?.[p] || m.wg[p] })).filter((x) => x.l && x.l.tok >= 25);
+    if (st.length) { const top = st.sort((x, y) => (y.l as any).tok - (x.l as any).tok)[0]; const l = top.l as { id: number; tok: number };
+      say(code + ':' + s.mem.nights + 'wg' + m.id + top.p + Math.floor(l.tok / 25), `${s.players[top.p].name} just put ${l.tok} Popcorn Tokens on ${BY_ID[l.id].t}.`, `Matchup: ${BY_ID[m.a].t} vs ${BY_ID[m.b].t}. Balances: ${s.players.A.name} ${b8.purse.A}, ${s.players.B.name} ${b8.purse.B}. Tokens backed so far this game: ${s.players.A.name} ${b8.backed.A}, ${s.players.B.name} ${b8.backed.B}. Include a piece of trivia or a quote about the film, mock outrage if the stake is reckless, and stir the rivalry. Max 2 sentences.`, ['That is a lot of popcorn for that film. I have seen less commitment at weddings.', 'scheme']); } } }
   await Promise.all(ps);
 }

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { sb } from '@/lib/supa';
 import { loadMem, recordNight, coupleKey, nightsKey } from '@/lib/memory';
-import { BY_ID, type Intent, type PID, type State } from '@/lib/game';
+import { BY_ID, registerExtra, type Intent, type PID, type State } from '@/lib/game';
 
 /** Server-authoritative: the room lives in ONE Supabase row. Every client (phones and TV) POSTs intents to the API and renders the row via Realtime. */
 export function useRoom(code: string, pid: PID | null, name: string, kind: 'movie' | 'series' = 'movie') {
@@ -16,7 +16,7 @@ export function useRoom(code: string, pid: PID | null, name: string, kind: 'movi
 
   const take = useCallback((s: State) => {
     if (!s || (stRef.current && s.v < stRef.current.v)) return;
-    setSkew(s.now - Date.now()); stRef.current = s; setState(s); setOnline(true);
+    registerExtra(s.extra); setSkew(s.now - Date.now()); stRef.current = s; setState(s); setOnline(true);
   }, []);
 
   const send = useCallback((it: Intent) => {

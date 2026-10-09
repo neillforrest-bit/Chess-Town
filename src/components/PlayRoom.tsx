@@ -66,11 +66,13 @@ export default function PlayRoom({ code }: { code: string }) {
   const name = sp.get('n') || '';
   const { state: s, send, skew, online } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie');
   const now = useNow(skew);
+  useEffect(() => { const n2 = sp.get('n2'); if (pid === 'A' && n2) { const t = setTimeout(() => send({ t: 'preset', pid: 'B', name: n2 }), 1200); return () => clearTimeout(t); } }, [pid]); // eslint-disable-line react-hooks/exhaustive-deps
   const other: PID = pid === 'A' ? 'B' : 'A';
   const [copied, setCopied] = useState(false);
   const [pitchText, setPitchText] = useState('');
   const [tkDone, setTkDone] = useState('');
   const [tapN, setTapN] = useState(0);
+  const [slv, setSlv] = useState<number[]>([50, 50, 50]);
   const [swap, setSwap] = useState<number | null>(null);
   const lastTapSend = useRef(0);
   const tapKey = useRef('');
@@ -135,7 +137,7 @@ export default function PlayRoom({ code }: { code: string }) {
       <div className="cs-orson">HOW TONIGHT WORKS</div>
       <h2 className="cs-q">Find a movie you both want. Make it fun.</h2>
       <ol className="cs-map">
-        <li className="is-now"><b>1 · THE VIBE MATRIX</b><span>Pick 3 cinematic tropes in private. Six tropes become tonight&apos;s search.</span></li>
+        <li className="is-now"><b>1 · THE VIBE CHECK</b><span>Three sliders, then 3 tropes each. Orson searches live TMDB with your answers.</span></li>
         <li><b>2 · THE DRAFT</b><span>Swipe films. Each of you picks 10 in secret.</span></li>
         <li><b>3 · THE BRACKET</b><span>Your picks fight head to head.</span></li>
         <li><b>4 · TONIGHT YOU WATCH</b><span>One winner. Maybe one you would never have chosen.</span></li>
@@ -143,14 +145,19 @@ export default function PlayRoom({ code }: { code: string }) {
       
       <button className="cs-btn cs-btn--gold" onClick={() => { setGo(2); setCd(0); }}>I AM READY</button>
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
-    // THE VIBE MATRIX: 24 tropes, exactly 3 each. No sliders, no gate.
+    // THE VIBE CHECK (v2.0): three sliders feed live TMDB discovery; the trope matrix stays as the flavour layer.
+    if (!s.vibe.sl?.[pid]) { const LB = [['Dark / Gritty', 'Light / Fun'], ['Indie / Auteur', 'Blockbuster'], ['Brain-Bending', 'Turn-Brain-Off']];
+      return shell(<div className="cs-ask cs-ask--tight"><div className="cs-orson">THE VIBE CHECK · 3 SLIDERS</div>
+        {LB.map((l, i) => <div key={i} className="cs-sl"><div className="cs-sl-l"><span>{l[0]}</span><span>{l[1]}</span></div><input type="range" min={0} max={100} value={slv[i]} onChange={(e) => { const v = [...slv]; v[i] = Number(e.target.value); setSlv(v); }} /><em>{slv[i]}</em></div>)}
+        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv }); }}>LOCK MY VIBE</button></div>); }
+    // THE VIBE MATRIX: 24 tropes, exactly 3 each (secondary flavour layer).
     const mineT = s.vibe.tropes?.[pid] || null;
     if (!mineT) return shell(<div className="cs-ask cs-ask--tight">
       <div className="cs-orson">THE VIBE MATRIX · PICK EXACTLY 3</div>
       <div className="cs-tmap cs-tmap--tropes">{TROPE_NAMES.map((x) => <button key={x} className={'cs-tchip' + (trSel.includes(x) ? ' is-crave' : '')} onClick={() => { buzz(8); setTrSel((a) => a.includes(x) ? a.filter((y) => y !== x) : a.length >= 3 ? a : [...a, x]); }}>{trSel.includes(x) ? '★ ' : ''}{x}</button>)}</div>
       <button className="cs-btn cs-btn--gold" disabled={trSel.length !== 3} onClick={() => { buzz(14); send({ t: 'tropes', pid, picks: trSel }); }}>LOCK MY 3 ({trSel.length}/3)</button>
     </div>);
-    return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">Your three are locked. Waiting for {them.name} to commit to theirs.</p><Typing text="Orson is reading over a shoulder" /></div>);
+    return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">{s.vibe.pend ? 'Both locked. Orson is raiding the TMDB archives for fresh titles...' : `Your three are locked. Waiting for ${them.name} to commit to theirs.`}</p><Typing text="Orson is reading over a shoulder" /></div>);
   }
 
   // ---- PHASE 2: draft

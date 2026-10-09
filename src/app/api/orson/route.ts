@@ -46,6 +46,12 @@ export async function POST(req: Request) {
       if (tk) { try { const j = await (await fetch(`https://api.themoviedb.org/3/${isTv ? 'tv' : 'movie'}/${tvId}/watch/providers?api_key=${tk}`)).json() as { results?: Record<string, { flatrate?: { provider_name: string }[] }> }; for (const rg of ['GB', 'US']) { const f = j.results?.[rg]?.flatrate; if (f && f.length) { providers = { region: rg, names: f.slice(0, 5).map((x) => x.provider_name) }; break; } } if (!providers) providers = { region: 'GB', names: [] }; } catch { /* ignore */ } }
       return NextResponse.json({ hook: data.hook || '', loved: data.loved || '', catch: data.catch || '', providers, ...usage(out) });
     }
+    if (body.type === 'cryptic') {
+      const prompt = `${PERSONA}\nBLIND BET: write a cryptic ONE-sentence synopsis (max 22 words) for each of two films so the players must wager without posters or titles. Never name the film, characters, actors or the title words. Intriguing, slightly sinister.\nFilm A: ${body.a}\nFilm B: ${body.b}`;
+      const out = await ai.models.generateContent({ model: GEMINI_MODEL, contents: prompt, config: { responseMimeType: 'application/json', maxOutputTokens: 1500, thinkingConfig: GEMINI_THINKING, responseSchema: { type: Type.OBJECT, properties: { a: { type: Type.STRING }, b: { type: Type.STRING } }, required: ['a', 'b'] } } });
+      const d = JSON.parse(out.text || '{}') as { a?: string; b?: string };
+      return NextResponse.json({ a: d.a || '', b: d.b || '', ...usage(out) });
+    }
     if (body.type === 'quip') {
       const prompt = `${PERSONA}${body.roast ? ' ROAST MODE is on: tease harder.' : ''}\nPlayers: ${body.names}. Moment: ${body.event}\nExtra context: ${body.ctx || 'none'}\nReact in character as Orson to this exact moment. Also pick the mood that fits.`;
       const out = await ai.models.generateContent({

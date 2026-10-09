@@ -4,7 +4,7 @@ import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type P
 
 export const R = {
   HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, CHAMP_MS: 20000, CALLS_MS: [26000, 18000, 12000, 9000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
-  PURSE: 50, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
+  PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
 export type HitWeap = { veto: number | null; shields: number[]; done: boolean };
@@ -17,6 +17,7 @@ export type M8 = {
   wg: { A?: { id: number; tok: number }; B?: { id: number; tok: number } };
   winner: number | null; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
   live?: { A?: { id: number; tok: number }; B?: { id: number; tok: number } }; bidEnds?: number;
+  wc?: 'blind' | 'swap' | 'res' | null; cry?: { a: string; b: string; ai?: boolean }; was?: { a: number; b: number };
 };
 export type B8 = {
   matches: M8[]; cur: number; seed: Record<number, number>; shield: Record<number, PID>; purse: { A: number; B: number };
@@ -244,7 +245,42 @@ export function callIntent(s: State, it: { pid: PID; slot: number; id: number })
   const m = b.matches[it.slot]; if (!m || m.round !== sh.round || (it.id !== m.a && it.id !== m.b)) return; b.calls.pick[it.pid][it.slot] = it.id;
 }
 const callsShow = (b: B8, round: number, now: number) => { b.ack = { A: false, B: false }; b.show = { until: now + R.CALLS_MS[round - 1], kind: 'calls', round }; };
-const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; intro8(s, nx); };
+const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; if (!rollWildcard(s, b, nx)) intro8(s, nx); };
+/** CineSync v2.0 wildcard events: 10% chance per token matchup (QF onward). Blind Bet masks the films; Genre Swap swaps in two divergent cult/vintage picks; Resurrection drags an eliminated film back in. */
+export const WC_P = 0.1;
+const redact = (m: Movie) => { const first = (m.o.split(/(?<=[.!?])\s/)[0] || m.o).replace(new RegExp(m.t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '___'); return first.length > 110 ? first.slice(0, 107) + '...' : first; };
+function rollWildcard(s: State, b: B8, m: M8): boolean {
+  if (m.wc !== undefined || m.round < 2 || m.a === null || m.b === null) return false;
+  const rnd = seeded(s.code, 'wc' + m.id + m.a + m.b); m.wc = null;
+  if (rnd() >= WC_P) return false;
+  const kind = (['blind', 'swap', 'res'] as const)[Math.floor(rnd() * 3)];
+  const inPlay = new Set<number>(b.matches.flatMap((x) => [x.a, x.b]).filter((x): x is number => x !== null));
+  if (kind === 'blind') {
+    m.wc = 'blind'; m.cry = { a: redact(BY_ID[m.a]), b: redact(BY_ID[m.b]) };
+    m.tape = 'BLIND BET. Posters and titles are masked. Back the synopsis, not the poster. Trust nobody, least of all yourselves.';
+    say8(s, 'BLIND BET. I have taken the posters AND the titles. You bet on a cryptic sentence and your nerve.', 'scheme'); s.log.unshift('Wildcard: BLIND BET'); return true;
+  }
+  if (kind === 'swap') {
+    const used = new Set<number>([...inPlay, ...s.pool, ...s.vetoed, ...Object.keys(b.seed).map(Number)]);
+    const c = poolOf(s.kind).filter((x) => !used.has(x.id) && (x.w || x.y < 2005) && x.r >= 6.8).sort((x, y) => y.r - x.r || x.id - y.id).slice(0, 40);
+    let best: [Movie, Movie] | null = null, bd = -1;
+    for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) { if (c[i].g.some((g) => c[j].g.includes(g))) continue; const d = wdist(vecOf(c[i]), vecOf(c[j])); if (d > bd) { bd = d; best = [c[i], c[j]]; } }
+    if (!best) { m.wc = null; return false; }
+    const [x, y] = best; const oa = m.a, ob = m.b;
+    m.was = { a: oa, b: ob }; m.wc = 'swap';
+    b.seed[x.id] = b.seed[oa]; b.seed[y.id] = b.seed[ob];
+    b.conf[x.id] = { p: b.conf[oa]?.p ?? 'A', rank: b.conf[oa]?.rank ?? 0, golden: false, tok: 0 }; b.conf[y.id] = { p: b.conf[ob]?.p ?? 'B', rank: b.conf[ob]?.rank ?? 0, golden: false, tok: 0 };
+    m.a = x.id; m.b = y.id; m.tape = ''; delete m.tape; s.pool = s.pool.map((q) => (q === oa ? x.id : q === ob ? y.id : q));
+    say8(s, `GENRE SWAP. I have thrown out ${BY_ID[oa].t} and ${BY_ID[ob].t}. In their place: ${x.t} (${x.y}) against ${y.t} (${y.y}). Cult. Vintage. Unrelated. Fight.`, 'scheme'); s.log.unshift('Wildcard: GENRE SWAP'); return true;
+  }
+  const live = new Set<number>(b.matches.filter((x) => x.status !== 'RESOLVED').flatMap((x) => [x.a, x.b]).filter((x): x is number => x !== null)); const out: number[] = []; for (const q of b.matches) if (q.status === 'RESOLVED' && q.winner !== null) { const l = q.winner === q.a ? q.b : q.a; if (l !== null && !live.has(l)) out.push(l); }
+  if (!out.length) { m.wc = null; return false; }
+  const back = out.sort((x, y) => BY_ID[y].r - BY_ID[x].r || x - y)[0];
+  const lowSide: 'a' | 'b' = m.seedA > m.seedB ? 'a' : 'b'; const gone = m[lowSide] as number;
+  m.was = { a: m.a, b: m.b }; m.wc = 'res'; m[lowSide] = back; if (lowSide === 'a') m.seedA = b.seed[back]; else m.seedB = b.seed[back]; delete m.tape;
+  s.pool = s.pool.map((q) => (q === gone ? back : q));
+  say8(s, `RESURRECTION. ${BY_ID[back].t} was eliminated. I have dug it up, brushed it off and put it in the ring against ${BY_ID[m.a === back ? (m.b as number) : (m.a as number)].t}. ${BY_ID[gone].t} was dead weight anyway.`, 'scheme'); s.log.unshift('Wildcard: RESURRECTION'); return true;
+}
 export function tapeIntent(s: State, it: { slot: number; line: string }) { const m = s.b8?.matches[it.slot]; if (!m || m.tape || !it.line) return; m.tape = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 240); }
 
 export function ackIntent(s: State, it: { pid: PID }) { const b = s.b8; if (!b || !b.show || !['explain', 'rank', 'champ', 'calls', 'round', 'seed'].includes(b.show.kind)) return; b.ack = { ...(b.ack || { A: false, B: false }), [it.pid]: true }; }

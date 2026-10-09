@@ -440,3 +440,13 @@ em{font-style:normal;color:var(--gold)}
 .cs8-nuke .cs8-chips{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
 .cs8-nuke .cs8-chip{font-size:clamp(9px,2.55vw,12px);padding:5px 3px;line-height:1.05;border-radius:10px}
 @media (max-height:700px){.cs8-tcp{height:clamp(22px,4.3vh,54px)}.cs8-r4 .cs8-tcp{height:clamp(26px,5vh,60px)}.cs8-tc{padding:1px 3px}.cs8-tm{gap:1px}.cs8-tms{gap:2px}.cs8-tc.is-tbd{min-height:clamp(22px,4.3vh,54px)}.cs8-page{gap:3px}.cs8-page .cs-btn{padding-top:9px;padding-bottom:9px}.cs8-sayline{padding:2px 4px;font-size:13px}}
+
+/* v2.0 */
+.cs-sl{margin:14px 0}.cs-sl-l{display:flex;justify-content:space-between;font-size:.8rem;font-weight:800;margin-bottom:6px}.cs-sl input{width:100%;accent-color:#ffc83d;height:28px}.cs-sl em{font-style:normal;font-size:.7rem;opacity:.6}
+.cs8-wc{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border-radius:10px;background:linear-gradient(90deg,#7c3aed55,#db277755);font-size:.72rem;text-align:center;animation:cs8shake .5s ease-out}.cs8-wc b{letter-spacing:.08em}
+.cs8-mask{height:96px;display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:900;background:repeating-linear-gradient(45deg,#222,#222 8px,#333 8px,#333 16px);border-radius:8px;margin-bottom:4px}
+.cs8-wbar{margin:6px 0}.cs8-wbar small{display:block;font-size:.58rem;letter-spacing:.1em;opacity:.7;margin-bottom:3px;text-align:center}
+.cs8-wb{display:flex;height:22px;border-radius:11px;overflow:hidden;background:#222}.cs8-wb>div{display:flex;align-items:center;transition:width .6s cubic-bezier(.3,1.4,.5,1);min-width:0;overflow:hidden;white-space:nowrap}
+.cs8-wb-a{background:#2563eb;justify-content:flex-start;padding-left:8px}.cs8-wb-b{background:#dc2626;justify-content:flex-end;padding-right:8px}.cs8-wb b{font-size:.62rem;color:#fff}
+.cs-callsign{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);background:rgba(0,0,0,.8)}
+.cs-callsign>div{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}.cs-callsign h2{margin:0;font-size:1.3rem}.cs-callsign label{font-size:.7rem;letter-spacing:.1em;opacity:.7}
