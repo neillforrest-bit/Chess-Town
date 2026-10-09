@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
 import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
-import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
+import { OrsonFace, Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 1200;
 function hashStr(t: string) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -143,16 +143,11 @@ export default function PlayRoom({ code }: { code: string }) {
     const mine = s.vibe.ans[pid]; const nextQ = (() => { const k = ASK_ORDER.find((i) => mine[i] === null); return k === undefined ? -1 : k; })(); const stepN = ASK_ORDER.indexOf(nextQ);
     const fresh = s.vibe.attempts === 0 && mine.every((x) => x === null);
     if (fresh && go < 2) return shell(go === 0 ? <div className="cs-intro">
-      <div className="cs-orson">HOW TONIGHT WORKS</div>
-      <h2 className="cs-q">Find a movie you both want. Make it fun.</h2>
-      <ol className="cs-map">
-        <li className="is-now"><b>1 · THE VIBE CHECK</b><span>Three sliders, then 3 tropes each. Orson searches live TMDB with your answers.</span></li>
-        <li><b>2 · THE DRAFT</b><span>Swipe films. Each of you picks 10 in secret.</span></li>
-        <li><b>3 · THE BRACKET</b><span>Your picks fight head to head.</span></li>
-        <li><b>4 · TONIGHT YOU WATCH</b><span>One winner. Maybe one you would never have chosen.</span></li>
-      </ol>
-      
-      <button className="cs-btn cs-btn--gold" onClick={() => { setGo(2); setCd(0); }}>I AM READY</button>
+      <div className="cs-orson">ORSON PRESENTS</div>
+      <div className="cs-intro-face"><OrsonFace mood="smug" talking /></div>
+      <h2 className="cs-q">Welcome to CineSync. Tonight we find the one film you BOTH want to watch.</h2>
+      <p className="cs-say">Swipe a few vibes, draft your favourites in secret, then watch them fight it out in a bracket with Popcorn Tokens. One winner. I will be rude about it.</p>
+      <button className="cs-btn cs-btn--gold" onClick={() => { setGo(2); setCd(0); }}>LET&apos;S FIND A FILM</button>
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
     // THE VIBE CHECK (v2.0): three sliders feed live TMDB discovery; the trope matrix stays as the flavour layer.
     if (!s.vibe.sl?.[pid]) { const LB = [['Dark / Gritty', 'Light / Fun'], ['Indie / Auteur', 'Blockbuster'], ['Brain-Bending', 'Turn-Brain-Off']];
@@ -254,7 +249,7 @@ export default function PlayRoom({ code }: { code: string }) {
         <i className="cs-who">{owner(id) || (i === 2 ? 'ORSON' : '')}</i>
         <button className="cs-info" onClick={() => setDet(id)}>i</button>
         <Poster id={id} /><b>{BY_ID[id].t}</b>
-        <span>{BY_ID[id].y} · {BY_ID[id].rt != null ? BY_ID[id].rt + '% RT' : BY_ID[id].r.toFixed(1)}</span>
+        <span>{BY_ID[id].y}</span><Scores m={BY_ID[id]} big />
         {tot ? <em className="cs-tot">{tot[i]}</em> : mineW ? <em className="cs-tot">{free ? (mineW[i] ? 'YOU' : '') : mineW[i]}</em>
           : free ? <button className="cs-btn cs-btn--gold cs-pickbtn" onClick={() => { buzz(15); send({ t: 'wager', pid, alloc: [0, 1, 2].map((k) => (k === i ? 1 : 0)) }); }}>PICK</button>
           : <div className="cs-step"><button onClick={() => bump3(i, -1)}>-</button><span>{alloc[i]}</span><button onClick={() => bump3(i, 1)}>+</button></div>}

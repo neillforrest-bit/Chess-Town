@@ -3,7 +3,7 @@
 import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
-  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, CHAMP_MS: 40000, CALLS_MS: [26000, 18000, 12000, 9000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 40000, CALLS_MS: [9000, 9000, 10000, 11000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
   PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
@@ -162,7 +162,7 @@ export function bidIntent(s: State, it: { pid: PID; id: number; add: number }, n
   const cur = m.live?.[it.pid]; if (cur && cur.id !== it.id) return;
   const add = Math.max(1, Math.min(Math.floor(it.add || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) return;
   b.purse[it.pid] -= add; m.live = { ...(m.live || {}), [it.pid]: { id: it.id, tok: (cur ? cur.tok : 0) + add } };
-  if (!m.bidEnds) m.bidEnds = now + 120000;
+  void now;
 }
 export function lockBid(s: State, it: { pid: PID }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
@@ -247,7 +247,7 @@ export function callIntent(s: State, it: { pid: PID; slot: number; id: number })
   const m = b.matches[it.slot]; if (!m || m.round !== sh.round || (it.id !== m.a && it.id !== m.b)) return; b.calls.pick[it.pid][it.slot] = it.id;
 }
 const callsShow = (b: B8, round: number, now: number) => { b.ack = { A: false, B: false }; b.show = { until: now + R.CALLS_MS[round - 1], kind: 'calls', round }; };
-const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; if (!rollWildcard(s, b, nx)) intro8(s, nx); };
+const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; else nx.bidEnds = now + R.BID_MS; if (!rollWildcard(s, b, nx)) intro8(s, nx); };
 /** CineSync v2.0 wildcard events: 10% chance per token matchup (QF onward). Blind Bet masks the films; Genre Swap swaps in two divergent cult/vintage picks; Resurrection drags an eliminated film back in. */
 export const WC_P = 0.1;
 const redact = (m: Movie) => { const first = (m.o.split(/(?<=[.!?])\s/)[0] || m.o).replace(new RegExp(m.t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '___'); return first.length > 110 ? first.slice(0, 107) + '...' : first; };
@@ -317,13 +317,12 @@ export function tick8(s: State, now: number) {
   if (b.show) {
     const kd = b.show.kind; const wait = kd === 'explain' || kd === 'rank'; const early = (wait || kd === 'champ' || kd === 'calls' || kd === 'round' || kd === 'seed') && !!b.ack && b.ack.A && b.ack.B;
     // seed + round pages wait for both players to tap READY (the timeline is only the reveal beats; 90s safety fallback)
-    if (!early && now < b.show.until + (kd === 'round' || kd === 'seed' ? 90000 : 0)) return;
+    if (!early && now < b.show.until + 0) return;
     if (b.show.kind === 'explain') { b.ack = { A: false, B: false }; b.show = { until: now + R.HOLD_MS, kind: 'rank', round: 0 }; return; }
     if (b.show.kind === 'rank') { b.ack = { A: false, B: false }; b.show = { until: now + R.SEED_MS, kind: 'seed', round: 0 }; return; }
     const k = b.show; b.show = null;
     if (k.kind === 'seed' && b.calls) { b.ack = { A: false, B: false }; b.show = { until: now + R.CHAMP_MS, kind: 'champ', round: 0 }; return; }
-    if (k.kind === 'champ') { callsShow(b, b.matches[0].round, now); return; }
-    if (k.kind === 'round') { b.cur++; const nr = b.matches[b.cur].round; if (nr !== k.round && b.calls) { callsShow(b, nr, now); return; } }
+        if (k.kind === 'round') { b.cur++; const nr = b.matches[b.cur].round; if (nr !== k.round && b.calls) { callsShow(b, nr, now); return; } }
     startMatch(s, b, now); return;
   }
   const m = b.matches[b.cur]; if (!m) return;
@@ -333,7 +332,8 @@ export function tick8(s: State, now: number) {
     settle(s, m, now); return;
   }
   if (m.status === 'VOTING_ACTIVE' && m.round > 1 && !m.trivia && m.bidEnds && now >= m.bidEnds) {
-    for (const p of ['A', 'B'] as PID[]) if (!m.wg[p] && m.live?.[p]) m.wg[p] = m.live[p];
+    const hi = m.seedA < m.seedB ? (m.a as number) : (m.b as number);
+    for (const p of ['A', 'B'] as PID[]) if (!m.wg[p]) m.wg[p] = m.live?.[p] || { id: hi, tok: 0 };
     settle(s, m, now); return;
   }
   if (m.status === 'LOCKED_FOR_VETO' && m.busting && now - m.busting.at > R.BUSTER_MAX_MS) bustDone(s, 'Orson is lost for words. The wildcard walks in anyway.', now);
