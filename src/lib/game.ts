@@ -332,7 +332,7 @@ export type State = {
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
   fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
   winner: number | null;
-  extra: Movie[];
+  extra: Movie[]; boost: number[];
   roast: boolean;
   mem: { nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean; recorded: boolean };
   tempt: { to: PID; stage: 'off' | 'offer' | 'done'; accepted: boolean; out: number | null; inn: number | null };
@@ -353,7 +353,7 @@ export const newState = (code: string): State => ({
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
   fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
-  winner: null, extra: [], roast: false,
+  winner: null, extra: [], boost: [], roast: false,
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
@@ -489,14 +489,14 @@ function maybeLock(s: State) {
 // Gate streamlined: no swipe deck step. The draft starts the moment both partners have locked their taste map.
 function startDraft(s: State) {
   if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) return;
-  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind); s.draft.loading = true; if (s.extra.length) s.draft.deck = shuffled(Array.from(new Set([...s.draft.deck, ...s.extra.map((m) => m.id)])), s.code, 'deck2');
+  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind); s.draft.loading = true; if (s.extra.length || s.boost.length) s.draft.deck = shuffled(Array.from(new Set([...s.draft.deck, ...s.extra.map((m) => m.id), ...s.boost])), s.code, 'deck2');
   s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
 }
 /** Average of both players' vibe sliders (0 Dark..100 Light, 0 Indie..100 Blockbuster, 0 Brain-bending..100 Brain-off). */
 export const slAvg = (s: State): number[] | null => { const a = s.vibe.sl?.A, b = s.vibe.sl?.B; return a && b ? [0, 1, 2].map((i) => Math.round((a[i] + b[i]) / 2)) : null; };
 export function reduce(prev: State, it: Intent): State {
   const s: State = JSON.parse(JSON.stringify(prev)); s.v++;
-  if (!s.extra) s.extra = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra);
+  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra);
   const now = (it as { now?: number }).now ?? Date.now(); s.now = now;
   switch (it.t) {
     case 'join': {
@@ -548,9 +548,10 @@ export function reduce(prev: State, it: Intent): State {
     }
     case 'extras': {
       if (s.vibe.disc !== 'req') break;
-      const seen = new Set<number>(s.seenBan || []); const ms = (it.movies || []).filter((m) => m && m.id && m.p && !BY_ID[m.id] && !seen.has(m.id)).slice(0, 36);
+      const seen = new Set<number>(s.seenBan || []); const all = (it.movies || []).filter((m) => m && m.id && m.p && !seen.has(m.id));
+      const ms = all.filter((m) => !BY_ID[m.id]).slice(0, 30); s.boost = all.filter((m) => BY_ID[m.id] && !BY_ID[m.id].w).map((m) => m.id).slice(0, 24);
       s.extra = ms; registerExtra(ms); s.vibe.disc = 'done';
-      s.log.unshift(`TMDB discovery: ${ms.length} live titles added to tonight's deck`);
+      s.log.unshift(`TMDB discovery: ${ms.length} new + ${s.boost.length} catalogue titles pulled to the front of tonight's deck`);
       if (s.vibe.pend) { s.vibe.pend = false; startDraft(s); }
       break;
     }

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   // slider 3 Brain-Bending(0) <-> Turn-Brain-Off(100) -> genres
   const g2 = brainOff < 40 ? '878|9648|53|14' : brainOff > 60 ? '28|35|12|16' : '';
   // slider 2 Indie/Auteur(0) <-> Blockbuster(100) -> vote_count / sort filters (TMDB discover has no budget filter)
-  const vc = bb < 35 ? { gte: 200, lte: 3500, sort: 'vote_average.desc', minAvg: 7.0 } : bb > 65 ? { gte: 6000, lte: 0, sort: 'popularity.desc', minAvg: 6.3 } : { gte: 1200, lte: 0, sort: 'vote_average.desc', minAvg: 6.8 };
+  const vc = bb < 35 ? { gte: 150, lte: 2500, sort: 'vote_average.desc', minAvg: 6.8 } : bb > 65 ? { gte: 2500, lte: 0, sort: 'popularity.desc', minAvg: 6.0 } : { gte: 500, lte: 0, sort: 'popularity.desc', minAvg: 6.4 };
   const jobs: { genres: string; page: number }[] = [];
   const pg = () => Math.floor(Math.random() * 5) + 1;
   if (g1) jobs.push({ genres: g1, page: pg() }); if (g2) jobs.push({ genres: g2, page: pg() });
@@ -31,5 +31,5 @@ export async function POST(req: Request) {
         out.push({ id: m.id, t: m.title, y: Number((m.release_date || '0').slice(0, 4)), r: Math.round(m.vote_average * 10) / 10, g: m.genre_ids.map((x) => GN[x]).filter(Boolean), o: m.overview, p: m.poster_path, w: false, pop: m.vote_count, rt: null }); }
     } catch { /* skip this call */ }
   }));
-  return NextResponse.json({ movies: out.sort(() => Math.random() - 0.5).slice(0, 30), calls });
+  return NextResponse.json({ movies: out.sort(() => Math.random() - 0.5).slice(0, 60), calls });
 }
