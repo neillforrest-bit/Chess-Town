@@ -107,8 +107,7 @@ export function TapePage({ s, now, tv, pid, send }: { s: State; now: number; tv?
       <div className="cs-tape-row">{[m.a as number, m.b as number].map((id, k) => { const rv = s.reviews?.[id]; return <div key={id} className="cs-tape-f">{k === 1 && null}<Poster id={id} /><b>{clip(BY_ID[id].t, 22)}</b><Scores m={BY_ID[id]} big />
         {rv && rv.q ? <><q>{rv.q.replace(/^["“”]+|["“”]+$/g, '')}</q><em className="cs-tape-rt">{rv.r !== null ? `${rv.r}/10 · ` : ''}{rv.a}</em></> : <em>{s.reviews?.[id] ? 'No critic would go on record.' : 'Fetching a critic...'}</em>}</div>; })}</div>
     </div>
-    <div className="cs-tape-dots">{ms.map((_, k) => <i key={k} className={k === i ? 'is-on' : ''} onClick={() => setI(k)} />)}</div>
-    <div className="cs8-top" style={{ justifyContent: 'space-between' }}><button className="cs-btn" disabled={i === 0} onClick={() => go(-1)}>‹</button><span style={{ fontSize: '.6rem', opacity: .6 }}>FIGHT {i + 1} / {ms.length}</span><button className="cs-btn" disabled={i >= ms.length - 1} onClick={() => go(1)}>›</button></div>
+    <div className="cs-tape-nav"><button className="cs-btn" disabled={i === 0} onClick={() => go(-1)}>‹</button><div className="cs-tape-dots">{ms.map((_, k) => <i key={k} className={k === i ? 'is-on' : ''} onClick={() => setI(k)} />)}</div><button className="cs-btn" disabled={i >= ms.length - 1} onClick={() => go(1)}>›</button></div>
     <p className="cs-tape-or"><b>ORSON:</b> {line}</p>
     {!tv && pid ? <button className="cs-btn cs-btn--gold" disabled={dn} onClick={() => send?.({ t: 'ack', pid })}>{dn ? 'WAITING FOR THE OTHER CORNER...' : 'START BRACKET'}</button> : <p className="cs8-sayline">{s.players.A.name}: {ack.A ? 'ready' : 'reading'} · {s.players.B.name}: {ack.B ? 'ready' : 'reading'}</p>}
   </div>;
@@ -164,7 +163,6 @@ export function BracketScreen({ s, pid, send, now }: P) {
 
   const upsetNow = m.status === 'RESOLVED' && m.winner !== null && b.upsets.some((u) => u.winner === m.winner && u.gap >= R.UPSET_GAP && (u.loser === m.a || u.loser === m.b));
   return <div className={'cs8-br' + '' + (m.round === 4 ? ' cs8-final' : '')}>
-    <TokStrip s={s} />
     <div className="cs8-top"><span className="cs-orson">{RNDN[m.round - 1]}{m.round < 4 ? ` · ${m.slot - OFFR(b, m.round) + 1}/${b.matches.filter((x) => x.round === m.round).length}` : ''}</span>{m.status === 'VOTING_ACTIVE' && !m.trivia && (m.round === 1 ? m.endsAt : m.bidEnds) ? <b className={'cs8-clock cs8-bigclock' + (secs((m.round === 1 ? m.endsAt : m.bidEnds) as number, now) <= 5 ? ' is-hot' : '')}>{secs((m.round === 1 ? m.endsAt : m.bidEnds) as number, now)}s</b> : null}<button className="cs8-mapbtn" onClick={() => setMap(true)}>BRACKET</button></div>
     {m.round > 1 ? <div className="cs8-tokrow">{[pid, other].map((p) => { const l = m.wg[p] || m.live?.[p]; return <div key={p} className={'cs8-tkc' + (p === pid ? ' is-me' : '')}><small>{p === pid ? 'YOU' : s.players[p].name.toUpperCase().slice(0, 8)}{m.wg[p] ? ' · LOCKED' : ''}</small><b>◈ {b.purse[p]}</b><em>{l ? `${l.tok} on ${nm(l.id, 12)}` : 'no bid yet'}</em></div>; })}</div> : <p className="cs8-tokc">Blitz is free</p>}
     {map && <div className="cs-sheet" onClick={() => setMap(false)}><div className="cs-sheet-in"><BracketMap s={s} /></div></div>}
