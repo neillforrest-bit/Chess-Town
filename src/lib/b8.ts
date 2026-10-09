@@ -239,8 +239,8 @@ function finish(s: State, m: M8, winner: number, via: string, now: number) {
   if (!champMock && gap < R.UPSET_GAP) say8(s, `${BY_ID[winner].t} advances. ${gap > 0 ? 'Mild upset.' : 'The seeding holds.'} ${BY_ID[loser].t} goes quietly.`, 'smug');
 }
 
-/** Tale of the Tape: the four marquee bouts (lowest combined seed) of the first round. The true quarterfinals do not exist yet when the preview screen shows. */
-export function previewMatches(b: B8): M8[] { return b.matches.filter((m) => m.round === 1 && m.a !== null && m.b !== null).sort((x, y) => (x.seedA + x.seedB) - (y.seedA + y.seedB)).slice(0, 4); }
+/** Tale of the Tape: the four quarterfinal bouts. */
+export function previewMatches(b: B8): M8[] { return b.matches.filter((m) => m.round === 2 && m.a !== null && m.b !== null).slice(0, 4); }
 export function champIntent(s: State, it: { pid: PID; id: number }) { const b = s.b8; if (!b || !b.calls || b.show?.kind !== 'champ' || b.ack?.[it.pid] || b.seed[it.id] === undefined) return; b.calls.champ[it.pid] = it.id; }
 export function callIntent(s: State, it: { pid: PID; slot: number; id: number }) {
   const b = s.b8; const sh = b?.show; if (!b || !b.calls || !sh || sh.kind !== 'calls' || b.ack?.[it.pid]) return;
