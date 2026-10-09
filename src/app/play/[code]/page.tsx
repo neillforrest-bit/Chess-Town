@@ -1,2 +1,2 @@
-import PlayRoom from '@/components/PlayRoom';
-export default async function Page({ params }: { params: Promise<{ code: string }> }) { const { code } = await params; return <PlayRoom code={code.toUpperCase()} />; }
+import PlayGate from '@/components/PlayGate';
+export default async function Page({ params }: { params: Promise<{ code: string }> }) { const { code } = await params; return <PlayGate code={code.toUpperCase()} />; }

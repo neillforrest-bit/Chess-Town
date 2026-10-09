@@ -484,3 +484,6 @@ em{font-style:normal;color:var(--gold)}
 .cs-tape-f .cs-poster{max-height:12vh!important}.cs-tape-f .cs-scores--big .cs-score-tile b{font-size:1.05rem}.cs-tape-f .cs-scores--big .cs-score-tile{padding:2px 5px}
 .cs-tape-f q{font-size:.7rem!important;max-height:none!important}.cs-tape-c{overflow:visible!important}
 .cs8-card .cs-scores--big .cs-score-tile b{font-size:.95rem}
+.cs-invite{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 30%,#2a1850,#0a0614 70%)}.cs-invite-in{width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;align-items:stretch;text-align:center}
+.cs-invite h1{font-family:var(--serif);font-size:1.9rem;color:#ffc83d;margin:0;text-shadow:0 0 18px #ffc83d88}.cs-invite-sub{opacity:.8;margin:0}
+.cs-invite-input{font-size:1.5rem;text-align:center;padding:16px;border-radius:14px;border:2px solid #ffc83d;background:#120a20;color:#fff;outline:none;box-shadow:0 0 22px #ffc83d66,inset 0 0 14px #ffc83d22;font-family:var(--serif)}.cs-invite-input:focus{box-shadow:0 0 34px #ffc83daa,inset 0 0 18px #ffc83d33}

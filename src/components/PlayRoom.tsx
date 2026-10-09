@@ -124,7 +124,7 @@ export default function PlayRoom({ code }: { code: string }) {
 
   // ---- LOBBY
   if (s.phase === 'lobby') {
-    const link = typeof window !== 'undefined' ? `${location.origin}/play/${code}?p=B` : '';
+    const link = typeof window !== 'undefined' ? `${location.origin}/invite?gameId=${code}` : '';
     return shell(<div className="cs-center">
       <div className="cs-orson">ORSON</div>
       <p className="cs-say">{them.joined ? `${them.name} has arrived. Splendid. Two humans, one disagreement.` : 'Welcome. I am Orson, your host. I require two humans and one disagreement.'}</p>
