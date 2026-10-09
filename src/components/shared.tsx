@@ -80,7 +80,7 @@ export function Scores({ m, big = false }: { m: Movie; big?: boolean }) {
     ['TMDB', m.r.toFixed(1), tone(m.r, 7.2, 6)],
   ];
   const shown = m.sr ? [...cells.slice(3), ['SEASONS', String(m.sr.s), 'mid'] as [string, string, string], ['EPISODES', String(m.sr.e), 'mid'] as [string, string, string], [m.sr.st === 'Ended' || m.sr.st === 'Canceled' ? 'FINISHED' : 'RUNNING', m.sr.last ? String(m.sr.last) : '', 'mid'] as [string, string, string]] : cells;
-  const list = big ? shown.filter((x) => x[1] !== '–') : shown;
+  const list = big ? shown.filter((x) => x[1] !== '–').slice(0, 3) : shown;
   return <div className={'cs-scores' + (big ? ' cs-scores--big' : '')}>{list.map(([l, v, c]) => <div key={l} className={'cs-score-tile ' + c}><b>{l === 'ROTTEN TOM.' ? '🍅 ' : ''}{v}</b><span>{l}</span></div>)}</div>;
 }
 
