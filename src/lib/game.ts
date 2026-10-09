@@ -323,7 +323,7 @@ export type State = {
   code: string; kind: Kind; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
-  vibe: { sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
+  vibe: { sw: { A: Record<string, boolean>; B: Record<string, boolean> }; lock: string[]; sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
   draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
@@ -332,7 +332,7 @@ export type State = {
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
   fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
   winner: number | null;
-  extra: Movie[]; boost: number[];
+  extra: Movie[]; boost: number[]; reviews: Record<number, { a: string; q: string; r: number | null }>;
   roast: boolean;
   mem: { nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean; recorded: boolean };
   tempt: { to: PID; stage: 'off' | 'offer' | 'done'; accepted: boolean; out: number | null; inn: number | null };
@@ -348,12 +348,12 @@ export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2
 export const newState = (code: string): State => ({
   code, kind: 'movie', v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
-  vibe: { sl: { A: null, B: null }, disc: 'off', pend: false, tropes: { A: null, B: null }, subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
+  vibe: { sw: { A: {}, B: {} }, lock: [], sl: { A: null, B: null }, disc: 'off', pend: false, tropes: { A: null, B: null }, subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
   draft: { gren: { used: false, id: null, votes: {} }, deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
   fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
-  winner: null, extra: [], boost: [], roast: false,
+  winner: null, extra: [], boost: [], reviews: {}, roast: false,
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
@@ -452,6 +452,7 @@ function advance(s: State, now: number) {
 }
 
 export type Intent =
+  | { t: 'vswipe'; pid: PID; name: string; yes: boolean } | { t: 'reviews'; map: Record<number, { a: string; q: string; r: number | null }> }
   | { t: 'sliders'; pid: PID; v: number[] } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
   | { t: 'join'; pid: PID; name?: string; kind?: Kind } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
   | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
@@ -494,9 +495,21 @@ function startDraft(s: State) {
 }
 /** Average of both players' vibe sliders (0 Dark..100 Light, 0 Indie..100 Blockbuster, 0 Brain-bending..100 Brain-off). */
 export const slAvg = (s: State): number[] | null => { const a = s.vibe.sl?.A, b = s.vibe.sl?.B; return a && b ? [0, 1, 2].map((i) => Math.round((a[i] + b[i]) / 2)) : null; };
+/** Both players' 3 vibes are settled (picked, or mutually swiped): build the target vector, blend the sliders, then wait for TMDB discovery if it is still out. */
+function lockTropes(s: State, now: number) {
+  const tr = s.vibe.tropes; if (!tr || !tr.A || !tr.B) return;
+  const all = [...tr.A, ...tr.B].map((n) => TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]);
+  s.vibe.target = [0, 1, 2, 3].map((i) => all.reduce((a, x) => a + x.ax[i], 0) / all.length);
+  const tasteOf = (names: string[]) => Array.from(new Set(names.flatMap((n) => (TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]).tastes)));
+  s.vibe.tastes = { A: tasteOf(tr.A), B: tasteOf(tr.B) }; s.vibe.nos = { A: [], B: [] }; s.vibe.subs = { A: {}, B: {} };
+  const sl = slAvg(s); if (sl) { s.vibe.target = [Math.max(0, Math.min(10, s.vibe.target[0] * 0.5 + (10 - sl[2] / 10) * 0.5)), Math.max(0, Math.min(10, s.vibe.target[1] * 0.5 + (10 - sl[0] / 10) * 0.5)), s.vibe.target[2], s.vibe.target[3]]; }
+  s.vibe.passed = true; s.vibe.doneAt = now;
+  if (s.vibe.disc === 'req') { s.vibe.pend = true; s.orson = { ...s.orson, line: 'Your vibes are locked. I am sending a runner to the TMDB archives. Do not touch anything.', mood: 'scheme', n: s.orson.n + 1 }; return; }
+  startDraft(s);
+}
 export function reduce(prev: State, it: Intent): State {
   const s: State = JSON.parse(JSON.stringify(prev)); s.v++;
-  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra);
+  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.reviews) s.reviews = {}; if (!s.vibe.sw) s.vibe.sw = { A: {}, B: {} }; if (!s.vibe.lock) s.vibe.lock = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra);
   const now = (it as { now?: number }).now ?? Date.now(); s.now = now;
   switch (it.t) {
     case 'join': {
@@ -529,16 +542,19 @@ export function reduce(prev: State, it: Intent): State {
       if (s.phase !== 'vibe' || s.vibe.passed) break;
       const picks = Array.from(new Set(it.picks.filter((x) => TROPE_NAMES.includes(x)))).slice(0, 3); if (picks.length !== 3) break;
       s.vibe.tropes = { ...(s.vibe.tropes || { A: null, B: null }), [it.pid]: picks };
-      const tr = s.vibe.tropes; if (!tr.A || !tr.B) break;
-      const all = [...tr.A, ...tr.B].map((n) => TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]);
-      s.vibe.target = [0, 1, 2, 3].map((i) => all.reduce((a, x) => a + x.ax[i], 0) / all.length);
-      const tasteOf = (names: string[]) => Array.from(new Set(names.flatMap((n) => (TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]).tastes)));
-      s.vibe.tastes = { A: tasteOf(tr.A), B: tasteOf(tr.B) }; s.vibe.nos = { A: [], B: [] }; s.vibe.subs = { A: {}, B: {} };
-      const sl = slAvg(s); if (sl) { s.vibe.target = [Math.max(0, Math.min(10, s.vibe.target![0] * 0.5 + (10 - sl[2] / 10) * 0.5)), Math.max(0, Math.min(10, s.vibe.target![1] * 0.5 + (10 - sl[0] / 10) * 0.5)), s.vibe.target![2], s.vibe.target![3]]; }
-      s.vibe.passed = true; s.vibe.doneAt = now;
-      if (s.vibe.disc === 'req') { s.vibe.pend = true; s.orson = { ...s.orson, line: 'Both sets of tropes are in. I am sending a runner to the TMDB archives. Do not touch anything.', mood: 'scheme', n: s.orson.n + 1 }; break; }
-      startDraft(s); break;
+      lockTropes(s, now); break;
     }
+    case 'vswipe': {
+      const v = s.vibe; if (s.phase !== 'vibe' || v.passed || v.lock.length >= 3 || !(TROPE_NAMES as readonly string[]).includes(it.name) || v.sw[it.pid][it.name] !== undefined) break;
+      v.sw[it.pid][it.name] = !!it.yes;
+      if (v.sw.A[it.name] && v.sw.B[it.name] && !v.lock.includes(it.name)) { v.lock.push(it.name); s.orson = { ...s.orson, line: `Both of you said yes to ${it.name}. Locked. ${v.lock.length}/3.`, mood: 'smug', n: s.orson.n + 1 }; }
+      const dn = (q: PID) => Object.keys(v.sw[q]).length >= TROPE_NAMES.length;
+      if (v.lock.length < 3 && dn('A') && dn('B')) { // ran out of cards: pad with what either liked
+        for (const n of [...TROPE_NAMES.filter((x) => v.sw.A[x] || v.sw.B[x]), ...TROPE_NAMES]) { if (v.lock.length >= 3) break; if (!v.lock.includes(n)) v.lock.push(n); } }
+      if (v.lock.length >= 3) { const picks = v.lock.slice(0, 3); v.tropes = { A: picks, B: picks }; lockTropes(s, now); }
+      break;
+    }
+    case 'reviews': { s.reviews = { ...s.reviews, ...it.map }; break; }
     case 'preset': { if (!s.players[it.pid].joined && it.name) s.players[it.pid].name = it.name.slice(0, 14); break; }
     case 'sliders': {
       if (s.phase !== 'vibe' || s.vibe.sl[it.pid]) break;

@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { BY_ID, TROPE_NAMES, type Intent, type PID, type State } from '@/lib/game';
-import { R, bars, type M8 } from '@/lib/b8';
+import { R, bars, previewMatches, type M8 } from '@/lib/b8';
 import { Poster, secs, buzz } from './shared';
 
 type P = { s: State; pid: PID; send: (i: Intent) => void; now: number };
@@ -86,9 +86,29 @@ export function CallsPage({ s, now, tv, pid, send }: { s: State; now: number; tv
   </div>;
 }
 
+export function TapePage({ s, now, tv, pid, send }: { s: State; now: number; tv?: boolean; pid?: PID; send?: (i: Intent) => void }) {
+  const b = s.b8; const sh = b?.show; const [i, setI] = useState(0); const [x0, setX0] = useState<number | null>(null); if (!b || !sh) return null;
+  const ms = previewMatches(b); const m = ms[Math.min(i, ms.length - 1)]; if (!m) return null;
+  const ack = b.ack || { A: false, B: false }; const dn = pid ? ack[pid] : true; const left = secs(sh.until, now);
+  const fb = `${BY_ID[m.a as number].t} meets ${BY_ID[m.b as number].t}. Rated ${BY_ID[m.a as number].r.toFixed(1)} and ${BY_ID[m.b as number].r.toFixed(1)}. Taste is subjective, and you are both wrong.`;
+  const line = m.tape || fb; const go = (d: number) => setI((v) => Math.max(0, Math.min(ms.length - 1, v + d)));
+  return <div className={'cs8-page cs-tape' + (tv ? ' is-tv' : '')}>
+    <div className="cs8-top"><span className="cs-orson">TALE OF THE TAPE</span><b className="cs8-clock">{left}s</b></div>
+    <div className="cs-tape-c" onTouchStart={(e) => setX0(e.touches[0].clientX)} onTouchEnd={(e) => { if (x0 !== null) { const d = e.changedTouches[0].clientX - x0; if (Math.abs(d) > 50) go(d < 0 ? 1 : -1); } setX0(null); }}>
+      <div className="cs-tape-row">{[m.a as number, m.b as number].map((id, k) => { const rv = s.reviews?.[id]; return <div key={id} className="cs-tape-f">{k === 1 && null}<Poster id={id} /><b>{clip(BY_ID[id].t, 22)}</b>
+        {rv && rv.q ? <><q>&ldquo;{rv.q}&rdquo;</q><em>{rv.a}{rv.r !== null ? ` · ${rv.r}/10` : ''}</em></> : <em>{s.reviews?.[id] ? 'No critic would go on record.' : 'Fetching a critic...'}</em>}</div>; })}</div>
+    </div>
+    <div className="cs-tape-dots">{ms.map((_, k) => <i key={k} className={k === i ? 'is-on' : ''} onClick={() => setI(k)} />)}</div>
+    <div className="cs8-top" style={{ justifyContent: 'space-between' }}><button className="cs-btn" disabled={i === 0} onClick={() => go(-1)}>‹</button><span style={{ fontSize: '.6rem', opacity: .6 }}>FIGHT {i + 1} / {ms.length}</span><button className="cs-btn" disabled={i >= ms.length - 1} onClick={() => go(1)}>›</button></div>
+    <p className="cs-tape-or"><b>ORSON:</b> {line}</p>
+    {!tv && pid ? <button className="cs-btn cs-btn--gold" disabled={dn} onClick={() => send?.({ t: 'ack', pid })}>{dn ? 'WAITING FOR THE OTHER CORNER...' : 'START BRACKET'}</button> : <p className="cs8-sayline">{s.players.A.name}: {ack.A ? 'ready' : 'reading'} · {s.players.B.name}: {ack.B ? 'ready' : 'reading'}</p>}
+  </div>;
+}
+
 export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; tv?: boolean; pid?: PID; send?: (i: Intent) => void }) {
   const b = s.b8; const sh = b?.show; if (!b || !sh) return null;
-  if (sh.kind === 'champ' || sh.kind === 'calls') return <CallsPage s={s} now={now} tv={tv} pid={pid} send={send} />;
+  if (sh.kind === 'champ') return <TapePage s={s} now={now} tv={tv} pid={pid} send={send} />;
+  if (sh.kind === 'calls') return <CallsPage s={s} now={now} tv={tv} pid={pid} send={send} />;
   const owner = s.hit?.owner || {};
   const tag = (id: number) => (b.conf?.[id] ? `${s.players[b.conf[id].p].name.slice(0, 5).toUpperCase()} #${b.conf[id].rank}${b.conf[id].golden ? ' ★' : ''}` : (owner[id] === 'O' ? 'ORSON' : ''));
   const ranked = Object.keys(b.seed).map(Number).sort((x, y) => b.seed[x] - b.seed[y]);

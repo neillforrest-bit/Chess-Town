@@ -2,7 +2,7 @@
 // Server-side game engine: ONE Supabase row per room is the single source of truth.
 // Intents are applied by the pure reducer under a compare-and-set on state.v; Orson (Gemini) side effects run here too.
 import { createClient } from '@supabase/supabase-js';
-import { nukeCands, nukeFallback } from '@/lib/b8';
+import { nukeCands, nukeFallback, previewMatches } from '@/lib/b8';
 import { newState, reduce, slAvg, registerExtra, BY_ID, fallbackPitch, AXQ_NAME, type Mood, type Intent, type State } from '@/lib/game';
 
 const db = () => createClient<any>(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string, { auth: { persistSession: false } });
@@ -60,12 +60,15 @@ export async function effects(code: string, origin: string): Promise<void> {
   const ap = (it: Intent) => runIntent(code, it);
   const ps: Promise<unknown>[] = [];
   const names = `${s.players.A.name} and ${s.players.B.name}`;
+  // v2.1 behaviour tracking: each player's swipe habits (passes vs drafts) go into Orson's context so roasts are personal and asymmetric
+  const beh = (['A', 'B'] as const).map((p) => { const l = (s.draft as any).learn?.[p]; if (!l || !l.n) return ''; const pass = l.n - l.yes; return `${s.players[p].name} has swiped ${l.n} films: drafted ${l.yes}, passed ${pass} (${Math.round(100 * pass / l.n)}% pass rate), current pass/draft streak ${l.streak}.`; }).filter(Boolean).join(' ');
+  const behCtx = beh ? ` Player behaviour: ${beh} Where it is relevant, roast the two players DIFFERENTLY and asymmetrically using these numbers.` : '';
   const say = (key: string, event: string, ctx: string, fb: [string, Mood]) => {
     ps.push((async () => {
       const c = await claim(code, 'q:' + key); if (!c.ok) return;
       const calls = c.seen.filter((x) => x.startsWith('q:')).length;
       if (calls > 16 || s.cost.usd > 12) { await ap({ t: 'quip', line: fb[0], mood: fb[1] }); return; }
-      const d = await orson(origin, { type: 'quip', names, event, ctx, roast: s.roast }, 7000);
+      const d = await orson(origin, { type: 'quip', names, event, ctx: ctx + behCtx, roast: s.roast }, 7000);
       if (d && d.line) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'quip', line: d.line, mood: d.mood || 'idle' }); } else await ap({ t: 'quip', line: fb[0], mood: fb[1] });
     })());
   };
@@ -128,6 +131,15 @@ export async function effects(code: string, origin: string): Promise<void> {
     const d = await orson(origin, { type: 'quip', names, roast: s.roast, event: `Pre-fight broadcast for a ${['', 'blitz', 'quarterfinal', 'semifinal', 'FINAL'][m.round]} grudge match. ${side(m.a as number)}. VERSUS ${side(m.b as number)}.`, ctx: 'Maximum 2 sentences. Contrast their taste directly. Treat a conference seed #1 or Golden Ticket pick as a king to be guillotined and a seed #4 pick as a desperate underdog. Never corny cheerleading: you want domestic cinematic chaos. Use only the facts supplied, invent no plot.' }, 20000);
     if (d && d.line) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'tape', slot: m.slot, line: d.line }); }
   })());
+  // v2.1 Tale of the Tape: one polarised critic review per spotlight film (TMDB), fetched once when the preview screen opens
+  if (s.phase === 'bracket' && s.b8 && s.b8.show?.kind === 'champ') {
+    const ids = previewMatches(s.b8).flatMap((m) => [m.a as number, m.b as number]);
+    if (ids.some((i) => !s.reviews[i])) ps.push((async () => {
+      const c = await claim(code, 'reviews'); if (!c.ok) return;
+      try { const r = await fetch(origin + '/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }), signal: AbortSignal.timeout(12000) }); const d = await r.json() as { map?: Record<number, { a: string; q: string; r: number | null }> };
+        await ap({ t: 'reviews', map: d.map && Object.keys(d.map).length ? d.map : { [ids[0]]: { a: '', q: '', r: null } } }); } catch { await ap({ t: 'reviews', map: { [ids[0]]: { a: '', q: '', r: null } } }); }
+    })());
+  }
   // Nuclear Veto: emergency ultimatum. Gemini picks a Titan and a Hidden Gem from verified catalogue candidates; templated fallback if it fails.
   if (s.phase === 'done' && s.b8 && s.reroll.stage === 'wait') ps.push((async () => {
     const c = await claim(code, 'nuke' + (s.reroll.at || 0)); if (!c.ok) return;

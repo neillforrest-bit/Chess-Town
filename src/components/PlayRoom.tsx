@@ -9,6 +9,15 @@ import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import { Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 1200;
+function hashStr(t: string) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function VibeCard({ name, n, total, onAns }: { name: string; n: number; total: number; onAns: (yes: boolean) => void }) {
+  const x = useMotionValue(0); const rot = useTransform(x, [-200, 200], [-14, 14]); const yesO = useTransform(x, [20, 120], [0, 1]); const noO = useTransform(x, [-120, -20], [1, 0]);
+  const done = useRef(false); const fire = (yes: boolean) => { if (done.current) return; done.current = true; animate(x, yes ? 500 : -500, { duration: 0.18 }); setTimeout(() => onAns(yes), 150); };
+  return <div className="cs-vsw-stage"><motion.div className="cs-vsw-card" style={{ x, rotate: rot, touchAction: 'pan-y' }} drag="x" dragSnapToOrigin dragElastic={0.9} onDragEnd={(_, i) => { if (i.offset.x > 90 || i.velocity.x > 500) fire(true); else if (i.offset.x < -90 || i.velocity.x < -500) fire(false); }}>
+    <motion.i className="cs-vsw-y" style={{ opacity: yesO }}>YES</motion.i><motion.i className="cs-vsw-n" style={{ opacity: noO }}>NO</motion.i>
+    <small>{n} / {total}</small><b>{name}</b></motion.div>
+    <div className="cs-vsw-btns"><button className="cs-vsw-no" onClick={() => fire(false)}>✕ NO</button><button className="cs-vsw-yes" onClick={() => fire(true)}>YES ✓</button></div></div>;
+}
 
 
 type CardInfo = { hook: string; loved: string; catch: string; providers: { region: string; names: string[] } | null } | 'err' | 'wait';
@@ -150,12 +159,14 @@ export default function PlayRoom({ code }: { code: string }) {
       return shell(<div className="cs-ask cs-ask--tight"><div className="cs-orson">THE VIBE CHECK · 3 SLIDERS</div>
         {LB.map((l, i) => <div key={i} className="cs-sl"><div className="cs-sl-l"><span>{l[0]}</span><span>{l[1]}</span></div><input type="range" min={0} max={100} value={slv[i]} onChange={(e) => { const v = [...slv]; v[i] = Number(e.target.value); setSlv(v); }} /><em>{slv[i]}</em></div>)}
         <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv }); }}>LOCK MY VIBE</button></div>); }
-    // THE VIBE MATRIX: 24 tropes, exactly 3 each (secondary flavour layer).
-    const mineT = s.vibe.tropes?.[pid] || null;
-    if (!mineT) return shell(<div className="cs-ask cs-ask--tight">
-      <div className="cs-orson">THE VIBE MATRIX · PICK EXACTLY 3</div>
-      <div className="cs-tmap cs-tmap--tropes">{TROPE_NAMES.map((x) => <button key={x} className={'cs-tchip' + (trSel.includes(x) ? ' is-crave' : '')} onClick={() => { buzz(8); setTrSel((a) => a.includes(x) ? a.filter((y) => y !== x) : a.length >= 3 ? a : [...a, x]); }}>{trSel.includes(x) ? '★ ' : ''}{x}</button>)}</div>
-      <button className="cs-btn cs-btn--gold" disabled={trSel.length !== 3} onClick={() => { buzz(14); send({ t: 'tropes', pid, picks: trSel }); }}>LOCK MY 3 ({trSel.length}/3)</button>
+    // v2.1 VIBE SWIPER: one vibe phrase at a time; the first 3 both players swipe right on lock in instantly.
+    const mineT = s.vibe.tropes?.[pid] || null; const swm = s.vibe.sw?.[pid] || {};
+    const order = [...TROPE_NAMES].sort((x, y) => hashStr(s.code + x) - hashStr(s.code + y)); const cur = order.find((x) => swm[x] === undefined);
+    if (!mineT && cur) return shell(<div className="cs-ask cs-ask--tight cs-vsw">
+      <div className="cs-orson">THE VIBE SWIPER · {s.vibe.lock.length}/3 LOCKED</div>
+      <div className="cs-vsw-lock">{[0, 1, 2].map((i) => <span key={i} className={s.vibe.lock[i] ? 'is-on' : ''}>{s.vibe.lock[i] || '?'}</span>)}</div>
+      <VibeCard key={cur} name={cur} n={Object.keys(swm).length + 1} total={order.length} onAns={(yes) => { buzz(yes ? 14 : 6); send({ t: 'vswipe', pid, name: cur, yes }); }} />
+      <p className="cs-vsw-h">Swipe right = Yes · left = No. First 3 you BOTH like lock in.</p>
     </div>);
     return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">{s.vibe.pend ? 'Both locked. Orson is raiding the TMDB archives for fresh titles...' : `Your three are locked. Waiting for ${them.name} to commit to theirs.`}</p><Typing text="Orson is reading over a shoulder" /></div>);
   }
