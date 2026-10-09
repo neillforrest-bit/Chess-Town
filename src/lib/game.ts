@@ -332,6 +332,7 @@ export type State = {
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
   fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
   winner: number | null;
+  inter: Record<string, string>; asym: { A: string; B: string } | null;
   extra: Movie[]; boost: number[]; reviews: Record<number, { a: string; q: string; r: number | null }>;
   roast: boolean;
   mem: { nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean; recorded: boolean };
@@ -353,7 +354,7 @@ export const newState = (code: string): State => ({
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
   fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
-  winner: null, extra: [], boost: [], reviews: {}, roast: false,
+  winner: null, inter: {}, asym: null, extra: [], boost: [], reviews: {}, roast: false,
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
@@ -452,6 +453,7 @@ function advance(s: State, now: number) {
 }
 
 export type Intent =
+  | { t: 'inter'; key: string; line: string } | { t: 'asym'; a: string; b: string } | { t: 'mortem'; slot: number; line: string }
   | { t: 'vswipe'; pid: PID; name: string; yes: boolean } | { t: 'reviews'; map: Record<number, { a: string; q: string; r: number | null }> }
   | { t: 'sliders'; pid: PID; v: number[] } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
   | { t: 'join'; pid: PID; name?: string; kind?: Kind } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
@@ -509,7 +511,7 @@ function lockTropes(s: State, now: number) {
 }
 export function reduce(prev: State, it: Intent): State {
   const s: State = JSON.parse(JSON.stringify(prev)); s.v++;
-  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.reviews) s.reviews = {}; if (!s.vibe.sw) s.vibe.sw = { A: {}, B: {} }; if (!s.vibe.lock) s.vibe.lock = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra);
+  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.reviews) s.reviews = {}; if (!s.inter) s.inter = {}; if (s.asym === undefined) s.asym = null; if (!s.vibe.sw) s.vibe.sw = { A: {}, B: {} }; if (!s.vibe.lock) s.vibe.lock = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra);
   const now = (it as { now?: number }).now ?? Date.now(); s.now = now;
   switch (it.t) {
     case 'join': {
@@ -554,6 +556,9 @@ export function reduce(prev: State, it: Intent): State {
       if (v.lock.length >= 3) { const picks = v.lock.slice(0, 3); v.tropes = { A: picks, B: picks }; lockTropes(s, now); }
       break;
     }
+    case 'inter': { if (!s.inter[it.key] && it.line) s.inter[it.key] = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 300); break; }
+    case 'asym': { if (!s.asym && (it.a || it.b)) s.asym = { A: String(it.a || '').slice(0, 300), B: String(it.b || '').slice(0, 300) }; break; }
+    case 'mortem': { const m = s.b8?.matches[it.slot]; if (m && !m.mortem && it.line) m.mortem = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 200); break; }
     case 'reviews': { s.reviews = { ...s.reviews, ...it.map }; break; }
     case 'preset': { if (!s.players[it.pid].joined && it.name) s.players[it.pid].name = it.name.slice(0, 14); break; }
     case 'sliders': {

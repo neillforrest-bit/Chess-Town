@@ -15,7 +15,7 @@ export type M8 = {
   id: string; round: 1 | 2 | 3 | 4; slot: number; a: number | null; b: number | null; seedA: number; seedB: number;
   status: 'PENDING' | 'VOTING_ACTIVE' | 'LOCKED_FOR_VETO' | 'RESOLVED';
   wg: { A?: { id: number; tok: number }; B?: { id: number; tok: number } };
-  winner: number | null; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
+  winner: number | null; mortem?: string; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
   live?: { A?: { id: number; tok: number }; B?: { id: number; tok: number } }; bidEnds?: number;
   wc?: 'blind' | 'swap' | 'res' | null; cry?: { a: string; b: string; ai?: boolean }; was?: { a: number; b: number };
 };

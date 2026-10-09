@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildAsymmetricDraftPrompt } from '@/utils/orsonPrompts';
 import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_MODEL, GEMINI_THINKING } from '@/lib/gemini-model';
 
@@ -49,6 +50,12 @@ export async function POST(req: Request) {
     if (body.type === 'cryptic') {
       const prompt = `${PERSONA}\nBLIND BET: write a cryptic ONE-sentence synopsis (max 22 words) for each of two films so the players must wager without posters or titles. Never name the film, characters, actors or the title words. Intriguing, slightly sinister.\nFilm A: ${body.a}\nFilm B: ${body.b}`;
       const out = await ai.models.generateContent({ model: GEMINI_MODEL, contents: prompt, config: { responseMimeType: 'application/json', maxOutputTokens: 1500, thinkingConfig: GEMINI_THINKING, responseSchema: { type: Type.OBJECT, properties: { a: { type: Type.STRING }, b: { type: Type.STRING } }, required: ['a', 'b'] } } });
+      const d = JSON.parse(out.text || '{}') as { a?: string; b?: string };
+      return NextResponse.json({ a: d.a || '', b: d.b || '', ...usage(out) });
+    }
+    if (body.type === 'asym') {
+      const prompt = `${PERSONA}\nPlayers: ${body.names}. ${buildAsymmetricDraftPrompt(body.p1, body.p2)}`;
+      const out = await ai.models.generateContent({ model: GEMINI_MODEL, contents: prompt, config: { responseMimeType: 'application/json', maxOutputTokens: 2500, thinkingConfig: GEMINI_THINKING, responseSchema: { type: Type.OBJECT, properties: { a: { type: Type.STRING }, b: { type: Type.STRING } }, required: ['a', 'b'] } } });
       const d = JSON.parse(out.text || '{}') as { a?: string; b?: string };
       return NextResponse.json({ a: d.a || '', b: d.b || '', ...usage(out) });
     }

@@ -52,10 +52,7 @@ export function HitScreen({ s, pid, send, now }: P) {
 }
 
 /** Both players' Popcorn Token balances, visible on every tournament screen. */
-export function TokStrip({ s }: { s: State }) {
-  const b = s.b8; if (!b) return null;
-  return <div className="cs8-tokstrip">{(['A', 'B'] as PID[]).map((p) => <div key={p} className={'cs8-ts cs8-ts--' + p}><small>{s.players[p].name.toUpperCase().slice(0, 9)}</small><b>◈ {b.purse[p]}</b></div>)}</div>;
-}
+export function TokStrip({ s }: { s: State }) { void s; return null; /* replaced by the sticky TokenHUD in the room shell */ }
 
 export const RNDN = ['ROUND OF 16', 'QUARTERFINAL', 'SEMIFINAL', 'THE FINAL'];
 const OFFR = (b: { base: number }, r: number) => [0, b.base, b.base + 4, b.base + 6][r - 1];

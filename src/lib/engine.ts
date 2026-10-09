@@ -3,6 +3,7 @@
 // Intents are applied by the pure reducer under a compare-and-set on state.v; Orson (Gemini) side effects run here too.
 import { createClient } from '@supabase/supabase-js';
 import { nukeCands, nukeFallback, previewMatches } from '@/lib/b8';
+import { buildPostMatchMortem } from '@/utils/orsonPrompts';
 import { newState, reduce, slAvg, registerExtra, BY_ID, fallbackPitch, AXQ_NAME, type Mood, type Intent, type State } from '@/lib/game';
 
 const db = () => createClient<any>(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string, { auth: { persistSession: false } });
@@ -140,6 +141,35 @@ export async function effects(code: string, origin: string): Promise<void> {
         await ap({ t: 'reviews', map: d.map && Object.keys(d.map).length ? d.map : { [ids[0]]: { a: '', q: '', r: null } } }); } catch { await ap({ t: 'reviews', map: { [ids[0]]: { a: '', q: '', r: null } } }); }
     })());
   }
+  // v2.2 Orson interstitials: his take on the VIBE stage the moment it ends (shared), and an asymmetric pair of DRAFT verdicts (one per player's own phone)
+  if (s.phase !== 'lobby' && s.phase !== 'vibe' && !s.inter.vibe) ps.push((async () => {
+    const c = await claim(code, 'iv'); if (!c.ok) return;
+    const sw = s.vibe.sw; const yesA = Object.values(sw?.A || {}).filter(Boolean).length, yesB = Object.values(sw?.B || {}).filter(Boolean).length;
+    const sl = slAvg(s);
+    const d = await orson(origin, { type: 'quip', names, roast: s.roast, event: `The VIBE stage just ended. Locked vibes: ${(s.vibe.lock || []).join(', ') || 'chosen by sliders'}. ${s.players.A.name} said yes to ${yesA} vibes, ${s.players.B.name} to ${yesB}.${sl ? ` Average sliders: dark-to-light ${Math.round(sl[0])}, indie-to-blockbuster ${Math.round(sl[1])}, brainy-to-brainless ${Math.round(sl[2])}.` : ''}`, ctx: 'This is a full-screen pause between stages. Give your unvarnished opinion of what this stage says about the couple. 2 sentences max. Use only the facts supplied.' }, 15000);
+    await ap({ t: 'inter', key: 'vibe', line: d?.line || `Three vibes locked. ${yesA} yeses from one of you, ${yesB} from the other. This is going to be a long night.` });
+    if (d && d.line) await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
+  })());
+  if ((s.phase === 'hitlist' || s.phase === 'bracket' || s.phase === 'done' || s.phase === 'final') && !s.asym) ps.push((async () => {
+    const c = await claim(code, 'asym'); if (!c.ok) return;
+    const L = (s.draft as any).learn || {}; const st = (p: 'A' | 'B') => { const l = L[p] || { n: 0, yes: 0, streak: 0 }; return { name: s.players[p].name, swipes: l.n || 0, passes: Math.max(0, (l.n || 0) - (l.yes || 0)), drafted: l.yes || 0, streak: l.streak || 0 }; };
+    const p1 = st('A'), p2 = st('B');
+    const d = await orson(origin, { type: 'asym', names, p1, p2 }, 20000);
+    const worse = p1.passes >= p2.passes ? p1 : p2; const other = worse === p1 ? p2 : p1;
+    const fbA = p1 === worse ? `${p1.passes} passes, ${p1.name}. Nothing on earth is good enough for you.` : `${p1.drafted} yeses, ${p1.name}. You would draft a cereal box.`; const fbB = p2 === worse ? `${p2.passes} passes, ${p2.name}. Impossible standards are not a personality.` : `${p2.drafted} yeses, ${p2.name}. And ${other.name === p2.name ? worse.name : other.name} is still being picky.`;
+    await ap({ t: 'asym', a: d?.a || fbA, b: d?.b || fbB });
+    if (d && d.a) await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 });
+  })());
+  // v2.2 War Chest post-mortem: the wager math of every resolved bout goes to Orson for a one-line verdict (shown as a 5s toast)
+  if (s.phase === 'bracket' && s.b8) for (const m of s.b8.matches) if (m.status === 'RESOLVED' && m.winner !== null && !m.mortem && m.round > 1 && m.a !== null && m.b !== null) ps.push((async () => {
+    const c = await claim(code, 'pm' + m.id); if (!c.ok) return;
+    const w = m.wg || {}; const ta = (['A', 'B'] as const).map((p) => ({ p, w: w[p] }));
+    const sideOf = (p: 'A' | 'B') => (w[p] ? BY_ID[w[p]!.id]?.t || '' : '');
+    const bout = { a: { name: s.players.A.name, film: sideOf('A'), tokens: w.A?.tok || 0 }, b: { name: s.players.B.name, film: sideOf('B'), tokens: w.B?.tok || 0 }, winner: BY_ID[m.winner as number].t, margin: m.via || 'the tug-of-war', upset: !!s.b8!.upsets.some((u) => u.winner === m.winner && u.loser === (m.winner === m.a ? m.b : m.a)) };
+    void ta;
+    const d = await orson(origin, { type: 'quip', names, roast: s.roast, event: buildPostMatchMortem(bout), ctx: 'One sentence only. Use the exact token numbers.' }, 9000);
+    if (d && d.line) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'mortem', slot: m.slot, line: d.line }); }
+  })());
   // Nuclear Veto: emergency ultimatum. Gemini picks a Titan and a Hidden Gem from verified catalogue candidates; templated fallback if it fails.
   if (s.phase === 'done' && s.b8 && s.reroll.stage === 'wait') ps.push((async () => {
     const c = await claim(code, 'nuke' + (s.reroll.at || 0)); if (!c.ok) return;
