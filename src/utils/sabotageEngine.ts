@@ -129,7 +129,7 @@ function applyGenre(s: State, g: string) {
 }
 export function wheelIntent(s: State, it: { pid: PID; act: 'start' | 'spin' | 'veto' | 'accept' }, now: number) {
   s.sab ||= newSab(); const pid = it.pid; if (pid !== 'A' && pid !== 'B') return; const nm = (p: PID) => s.players[p].name; let w = s.sab.wheel || null;
-  const spinTo = (w: Wheel) => { const r = seeded(s.code, 'wheel' + w.n + (w.turn)); w.idx = Math.floor(r() * w.opts.length); w.cand = w.opts[w.idx]; w.at = now; w.n++; };
+  const spinTo = (w: Wheel): string => { const r = seeded(s.code, 'wheel' + w.n + (w.turn)); const i = Math.floor(r() * w.opts.length); w.idx = i; w.cand = w.opts[i]; w.at = now; w.n++; return w.opts[i]; };
   if (it.act === 'start') {
     if (w || !canUse(s, pid, 'roulette')) return; s.sab[pid].roulette = false;
     const opts = wheelOpts(s); if (opts.length < 4) return;
@@ -148,7 +148,7 @@ export function wheelIntent(s: State, it: { pid: PID; act: 'start' | 'spin' | 'v
   if (it.act === 'veto') {
     if (pid !== judge || w.vetoed[pid]) return; w.vetoed[pid] = true; const prev = w.cand; w.cand = null; w.idx = null;
     if (w.spun[judge]) { // both spins used: Orson overrules with a final spin
-      w.turn = judge; w.orson = true; spinTo(w); const fin: string = w.opts[w.idx as number]; w.final = fin; w.stage = 'done'; applyGenre(s, fin);
+      w.turn = judge; w.orson = true; const fin: string = spinTo(w); w.final = fin; w.stage = 'done'; applyGenre(s, fin);
       w.line = `Both vetoes spent. ${prev} was rejected, so I spun for you. ${fin}. No appeals.`; s.orson = { ...s.orson, line: w.line, mood: 'shock', n: s.orson.n + 1 }; return;
     }
     w.turn = judge; w.stage = 'spin'; w.line = `VETO! ${nm(judge)} threw out ${prev}. Now it is their turn to spin. Do not disappoint me.`; s.orson = { ...s.orson, line: w.line, mood: 'shock', n: s.orson.n + 1 };
