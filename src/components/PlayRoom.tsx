@@ -1,4 +1,5 @@
 'use client';
+import { useMood } from './useMood';
 import { rrLive } from '@/lib/b8';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
@@ -76,7 +77,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const sp = useSearchParams();
   const pid = (sp.get('p') === 'B' ? 'B' : 'A') as PID;
   const name = sp.get('n') || '';
-  const { state: s, send, skew, online } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie');
+  const { state: s, send, skew, online } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie', sp.get('gm') || undefined);
   const now = useNow(skew);
   useEffect(() => { const n2 = sp.get('n2'); if (pid === 'A' && n2) { const t = setTimeout(() => send({ t: 'preset', pid: 'B', name: n2 }), 1200); return () => clearTimeout(t); } }, [pid]); // eslint-disable-line react-hooks/exhaustive-deps
   const other: PID = pid === 'A' ? 'B' : 'A';
@@ -118,9 +119,11 @@ export default function PlayRoom({ code }: { code: string }) {
   useEffect(() => { if (!s || s.phase !== 'draft' || s.draft.loading) return; const q = [...s.draft.inbox[pid], ...s.draft.q[pid]]; q.slice(0, 2).forEach((i) => loadCard(i, send as (i: Intent) => void, () => bump((x) => x + 1))); }, [s?.phase, s?.draft.idx?.[pid], s?.draft.loading, s?.draft.inbox?.[pid]?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (s?.phase === 'final' && s.fin.rematchUsed) setPitchText(''); }, [s?.fin.rematchUsed, s?.phase]);
 
+  const curM = s && s.b8 && s.phase === 'bracket' ? (s.b8.matches[s.b8.cur] as unknown as { a?: number } | undefined) : undefined; const curF = curM?.a ? BY_ID[curM.a] : null;
+  useMood({ poster: curF?.p || null, genres: curF ? curF.g : s?.sab?.genre ? [s.sab.genre] : s?.cl ? s.cl : undefined, gm: s?.gm || null });
   if (!s) return <main className="cs-play"><div className="cs-wait">{online ? 'Looking for the room...' : 'Connecting...'}</div></main>;
   const me = s.players[pid], them = s.players[other];
-  const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span></header>;
+  const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span>{s.gm && <u className="cs-gmchip">{s.gm === 'oscar' ? '🏆 OSCAR GAUNTLET' : s.gm === 'rotten' ? '🍅 ROTTEN ROLL' : `⚔ ${(s.cl || []).join(' vs ').toUpperCase()}`}</u>}</header>;
   const foot = <footer className="cs-foot"><Meter cost={s.cost} /><i>{BUILD}</i></footer>;
   const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
   const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;

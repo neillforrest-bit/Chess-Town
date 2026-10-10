@@ -12,7 +12,7 @@ export default function Home() {
   useEffect(() => { setName(localStorage.getItem('cs-name') || ''); setP2(localStorage.getItem('cs-p2') || 'Player 2'); if (!localStorage.getItem('cs-callsigns')) { setName((n) => n || 'Player 1'); setModal(true); } }, []);
   const saveCallsigns = () => { localStorage.setItem('cs-name', (name || 'Player 1').trim()); localStorage.setItem('cs-p2', (p2 || 'Player 2').trim()); localStorage.setItem('cs-callsigns', '1'); setName((name || 'Player 1').trim()); setModal(false); };
   const [code, setCode] = useState('');
-  const [kind, setKind] = useState<'movie' | 'series'>('movie');
+  const [kind, setKind] = useState<'movie' | 'series'>('movie'); const [gm, setGm] = useState('');
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };
   return (
     <main className="cs-home">
@@ -25,7 +25,8 @@ export default function Home() {
       <p className="cs-tag">Two phones. One winner. No more couch gridlock.</p>
       <input className="cs-input" placeholder="Your name" maxLength={14} value={name} onChange={(e) => setName(e.target.value)} />
       <div className="cs-kind"><button className={kind === 'movie' ? 'is-on' : ''} onClick={() => setKind('movie')}>MOVIE NIGHT</button><button className={kind === 'series' ? 'is-on' : ''} onClick={() => setKind('series')}>SERIES BINGE</button></div>
-      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&n2=${encodeURIComponent(p2.trim())}${kind === 'series' ? '&k=series' : ''}`)}>START A {kind === 'series' ? 'SERIES' : 'MOVIE'} ROOM</button>
+      {kind === 'movie' && <div className="cs-gms">{[['', 'CLASSIC'], ['oscar', '🏆 OSCAR GAUNTLET'], ['rotten', '🍅 ROTTEN ROLL'], ['clash', '⚔ GENRE CLASH']].map(([v, n]) => <button key={v} className={gm === v ? 'is-on' : ''} onClick={() => setGm(v)}>{n}</button>)}</div>}
+      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&n2=${encodeURIComponent(p2.trim())}${kind === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>START A {kind === 'series' ? 'SERIES' : 'MOVIE'} ROOM</button>
       <button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO GAUNTLET · YOU VS ORSON</button>
       <div className="cs-or">or join your partner</div>
       <div className="cs-row">

@@ -11,7 +11,19 @@ export type Movie = { id: number; t: string; y: number; r: number; g: string[]; 
 export type Kind = 'movie' | 'series';
 export const MOVIES: Movie[] = (catalog as { movies: Movie[] }).movies.filter((m) => m.y >= 1990);
 export const SERIES: Movie[] = (seriesCat as { shows: Movie[] }).shows;
-export const poolOf = (k: Kind | undefined): Movie[] => (k === 'series' ? SERIES : MOVIES);
+export type GM = 'oscar' | 'rotten' | 'clash';
+export const CLASHES: [string, string][] = [['Drama', 'Horror'], ['Comedy', 'Thriller'], ['Romance', 'Science Fiction'], ['Animation', 'Crime'], ['Drama', 'Thriller'], ['Fantasy', 'War']];
+/** Oscar wins parsed from the OMDb-style awards text ("Won 6 Oscars. 51 wins..."). */
+export const oscarWins = (m: Movie): number => { const x = /Won (\d+) Oscar/i.exec(m.aw || ''); return x ? Number(x[1]) : 0; };
+export const totalWins = (m: Movie): number => { const x = /(\d+) wins?/i.exec(m.aw || ''); return x ? Number(x[1]) : 0; };
+export const isHeavy = (m: Movie): boolean => oscarWins(m) >= 1 || totalWins(m) >= 40;
+export const isRotten = (m: Movie): boolean => m.rt != null && m.rt < 60;
+const gmOk = (m: Movie, gm?: GM, cl?: [string, string]): boolean => gm === 'oscar' ? isHeavy(m) : gm === 'rotten' ? isRotten(m) : gm === 'clash' && cl ? m.g.includes(cl[0]) || m.g.includes(cl[1]) : true;
+export const poolOf = (k: Kind | undefined, gm?: GM, cl?: [string, string]): Movie[] => {
+  if (k === 'series') return SERIES;
+  if (!gm) return MOVIES;
+  const f = MOVIES.filter((m) => gmOk(m, gm, cl)); return f.length >= 45 ? f : MOVIES;
+};
 export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SERIES, ...CAT_WILDS].map((m) => [m.id, m]));
 /** v2.0 live-TMDB films live in state.extra; every process registers them into BY_ID before use. */
 export const registerExtra = (ms: Movie[] | undefined) => { for (const m of ms || []) if (!BY_ID[m.id]) BY_ID[m.id] = m; };
@@ -327,7 +339,7 @@ export type Wheel = { stage: 'spin' | 'judge' | 'done'; by: PID; turn: PID; opts
 export type Sab = { A: Record<SabKey, boolean>; B: Record<SabKey, boolean>; genre: string | null; log: string[]; wheel?: Wheel | null };
 export type Matchup = { id: string; a: number; b: number; c: number | null; wg: { A?: number[]; B?: number[] }; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
 export type State = {
-  code: string; kind: Kind; v: number; now: number;
+  code: string; kind: Kind; gm?: GM; cl?: [string, string]; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
   vibe: { sw: { A: Record<string, boolean>; B: Record<string, boolean> }; lock: string[]; sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
@@ -354,6 +366,7 @@ export type State = {
 };
 export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2: 'ROUND 2 · 15 to 8 · GOLDEN BYE', 3: 'ROUND 3 · 8 to 4', 4: 'SEMIS · 4 to 2' };
 
+const seededInt = (code: string, n: number) => Math.floor(seeded(code, 'clash')() * n);
 export const newState = (code: string): State => ({
   code, kind: 'movie', v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
@@ -397,10 +410,10 @@ export function relaxBan(ban: number[], kind: Kind): number[] {
   while (b.length && base.length - b.length < 150) b = b.slice(1);
   return b;
 }
-export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }, kind: Kind = 'movie'): number[] {
+export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }, kind: Kind = 'movie', gm?: GM, cl?: [string, string]): number[] {
   const lockedN = Object.keys(subs.A).filter((k) => subs.A[k] && subs.B[k]); const oneN = Object.keys(subs.A).filter((k) => subs.A[k] !== subs.B[k] && (subs.A[k] || subs.B[k])); const noN = Object.keys(subs.A).filter((k) => subs.A[k] === false && subs.B[k] === false);
   const subBonus = (m: Movie) => subHits(m, lockedN).length * 2.4 + subHits(m, oneN).length * 0.7 - subHits(m, noN).length * 1.4;
-  const ok = poolOf(kind).filter((m) => !m.w && !banned.includes(m.id));
+  const ok = poolOf(kind, gm, cl).filter((m) => !m.w && !banned.includes(m.id));
   const jr = seeded(code, 'variety');
   const jit: Record<number, number> = {}; for (const m of poolOf(kind)) jit[m.id] = (jr() - 0.5) * 1.8; // per-night randomness: different titles surface each room
   const score = (m: Movie) => (jit[m.id] || 0) + wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors) - subBonus(m);
@@ -408,14 +421,15 @@ export function buildDeck(target: number[], code: string, banned: number[] = [],
   const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
   const ids = [...good, ...rest].slice(0, 150).map((m) => m.id);
   if (ids.length < 30) for (const m of ok.sort((x, y) => score(x) - score(y))) { if (ids.length >= 40) break; if (!ids.includes(m.id)) ids.push(m.id); }
+  if (gm === 'clash' && cl) { const A = ids.filter((i) => BY_ID[i].g.includes(cl[0])), B = ids.filter((i) => !BY_ID[i].g.includes(cl[0])); const o: number[] = []; for (let i = 0; i < Math.max(A.length, B.length); i++) { if (A[i] !== undefined) o.push(A[i]); if (B[i] !== undefined) o.push(B[i]); } return o; }
   return shuffled(ids, code, 'deck');
 }
-export function pickWildcards(exclude: Set<number>, target: number[], n: number, code: string, kind: Kind = 'movie'): number[] {
-  const wild = poolOf(kind).filter((m) => m.w && !exclude.has(m.id) && !excluded(m, target)).sort((a, b) => b.r - a.r || a.id - b.id);
+export function pickWildcards(exclude: Set<number>, target: number[], n: number, code: string, kind: Kind = 'movie', gm?: GM, cl?: [string, string]): number[] {
+  const wild = poolOf(kind, gm, cl).filter((m) => m.w && !exclude.has(m.id) && !excluded(m, target)).sort((a, b) => b.r - a.r || a.id - b.id);
   const top = wild.slice(0, Math.max(n * 3, 30)).map((m) => ({ id: m.id, s: dist(vecOf(m), target) * 0.15 - (BY_ID[m.id].r - 7.5) }));
   top.sort((x, y) => x.s - y.s);
   const out = top.slice(0, n).map((x) => x.id);
-  if (out.length < n) for (const m of poolOf(kind)) { if (out.length >= n) break; if (!exclude.has(m.id) && !out.includes(m.id)) out.push(m.id); }
+  if (out.length < n) for (const m of poolOf(kind, gm, cl)) { if (out.length >= n) break; if (!exclude.has(m.id) && !out.includes(m.id)) out.push(m.id); }
   return out;
 }
 export function fallbackPitch(id: number): string {
@@ -434,7 +448,7 @@ function startRound(s: State, round: 1 | 2 | 3 | 4, ids: number[]) {
   let list = ids; let golden: number | null = null;
   if (round === 2) { golden = [...ids].sort((a, b) => (higher(a, b) === a ? -1 : 1))[0]; list = ids.filter((x) => x !== golden); }
   s.br = { round, matches: pairUp(shuffled(list, s.code, 'r' + round), round), cur: 0, golden, bullets: round === 3 ? { A: true, B: true } : s.br.bullets, winners: golden ? [golden] : [] };
-  { const used = new Set<number>([...s.pool, ...s.vetoed, ...ids]); const ws = pickWildcards(used, s.vibe.target || [5, 5, 5, 5], s.br.matches.length + 2, s.code + 'c' + round, s.kind); s.br.matches.forEach((m, i) => { m.c = ws[i] ?? null; }); }
+  { const used = new Set<number>([...s.pool, ...s.vetoed, ...ids]); const ws = pickWildcards(used, s.vibe.target || [5, 5, 5, 5], s.br.matches.length + 2, s.code + 'c' + round, s.kind, s.gm, s.cl); s.br.matches.forEach((m, i) => { m.c = ws[i] ?? null; }); }
   if (golden) s.log.unshift(`Golden Bye: ${BY_ID[golden].t} is the top rated film and walks through.`);
 }
 
@@ -464,7 +478,7 @@ export type Intent =
   | { t: 'inter'; key: string; line: string } | { t: 'asym'; a: string; b: string } | { t: 'mortem'; slot: number; line: string }
   | { t: 'vswipe'; pid: PID; name: string; yes: boolean } | { t: 'reviews'; map: Record<number, { a: string; q: string; r: number | null }> }
   | { t: 'sliders'; pid: PID; v: number[] } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
-  | { t: 'join'; pid: PID; name?: string; kind?: Kind } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
+  | { t: 'join'; pid: PID; name?: string; kind?: Kind; gm?: string } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
   | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
@@ -488,7 +502,7 @@ function maybeGrenade(s: State) {
   if (cosProf(A, B) >= GREN_SIM) return;
   const taken = new Set([...s.draft.deck, ...s.draft.picks.A, ...s.draft.picks.B, ...s.vetoed]);
   const t = s.vibe.target || [5, 5, 5, 5];
-  const cand = poolOf(s.kind).filter((m) => !taken.has(m.id) && m.r >= 7).map((m) => ({ m, sc: m.r + wdist(vecOf(m), t) * 0.4 })).sort((a, b) => b.sc - a.sc || a.m.id - b.m.id)[0];
+  const cand = poolOf(s.kind, s.gm, s.cl).filter((m) => !taken.has(m.id) && m.r >= 7).map((m) => ({ m, sc: m.r + wdist(vecOf(m), t) * 0.4 })).sort((a, b) => b.sc - a.sc || a.m.id - b.m.id)[0];
   if (!cand) return;
   g.used = true; g.id = cand.m.id; g.votes = {};
 }
@@ -500,7 +514,7 @@ function maybeLock(s: State) {
 // Gate streamlined: no swipe deck step. The draft starts the moment both partners have locked their taste map.
 function startDraft(s: State) {
   if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) return;
-  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind); s.draft.loading = true; if (s.extra.length || s.boost.length) s.draft.deck = shuffled(Array.from(new Set([...s.draft.deck, ...s.extra.map((m) => m.id), ...s.boost])), s.code, 'deck2'); if (s.sab?.genre) s.draft.deck = genreDeck(s, s.sab.genre);
+  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind, s.gm, s.cl); s.draft.loading = true; if (s.extra.length || s.boost.length) s.draft.deck = shuffled(Array.from(new Set([...s.draft.deck, ...s.extra.map((m) => m.id), ...s.boost])), s.code, 'deck2'); if (s.sab?.genre) s.draft.deck = genreDeck(s, s.sab.genre);
   s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
 }
 /** Average of both players' vibe sliders (0 Dark..100 Light, 0 Indie..100 Blockbuster, 0 Brain-bending..100 Brain-off). */
@@ -524,7 +538,7 @@ export function reduce(prev: State, it: Intent): State {
   switch (it.t) {
     case 'join': {
       s.players[it.pid] = { name: (it.name || s.players[it.pid].name).slice(0, 14), joined: true };
-      if (it.pid === 'A' && it.kind && s.phase === 'lobby') s.kind = it.kind === 'series' ? 'series' : 'movie';
+      if (it.pid === 'A' && it.kind && s.phase === 'lobby') { s.kind = it.kind === 'series' ? 'series' : 'movie'; const g = it.gm; s.gm = s.kind === 'movie' && (g === 'oscar' || g === 'rotten' || g === 'clash') ? g : undefined; s.cl = s.gm === 'clash' ? CLASHES[seededInt(s.code, CLASHES.length)] : undefined; }
       if (s.players.A.joined && s.players.B.joined && s.phase === 'lobby') s.phase = 'vibe';
       break;
     }
@@ -665,7 +679,7 @@ export function reduce(prev: State, it: Intent): State {
       if (s.phase !== 'bracket' || !mt || mt.winner !== null || mt.tap || s.tempt.stage === 'offer' || !s.pw[it.pid].veto) break;
       if (it.id !== mt.a && it.id !== mt.b) break;
       const t = s.vibe.target || [5, 5, 5, 5];
-      const inn = poolOf(s.kind).filter((m) => m.w && !s.pool.includes(m.id) && !s.vetoed.includes(m.id) && !excluded(m, t)).sort((a, b) => b.r - a.r || a.id - b.id)[0]; if (!inn) break;
+      const inn = poolOf(s.kind, s.gm, s.cl).filter((m) => m.w && !s.pool.includes(m.id) && !s.vetoed.includes(m.id) && !excluded(m, t)).sort((a, b) => b.r - a.r || a.id - b.id)[0]; if (!inn) break;
       s.pw[it.pid].veto = false; s.vetoed.push(it.id);
       s.pool = s.pool.map((x) => (x === it.id ? inn.id : x)); if (mt.a === it.id) mt.a = inn.id; else mt.b = inn.id; mt.votes = {};
       s.log.unshift(`${s.players[it.pid].name} used a Veto: ${BY_ID[it.id].t} is out, a mystery wildcard takes its seat.`);
@@ -732,7 +746,7 @@ export function reduce(prev: State, it: Intent): State {
       if (s.phase !== 'bracket' || s.tempt.stage !== 'offer' || it.pid !== s.tempt.to) break;
       const other: PID = it.pid === 'A' ? 'B' : 'A';
       if (it.out === null || !s.draft.picks[other].includes(it.out) || s.draft.picks[it.pid].includes(it.out) || !s.pool.includes(it.out)) { s.tempt.stage = 'done'; s.log.unshift('Orson made a private offer. It was declined.'); break; }
-      const inn = poolOf(s.kind).filter((m) => m.w && !s.pool.includes(m.id) && !excluded(m, s.vibe.target || [5, 5, 5, 5])).sort((a, b) => b.r - a.r || a.id - b.id)[0];
+      const inn = poolOf(s.kind, s.gm, s.cl).filter((m) => m.w && !s.pool.includes(m.id) && !excluded(m, s.vibe.target || [5, 5, 5, 5])).sort((a, b) => b.r - a.r || a.id - b.id)[0];
       if (!inn) { s.tempt.stage = 'done'; break; }
       s.pool = s.pool.map((x) => (x === it.out ? inn.id : x));
       s.br.matches.forEach((m) => { if (m.winner === null) { if (m.a === it.out) m.a = inn.id; if (m.b === it.out) m.b = inn.id; } });
@@ -765,7 +779,7 @@ export function reduce(prev: State, it: Intent): State {
       }
       break;
     }
-    case 'reset': return { ...newState(s.code), kind: s.kind, v: s.v + 1, players: s.players, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
+    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, v: s.v + 1, players: s.players, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
   }
   return s;
 }

@@ -36,7 +36,7 @@ export const rrLive = (s: { b8: unknown; reroll: Reroll }) => !!s.b8 && ['ask', 
 export function nukeCands(s: State, n = 36) {
   const used = new Set<number>([...s.pool, ...s.vetoed, ...Object.keys(s.b8?.seed || {}).map(Number), ...(s.seenBan || [])]);
   const tr = (s.reroll.tropes || []).join(' ').toLowerCase();
-  return poolOf(s.kind).filter((x) => !used.has(x.id) && x.r >= 7.2 && x.id !== s.winner)
+  return poolOf(s.kind, s.gm, s.cl).filter((x) => !used.has(x.id) && x.r >= 7.2 && x.id !== s.winner)
     .map((x) => ({ x, sc: x.r + (x.kw || []).filter((k) => tr.includes(k.toLowerCase())).length * 0.6 })).sort((a, c) => c.sc - a.sc || a.x.id - c.x.id).slice(0, n).map((o) => o.x);
 }
 export function nukeFallback(s: State): Ult {
@@ -123,7 +123,7 @@ export function buildBracket(s: State, now: number) {
   while (rA.length < 4 && rB.length > 4) rA.push(rB.pop() as number);
   while (rB.length < 4 && rA.length > 4) rB.push(rA.pop() as number);
   if (rA.length < 4 || rB.length < 4) {
-    const extra = pickWildcards(new Set([...surv, ...res.dead, ...s.vetoed]), s.vibe.target || [5, 5, 5, 5], 8, s.code + 'top', s.kind);
+    const extra = pickWildcards(new Set([...surv, ...res.dead, ...s.vetoed]), s.vibe.target || [5, 5, 5, 5], 8, s.code + 'top', s.kind, s.gm, s.cl);
     for (const id of extra) { if (rA.length < 4) { rA.push(id); h.owner[id] = 'A'; } else if (rB.length < 4) { rB.push(id); h.owner[id] = 'B'; } }
   }
   rA = rA.slice(0, 4); rB = rB.slice(0, 4);
@@ -203,7 +203,7 @@ function startTrivia(s: State, m: M8, now: number) {
   const f = films[Math.floor(rnd() * Math.max(1, films.length))] || a;
   const cast = (f.c || []).slice(0, 3); const real = cast[Math.floor(rnd() * Math.max(1, cast.length))] || (f.k || 'the director');
   const mine = new Set([...(a.c || []), ...(bb.c || [])]);
-  const pool = poolOf(s.kind).flatMap((x) => x.c || []).filter((n) => !mine.has(n));
+  const pool = poolOf(s.kind, s.gm, s.cl).flatMap((x) => x.c || []).filter((n) => !mine.has(n));
   const wrong: string[] = []; let guard = 0;
   while (wrong.length < 3 && pool.length && guard++ < 300) { const n = pool[Math.floor(rnd() * pool.length)]; if (!wrong.includes(n)) wrong.push(n); }
   const opts = [...wrong, real]; for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
@@ -268,7 +268,7 @@ function rollWildcard(s: State, b: B8, m: M8): boolean {
   }
   if (kind === 'swap') {
     const used = new Set<number>([...inPlay, ...s.pool, ...s.vetoed, ...Object.keys(b.seed).map(Number)]);
-    const c = poolOf(s.kind).filter((x) => !used.has(x.id) && (x.w || x.y < 2005) && x.r >= 6.8).sort((x, y) => y.r - x.r || x.id - y.id).slice(0, 40);
+    const c = poolOf(s.kind, s.gm, s.cl).filter((x) => !used.has(x.id) && (x.w || x.y < 2005) && x.r >= 6.8).sort((x, y) => y.r - x.r || x.id - y.id).slice(0, 40);
     let best: [Movie, Movie] | null = null, bd = -1;
     for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) { if (c[i].g.some((g) => c[j].g.includes(g))) continue; const d = wdist(vecOf(c[i]), vecOf(c[j])); if (d > bd) { bd = d; best = [c[i], c[j]]; } }
     if (!best) { m.wc = null; return false; }
@@ -298,7 +298,7 @@ export function bustDone(s: State, roast: string, now: number) {
   const { by, id } = m.busting; const old = BY_ID[id];
   const taken = new Set([...Object.keys(b.seed).map(Number), ...s.vetoed, ...s.pool]);
   const t = vecOf(old);
-  const inn = poolOf(s.kind).filter((x) => !taken.has(x.id) && x.r >= 6.8).map((x) => ({ x, sc: x.r * 0.6 + wdist(vecOf(x), t) * 0.5 })).sort((a, c) => c.sc - a.sc || a.x.id - c.x.id)[0];
+  const inn = poolOf(s.kind, s.gm, s.cl).filter((x) => !taken.has(x.id) && x.r >= 6.8).map((x) => ({ x, sc: x.r * 0.6 + wdist(vecOf(x), t) * 0.5 })).sort((a, c) => c.sc - a.sc || a.x.id - c.x.id)[0];
   if (inn) {
     const n = inn.x.id; b.seed[n] = b.seed[id]; delete b.seed[id]; s.vetoed.push(id);
     if (m.a === id) { m.a = n; } else { m.b = n; }
