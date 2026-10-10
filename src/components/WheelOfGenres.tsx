@@ -10,13 +10,13 @@ const short = (g: string) => (g === 'Science Fiction' ? 'Sci-Fi' : g);
 
 /** Genre Roulette as a game moment: full-screen wheel of fortune. Each player gets one spin and one veto; Orson commentates. State lives in s.sab.wheel so both phones see the same spin. */
 export default function WheelOfGenres({ s, pid, send, now }: { s: State; pid: PID; send: (i: Intent) => void; now: number }) {
-  const w = s.sab?.wheel; const [rot, setRot] = useState(0); const lastAt = useRef<number>(-1); const [closed, setClosed] = useState('');
+  const w = s.sab?.wheel; const [rot, setRot] = useState(0); const lastAt = useRef<number>(-1); const lastN = useRef<number>(-1); const [closed, setClosed] = useState('');
   const N = w?.opts.length || 10; const seg = 360 / N;
   useEffect(() => {
-    if (!w || w.idx === null || w.at === lastAt.current) return; const first = lastAt.current === -1 && now > w.at + SPIN_MS; lastAt.current = w.at;
+    if (!w || w.idx === null || w.n === lastN.current) return; const first = lastN.current === -1 && now > w.at + SPIN_MS; lastN.current = w.n; lastAt.current = w.at;
     const target = -((w.idx + 0.5) * seg); setRot((r) => (first ? target : r + 360 * 5 + ((((target - r) % 360) + 360) % 360)));
     if (!first) buzz([30, 40, 30]);
-  }, [w?.at, w?.idx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [w?.n, w?.idx]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!w) return null;
   const key = 'w' + w.n + w.final; if (w.stage === 'done' && (closed === key || now > w.at + 5500)) return null;
   const judge: PID = w.turn === 'A' ? 'B' : 'A'; const revealed = w.idx !== null && now >= w.at + SPIN_MS;
