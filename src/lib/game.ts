@@ -1,7 +1,7 @@
 // CINESYNC game engine: a pure reducer. The host phone runs it; everyone else sends intents.
 import { startHit, hitIntent, resolveHit, wagerIntent, bidIntent, lockBid, triviaTap, bustIntent, bustDone, ackIntent, tapeIntent, champIntent, callIntent, rerollVote, nukeTropes, nukeUlt, nukePick, tick8, type Hit, type B8, type Reroll, type Ult } from './b8';
 import { CAT_WILDS } from '@/utils/catWilds';
-import { sabIntent, newSab, genreDeck } from '@/utils/sabotageEngine';
+import { sabIntent, newSab, genreDeck, wheelIntent } from '@/utils/sabotageEngine';
 import catalog from '@/data/catalog.json';
 import seriesCat from '@/data/series.json';
 
@@ -323,7 +323,8 @@ export function swipeLine(pr: Prof, m: Movie, yes: boolean, why: string[], seed:
 }
 // ---------- state
 export type SabKey = 'veto' | 'block' | 'roulette' | 'orson';
-export type Sab = { A: Record<SabKey, boolean>; B: Record<SabKey, boolean>; genre: string | null; log: string[] };
+export type Wheel = { stage: 'spin' | 'judge' | 'done'; by: PID; turn: PID; opts: string[]; spun: { A?: boolean; B?: boolean }; vetoed: { A?: boolean; B?: boolean }; idx: number | null; cand: string | null; at: number; n: number; final: string | null; orson: boolean; line: string };
+export type Sab = { A: Record<SabKey, boolean>; B: Record<SabKey, boolean>; genre: string | null; log: string[]; wheel?: Wheel | null };
 export type Matchup = { id: string; a: number; b: number; c: number | null; wg: { A?: number[]; B?: number[] }; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
 export type State = {
   code: string; kind: Kind; v: number; now: number;
@@ -469,7 +470,7 @@ export type Intent =
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
   | { t: 'verdict'; winner: number; reason: string; lines?: string[] } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
-  | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' } | { t: 'sab'; pid: PID; kind: SabKey; winner?: number; genre?: string }
+  | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' } | { t: 'sab'; pid: PID; kind: SabKey; winner?: number; genre?: string } | { t: 'wheel'; pid: PID; act: 'start' | 'spin' | 'veto' | 'accept' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
   | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
 
@@ -658,6 +659,7 @@ export function reduce(prev: State, it: Intent): State {
       break;
     }
     case 'sab': sabIntent(s, it, now); break;
+    case 'wheel': wheelIntent(s, it, now); break;
     case 'bveto': {
       const mt = s.br.matches[s.br.cur];
       if (s.phase !== 'bracket' || !mt || mt.winner !== null || mt.tap || s.tempt.stage === 'offer' || !s.pw[it.pid].veto) break;

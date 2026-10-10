@@ -1,5 +1,5 @@
 /** CineSync v3.0 sabotage + chaos: one use per session per player (Veto, Block, Genre Roulette, Orson Takes the Wheel), Feline Intervention (5%), Spectacle Multiplier. Pure state mutations; game.ts's reducer calls sabIntent. */
-import { BY_ID, poolOf, seeded, shuffled, type State, type Sab, type SabKey, type PID, type Movie } from '@/lib/game';
+import { BY_ID, poolOf, seeded, shuffled, type State, type Sab, type Wheel, type SabKey, type PID, type Movie } from '@/lib/game';
 import { finish, type B8, type M8 } from '@/lib/b8';
 
 export const FELINE_P = 0.05;
@@ -19,7 +19,7 @@ const say = (s: State, line: string, mood: 'smug' | 'shock' | 'glee' | 'scheme' 
 
 export function canUse(s: State, pid: PID, k: SabKey): boolean {
   const u = s.sab?.[pid]; if (!u || !u[k]) return false;
-  if (k === 'roulette') return s.phase === 'vibe' || (s.phase === 'draft' && !s.draft.loading && s.draft.gren.id === null);
+  if (k === 'roulette') return !s.sab?.wheel && (s.phase === 'vibe' || (s.phase === 'draft' && !s.draft.loading && s.draft.gren.id === null));
   const b = s.b8; if (s.phase !== 'bracket' || !b) return false;
   const m = b.matches[b.cur]; if (!m || m.round < 2 || m.a === null || m.b === null || m.status !== 'VOTING_ACTIVE' || m.winner !== null || m.trivia) return false;
   if (k === 'block') return !(m.wg[other(pid)] || m.live?.[other(pid)]) && !m.blk;
@@ -48,17 +48,17 @@ export function sabIntent(s: State, it: { pid: PID; kind: SabKey; winner?: numbe
   if (!b || !m) return;
   if (it.kind === 'veto') {
     const dead = vetoTarget(b, m, pid), live = dead === m.a ? (m.b as number) : (m.a as number); s.sab[pid].veto = false; s.vetoed.push(dead);
-    say(s, `VETO. ${nm} has struck ${BY_ID[dead].t} from the record. ${BY_ID[live].t} advances without lifting a finger. Democracy is dead.`);
+    say(s, `VETO! ${nm} struck ${BY_ID[dead].t.slice(0, 22)}. ${BY_ID[live].t.slice(0, 22)} advances.`);
     m.veto = { by: pid, dead }; s.sab.log.unshift(`${nm} vetoed ${BY_ID[dead].t}`); finish(s, m, live, `${nm} played THE VETO on ${BY_ID[dead].t}`, now); return;
   }
   if (it.kind === 'block') {
     const tg = other(pid); s.sab[pid].block = false; m.blk = { by: pid, target: tg }; s.sab.log.unshift(`${nm} blocked ${s.players[tg].name}`);
-    say(s, `THE BLOCK. ${nm} has frozen ${s.players[tg].name}'s token HUD for this round. Zero wager. Zero dignity. Pick with your heart, since your wallet is on ice.`); s.log.unshift(`${nm} BLOCKED ${s.players[tg].name}'s tokens this round.`); return;
+    say(s, `THE BLOCK! ${s.players[tg].name}'s tokens are frozen this round. Zero wager.`); s.log.unshift(`${nm} BLOCKED ${s.players[tg].name}'s tokens this round.`); return;
   }
   if (it.kind === 'orson') {
     const w = Number(it.winner); if (w !== m.a && w !== m.b) return; s.sab[pid].orson = false;
     m.orsonPick = { by: pid, winner: w };
-    say(s, `ORSON TAKES THE WHEEL. ${nm} handed me the keys. I consulted the critics: ${BY_ID[w].t} it is. Do not thank me.`, 'glee');
+    say(s, `ORSON TAKES THE WHEEL. The critics say ${BY_ID[w].t.slice(0, 26)}.`, 'glee');
     finish(s, m, w, `Orson took the wheel for ${nm}: critics' scores pick ${BY_ID[w].t}`, now);
   }
 }
@@ -91,7 +91,7 @@ export function rollFeline(s: State, b: B8, m: M8): boolean {
   m.was = { a: m.a, b: m.b }; m.cat = { by, out, in: wild.id };
   b.seed[wild.id] = b.seed[out]; b.conf[wild.id] = { p: b.conf[out]?.p ?? 'A', rank: b.conf[out]?.rank ?? 0, golden: false, tok: 0 };
   m[hiSide] = wild.id; if (hiSide === 'a') m.seedA = b.seed[out]; else m.seedB = b.seed[out]; delete m.tape; s.pool = s.pool.map((q) => (q === out ? wild.id : q));
-  say(s, `FELINE INTERVENTION. ${by} has knocked ${BY_ID[out].t} off the shelf. In its place: ${wild.t} (${wild.y}). I did not authorise this. I also cannot stop it.`, 'shock'); s.log.unshift(`FELINE INTERVENTION: ${by} swapped ${BY_ID[out].t} for ${wild.t}.`);
+  say(s, `FELINE INTERVENTION! ${by} knocked ${BY_ID[out].t.slice(0, 22)} off the shelf. Enter: ${wild.t}.`, 'shock'); s.log.unshift(`FELINE INTERVENTION: ${by} swapped ${BY_ID[out].t} for ${wild.t}.`);
   return true;
 }
 
@@ -110,4 +110,47 @@ export async function executeOrsonPicks(filmA: number, filmB: number): Promise<{
   const [a, b] = await Promise.all([one(filmA), one(filmB)]);
   const winner = a.score === b.score ? (BY_ID[filmA].r >= BY_ID[filmB].r ? filmA : filmB) : a.score > b.score ? filmA : filmB;
   return { winner, a, b };
+}
+
+// ---- Genre Roulette v2: wheel-of-fortune game flow. Each player gets ONE spin and ONE veto. ----
+export const SPIN_MS = 4400;
+export const wheelOpts = (s: State): string[] => {
+  const all: Record<string, number> = {}; for (const m of poolOf(s.kind)) if (!m.w && m.r >= 6) for (const g of m.g) all[g] = (all[g] || 0) + 1;
+  const ok = Object.keys(all).filter((g) => all[g] >= 24).sort();
+  return shuffled(ok, s.code, 'wheelopts').slice(0, 10);
+};
+function applyGenre(s: State, g: string) {
+  s.sab ||= newSab(); s.sab.genre = g;
+  if (s.phase === 'draft') {
+    const deck = genreDeck(s, g); const taken = new Set([...s.draft.picks.A, ...s.draft.picks.B]);
+    s.draft.deck = deck; s.draft.q = { A: deck.filter((x) => !s.draft.picks.A.includes(x) && !taken.has(x)), B: deck.filter((x) => !s.draft.picks.B.includes(x) && !taken.has(x)) }; s.draft.inbox = { A: [], B: [] };
+  }
+  s.log.unshift(`GENRE ROULETTE locked: ${g}.`);
+}
+export function wheelIntent(s: State, it: { pid: PID; act: 'start' | 'spin' | 'veto' | 'accept' }, now: number) {
+  s.sab ||= newSab(); const pid = it.pid; if (pid !== 'A' && pid !== 'B') return; const nm = (p: PID) => s.players[p].name; let w = s.sab.wheel || null;
+  const spinTo = (w: Wheel) => { const r = seeded(s.code, 'wheel' + w.n + (w.turn)); w.idx = Math.floor(r() * w.opts.length); w.cand = w.opts[w.idx]; w.at = now; w.n++; };
+  if (it.act === 'start') {
+    if (w || !canUse(s, pid, 'roulette')) return; s.sab[pid].roulette = false;
+    const opts = wheelOpts(s); if (opts.length < 4) return;
+    s.sab.wheel = { stage: 'spin', by: pid, turn: pid, opts, spun: {}, vetoed: {}, idx: null, cand: null, at: now, n: 0, final: null, orson: false, line: `${nm(pid)} has called GENRE ROULETTE. Everyone to the wheel. One spin each, one veto each. I will be watching with great interest.` };
+    s.orson = { ...s.orson, line: s.sab.wheel.line, mood: 'scheme', n: s.orson.n + 1 }; return;
+  }
+  if (!w || w.stage === 'done') return; const o: PID = pid === 'A' ? 'B' : 'A';
+  const ready = now >= w.at + SPIN_MS;
+  if (it.act === 'spin') {
+    if (w.stage !== 'spin' || pid !== w.turn || w.spun[pid]) return; w.spun[pid] = true; spinTo(w); w.stage = 'judge';
+    w.line = `${nm(pid)} spins... and the wheel decides. ${w.cand}. Let us see if ${nm(o)} can live with it.`; return;
+  }
+  if (w.stage !== 'judge' || !w.cand || !(ready || now > w.at + 30000)) return;
+  const judge: PID = w.turn === 'A' ? 'B' : 'A';
+  if (it.act === 'accept') { if (pid !== judge && now < w.at + 30000) return; w.final = w.cand; w.stage = 'done'; w.at = now; w.line = `${w.cand} it is. ${nm(judge)} accepted, which is the closest thing to enthusiasm I can expect.`; applyGenre(s, w.final); s.orson = { ...s.orson, line: w.line, mood: 'glee', n: s.orson.n + 1 }; return; }
+  if (it.act === 'veto') {
+    if (pid !== judge || w.vetoed[pid]) return; w.vetoed[pid] = true; const prev = w.cand; w.cand = null; w.idx = null;
+    if (w.spun[judge]) { // both spins used: Orson overrules with a final spin
+      w.turn = judge; w.orson = true; spinTo(w); const fin: string = w.opts[w.idx as number]; w.final = fin; w.stage = 'done'; applyGenre(s, fin);
+      w.line = `Both vetoes spent. ${prev} was rejected, so I spun for you. ${fin}. No appeals.`; s.orson = { ...s.orson, line: w.line, mood: 'shock', n: s.orson.n + 1 }; return;
+    }
+    w.turn = judge; w.stage = 'spin'; w.line = `VETO! ${nm(judge)} threw out ${prev}. Now it is their turn to spin. Do not disappoint me.`; s.orson = { ...s.orson, line: w.line, mood: 'shock', n: s.orson.n + 1 };
+  }
 }

@@ -5,7 +5,7 @@ import { BY_ID } from '@/lib/game';
 import { canUse, executeOrsonPicks, SAB_LABEL } from '@/utils/sabotageEngine';
 
 const ICON: Record<SabKey, string> = { veto: '🚫', block: '❄️', roulette: '🎰', orson: '🎩' };
-const HELP: Record<SabKey, string> = { veto: 'Kill a film. Their film advances.', block: 'Freeze their tokens this round.', roulette: 'Reject the options, new genre.', orson: 'Orson picks by critic scores.' };
+const HELP: Record<SabKey, string> = { veto: 'Kill a film. Their film advances.', block: 'Freeze their tokens this round.', roulette: 'Wheel of fortune: one spin and one veto each.', orson: 'Orson picks by critic scores.' };
 
 /** Floating Wildcard Dock: each sabotage is single-use per player per session. A tap arms it, a second tap fires it. */
 export default function WildcardDock({ s, pid, send }: { s: State; pid: PID; send: (i: Intent) => void }) {
@@ -22,6 +22,7 @@ export default function WildcardDock({ s, pid, send }: { s: State; pid: PID; sen
       try { const r = await executeOrsonPicks(m.a, m.b); setNote(`${BY_ID[r.winner].t}: ${Math.round(Math.max(r.a.score, r.b.score))} vs ${Math.round(Math.min(r.a.score, r.b.score))} (${r.a.src === 'omdb' ? 'OMDB' : 'catalogue'} scores)`); send({ t: 'sab', pid, kind: 'orson', winner: r.winner }); } finally { setBusy(false); }
       return;
     }
+    if (k === 'roulette') { send({ t: 'wheel', pid, act: 'start' }); return; }
     send({ t: 'sab', pid, kind: k });
   };
   return <div className="cs-dock" role="toolbar" aria-label="Wildcard dock">

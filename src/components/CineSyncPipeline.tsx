@@ -4,6 +4,7 @@ import type { State, PID, Intent } from '@/lib/game';
 import { BY_ID } from '@/lib/game';
 import OrsonDecree, { type StageId } from './OrsonDecree';
 import WildcardDock from './WildcardDock';
+import WheelOfGenres from './WheelOfGenres';
 
 export const STAGE_OF = (phase: State['phase']): StageId | null => (phase === 'vibe' ? 'mood' : phase === 'draft' ? 'scene' : phase === 'hitlist' || phase === 'bracket' ? 'tournament' : null);
 const CW: Record<StageId, string> = { mood: 'cw-discovery', scene: 'cw-curiosity', tournament: 'cw-warroom' };
@@ -18,7 +19,7 @@ function historyOf(s: State, pid: PID): string {
 }
 
 /** CineSync v3.0 pipeline: Mood -> Scene -> Tournament. Applies the stage colorway, gates each stage behind an unskippable Orson decree (per player), and floats the Wildcard Dock + Feline hijack overlay. */
-export default function CineSyncPipeline({ s, pid, code, send, children }: { s: State; pid: PID; code: string; send: (i: Intent) => void; children: React.ReactNode }) {
+export default function CineSyncPipeline({ s, pid, code, send, now, children }: { s: State; pid: PID; code: string; send: (i: Intent) => void; now: number; children: React.ReactNode }) {
   const stage = STAGE_OF(s.phase);
   const [acked, setAcked] = useState<Record<string, boolean>>(() => { const o: Record<string, boolean> = {}; try { for (const st of ['mood', 'scene', 'tournament']) if (sessionStorage.getItem(`cs-dec-${code}-${st}`)) o[st] = true; } catch { /* none */ } return o; });
   const ack = (st: string) => { try { sessionStorage.setItem(`cs-dec-${code}-${st}`, '1'); } catch { /* none */ } setAcked((a) => ({ ...a, [st]: true })); };
@@ -41,6 +42,7 @@ export default function CineSyncPipeline({ s, pid, code, send, children }: { s: 
       <div className="cs-veto-poster">{[0, 1, 2, 3, 4, 5].map((i) => <i key={i} style={{ backgroundImage: `url(https://image.tmdb.org/t/p/w342${BY_ID[vt.dead]?.p || ''})`, backgroundPosition: `${i * 20}% 0`, animationDelay: `${0.5 + i * 0.06}s`, ['--dx' as string]: `${(i % 2 ? 1 : -1) * (20 + i * 8)}px` }} />)}</div>
       <b>VETOED</b><p>{BY_ID[vt.dead]?.t}</p><p className="cs-veto-eul">{EULOGY[(vt.dead + (m?.slot || 0)) % EULOGY.length]}</p>
     </div>}
+    {!gate && <WheelOfGenres s={s} pid={pid} send={send} now={now} />}
     {gate && stage && <OrsonDecree key={stage} stageId={stage} history={historyOf(s, pid)} existing={stage === 'scene' ? s.inter?.vibe : stage === 'tournament' && s.asym ? s.asym[pid] : undefined} onAck={() => ack(stage)} />}
   </main>;
 }

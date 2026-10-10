@@ -125,7 +125,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
   const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
   const hud = s.b8 && s.phase === 'bracket' ? <TokenHUD s={s} me={pid} /> : null;
-  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} send={send as (i: Intent) => void}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}<PostMortem s={s} /></CineSyncPipeline>;
+  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} now={now} send={send as (i: Intent) => void}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}<PostMortem s={s} /></CineSyncPipeline>;
   const led = ledgerLine(s);
 
   // ---- LOBBY
