@@ -12,7 +12,7 @@ import { CAT_WILDS } from './catWilds';
 
 /** Spectacle tags: TMDB (and OMDB) carry no 4K HDR / Dolby Atmos format data, so a film counts as "Atmos-grade" when it is a modern big-screen genre piece. Documented proxy, tunable here. */
 export const SPEC_GENRES = ['Action', 'Science Fiction', 'Adventure', 'Fantasy', 'War', 'Animation'];
-export const isSpectacle = (id: number | null): boolean => { const m = id === null ? null : BY_ID[id]; return !!m && m.y >= 2008 && m.r >= 6.4 && m.g.some((g) => SPEC_GENRES.includes(g)); };
+export const isSpectacle = (id: number | null): boolean => { const m = id === null ? null : BY_ID[id]; return !!m && m.y >= 2010 && m.r >= 7.8 && m.g.some((g) => SPEC_GENRES.includes(g)); };
 export const SPEC_TAG = '4K HDR · ATMOS';
 
 const say = (s: State, line: string, mood: 'smug' | 'shock' | 'glee' | 'scheme' = 'scheme') => { s.orson = { ...s.orson, line, mood, n: s.orson.n + 1 }; };
