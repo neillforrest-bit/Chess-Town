@@ -8,9 +8,10 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   const path = usePathname(); const [viewMode, setViewMode] = useState<'gameplay' | 'casual'>('gameplay'); const [seen, setSeen] = useState(false); const [mute, setMute] = useState(false);
   useEffect(() => { try { if (localStorage.getItem('cs-view') === 'casual') { setViewMode('casual'); setSeen(true); } setMute(localStorage.getItem('cs-mute') === '1'); } catch { /* none */ } }, []);
   const pick = (v: 'gameplay' | 'casual') => { setViewMode(v); if (v === 'casual') setSeen(true); try { localStorage.setItem('cs-view', v); } catch { /* none */ } };
+  useEffect(() => { const h = (e: Event) => pick((e as CustomEvent).detail === 'casual' ? 'casual' : 'gameplay'); window.addEventListener('cs-setview', h); return () => window.removeEventListener('cs-setview', h); }); // eslint-disable-line
   if (path !== '/') return <>{children}</>;
   return <div className={'cs-shell is-' + viewMode}>
-    <nav className="cs-viewbar"><button className={viewMode === 'gameplay' ? 'is-on' : ''} onClick={() => pick('gameplay')}>GAMEPLAY</button><button className={viewMode === 'casual' ? 'is-on' : ''} onClick={() => pick('casual')}>CASUAL</button>
+    <nav className="cs-viewbar"><button className={viewMode === 'gameplay' ? 'is-on' : ''} onClick={() => pick('gameplay')}>PLAY</button><button className={viewMode === 'casual' ? 'is-on' : ''} onClick={() => pick('casual')}>📚 LIBRARY</button>
       <button className="cs-mute" aria-label="Toggle theatre hum" onClick={() => { const n = !mute; setMute(n); try { localStorage.setItem('cs-mute', n ? '1' : '0'); } catch { /* none */ } }}>{mute ? '🔇' : '🔈'}</button></nav>
     <div className="cs-layer cs-layer--game">{children}</div>
     <div className="cs-layer cs-layer--repo">{seen && <Repository />}</div>

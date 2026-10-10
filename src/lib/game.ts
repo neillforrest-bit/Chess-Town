@@ -27,6 +27,8 @@ export const poolOf = (k: Kind | undefined, gm?: GM, cl?: [string, string]): Mov
 export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SERIES, ...CAT_WILDS].map((m) => [m.id, m]));
 /** v2.0 live-TMDB films live in state.extra; every process registers them into BY_ID before use. */
 export const registerExtra = (ms: Movie[] | undefined) => { for (const m of ms || []) if (!BY_ID[m.id]) BY_ID[m.id] = m; };
+/** Ids that ship in the bundle. registerExtra mutates BY_ID per server instance, so BY_ID membership alone can't tell a catalogue film from another room's extra. */
+export const BASE_IDS: Set<number> = new Set(Object.keys(BY_ID).map(Number));
 export const poster = (m: Movie, size = 'w342') => `https://image.tmdb.org/t/p/${size}${m.p}`;
 
 export const RESPONSE_GATE = 0.7;
@@ -531,9 +533,17 @@ function lockTropes(s: State, now: number) {
   if (s.vibe.disc === 'req') { s.vibe.pend = true; s.orson = { ...s.orson, line: 'Your vibes are locked. I am sending a runner to the TMDB archives. Do not touch anything.', mood: 'scheme', n: s.orson.n + 1 }; return; }
   startDraft(s);
 }
+/** Drop film ids that no client can resolve (not in the bundle, not in this room's extras). Heals rooms poisoned by cross-room BY_ID pollution. */
+export function sanitizeIds(s: State): void {
+  const ok = new Set<number>((s.extra || []).map((m) => m.id)); const good = (i: number) => BASE_IDS.has(i) || ok.has(i);
+  if (s.boost) s.boost = s.boost.filter(good);
+  const d = s.draft; if (!d) return;
+  if (d.deck) d.deck = d.deck.filter(good);
+  for (const p of ['A', 'B'] as const) { if (d.q?.[p]) d.q[p] = d.q[p].filter(good); if (d.inbox?.[p]) d.inbox[p] = d.inbox[p].filter(good); if (d.picks?.[p]) d.picks[p] = d.picks[p].filter(good); }
+}
 export function reduce(prev: State, it: Intent): State {
   const s: State = JSON.parse(JSON.stringify(prev)); s.v++;
-  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.reviews) s.reviews = {}; if (!s.inter) s.inter = {}; if (s.asym === undefined) s.asym = null; if (!s.vibe.sw) s.vibe.sw = { A: {}, B: {} }; if (!s.vibe.lock) s.vibe.lock = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra);
+  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.reviews) s.reviews = {}; if (!s.inter) s.inter = {}; if (s.asym === undefined) s.asym = null; if (!s.vibe.sw) s.vibe.sw = { A: {}, B: {} }; if (!s.vibe.lock) s.vibe.lock = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra); sanitizeIds(s);
   const now = (it as { now?: number }).now ?? Date.now(); s.now = now;
   switch (it.t) {
     case 'join': {
@@ -592,7 +602,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'extras': {
       if (s.vibe.disc !== 'req') break;
       const seen = new Set<number>(s.seenBan || []); const all = (it.movies || []).filter((m) => m && m.id && m.p && !seen.has(m.id));
-      const ms = all.filter((m) => !BY_ID[m.id]).slice(0, 30); s.boost = all.filter((m) => BY_ID[m.id] && !BY_ID[m.id].w).map((m) => m.id).slice(0, 24);
+      const ms = all.filter((m) => !BASE_IDS.has(m.id)).slice(0, 30); s.boost = all.filter((m) => BASE_IDS.has(m.id) && !BY_ID[m.id].w).map((m) => m.id).slice(0, 24);
       s.extra = ms; registerExtra(ms); s.vibe.disc = 'done';
       s.log.unshift(`TMDB discovery: ${ms.length} new + ${s.boost.length} catalogue titles pulled to the front of tonight's deck`);
       if (s.vibe.pend) { s.vibe.pend = false; startDraft(s); }

@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join('');
 
+const NIGHTS: { id: 'classic' | 'series' | 'oscar' | 'rotten' | 'clash'; ic: string; n: string; t: string }[] = [
+  { id: 'classic', ic: '🎬', n: 'Movie night', t: 'Mood, draft, bracket. The full game.' },
+  { id: 'series', ic: '📺', n: 'Series binge', t: 'Same game, TV shows.' },
+  { id: 'oscar', ic: '🏆', n: 'Oscar Gauntlet', t: 'Award winners only. Gold theme.' },
+  { id: 'rotten', ic: '🍅', n: 'Rotten Roll', t: 'Films under 60% RT. Glitchy.' },
+  { id: 'clash', ic: '⚔️', n: 'Genre Clash', t: 'Two opposing genres fight it out.' },
+];
 export default function Home() {
   const r = useRouter();
   const [name, setName] = useState('');
@@ -12,7 +19,7 @@ export default function Home() {
   useEffect(() => { setName(localStorage.getItem('cs-name') || ''); setP2(localStorage.getItem('cs-p2') || 'Player 2'); if (!localStorage.getItem('cs-callsigns')) { setName((n) => n || 'Player 1'); setModal(true); } }, []);
   const saveCallsigns = () => { localStorage.setItem('cs-name', (name || 'Player 1').trim()); localStorage.setItem('cs-p2', (p2 || 'Player 2').trim()); localStorage.setItem('cs-callsigns', '1'); setName((name || 'Player 1').trim()); setModal(false); };
   const [code, setCode] = useState('');
-  const [kind, setKind] = useState<'movie' | 'series'>('movie'); const [gm, setGm] = useState('');
+  const [night, setNight] = useState<'classic' | 'series' | 'oscar' | 'rotten' | 'clash'>('classic'); const kind: 'movie' | 'series' = night === 'series' ? 'series' : 'movie'; const gm = night === 'oscar' || night === 'rotten' || night === 'clash' ? night : '';
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };
   return (
     <main className="cs-home">
@@ -23,16 +30,16 @@ export default function Home() {
         <button className="cs-btn cs-btn--gold" onClick={saveCallsigns}>CLEARED FOR TAKEOFF</button></div></div>}
       <div className="cs-logo">CINE<b>SYNC</b></div>
       <p className="cs-tag">Two phones. One winner. No more couch gridlock.</p>
+      <div className="cs-step"><span>1</span> Your name</div>
       <input className="cs-input" placeholder="Your name" maxLength={14} value={name} onChange={(e) => setName(e.target.value)} />
-      <div className="cs-kind"><button className={kind === 'movie' ? 'is-on' : ''} onClick={() => setKind('movie')}>MOVIE NIGHT</button><button className={kind === 'series' ? 'is-on' : ''} onClick={() => setKind('series')}>SERIES BINGE</button></div>
-      {kind === 'movie' && <div className="cs-gms">{[['', 'CLASSIC'], ['oscar', '🏆 OSCAR GAUNTLET'], ['rotten', '🍅 ROTTEN ROLL'], ['clash', '⚔ GENRE CLASH']].map(([v, n]) => <button key={v} className={gm === v ? 'is-on' : ''} onClick={() => setGm(v)}>{n}</button>)}</div>}
-      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&n2=${encodeURIComponent(p2.trim())}${kind === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>START A {kind === 'series' ? 'SERIES' : 'MOVIE'} ROOM</button>
-      <button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO GAUNTLET · YOU VS ORSON</button>
-      <div className="cs-or">or join your partner</div>
-      <div className="cs-row">
-        <input className="cs-input cs-input--code" placeholder="CODE" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-        <button className="cs-btn" disabled={code.length < 4} onClick={() => go(`/play/${code}?p=B&n=${encodeURIComponent(name.trim())}`)}>JOIN</button>
-      </div>
+      <div className="cs-step"><span>2</span> Pick tonight&apos;s game</div>
+      <div className="cs-nights">{NIGHTS.map((n) => <button key={n.id} className={night === n.id ? 'is-on' : ''} onClick={() => setNight(n.id)}><b>{n.ic} {n.n}</b><i>{n.t}</i></button>)}</div>
+      <div className="cs-step"><span>3</span> Go</div>
+      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&n2=${encodeURIComponent(p2.trim())}${night === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>START {NIGHTS.find((x) => x.id === night)!.n.toUpperCase()} ROOM</button>
+      <div className="cs-row"><input className="cs-input cs-input--code" placeholder="PARTNER CODE" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+        <button className="cs-btn" disabled={code.length < 4} onClick={() => go(`/play/${code}?p=B&n=${encodeURIComponent(name.trim())}`)}>JOIN</button></div>
+      <div className="cs-row"><button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO VS ORSON</button>
+        <button className="cs-btn" onClick={() => window.dispatchEvent(new CustomEvent('cs-setview', { detail: 'casual' }))}>📚 LIBRARY</button></div>
       <p className="cs-small">Got a TV? Open the room code on it at <b>/tv/CODE</b> and cast the screen.</p>
     </main>
   );

@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { MOVIES, poster, oscarWins, totalWins, type Movie } from '@/lib/game';
 import { metaOf, awardTag, type Meta } from '@/lib/meta';
 import { useMood } from './useMood';
+import { isSpectacle } from '@/utils/sabotageEngine';
 
-type Sort = 'genre' | 'rt' | 'awards';
+type Sort = 'genre' | 'rt' | 'awards' | 'imax';
 const MODES: { id: string; n: string; t: string }[] = [{ id: '', n: 'CLASSIC', t: 'The usual' }, { id: 'oscar', n: 'OSCAR GAUNTLET', t: 'Awarded films only' }, { id: 'rotten', n: 'ROTTEN ROLL', t: 'Sub-60% RT only' }, { id: 'clash', n: 'GENRE CLASH', t: 'Two clashing genres' }];
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join('');
@@ -23,13 +24,14 @@ export function useTheater() {
 }
 
 export default function Repository() {
-  const [sort, setSort] = useState<Sort>('rt'); const [q, setQ] = useState(''); const [focus, setFocus] = useState<Movie | null>(null); const [open, setOpen] = useState<Movie | null>(null);
+  const [sort, setSort] = useState<Sort>('rt'); const [imaxNote, setImaxNote] = useState(false); const [q, setQ] = useState(''); const [focus, setFocus] = useState<Movie | null>(null); const [open, setOpen] = useState<Movie | null>(null);
   const [mode, setMode] = useState(''); const th = useTheater();
   const [live, setLive] = useState<Meta | null>(null);
   useMood({ poster: (open || focus)?.p, genres: (open || focus)?.g });
   const list = useMemo(() => {
     const f = MOVIES.filter((m) => !q || m.t.toLowerCase().includes(q.toLowerCase()));
     if (sort === 'rt') return [{ h: 'BY ROTTEN TOMATOES', ms: [...f].sort((a, b) => (b.rt ?? -1) - (a.rt ?? -1)) }];
+    if (sort === 'imax') { const y = f.filter((m) => isSpectacle(m.id)).sort((a, b) => b.r - a.r), n = f.filter((m) => !isSpectacle(m.id)).sort((a, b) => b.r - a.r); return [{ h: 'IMAX-GRADE (PROXY)', ms: y }, { h: 'EVERYTHING ELSE', ms: n }]; }
     if (sort === 'awards') return [{ h: 'BY AWARDS WON', ms: [...f].sort((a, b) => awScore(b) - awScore(a)) }];
     const by: Record<string, Movie[]> = {}; for (const m of f) (by[m.g[0] || 'Other'] ||= []).push(m);
     return Object.keys(by).sort().map((g) => ({ h: g.toUpperCase(), ms: by[g].sort((a, b) => (b.rt ?? -1) - (a.rt ?? -1)) }));
@@ -43,9 +45,10 @@ export default function Repository() {
   const mt = open ? (live || metaOf(open)) : null;
   return <div className={'cs-repo' + (th.dark ? ' is-dark' : '')}>
     <div className="cs-repo-bar">
-      <div className="cs-repo-sort">{(['genre', 'rt', 'awards'] as Sort[]).map((s) => <button key={s} className={sort === s ? 'is-on' : ''} onClick={() => setSort(s)}>{s === 'rt' ? 'ROTTEN TOM.' : s.toUpperCase()}</button>)}</div>
+      <div className="cs-repo-sort">{(['rt', 'genre', 'awards', 'imax'] as Sort[]).map((s) => <button key={s} className={sort === s ? 'is-on' : ''} onClick={() => { setSort(s); setImaxNote(s === 'imax'); }}>{s === 'rt' ? 'ROTTEN' : s === 'imax' ? 'IMAX*' : s.toUpperCase()}</button>)}</div>
       <input className="cs-repo-q" placeholder="Search films" value={q} onChange={(e) => setQ(e.target.value)} />
     </div>
+    {imaxNote && <p className="cs-repo-note">IMAX* is a proxy: no IMAX Enhanced data in the catalogue, so this ranks modern big-screen spectacle films (2010+, 7.8+ rated).</p>}
     <div className="cs-repo-modes">{MODES.map((m) => <button key={m.id} className={mode === m.id ? 'is-on' : ''} onClick={() => setMode(m.id)}><b>{m.n}</b><i>{m.t}</i></button>)}<button className="cs-repo-go" onClick={() => launch(mode)}>LIGHTS DOWN · PLAY ▸</button></div>
     <div className="cs-repo-scroll">
       {list.map((sec) => <section key={sec.h}><h3 className="cs-repo-h">{sec.h} <i>{sec.ms.length}</i></h3>
@@ -63,6 +66,7 @@ export default function Repository() {
         <p className="cs-repo-awd">{mt.awards || 'No awards on record'}</p>
         <div className="cs-chips">{mt.genreMatrix.map((g) => <i key={g}>{g}</i>)}</div>
         <p className="cs-repo-plot">{open.o}</p>
+        {isSpectacle(open.id) && <small className="cs-repo-src">IMAX-GRADE: proxy only (2010+, rated 7.8+, action/sci-fi/adventure/fantasy/war/animation). No IMAX Enhanced data exists in the catalogue.</small>}
         <small className="cs-repo-src">DATA: {mt.src === 'omdb' ? 'OMDb live' : 'catalogue (OMDb key not set)'}</small>
         <button className="cs-btn cs-btn--gold" onClick={() => setOpen(null)}>CLOSE</button></div></div></div>}
     {th.dark && <div className="cs-lights" aria-hidden><span>LIGHTS DOWN</span></div>}
