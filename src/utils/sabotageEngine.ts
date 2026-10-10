@@ -69,13 +69,14 @@ export function genreRoulette(s: State): string | null {
   for (const id of (s.draft.deck.length ? s.draft.deck : []).slice(0, 40)) for (const g of BY_ID[id]?.g || []) cnt[g] = (cnt[g] || 0) + 1;
   const top = Object.entries(cnt).sort((x, y) => y[1] - x[1]).slice(0, 3).map((x) => x[0]);
   const all: Record<string, number> = {}; for (const m of pool) if (m.r >= 6) for (const g of m.g) all[g] = (all[g] || 0) + 1;
-  const opts = Object.keys(all).filter((g) => all[g] >= 14 && !top.includes(g) && g !== s.sab?.genre).sort();
+  const opts = Object.keys(all).filter((g) => all[g] >= 24 && !top.includes(g) && g !== s.sab?.genre).sort();
   if (!opts.length) return null; const r = seeded(s.code, 'roulette' + (s.log.length)); return opts[Math.floor(r() * opts.length)];
 }
 export function genreDeck(s: State, genre: string): number[] {
   const ban = new Set([...(s.seenBan || []), ...s.draft.picks.A, ...s.draft.picks.B]);
   const ok = poolOf(s.kind).filter((m) => !m.w && m.g.includes(genre) && m.r >= 5.8 && !ban.has(m.id)).sort((a, c) => c.r + c.pop / 400 - (a.r + a.pop / 400)).slice(0, 40).map((m) => m.id);
-  return shuffled(ok, s.code, 'rdeck' + genre);
+  const rest = poolOf(s.kind).filter((m) => !m.w && !ban.has(m.id) && !ok.includes(m.id) && m.r >= 6.6).sort((a, c) => c.r - a.r).map((m) => m.id);
+  return [...shuffled(ok, s.code, 'rdeck' + genre), ...shuffled(rest.slice(0, Math.max(0, 36 - ok.length)), s.code, 'rpad' + genre)].slice(0, 40);
 }
 
 /** Feline Intervention: 5% per token matchup. Marley or Dilly knocks the highest-rated poster off the shelf and a wildcard takes its seat. Returns true when it fired. */

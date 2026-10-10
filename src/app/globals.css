@@ -546,3 +546,11 @@ em{font-style:normal;color:var(--gold)}
 @keyframes csFlash{from{opacity:.95}to{opacity:0}}
 @keyframes csShred{0%{transform:none;opacity:1}30%{transform:translateY(0)}100%{transform:translate(var(--dx),260px) rotate(40deg);opacity:0}}
 @media (max-height:700px){.cs-decree-face{transform:scale(.5);margin:-40px 0}.cs-decree h1{font-size:24px}.cs-decree-t{font-size:17px;min-height:96px}}
+/* compact dock + crowd so the bracket cards keep their room */
+.cs-dock-row{padding:4px;gap:4px;border-radius:14px}
+.cs-dock-b{flex-direction:row;justify-content:center;gap:5px;padding:6px 4px;height:36px}
+.cs-dock-b span{font-size:16px}.cs-dock-b b{font-size:9px}.cs-dock-b small{display:none}
+.cs-dock-b.is-armed small{display:inline}
+.cs-play:has(.cs-dock) .cs-foot{padding-bottom:50px}
+.cs8-crowd{display:flex;align-items:center;gap:6px;margin:2px 0}.cs8-crowd small{white-space:nowrap;flex:none;font-size:8px}.cs8-crowd-bar{flex:1;margin:0;height:6px}.cs8-crowd em{display:none}
+@media (min-height:760px){.cs8-crowd{display:block}.cs8-crowd small{white-space:normal}.cs8-crowd-bar{margin:3px 0}.cs8-crowd em{display:block}}
