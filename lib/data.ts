@@ -45,11 +45,11 @@ cab:{title:"The Encyclopaedia",emoji:"🎓",vibe:"Chatty if you are",fact:"Memor
 cheap:{title:"The Smooth Operator",emoji:"😎",vibe:"Quiet ride",fact:"4.9 stars, zero harsh braking this month."},
 mid:{title:"The Eco Pilot",emoji:"🌱",vibe:"Chill playlist",fact:"Electric. 312 kg of CO2 saved this year."},
 prem:{title:"The Concierge",emoji:"🥂",vibe:"Water & chargers on board",fact:"Door opened, bags carried, no small talk unless wanted."}};
-export const PERKS:Record<string,{accent:string;badges:string[];perks:string[]}>={
-cab:{accent:"#facc15",badges:["Bus lanes","Accessible as standard"],perks:[]},
-cheap:{accent:"#5eead4",badges:["Lowest fare","Quick pickup"],perks:["Cheapest way across town","Up to 4 seats","Fixed upfront price, no surge"]},
-mid:{accent:"#a78bfa",badges:["Electric","Quiet cabin"],perks:["Electric, silent cabin","Phone charger on board","Fixed upfront price, no surge"]},
-prem:{accent:"#f0abfc",badges:["Top-rated drivers","Water & chargers"],perks:["Top-rated chauffeurs only","Complimentary water and chargers","Fixed upfront price, no surge"]}};
+export const PERKS:Record<string,{emoji:string;bg:string;accent:string;badges:string[];perks:string[]}>={
+cab:{emoji:"🚖",bg:"linear-gradient(135deg,#0a0a0a,#2b2410)",accent:"#facc15",badges:["Bus lanes","Accessible as standard"],perks:[]},
+cheap:{emoji:"🚗",bg:"linear-gradient(135deg,#06201f,#0f4a45)",accent:"#5eead4",badges:["Lowest fare","Quick pickup"],perks:["Cheapest way across town","Up to 4 seats","Fixed upfront price, no surge"]},
+mid:{emoji:"⚡🚘",bg:"linear-gradient(135deg,#150f33,#3b2a82)",accent:"#a78bfa",badges:["Electric","Quiet cabin"],perks:["Electric, silent cabin","Phone charger on board","Fixed upfront price, no surge"]},
+prem:{emoji:"🥂🚙",bg:"linear-gradient(135deg,#240a1f,#6b1a52)",accent:"#f0abfc",badges:["Top-rated drivers","Water & chargers"],perks:["Top-rated chauffeurs only","Complimentary water and chargers","Fixed upfront price, no surge"]}};
 export const LEVELS=[{n:"Tourist",xp:0},{n:"Commuter",xp:60},{n:"Regular",xp:160},{n:"Local",xp:320},{n:"Knowledge Holder",xp:600}];
 export const BADGES:Record<string,{e:string;n:string;d:string}>={
 first:{e:"🚕",n:"First Fare",d:"Took your first ride"},
