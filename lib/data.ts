@@ -58,3 +58,18 @@ step:{e:"♿",n:"Step-Free Champion",d:"Rode with step-free on"},
 meter:{e:"🎯",n:"Meter Whisperer",d:"Guessed the meter within 50p"},
 owl:{e:"🦉",n:"Night Owl",d:"Rode after 9pm"},
 tri:{e:"🏙️",n:"Tier Hopper",d:"Rode 3 different tiers"}};
+
+export const TRIVIA:{q:string;o:string[];a:number}[]=[
+{q:"Which river does Tower Bridge cross?",o:["Thames","Severn","Mersey","Trent"],a:0},
+{q:"How many streets must a black cab driver learn for the Knowledge: about 25,000, 5,000, or 1,000?",o:["25,000","5,000","1,000","60,000"],a:0},
+{q:"What colour is a traditional London Underground Central line?",o:["Blue","Red","Green","Yellow"],a:1},
+{q:"Which famous clock tower is nicknamed Big Ben?",o:["Elizabeth Tower","Tower of London","The Shard","Marble Arch"],a:0},
+{q:"Which park is home to the Serpentine lake?",o:["Hyde Park","Regent's Park","Richmond Park","Victoria Park"],a:0},
+{q:"The London Eye opened in which year?",o:["2000","1985","2012","1995"],a:0},
+{q:"Which London station has the famous platform nine and three quarters?",o:["King's Cross","Paddington","Waterloo","Euston"],a:0},
+{q:"Which market is famous for its Lock and canal-side stalls?",o:["Camden","Borough","Brick Lane","Portobello"],a:0},
+{q:"What is the tallest building in the UK, with a glass shard shape?",o:["The Shard","The Gherkin","Walkie Talkie","Canary Wharf Tower"],a:0},
+{q:"Which monarch lives at Buckingham Palace today?",o:["King Charles III","Queen Victoria","King George VI","Queen Anne"],a:0},
+{q:"What are the black London taxis officially called?",o:["Hackney carriages","Rickshaws","Limousines","Minibuses"],a:0},
+{q:"Which bridge is known as the Wobbly Bridge?",o:["Millennium Bridge","Waterloo Bridge","London Bridge","Westminster Bridge"],a:0}];
+export const STATIONS=["Capital London · Hits","LBC · News talk","Jazz FM · Late lounge","Heart London · Feel good"];

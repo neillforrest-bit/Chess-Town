@@ -1,6 +1,7 @@
 "use client";
 import {useMemo,useState} from "react";
 import {motion,AnimatePresence} from "framer-motion";
+import Link from "next/link";
 const P="#ff2bd6",G="#34d399",Y="#facc15";
 const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const BANDS=["6-9","9-12","12-15","15-18","18-21","21-00","00-03"]; // time of day
@@ -46,6 +47,7 @@ export default function DriverApp(){
  const T=({k}:{k:string})=><button onClick={()=>setTab(k)} className={`flex-1 py-3 text-xs font-bold ${tab===k?"text-pink-400":"text-neutral-500"}`}>{({Home:"🏠",Earnings:"📈",Strategy:"🗺️",Garage:"🛠️"} as any)[k]}<div>{k}</div></button>;
  return <div className="w-full flex justify-center bg-black" style={{height:"100dvh"}}><div className="relative w-full max-w-[430px] h-full bg-[#07080c] text-white flex flex-col overflow-hidden" style={{fontFamily:"ui-rounded,system-ui,sans-serif"}}>
   <div className="px-4 pt-4 pb-2 flex items-center justify-between"><div><div className="text-[10px] tracking-[.2em]" style={{color:P}}>BLACK CAB · DRIVER TERMINAL</div><div className="font-black text-lg">Dave's Command Center</div></div><button onClick={()=>setOn(!on)} className="rounded-full px-4 py-2 text-sm font-black" style={{background:on?G:"#222",color:on?"#000":"#aaa",boxShadow:on?`0 0 18px ${G}88`:"none"}}>{on?"● ONLINE":"GO ONLINE"}</button></div>
+  <div className="px-4 pb-2"><div className="inline-flex rounded-full bg-white/10 text-xs font-bold p-0.5"><Link href="/" className="px-3 py-1.5 text-neutral-400">Rider</Link><span className="rounded-full px-3 py-1.5 text-black" style={{background:P}}>Driver</span></div></div>
   <div className="flex-1 overflow-y-auto px-4 pb-3 space-y-3">
   {tab==="Home"&&<>
    <div className="rounded-3xl p-4 flex items-center gap-4" style={{background:"linear-gradient(135deg,#1a0a18,#0b0d12)",border:`1px solid ${P}55`}}>

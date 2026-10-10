@@ -1,17 +1,18 @@
 "use client";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import {useEffect,useMemo,useRef,useState} from "react";
 import {motion,AnimatePresence} from "framer-motion";
-import {DESTS,TIERS,DRIVERS,FALLBACK,LatLng,Dest,miles,fare,lerp,stdMinutes,cabMinutes,savedMinutes,meterEstimate,guaranteedFare,route,pointAt,TIPS,TAGLINES,PERSONA,PERKS,LEVELS,BADGES} from "../lib/data";
+import {DESTS,TIERS,DRIVERS,FALLBACK,LatLng,Dest,miles,fare,lerp,stdMinutes,cabMinutes,savedMinutes,meterEstimate,guaranteedFare,route,pointAt,TIPS,TAGLINES,TRIVIA,STATIONS,PERSONA,PERKS,LEVELS,BADGES} from "../lib/data";
 const TX=()=><svg width="64" height="38" viewBox="0 0 56 34" aria-label="LEVC TX black cab"><path d="M3 24 L7 12 Q9 5 18 5 L38 5 Q47 5 51 14 L55 22 L55 28 L3 28Z" fill="#111"/><rect x="12" y="9" width="13" height="9" rx="1.5" fill="#9bd0ff"/><rect x="28" y="9" width="14" height="9" rx="1.5" fill="#9bd0ff"/><rect x="21" y="1" width="12" height="4" rx="1" fill="#facc15"/><circle cx="15" cy="28" r="5.5" fill="#333" stroke="#111"/><circle cx="43" cy="28" r="5.5" fill="#333" stroke="#111"/></svg>;
 const CarIcon=({c}:{c:string})=><svg width="56" height="34" viewBox="0 0 56 34" aria-hidden><path d="M4 24 L9 13 Q11 7 19 7 L37 7 Q45 7 49 14 L54 22 L54 28 L4 28Z" fill={c}/><rect x="14" y="11" width="12" height="7" rx="1.5" fill="#0b0d12"/><rect x="29" y="11" width="12" height="7" rx="1.5" fill="#0b0d12"/><circle cx="15" cy="28" r="5" fill="#222" stroke="#0b0d12" strokeWidth="2"/><circle cx="43" cy="28" r="5" fill="#222" stroke="#0b0d12" strokeWidth="2"/></svg>;
-type G={xp:number;streak:number;last:string;bank:number;badges:string[];tiers:string[];rides:number};
+type G={xp:number;streak:number;last:string;bank:number;badges:string[];tiers:string[];rides:number;free?:boolean};
 const G0:G={xp:0,streak:0,last:"",bank:0,badges:[],tiers:[],rides:0};
 const lvl=(xp:number)=>{let i=0;LEVELS.forEach((l,k)=>{if(xp>=l.xp)i=k});return i};
 const today=()=>new Date().toISOString().slice(0,10);
 const ACC=["Wheelchair ramp","Stroller friendly","Hearing loop","High-vis handles","Assistance dog"];
 const Map=dynamic(()=>import("./Map"),{ssr:false});
-const MATCH_MS=2800,PICKUP_MS=14000,TRIP_MS=16000;
+const MATCH_MS=2800,PICKUP_MS=14000,TRIP_MS=52000;
 export default function RideApp(){
 const [state,setState]=useState(0); // 0 init,1 idle,2 destination,3 tiers,4 matching/en route,5 trip,6 arrived
 const [pickup,setPickup]=useState<LatLng>(FALLBACK);
@@ -23,6 +24,16 @@ const [fixed,setFixed]=useState(true);const [stepFree,setStepFree]=useState(fals
 useEffect(()=>{const i=setInterval(()=>setTg(x=>(x+1)%TAGLINES.length),3500);return()=>clearInterval(i)},[]);
 const [g,setG]=useState<G>(G0);const [reward,setReward]=useState<any>(null);const [guess,setGuess]=useState(0);const actual=useRef(0);const usedStep=useRef(false);
 useEffect(()=>{try{const v=localStorage.getItem("ct_game");if(v)setG({...G0,...JSON.parse(v)})}catch{}},[]);
+const [mode,setMode]=useState<""|"silence"|"radio"|"bt"|"trivia">("");const [bt,setBt]=useState<"idle"|"scan"|"on">("idle");const [station,setStation]=useState(0);
+const [tq,setTq]=useState(0);const [ok,setOk]=useState(0);const [picked,setPicked]=useState<number|null>(null);const [muted,setMuted]=useState(false);const [reading,setReading]=useState(false);const [auto,setAuto]=useState(false);const order=useMemo(()=>[...TRIVIA].sort(()=>Math.random()-.5),[state===4]);const freeRef=useRef(false);const okRef=useRef(0);
+const say=(t:string)=>{setReading(true);try{if(muted||!("speechSynthesis" in window))throw 0;const ss=window.speechSynthesis;ss.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-GB";u.rate=1;u.onend=()=>setReading(false);u.onerror=()=>setReading(false);ss.speak(u);setTimeout(()=>setReading(false),Math.max(2500,t.length*70))}catch{setTimeout(()=>setReading(false),Math.max(1800,t.length*45))}};
+const qText=(i:number)=>{const x=order[i%order.length];return `Question ${i+1}. ${x.q} ${x.o.map((o,k)=>"ABCD"[k]+", "+o).join(". ")}.`};
+const startTrivia=()=>{setMode("trivia");setTq(0);setOk(0);okRef.current=0;setPicked(null);say("Eyes up, Dave drives, we play. Get eight right for a free next trip. "+qText(0))};
+const answer=(k:number)=>{if(picked!==null)return;const x=order[tq%order.length];const right=k===x.a;setPicked(k);if(right){okRef.current+=1;setOk(okRef.current)}
+ const n=okRef.current;const nxt=tq+1;const msg=(right?"Correct. ":"Not quite, it was "+x.o[x.a]+". ")+(n>=8?"That's eight. Your next trip is free!":`${n} of 8. `)+(n>=8?"":qText(nxt));
+ say(msg);setTimeout(()=>{setPicked(null);setTq(nxt)},1600)};
+useEffect(()=>{if(!auto||mode!=="trivia"||state!==5||picked!==null)return;const t=setTimeout(()=>{const x=order[tq%order.length];answer(Math.random()<.85?x.a:(x.a+1)%4)},1700);return()=>clearTimeout(t)},[auto,mode,state,picked,tq]);
+useEffect(()=>{if(state!==5&&state!==4){try{window.speechSynthesis?.cancel()}catch{}}},[state]);
 const [sq,setSq]=useState<Dest[]>([]);const [searching,setSearching]=useState(false);
 useEffect(()=>{const t=q.trim();if(t.length<3){setSq([]);return}setSearching(true);
  const id=setTimeout(async()=>{try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=gb&viewbox=-0.55,51.72,0.35,51.25&q="+encodeURIComponent(t));const j=await r.json();
@@ -50,13 +61,14 @@ const tier=TIERS.find(t=>t.id===tierId)!;
 const driver=DRIVERS[tierId];
 const mi=dest?miles(pickup,dest.coordinates):0;
 const isCab=tierId==="cab";
-const price=dest?(isCab?(fixed?guaranteedFare(mi):(state===6?Math.round(actual.current*100)/100:meterEstimate(mi))):fare(tier,mi)):0;
+const price0=dest?(isCab?(fixed?guaranteedFare(mi):(state===6?Math.round(actual.current*100)/100:meterEstimate(mi))):fare(tier,mi)):0;
+const price=freeRef.current&&state>=4?0:price0;
 const routes=useMemo(()=>dest?{red:route(pickup,dest.coordinates,0.32),green:route(pickup,dest.coordinates,0.04)}:null,[dest,pickup]);
 const std=stdMinutes(mi),cabM=cabMinutes(mi),saved=savedMinutes(mi);
 const locate=()=>{navigator.geolocation?.getCurrentPosition(p=>{setPickup({lat:p.coords.latitude,lng:p.coords.longitude});setLocated("ok");setTick(t=>t+1)},()=>{setPickup(FALLBACK);setLocated("fallback");setTick(t=>t+1)},{timeout:6000});if(!navigator.geolocation){setPickup(FALLBACK);setTick(t=>t+1)}};
 const animate=(ms:number,onFrame:(p:number)=>void,done:()=>void)=>{const s=Date.now();const id=setInterval(()=>{const p=Math.min(1,(Date.now()-s)/ms);onFrame(p);if(p>=1){clearInterval(id);done()}},80);timers.current.push(id)};
 const confirm=()=>{ // State 4 -> 5 -> 6
- clear();setReward(null);actual.current=meterEstimate(mi)*(0.93+Math.random()*0.14);usedStep.current=stepFree;setState(4);setPhase("matching");setCarPos(null);setTripPct(0);setRating(0);
+ clear();setReward(null);setMode("");setBt("idle");setTq(0);setOk(0);okRef.current=0;setPicked(null);freeRef.current=!!g.free;actual.current=meterEstimate(mi)*(0.93+Math.random()*0.14);usedStep.current=stepFree;setState(4);setPhase("matching");setCarPos(null);setTripPct(0);setRating(0);
  const start:LatLng={lat:pickup.lat+0.011,lng:pickup.lng-0.014};
  const tm=setTimeout(()=>{setPhase("enroute");setCarPos(start);
   const etaS=driver.eta_minutes*60;setEta(etaS);
@@ -72,8 +84,8 @@ useEffect(()=>{if(state!==6||reward||!dest)return;const win=isCab&&!fixed&&Math.
  const bank=g.bank+(isCab?saved:0);const tiers=g.tiers.includes(tierId)?g.tiers:[...g.tiers,tierId];const nb:string[]=[];
  const add=(k:string,c:boolean)=>{if(c&&!g.badges.includes(k)&&!nb.includes(k))nb.push(k)};
  add("first",true);add("bus",bank>=10);add("step",usedStep.current);add("meter",win);add("owl",d.getHours()>=21||d.getHours()<5);add("tri",tiers.length>=3);
- const ng:G={xp:g.xp+xp,streak,last:t,bank,badges:[...g.badges,...nb],tiers,rides:g.rides+1};
- setReward({xp,nb,win,up:lvl(ng.xp)>lvl(g.xp),streak});setG(ng);try{localStorage.setItem("ct_game",JSON.stringify(ng))}catch{}},[state]);
+ const earnedFree=okRef.current>=8;const ng:G={free:earnedFree?true:(freeRef.current?false:g.free),xp:g.xp+xp,streak,last:t,bank,badges:[...g.badges,...nb],tiers,rides:g.rides+1};
+ setReward({xp,nb,win,earnedFree,usedFree:freeRef.current,up:lvl(ng.xp)>lvl(g.xp),streak});setG(ng);try{localStorage.setItem("ct_game",JSON.stringify(ng))}catch{}},[state]);
 const list=DESTS.filter(d=>(d.name+d.address).toLowerCase().includes(q.toLowerCase()));
 const fmt=(s:number)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 const showDest=state>=2&&dest;
@@ -91,7 +103,7 @@ return <div className="w-full h-full flex justify-center bg-neutral-900">
   <div className="w-10 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-3 mb-3"/>
   <AnimatePresence mode="wait"><motion.div key={state===4?"4"+phase:state} initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:0.2}}>
   {state<=1&&<div>
-   <h1 className="text-2xl font-bold mb-2">Good evening, London</h1>
+   <div className="flex items-center justify-between mb-2"><h1 className="text-2xl font-bold">Good evening, London</h1><div className="flex rounded-full bg-neutral-200 text-xs font-bold p-0.5"><span className="rounded-full bg-black text-white px-3 py-1.5">Rider</span><Link href="/driver" className="px-3 py-1.5 text-neutral-600">Driver</Link></div></div>{g.free&&<div className="mb-2 rounded-xl bg-pink-500 text-white text-sm font-bold px-3 py-2">🎁 Your next trip is FREE - earned on trivia</div>}
    <div className="mb-2 flex items-center gap-2 text-sm bg-black text-yellow-300 rounded-xl px-3 py-2"><TX/><span key={tg} className="font-semibold">{TAGLINES[tg]}</span></div>
    <div className="mb-3 rounded-2xl bg-[#0b0d12] text-white p-3 border border-white/10"><div className="flex items-center justify-between"><div><div className="text-[10px] tracking-[.18em] uppercase text-emerald-300/80">London rank</div><div className="font-black text-lg leading-tight">{LEVELS[lvl(g.xp)].n}</div></div><div className="flex gap-3 text-center text-xs"><div><div className="text-lg font-black text-orange-400">🔥{g.streak}</div><div className="text-neutral-400">streak</div></div><div><div className="text-lg font-black text-emerald-300">{g.bank}m</div><div className="text-neutral-400">time bank</div></div></div></div>
     <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full bg-gradient-to-r from-emerald-400 to-yellow-300" style={{width:`${lvl(g.xp)>=LEVELS.length-1?100:Math.round((g.xp-LEVELS[lvl(g.xp)].xp)/(LEVELS[lvl(g.xp)+1].xp-LEVELS[lvl(g.xp)].xp)*100)}%`}}/></div><div className="mt-1 flex justify-between text-[10px] text-neutral-400"><span>{g.xp} XP</span><span>{lvl(g.xp)<LEVELS.length-1?`${LEVELS[lvl(g.xp)+1].xp-g.xp} XP to ${LEVELS[lvl(g.xp)+1].n}`:"Max rank"}</span></div>
@@ -135,7 +147,17 @@ return <div className="w-full h-full flex justify-center bg-neutral-900">
    <div className="font-bold text-lg">Heading to destination</div><div className="text-sm text-neutral-500">{dest?.name}</div>
    <div className="mt-3 h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full bg-black" style={{width:`${tripPct*100}%`}}/></div>
    <div className="mt-2 text-sm text-neutral-600">{driver.name} · {driver.vehicle.color} {driver.vehicle.make} {driver.vehicle.model} · {driver.vehicle.plate}</div>
-   {isCab&&<div className="mt-3 space-y-2">
+   <div className="mt-2 flex gap-1.5">{([["silence","🤫","Silence"],["radio","📻","Radio"],["bt","🔵","Bluetooth"],["trivia","🧠","Trivia"]] as const).map(([k,e,n])=><button key={k} onClick={()=>{if(k==="trivia")startTrivia();else{setMode(k);if(k==="bt"&&bt==="idle"){setBt("scan");setTimeout(()=>setBt("on"),1800)}}}} className="flex-1 rounded-xl py-2 text-[11px] font-bold border-2" style={{background:mode===k?"#ff2bd6":"#0b0d12",color:"#fff",borderColor:mode===k?"#ff2bd6":"#ffffff22"}}><div className="text-lg leading-none">{e}</div>{n}</button>)}</div>
+   {mode==="silence"&&<div className="mt-2 rounded-2xl bg-[#0b0d12] text-white p-3 text-sm">🤫 Quiet ride on. {driver.name} has been told: no chat unless you start it.</div>}
+   {mode==="radio"&&<div className="mt-2 rounded-2xl bg-[#0b0d12] text-white p-3 text-sm"><div className="flex items-end gap-0.5 h-5 mb-1">{[0,1,2,3,4,5,6].map(i=><span key={i} className="w-1.5 rounded bg-pink-400 animate-pulse" style={{height:6+((i*7)%14),animationDelay:i*90+"ms"}}/>)}<span className="ml-2 text-[11px] text-neutral-400">simulated</span></div><div className="flex gap-1.5 overflow-x-auto">{STATIONS.map((x,i)=><button key={x} onClick={()=>setStation(i)} className="shrink-0 rounded-full px-2.5 py-1 text-[11px] border" style={{background:station===i?"#ff2bd6":"transparent",borderColor:"#ffffff33"}}>{x}</button>)}</div></div>}
+   {mode==="bt"&&<div className="mt-2 rounded-2xl bg-[#0b0d12] text-white p-3 text-sm">{bt==="scan"?<>🔵 Looking for the cab speakers...</>:<>🔵 Connected to <b>{driver.name}'s {isCab?"TX":"car"} speakers</b>. Play from your phone. Volume is yours.</>}</div>}
+   {mode==="trivia"&&<div className="mt-2 rounded-3xl bg-[#0b0d12] text-white p-3 border border-pink-500/50 shadow-[0_0_24px_#ff2bd655]">
+    <div className="flex items-center justify-between text-[11px]"><span className="text-pink-300 tracking-widest">🧠 LONDON TRIVIA · {reading?"🔊 READING ALOUD":"YOUR TURN"}</span><span><button onClick={()=>{setMuted(!muted);try{speechSynthesis.cancel()}catch{}}} className="mr-2 text-neutral-400">{muted?"🔇":"🔊"}</button><button onClick={()=>setAuto(!auto)} className={auto?"text-emerald-300":"text-neutral-500"}>⚡demo</button></span></div>
+    <div className="mt-1 flex items-center gap-2"><div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-yellow-300" style={{width:`${Math.min(100,ok/8*100)}%`,transition:"width .4s"}}/></div><b className="text-sm tabular-nums">{ok}/8</b></div>
+    <div className="text-[11px] text-yellow-300">{ok>=8?"🎁 NEXT TRIP FREE - unlocked!":`Get 8 right: next trip free. ${8-ok} to go`}</div>
+    <div className="mt-1.5 text-sm font-semibold leading-snug">Q{tq+1}. {order[tq%order.length].q}</div>
+    <div className="mt-1.5 grid grid-cols-2 gap-1.5">{order[tq%order.length].o.map((o,k)=>{const x=order[tq%order.length];const st=picked===null?"":k===x.a?"#16a34a":picked===k?"#dc2626":"";return <button key={k} onClick={()=>answer(k)} className="rounded-xl px-2 py-2 text-left text-xs border" style={{background:st||"#ffffff10",borderColor:"#ffffff22"}}><b className="text-pink-300">{"ABCD"[k]}</b> {o}</button>})}</div></div>}
+   {isCab&&mode!=="trivia"&&<div className="mt-3 space-y-2">
     <div className="rounded-3xl bg-[#0b0d12] text-white p-4 border border-fuchsia-500/50 shadow-[0_0_28px_#ff2bd655]"><div className="flex items-end justify-between"><div><div className="text-[10px] tracking-[.18em] uppercase text-pink-300/80">Bus Lane Advantage</div><div className="flex items-baseline gap-1"><span className="text-5xl font-black tracking-tight text-pink-300 tabular-nums">{Math.round(saved*tripPct)}</span><span className="text-neutral-400 text-sm">/ {saved} min saved</span></div></div><div className="text-right text-[11px] leading-tight"><div className="text-orange-400">· · · Standard {std} min</div><div className="text-pink-300 font-bold">━━ Black Cab {cabM} min</div></div></div><div className="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-pink-200" style={{width:`${Math.round(tripPct*100)}%`,transition:"width .6s"}}/></div></div>
     <div className="rounded-2xl bg-neutral-900 text-white p-3 text-sm"><div className="text-[10px] font-bold text-yellow-300 tracking-wider">🎓 LOCAL KNOWLEDGE</div><div key={Math.floor(tripPct*TIPS.length)}>{TIPS[Math.min(TIPS.length-1,Math.floor(tripPct*TIPS.length))]}</div></div>
     {!fixed&&<div className="rounded-xl bg-black text-yellow-300 font-mono px-3 py-2 flex justify-between"><span>METER</span><b>£{(actual.current*tripPct).toFixed(2)}</b></div>}</div>}</div>}
@@ -147,9 +169,9 @@ return <div className="w-full h-full flex justify-center bg-neutral-900">
    <div className="text-center"><div className="text-4xl">✅</div><h2 className="text-2xl font-bold mt-1">You have arrived</h2><div className="text-neutral-500 text-sm">{dest.name}</div></div>
    <div className="mt-4 bg-neutral-50 rounded-2xl p-4 text-sm space-y-1">
     <Row><span>{tier.name} fare{isCab?(fixed?" (guaranteed)":" (meter)"):""}</span><span>£{price.toFixed(2)}</span></Row>{isCab&&<Row><span className="text-green-700">Bus lanes saved you</span><span className="text-green-700 font-bold">{saved} min</span></Row>}
-    <Row><span className="text-neutral-500">Distance</span><span className="text-neutral-500">{mi.toFixed(1)} mi</span></Row>
+    {freeRef.current&&<Row><span className="text-pink-600">Free-ride voucher</span><span className="text-pink-600 font-bold">-£{price0.toFixed(2)}</span></Row>}<Row><span className="text-neutral-500">Distance</span><span className="text-neutral-500">{mi.toFixed(1)} mi</span></Row>
     <div className="border-t my-2"/><Row><span className="font-bold text-lg">Total paid</span><span className="font-bold text-lg">£{price.toFixed(2)}</span></Row></div>
-   {reward&&<motion.div initial={{scale:.9,opacity:0}} animate={{scale:1,opacity:1}} className="mt-3 rounded-2xl bg-[#0b0d12] text-white p-3"><div className="flex items-center justify-between"><b className="text-emerald-300 text-xl">+{reward.xp} XP</b><span className="text-orange-400 font-bold">🔥 {reward.streak} day streak</span></div>{reward.up&&<div className="mt-1 text-yellow-300 font-bold">⬆ Rank up: {LEVELS[lvl(g.xp)].n}!</div>}{reward.win&&<div className="mt-1 text-sm">🎯 Beat the meter! Final fare £{price.toFixed(2)}</div>}{isCab&&<div className="mt-1 text-xs text-neutral-300">Time bank: {g.bank} min banked</div>}{reward.nb.map((k:string)=><div key={k} className="mt-1 text-sm">{BADGES[k].e} <b>Badge unlocked: {BADGES[k].n}</b> <span className="text-neutral-400">{BADGES[k].d}</span></div>)}</motion.div>}
+   {reward&&<motion.div initial={{scale:.9,opacity:0}} animate={{scale:1,opacity:1}} className="mt-3 rounded-2xl bg-[#0b0d12] text-white p-3"><div className="flex items-center justify-between"><b className="text-emerald-300 text-xl">+{reward.xp} XP</b><span className="text-orange-400 font-bold">🔥 {reward.streak} day streak</span></div>{reward.up&&<div className="mt-1 text-yellow-300 font-bold">⬆ Rank up: {LEVELS[lvl(g.xp)].n}!</div>}{reward.win&&<div className="mt-1 text-sm">🎯 Beat the meter! Final fare £{price.toFixed(2)}</div>}{isCab&&<div className="mt-1 text-xs text-neutral-300">Time bank: {g.bank} min banked</div>}{reward.earnedFree&&<div className="mt-1 text-sm text-pink-300 font-bold">🎁 {okRef.current} trivia right: your NEXT TRIP IS FREE</div>}{reward.usedFree&&<div className="mt-1 text-sm text-emerald-300">🎟 Free-ride voucher used</div>}{reward.nb.map((k:string)=><div key={k} className="mt-1 text-sm">{BADGES[k].e} <b>Badge unlocked: {BADGES[k].n}</b> <span className="text-neutral-400">{BADGES[k].d}</span></div>)}</motion.div>}
    <div className="mt-4 text-center font-semibold">Rate {driver.name}</div>
    <div className="flex justify-center gap-1 mt-1">{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setRating(n)} aria-label={`${n} stars`} className={`text-4xl ${n<=rating?"text-amber-400":"text-neutral-300"}`}>★</button>)}</div>
    <button onClick={reset} className="mt-4 w-full bg-black text-white rounded-2xl py-4 font-bold">{rating?"Submit & done":"Done"}</button>
