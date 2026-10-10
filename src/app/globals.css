@@ -636,3 +636,8 @@ body[data-gm=rotten]{background:radial-gradient(90% 60% at 50% -10%,#1d3b10 0%,#
 @keyframes csglitch{0%,88%,100%{transform:none;text-shadow:none}90%{transform:translate(-2px,1px);text-shadow:2px 0 #ff2a6d,-2px 0 #05d9e8}94%{transform:translate(2px,-1px);text-shadow:-2px 0 #ff2a6d,2px 0 #05d9e8}}
 body[data-gm=clash]{background:linear-gradient(115deg,#3a0f1f 0%,#14091c 50%,#0c2a3a 100%)}
 .cs-gmchip{display:block;text-decoration:none;font-size:.6rem;font-weight:900;letter-spacing:.14em;color:var(--gold);width:100%;text-align:center;padding-top:2px}
+/* mode skins override the stage colorway */
+body[data-gm=oscar] .cs-play[class*=cw-]{background:radial-gradient(100% 50% at 50% 0%,#5a3d06,#1c1304 70%)!important;--gold:#ffd84d;--gold2:#e0a800;--ink:#fff3c4;--card:#2a1d05;--line:#8a6a10;--dim:#e6c76a;color:#ffd84d}
+body[data-gm=rotten] .cs-play[class*=cw-]{background:linear-gradient(180deg,#14300b,#07140a)!important;--gold:#a6ff5c;--gold2:#6fcf2a;--ink:#d9ffc0;--card:#12330c;--line:#3f8a1c;--dim:#8fd16a;color:#a6ff5c}
+body[data-gm=rotten] .cs-play[class*=cw-] .cs-orson,body[data-gm=rotten] .cs-play[class*=cw-] .cs-hud{animation:csglitch 3.3s steps(1) infinite}
+body[data-gm=clash] .cs-play[class*=cw-]{background:linear-gradient(115deg,#4a0b1d 0%,#14091c 50%,#07324a 100%)!important}

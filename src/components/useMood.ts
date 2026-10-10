@@ -9,7 +9,7 @@ export function useMood(o: { poster?: string | null; genres?: string[]; gm?: str
     const b = document.body; let live = true;
     if (th) b.dataset.theme = th; else delete b.dataset.theme;
     if (o.gm) b.dataset.gm = o.gm; else delete b.dataset.gm;
-    if (o.poster) paletteOf(o.poster).then((p) => { if (!live || !p) return; b.style.setProperty('--ma', p[0] + '88'); b.style.setProperty('--mb', p[1] + '66'); b.dataset.wash = '1'; });
+    if (o.poster) paletteOf(o.poster).then((p) => { if (!live || !p) return; b.style.setProperty('--ma', p[0] + 'cc'); b.style.setProperty('--mb', p[1] + '99'); b.dataset.wash = '1'; });
     else { b.style.removeProperty('--ma'); b.style.removeProperty('--mb'); delete b.dataset.wash; }
     return () => { live = false; };
   }, [o.poster, th, o.gm]);
