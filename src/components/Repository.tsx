@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { MOVIES, poster, oscarWins, totalWins, type Movie } from '@/lib/game';
 import { metaOf, awardTag, type Meta } from '@/lib/meta';
 import { useMood } from './useMood';
-import { isSpectacle } from '@/utils/sabotageEngine';
+const isSpectacle = (id: number): boolean => { const m = MOVIES.find((x) => x.id === id); return !!m && m.y >= 2005 && (m.rn || 0) >= 105 && m.r >= 7 && m.g.some((g) => ['Science Fiction', 'Adventure', 'Fantasy', 'War'].includes(g)) && !m.g.some((g) => ['Animation', 'Family', 'Documentary'].includes(g)); };
 
 type Sort = 'genre' | 'rt' | 'awards' | 'imax';
 const MODES: { id: string; n: string; t: string }[] = [{ id: '', n: 'CLASSIC', t: 'The usual' }, { id: 'oscar', n: 'OSCAR GAUNTLET', t: 'Awarded films only' }, { id: 'rotten', n: 'ROTTEN ROLL', t: 'Sub-60% RT only' }, { id: 'clash', n: 'GENRE CLASH', t: 'Two clashing genres' }];
@@ -48,7 +48,7 @@ export default function Repository() {
       <div className="cs-repo-sort">{(['rt', 'genre', 'awards', 'imax'] as Sort[]).map((s) => <button key={s} className={sort === s ? 'is-on' : ''} onClick={() => { setSort(s); setImaxNote(s === 'imax'); }}>{s === 'rt' ? 'ROTTEN' : s === 'imax' ? 'IMAX*' : s.toUpperCase()}</button>)}</div>
       <input className="cs-repo-q" placeholder="Search films" value={q} onChange={(e) => setQ(e.target.value)} />
     </div>
-    {imaxNote && <p className="cs-repo-note">IMAX* is a proxy: no IMAX Enhanced data in the catalogue, so this ranks modern big-screen spectacle films (2010+, 7.8+ rated).</p>}
+    {imaxNote && <p className="cs-repo-note">IMAX* is a proxy: no IMAX Enhanced data in the catalogue, so this ranks big-screen spectacle films (2005+, 105+ min, rated 7.0+, sci-fi/adventure/fantasy/war).</p>}
     <div className="cs-repo-modes">{MODES.map((m) => <button key={m.id} className={mode === m.id ? 'is-on' : ''} onClick={() => setMode(m.id)}><b>{m.n}</b><i>{m.t}</i></button>)}<button className="cs-repo-go" onClick={() => launch(mode)}>LIGHTS DOWN · PLAY ▸</button></div>
     <div className="cs-repo-scroll">
       {list.map((sec) => <section key={sec.h}><h3 className="cs-repo-h">{sec.h} <i>{sec.ms.length}</i></h3>
@@ -66,7 +66,7 @@ export default function Repository() {
         <p className="cs-repo-awd">{mt.awards || 'No awards on record'}</p>
         <div className="cs-chips">{mt.genreMatrix.map((g) => <i key={g}>{g}</i>)}</div>
         <p className="cs-repo-plot">{open.o}</p>
-        {isSpectacle(open.id) && <small className="cs-repo-src">IMAX-GRADE: proxy only (2010+, rated 7.8+, action/sci-fi/adventure/fantasy/war/animation). No IMAX Enhanced data exists in the catalogue.</small>}
+        {isSpectacle(open.id) && <small className="cs-repo-src">IMAX-GRADE: proxy only (2005+, 105+ min, rated 7.0+, sci-fi/adventure/fantasy/war, no animation). No IMAX Enhanced data exists in the catalogue.</small>}
         <small className="cs-repo-src">DATA: {mt.src === 'omdb' ? 'OMDb live' : 'catalogue (OMDb key not set)'}</small>
         <button className="cs-btn cs-btn--gold" onClick={() => setOpen(null)}>CLOSE</button></div></div></div>}
     {th.dark && <div className="cs-lights" aria-hidden><span>LIGHTS DOWN</span></div>}
