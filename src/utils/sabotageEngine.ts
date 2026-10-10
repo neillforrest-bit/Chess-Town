@@ -49,10 +49,10 @@ export function sabIntent(s: State, it: { pid: PID; kind: SabKey; winner?: numbe
   if (it.kind === 'veto') {
     const dead = vetoTarget(b, m, pid), live = dead === m.a ? (m.b as number) : (m.a as number); s.sab[pid].veto = false; s.vetoed.push(dead);
     say(s, `VETO. ${nm} has struck ${BY_ID[dead].t} from the record. ${BY_ID[live].t} advances without lifting a finger. Democracy is dead.`);
-    m.veto = { by: pid, dead }; finish(s, m, live, `${nm} played THE VETO on ${BY_ID[dead].t}`, now); return;
+    m.veto = { by: pid, dead }; s.sab.log.unshift(`${nm} vetoed ${BY_ID[dead].t}`); finish(s, m, live, `${nm} played THE VETO on ${BY_ID[dead].t}`, now); return;
   }
   if (it.kind === 'block') {
-    const tg = other(pid); s.sab[pid].block = false; m.blk = { by: pid, target: tg };
+    const tg = other(pid); s.sab[pid].block = false; m.blk = { by: pid, target: tg }; s.sab.log.unshift(`${nm} blocked ${s.players[tg].name}`);
     say(s, `THE BLOCK. ${nm} has frozen ${s.players[tg].name}'s token HUD for this round. Zero wager. Zero dignity. Pick with your heart, since your wallet is on ice.`); s.log.unshift(`${nm} BLOCKED ${s.players[tg].name}'s tokens this round.`); return;
   }
   if (it.kind === 'orson') {

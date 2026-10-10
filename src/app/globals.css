@@ -536,3 +536,13 @@ em{font-style:normal;color:var(--gold)}
 @keyframes csCat{from{transform:translateX(120px)}to{transform:translateX(-30px)}}
 @keyframes csPaw{0%{opacity:0;transform:translateX(0)}50%{opacity:1}100%{opacity:0;transform:translateX(-40px)}}
 @keyframes csPoster{0%{transform:rotate(0)}30%{transform:rotate(12deg)}100%{transform:translate(-40px,420px) rotate(-70deg);opacity:0}}
+.cs8-crowd{margin:6px 0 2px;text-align:center}.cs8-crowd small{font-size:9px;letter-spacing:.2em;opacity:.8}
+.cs8-crowd-bar{height:8px;border-radius:6px;background:#ffffff22;overflow:hidden;margin:3px 0}.cs8-crowd-bar i{display:block;height:100%;background:linear-gradient(90deg,#fbbf24,#f43f5e);transition:width .9s ease}
+.cs8-crowd em{font-size:11px;opacity:.9}
+.cs-veto{position:fixed;inset:0;z-index:9997;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;text-align:center;padding:20px}
+.cs-veto b{font-size:30px;letter-spacing:.2em;color:#f43f5e;animation:csdIn .3s .6s both}.cs-veto p{margin:0;font-size:16px}.cs-veto-eul{font-style:italic;opacity:.85;font-size:13px!important;animation:csdIn .5s 1.4s both}
+.cs-veto-flash{position:absolute;inset:0;background:#fff;animation:csFlash .5s ease-out both;pointer-events:none}
+.cs-veto-poster{display:flex;width:140px;height:210px;margin-bottom:8px}.cs-veto-poster i{flex:1;background-size:600% 100%;animation:csShred 1.6s ease-in both}
+@keyframes csFlash{from{opacity:.95}to{opacity:0}}
+@keyframes csShred{0%{transform:none;opacity:1}30%{transform:translateY(0)}100%{transform:translate(var(--dx),260px) rotate(40deg);opacity:0}}
+@media (max-height:700px){.cs-decree-face{transform:scale(.5);margin:-40px 0}.cs-decree h1{font-size:24px}.cs-decree-t{font-size:17px;min-height:96px}}
