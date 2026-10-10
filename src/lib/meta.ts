@@ -32,6 +32,6 @@ export function paletteOf(path: string): Promise<[string, string] | null> {
       const c1 = col(keyed[0][1], cntB[keyed[0][0]]); const c2 = keyed[1] ? col(keyed[1][1], cntB[keyed[1][0]]) : c1;
       const out: [string, string] = [c1, c2]; cache.set(path, out); res(out);
     } catch { res(null); } };
-    im.onerror = () => res(null); im.src = `https://image.tmdb.org/t/p/w92${path}`;
+    im.onerror = () => res(null); im.src = '/api/poster?p=' + encodeURIComponent(path);
   });
 }
