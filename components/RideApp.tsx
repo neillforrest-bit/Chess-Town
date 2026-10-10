@@ -80,7 +80,7 @@ const showDest=state>=2&&dest;
 const Row=({children}:any)=><div className="flex items-center justify-between">{children}</div>;
 return <div className="w-full h-full flex justify-center bg-neutral-900">
 <div className="relative h-full w-full max-w-[430px] overflow-hidden bg-neutral-200" style={{height:"100dvh"}}>
- <div className="absolute inset-0 z-0"><Map pickup={pickup} dest={showDest?dest!.coordinates:null} carPos={carPos} tick={tick} pad={sheetH+30} cab={showDest&&state>=3?routes:null} showStd={isCab} emoji={isCab?"🚖":PERKS[tierId].emoji.slice(0,2)} bg={PERKS[tierId].accent}/></div>
+ <div className="absolute inset-0 z-0"><Map pickup={pickup} dest={showDest?dest!.coordinates:null} carPos={carPos} tick={tick} pad={sheetH+30} cab={showDest&&state>=3?routes:null} showStd={isCab} emoji={isCab?"🚖":Array.from(PERKS[tierId].emoji).pop()!} bg={PERKS[tierId].accent}/></div>
  {state===0&&<div className="absolute inset-0 z-[60] bg-white flex flex-col items-center justify-center gap-3"><div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"/><p className="font-semibold">Finding your location...</p></div>}
  {state>=1&&state<=3&&<div className="absolute top-3 left-3 right-3 z-[40] flex justify-between items-start pointer-events-none">
   {state>1&&<button onClick={()=>{state===3?setState(2):(setState(1),setDest(null))}} className="pointer-events-auto bg-white w-10 h-10 rounded-full shadow-lg text-xl" aria-label="Back">←</button>}
