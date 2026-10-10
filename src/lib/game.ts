@@ -1,5 +1,7 @@
 // CINESYNC game engine: a pure reducer. The host phone runs it; everyone else sends intents.
 import { startHit, hitIntent, resolveHit, wagerIntent, bidIntent, lockBid, triviaTap, bustIntent, bustDone, ackIntent, tapeIntent, champIntent, callIntent, rerollVote, nukeTropes, nukeUlt, nukePick, tick8, type Hit, type B8, type Reroll, type Ult } from './b8';
+import { CAT_WILDS } from '@/utils/catWilds';
+import { sabIntent, newSab, genreDeck } from '@/utils/sabotageEngine';
 import catalog from '@/data/catalog.json';
 import seriesCat from '@/data/series.json';
 
@@ -10,7 +12,7 @@ export type Kind = 'movie' | 'series';
 export const MOVIES: Movie[] = (catalog as { movies: Movie[] }).movies.filter((m) => m.y >= 1990);
 export const SERIES: Movie[] = (seriesCat as { shows: Movie[] }).shows;
 export const poolOf = (k: Kind | undefined): Movie[] => (k === 'series' ? SERIES : MOVIES);
-export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SERIES].map((m) => [m.id, m]));
+export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SERIES, ...CAT_WILDS].map((m) => [m.id, m]));
 /** v2.0 live-TMDB films live in state.extra; every process registers them into BY_ID before use. */
 export const registerExtra = (ms: Movie[] | undefined) => { for (const m of ms || []) if (!BY_ID[m.id]) BY_ID[m.id] = m; };
 export const poster = (m: Movie, size = 'w342') => `https://image.tmdb.org/t/p/${size}${m.p}`;
@@ -19,6 +21,8 @@ export const RESPONSE_GATE = 0.7;
 /** THE VIBE MATRIX: 24 hyper-specific tropes. Each partner picks exactly 3; the six picks are the search query.
  *  axes = [pacing, weight, reality, runtime] contribution to the shared target; tastes = TASTES tags that bias the deck. */
 export const TROPE_MATRIX: { n: string; ax: number[]; tastes: string[] }[] = [
+  { n: 'Neon-Soaked Nights', ax: [7, 5, 4, 4], tastes: ['Crime', 'Sci-fi', 'Thriller'] },
+  { n: 'Brainless Action', ax: [9, 2, 7, 4], tastes: ['Action', 'Comedy'] },
   { n: 'Pitch-Black Satire', ax: [5, 6, 3, 4], tastes: ['Comedy', 'Crime'] },
   { n: 'Claustrophobic Tension', ax: [6, 7, 3, 3], tastes: ['Thriller', 'Horror'] },
   { n: 'Mind-Bending Twists', ax: [6, 6, 6, 5], tastes: ['Sci-fi', 'Mystery', 'Thriller'] },
@@ -318,6 +322,8 @@ export function swipeLine(pr: Prof, m: Movie, yes: boolean, why: string[], seed:
   const L = ['Next. The film will survive.', 'Brutal. I respect it.', 'Gone. Not even a goodbye.']; return { line: L[seed % L.length], mood: 'idle', emo: '🎬' };
 }
 // ---------- state
+export type SabKey = 'veto' | 'block' | 'roulette' | 'orson';
+export type Sab = { A: Record<SabKey, boolean>; B: Record<SabKey, boolean>; genre: string | null; log: string[] };
 export type Matchup = { id: string; a: number; b: number; c: number | null; wg: { A?: number[]; B?: number[] }; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
 export type State = {
   code: string; kind: Kind; v: number; now: number;
@@ -342,6 +348,7 @@ export type State = {
   fx: { seen: string[] };
   hit: Hit | null; b8: B8 | null; reroll: Reroll; b8Bonus: { A: number; B: number }; taste: string | null; seenBan: number[]; seenLoaded: boolean;
   orson: { line: string; mood: Mood; n: number; emo?: string };
+  sab?: Sab;
   log: string[];
 };
 export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2: 'ROUND 2 · 15 to 8 · GOLDEN BYE', 3: 'ROUND 3 · 8 to 4', 4: 'SEMIS · 4 to 2' };
@@ -358,7 +365,7 @@ export const newState = (code: string): State => ({
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
-  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, seenBan: [], seenLoaded: false, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
+  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, sab: newSab(), hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, seenBan: [], seenLoaded: false, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
 });
 
 // seeded shuffle so every client sees the same order
@@ -462,7 +469,7 @@ export type Intent =
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
   | { t: 'verdict'; winner: number; reason: string; lines?: string[] } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
-  | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' }
+  | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' } | { t: 'sab'; pid: PID; kind: SabKey; winner?: number; genre?: string }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
   | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
 
@@ -492,7 +499,7 @@ function maybeLock(s: State) {
 // Gate streamlined: no swipe deck step. The draft starts the moment both partners have locked their taste map.
 function startDraft(s: State) {
   if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) return;
-  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind); s.draft.loading = true; if (s.extra.length || s.boost.length) s.draft.deck = shuffled(Array.from(new Set([...s.draft.deck, ...s.extra.map((m) => m.id), ...s.boost])), s.code, 'deck2');
+  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind); s.draft.loading = true; if (s.extra.length || s.boost.length) s.draft.deck = shuffled(Array.from(new Set([...s.draft.deck, ...s.extra.map((m) => m.id), ...s.boost])), s.code, 'deck2'); if (s.sab?.genre) s.draft.deck = genreDeck(s, s.sab.genre);
   s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
 }
 /** Average of both players' vibe sliders (0 Dark..100 Light, 0 Indie..100 Blockbuster, 0 Brain-bending..100 Brain-off). */
@@ -650,6 +657,7 @@ export function reduce(prev: State, it: Intent): State {
       maybeLock(s);
       break;
     }
+    case 'sab': sabIntent(s, it, now); break;
     case 'bveto': {
       const mt = s.br.matches[s.br.cur];
       if (s.phase !== 'bracket' || !mt || mt.winner !== null || mt.tap || s.tempt.stage === 'offer' || !s.pw[it.pid].veto) break;

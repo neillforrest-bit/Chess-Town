@@ -498,3 +498,41 @@ em{font-style:normal;color:var(--gold)}
 .cs-roll-d{position:absolute;right:-4px;top:-14px;font-size:.7rem;font-style:normal;text-decoration:none;animation:rolld 1s ease-out forwards}.cs-roll-d.is-neg{color:#ff4d6d}.cs-roll-d.is-pos{color:#4ade80}@keyframes rolld{from{opacity:1;transform:translateY(8px)}to{opacity:0;transform:translateY(-10px)}}
 .cs-toast{position:fixed;left:10px;right:10px;bottom:56px;z-index:1500;background:#150e22f2;border:1px solid #ffc83d;border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:3px;box-shadow:0 0 24px #ffc83d55;animation:cs8in .3s ease-out}.cs-toast b{font-size:.6rem;letter-spacing:.14em;color:#ffc83d}.cs-toast span{font-family:var(--serif);font-size:.95rem;line-height:1.3}
 .cs-invite-in{background:rgba(255,255,255,.06);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:28px 22px;box-shadow:0 8px 40px #0008}.cs-invite-input{background:rgba(255,255,255,.08)!important;backdrop-filter:blur(8px)}
+
+/* ===== CineSync v3.0 Chaos & Color: stage colorways ===== */
+.cw-discovery{background:#022c22!important;color:#34d399;--ink:#a7f3d0;--gold:#34d399;--gold2:#10b981;--card:#06402f;--line:#0f766e;--dim:#6ee7b7}
+.cw-curiosity{background:#3b0764!important;color:#f472b6;--ink:#fbcfe8;--gold:#f472b6;--gold2:#ec4899;--card:#4a0d7a;--line:#86198f;--dim:#f9a8d4}
+.cw-warroom{background:#4c0519!important;color:#fbbf24;--ink:#fde68a;--gold:#fbbf24;--gold2:#f59e0b;--card:#650a24;--line:#9f1239;--dim:#fcd34d}
+.cw-discovery .cs-btn--gold,.cw-curiosity .cs-btn--gold,.cw-warroom .cs-btn--gold{color:#04130e}
+/* Orson decree */
+.cs-decree{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;animation:csdIn .4s ease both}
+.cs-decree--mood{background:#022c22;color:#34d399}.cs-decree--scene{background:#3b0764;color:#f472b6}.cs-decree--tournament{background:#4c0519;color:#fbbf24}
+.cs-decree-in{max-width:420px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.cs-decree-n{font-size:12px;letter-spacing:.4em;font-weight:800;opacity:.8}
+.cs-decree h1{font-family:var(--serif);font-size:30px;margin:0;letter-spacing:.06em;color:#fff;text-shadow:0 0 24px currentColor}
+.cs-decree-face{transform:scale(.8);margin:-8px 0}
+.cs-decree-t{font-family:var(--serif);font-size:20px;line-height:1.35;color:#fff;min-height:112px;margin:0}
+.cs-decree-cur{display:inline-block;width:2px;height:1em;background:currentColor;margin-left:2px;animation:csdBlink .8s steps(2) infinite;vertical-align:-2px}
+.cs-decree-r{font-size:14px;line-height:1.4;opacity:0;transform:translateY(8px);transition:all .6s;margin:0;font-style:italic;min-height:40px}
+.cs-decree-r.is-on{opacity:.95;transform:none}
+.cs-decree-btn{margin-top:6px;min-width:200px;font-size:16px!important}.cs-decree-btn:disabled{opacity:.35}
+@keyframes csdIn{from{opacity:0}to{opacity:1}}@keyframes csdBlink{50%{opacity:0}}
+/* Wildcard dock */
+.cs-dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));z-index:900;width:min(94vw,420px);display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.cs-dock-note{background:#000d;color:#fff;border-radius:10px;padding:6px 10px;font-size:12px;text-align:center}
+.cs-dock-row{display:flex;gap:6px;background:#0009;backdrop-filter:blur(8px);border:1px solid currentColor;border-radius:16px;padding:6px;justify-content:center}
+.cs-dock-b{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;background:#ffffff14;border:1px solid #ffffff30;color:#fff;border-radius:12px;padding:5px 4px;font-size:10px;cursor:pointer}
+.cs-dock-b span{font-size:20px;line-height:1}.cs-dock-b b{font-size:10px;letter-spacing:.05em}.cs-dock-b small{opacity:.7;font-size:9px}
+.cs-dock-b.is-armed{background:#e11d48;border-color:#fff;animation:csdBlink .6s steps(2) infinite}.cs-dock-b.is-spent,.cs-dock-b:disabled{opacity:.35;cursor:default}
+.cs-play:has(.cs-dock) .cs-foot{padding-bottom:84px}
+.cs8-spec{position:absolute;bottom:4px;left:4px;background:#fbbf24;color:#000;font-style:normal;font-size:8px;font-weight:800;padding:2px 4px;border-radius:4px;z-index:3}
+/* Feline intervention */
+.cs-cat{position:fixed;inset:0;z-index:9998;background:#000c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;text-align:center;padding:20px;animation:csdIn .3s both}
+.cs-cat b{font-size:22px;letter-spacing:.12em;color:#fbbf24}.cs-cat p{margin:0;font-size:15px}
+.cs-cat-shelf{position:relative;width:200px;height:170px;border-bottom:8px solid #7c4a1d;margin-bottom:10px}
+.cs-cat-poster{position:absolute;bottom:0;left:60px;width:90px;border-radius:6px;transform-origin:bottom left;animation:csPoster 2.2s .9s ease-in forwards}
+.cs-cat-cat{position:absolute;bottom:0;right:-20px;font-size:64px;animation:csCat 1.2s ease-out both}
+.cs-cat-paw{position:absolute;bottom:50px;left:110px;font-size:28px;opacity:0;animation:csPaw .6s .7s ease-out forwards}
+@keyframes csCat{from{transform:translateX(120px)}to{transform:translateX(-30px)}}
+@keyframes csPaw{0%{opacity:0;transform:translateX(0)}50%{opacity:1}100%{opacity:0;transform:translateX(-40px)}}
+@keyframes csPoster{0%{transform:rotate(0)}30%{transform:rotate(12deg)}100%{transform:translate(-40px,420px) rotate(-70deg);opacity:0}}

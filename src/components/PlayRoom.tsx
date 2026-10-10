@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
 import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
-import OrsonInterstitial from './OrsonInterstitial';
+import CineSyncPipeline from './CineSyncPipeline';
 import TokenHUD from './TokenHUD';
 import PostMortem from './PostMortem';
 import { OrsonFace, Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
@@ -124,10 +124,8 @@ export default function PlayRoom({ code }: { code: string }) {
   const foot = <footer className="cs-foot"><Meter cost={s.cost} /><i>{BUILD}</i></footer>;
   const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
   const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
-  const ikey = s.phase === 'draft' ? 'vibe' : s.phase === 'hitlist' ? 'draft' : null;
-  const ov = ikey && !dis[ikey] ? <OrsonInterstitial title={ikey === 'vibe' ? 'THE VIBE STAGE IS OVER' : 'THE DRAFT IS OVER'} line={ikey === 'vibe' ? s.inter?.vibe : (s.asym ? s.asym[pid] : undefined)} onProceed={() => { try { sessionStorage.setItem(`cs-int-${code}-${ikey}`, '1'); } catch { /* no storage */ } setDis((d) => ({ ...d, [ikey]: true })); }} /> : null;
   const hud = s.b8 && s.phase === 'bracket' ? <TokenHUD s={s} me={pid} /> : null;
-  const shell = (body: React.ReactNode, cls = '') => <main className="cs-play">{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}<PostMortem s={s} />{ov}</main>;
+  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} send={send as (i: Intent) => void}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}<PostMortem s={s} /></CineSyncPipeline>;
   const led = ledgerLine(s);
 
   // ---- LOBBY

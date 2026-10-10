@@ -16,6 +16,12 @@ export async function POST(req: Request) {
   const body = await req.json();
   const ai = new GoogleGenAI({ apiKey: key });
   try {
+    if (body.type === 'decree') {
+      const prompt = `${PERSONA}\nFULL-SCREEN DECREE before stage "${body.stageId}" of a couples movie-night game. Stage purpose: ${body.purpose}. Session history (use real numbers, refer to the two people ONLY as "Player 1" and "Player 2" or "you two", never by name, never mention any TV brand): ${body.history}. Write ONE roast of 2 sentences max (40 words) aimed at the pair, drawing on that history. If there is no history, mock them for being strangers to their own taste.`;
+      const out = await ai.models.generateContent({ model: GEMINI_MODEL, contents: prompt, config: { responseMimeType: 'application/json', maxOutputTokens: 900, thinkingConfig: GEMINI_THINKING, responseSchema: { type: Type.OBJECT, properties: { roast: { type: Type.STRING } }, required: ['roast'] } } });
+      const d = JSON.parse(out.text || '{}') as { roast?: string };
+      return NextResponse.json({ roast: d.roast || '', ...usage(out) });
+    }
     if (body.type === 'pitches') {
       const movies = (body.movies as Pitch[]).slice(0, 70);
       const prompt = `${PERSONA}\nA couple's vibe tonight: ${body.vibe || 'open'}.\nFor EACH film write the 'why you will like it' line (max 26 words): speak to the couple, name ONE concrete reason from the film itself (a lead actor, a hook, its tone) and tie it to their vibe tonight. Vary the openings, never start two the same way, no spoilers, no filler. Return JSON.\n` +

@@ -1,5 +1,6 @@
 // PRD phases 2-4: The Hit List, the 8-seed March Madness bracket, upset multipliers, Bracket Buster, sudden-death trivia, accept-or-reroll.
 // Pure state transitions; game.ts's reducer calls these. Tunable rules live in R.
+import { rollFeline, isSpectacle, SPEC_TAG } from '@/utils/sabotageEngine';
 import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
@@ -17,6 +18,7 @@ export type M8 = {
   wg: { A?: { id: number; tok: number }; B?: { id: number; tok: number } };
   winner: number | null; mortem?: string; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
   live?: { A?: { id: number; tok: number }; B?: { id: number; tok: number } }; bidEnds?: number;
+  blk?: { by: PID; target: PID }; veto?: { by: PID; dead: number }; orsonPick?: { by: PID; winner: number }; cat?: { by: string; out: number; in: number } | null;
   wc?: 'blind' | 'swap' | 'res' | null; cry?: { a: string; b: string; ai?: boolean }; was?: { a: number; b: number };
 };
 export type B8 = {
@@ -160,6 +162,7 @@ export function bidIntent(s: State, it: { pid: PID; id: number; add: number }, n
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
   if (!m || m.round < 2 || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || (it.id !== m.a && it.id !== m.b)) return;
   const cur = m.live?.[it.pid]; if (cur && cur.id !== it.id) return;
+  if (m.blk && m.blk.target === it.pid) return;
   const add = Math.max(1, Math.min(Math.floor(it.add || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) return;
   b.purse[it.pid] -= add; m.live = { ...(m.live || {}), [it.pid]: { id: it.id, tok: (cur ? cur.tok : 0) + add } };
   void now;
@@ -169,20 +172,21 @@ export function lockBid(s: State, it: { pid: PID }, now: number) {
   if (!m || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || !m.live?.[it.pid]) return;
   m.wg[it.pid] = m.live[it.pid]; if (m.wg.A && m.wg.B) settle(s, m, now);
 }
-const MATCH_WEIGHT = (m: M8, p: PID, tok: number) => (m.round === 1 ? R.FREE_WEIGHT : tok);
+const MATCH_WEIGHT = (m: M8, p: PID, tok: number) => (m.blk && m.blk.target === p ? 0 : m.round === 1 ? R.FREE_WEIGHT : tok);
 
 export function wagerIntent(s: State, it: { pid: PID; id: number; tok: number }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
   if (!m || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || m.live?.[it.pid] || (it.id !== m.a && it.id !== m.b)) return;
   let tok = 0;
-  if (m.round > 1) { tok = Math.max(1, Math.min(Math.floor(it.tok || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) tok = 0; if (tok === 0) tok = 0; b.purse[it.pid] -= tok; }
+  if (m.blk && m.blk.target === it.pid) tok = 0;
+  else if (m.round > 1) { tok = Math.max(1, Math.min(Math.floor(it.tok || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) tok = 0; if (tok === 0) tok = 0; b.purse[it.pid] -= tok; }
   m.wg[it.pid] = { id: it.id, tok };
   if (m.wg.A && m.wg.B) settle(s, m, now);
 }
 
 export function bars(b: B8, m: M8) {
   const src = (p: PID) => m.wg[p] || m.live?.[p];
-  const t = (id: number | null) => (['A', 'B'] as PID[]).reduce((n, p) => n + (src(p) && src(p)!.id === id ? MATCH_WEIGHT(m, p, src(p)!.tok) : 0), 0) * (id !== null && b.shield[id] ? R.OVERDRIVE : 1);
+  const t = (id: number | null) => (['A', 'B'] as PID[]).reduce((n, p) => n + (src(p) && src(p)!.id === id ? MATCH_WEIGHT(m, p, src(p)!.tok) : 0), 0) * (id !== null && b.shield[id] ? R.OVERDRIVE : 1) * (m.round > 1 && isSpectacle(id) ? 2 : 1);
   return { a: t(m.a), b: t(m.b) };
 }
 
@@ -218,7 +222,7 @@ function triviaTimeout(s: State, m: M8, now: number) {
   finish(s, m, hi, 'trivia stalemate, higher rated title advances', now);
 }
 
-function finish(s: State, m: M8, winner: number, via: string, now: number) {
+export function finish(s: State, m: M8, winner: number, via: string, now: number) {
   const b = s.b8 as B8; m.winner = winner; m.via = via; m.status = 'RESOLVED'; m.nextAt = now + R.NEXT_MS;
   const loser = winner === m.a ? (m.b as number) : (m.a as number);
   const sw = b.seed[winner], sl = b.seed[loser]; const gap = sw - sl;
@@ -247,7 +251,7 @@ export function callIntent(s: State, it: { pid: PID; slot: number; id: number })
   const m = b.matches[it.slot]; if (!m || m.round !== sh.round || (it.id !== m.a && it.id !== m.b)) return; b.calls.pick[it.pid][it.slot] = it.id;
 }
 const callsShow = (b: B8, round: number, now: number) => { b.ack = { A: false, B: false }; b.show = { until: now + R.CALLS_MS[round - 1], kind: 'calls', round }; };
-const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; else nx.bidEnds = now + R.BID_MS; if (!rollWildcard(s, b, nx)) intro8(s, nx); };
+const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cur]; nx.status = 'VOTING_ACTIVE'; if (nx.round === 1) nx.endsAt = now + R.BLITZ_MS; else nx.bidEnds = now + R.BID_MS; if (rollFeline(s, b, nx)) return; if (!rollWildcard(s, b, nx)) intro8(s, nx); if (nx.round > 1 && (isSpectacle(nx.a) || isSpectacle(nx.b))) { const f = isSpectacle(nx.a) ? nx.a : nx.b; say8(s, `SPECTACLE MULTIPLIER. ${BY_ID[f as number].t} carries ${SPEC_TAG} tags, so I am doubling every token wagered on it. Your television has demanded it.`, 'scheme'); } };
 /** CineSync v2.0 wildcard events: 10% chance per token matchup (QF onward). Blind Bet masks the films; Genre Swap swaps in two divergent cult/vintage picks; Resurrection drags an eliminated film back in. */
 export const WC_P = 0.1;
 const redact = (m: Movie) => { const first = (m.o.split(/(?<=[.!?])\s/)[0] || m.o).replace(new RegExp(m.t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '___'); return first.length > 110 ? first.slice(0, 107) + '...' : first; };

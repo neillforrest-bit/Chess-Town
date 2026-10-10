@@ -14,7 +14,7 @@ function Onboard() {
     <div className="cs-logo">CINE<b>SYNC</b></div>
     <p className="cs-invite-sub">{host ? `${host} has summoned you to room ${gameId}.` : `You have been summoned to room ${gameId}.`}</p>
     <h1>Enter your callsign</h1>
-    <input className="cs-invite-input" autoFocus maxLength={14} placeholder="e.g., Gemma" value={callsign} onChange={(e) => setCallsign(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') join(); }} />
+    <input className="cs-invite-input" autoFocus maxLength={14} placeholder="e.g., Alex" value={callsign} onChange={(e) => setCallsign(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') join(); }} />
     <button className="cs-btn cs-btn--gold" disabled={!callsign.trim()} onClick={join}>ENTER THE LOBBY</button>
     <p className="cs-small">Orson will use this name all night. Choose wisely.</p>
   </div></main>;

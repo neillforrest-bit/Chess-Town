@@ -8,9 +8,9 @@ const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.r
 export default function Home() {
   const r = useRouter();
   const [name, setName] = useState('');
-  const [p2, setP2] = useState('Jemma'); const [modal, setModal] = useState(false);
-  useEffect(() => { setName(localStorage.getItem('cs-name') || ''); setP2(localStorage.getItem('cs-p2') || 'Jemma'); if (!localStorage.getItem('cs-callsigns')) { setName((n) => n || 'Neill'); setModal(true); } }, []);
-  const saveCallsigns = () => { localStorage.setItem('cs-name', (name || 'Neill').trim()); localStorage.setItem('cs-p2', (p2 || 'Jemma').trim()); localStorage.setItem('cs-callsigns', '1'); setName((name || 'Neill').trim()); setModal(false); };
+  const [p2, setP2] = useState('Player 2'); const [modal, setModal] = useState(false);
+  useEffect(() => { setName(localStorage.getItem('cs-name') || ''); setP2(localStorage.getItem('cs-p2') || 'Player 2'); if (!localStorage.getItem('cs-callsigns')) { setName((n) => n || 'Player 1'); setModal(true); } }, []);
+  const saveCallsigns = () => { localStorage.setItem('cs-name', (name || 'Player 1').trim()); localStorage.setItem('cs-p2', (p2 || 'Player 2').trim()); localStorage.setItem('cs-callsigns', '1'); setName((name || 'Player 1').trim()); setModal(false); };
   const [code, setCode] = useState('');
   const [kind, setKind] = useState<'movie' | 'series'>('movie');
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };

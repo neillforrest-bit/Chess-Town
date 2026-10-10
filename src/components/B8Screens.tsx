@@ -1,4 +1,5 @@
 'use client';
+import { isSpectacle, SPEC_TAG } from '@/utils/sabotageEngine';
 import { useState } from 'react';
 import { BY_ID, TROPE_NAMES, type Intent, type PID, type State } from '@/lib/game';
 import { R, bars, previewMatches, type M8 } from '@/lib/b8';
@@ -168,7 +169,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
     {m.trivia ? <Trivia s={s} pid={pid} send={send} now={now} m={m} /> : <>
       <div className="cs8-vs">{[a, c].map((id, i) => { const mine = m.wg[pid]?.id === id; const upset = (i === 0 ? m.seedA > m.seedB : m.seedB > m.seedA) && Math.abs(m.seedA - m.seedB) >= R.UPSET_GAP;
         return <button key={id} className={'cs8-card' + (pick === id || mine ? ' is-pick' : '') + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')} disabled={m.status !== 'VOTING_ACTIVE' || !!m.wg[pid] || (!!m.live?.[pid] && m.live[pid]!.id !== id)} onClick={() => { buzz(8); if (m.round === 1) send({ t: 'w8', pid, id, tok: 0 }); else setPick(id); }}>
-          <i className="cs8-seed">#{b.seed[id]}</i>{m.round > 1 && (['A', 'B'] as PID[]).map((p) => { const l = m.wg[p] || m.live?.[p]; return l && l.id === id ? <u key={p} className={'cs8-stake ' + (p === pid ? 'is-me' : 'is-them')}>{p === pid ? 'YOU' : s.players[p].name.slice(0, 5).toUpperCase()} ◈{l.tok}</u> : null; })}{b.shield[id] && <i className="cs8-sb">★ GOLDEN</i>}{upset && <i className="cs8-up">x{R.UPSET_MULT}</i>}
+          <i className="cs8-seed">#{b.seed[id]}</i>{m.round > 1 && (['A', 'B'] as PID[]).map((p) => { const l = m.wg[p] || m.live?.[p]; return l && l.id === id ? <u key={p} className={'cs8-stake ' + (p === pid ? 'is-me' : 'is-them')}>{p === pid ? 'YOU' : s.players[p].name.slice(0, 5).toUpperCase()} ◈{l.tok}</u> : null; })}{b.shield[id] && <i className="cs8-sb">★ GOLDEN</i>}{m.round > 1 && isSpectacle(id) && <i className="cs8-spec">{SPEC_TAG} ×2</i>}{upset && <i className="cs8-up">x{R.UPSET_MULT}</i>}
           {blind ? <div className="cs8-mask">?</div> : <Poster id={id} />}<b>{blind ? nm(id, 20) : clip(BY_ID[id].t, 20)}</b>
           {!blind && <><span>{BY_ID[id].y}</span><Scores m={BY_ID[id]} big /></>}
           <p>{blind ? (m.cry ? (id === a ? m.cry.a : m.cry.b) : '...') : clip(pitchOf(s, id), 96)}</p></button>; })}</div>
@@ -179,10 +180,11 @@ export function BracketScreen({ s, pid, send, now }: P) {
         : m.wg[pid] ? <p className="cs8-say">Locked at {m.wg[pid]!.tok}. Watch the rope.</p>
         : <div className="cs8-act">
           {m.round === 1 ? <em className="cs8-free">Blitz. Tap the one you want, 8 seconds.</em> : (() => { const lv = m.live?.[pid]; const side = lv ? lv.id : pick; const left = b.purse[pid];
-            const raise = (n: number) => { if (side === null || side === undefined || left < 1) return; buzz(10); send({ t: 'bid', pid, id: side as number, add: Math.min(n, left) }); };
-            return <div className="cs8-step cs8-live"><button disabled={side == null || left < 1} onClick={() => raise(1)}>+1</button><button disabled={side == null || left < 1} onClick={() => raise(5)}>+5</button><button disabled={side == null || left < 1} onClick={() => raise(10)}>+10</button><button disabled={side == null || left < 1} onClick={() => raise(left)}>ALL IN</button><em>{lv ? `${lv.tok} on ${nm(lv.id, 14)}` : side == null ? 'tap a film, then raise' : `tap +1 to back ${nm(side as number, 14)}`}</em></div>; })()}
-          {m.round > 1 && (m.live?.[pid] ? <em className="cs8-free">Clock decides. Raise until it hits zero.</em> : b.purse[pid] < 1 ? <button className="cs-btn cs-btn--gold" disabled={pick === null} onClick={() => send({ t: 'w8', pid, id: pick as number, tok: 0 })}>PICK (NO TOKENS LEFT)</button> : null)}
+            const frozen = !!m.blk && m.blk.target === pid; const raise = (n: number) => { if (frozen || side === null || side === undefined || left < 1) return; buzz(10); send({ t: 'bid', pid, id: side as number, add: Math.min(n, left) }); };
+            return <div className="cs8-step cs8-live"><button disabled={frozen || side == null || left < 1} onClick={() => raise(1)}>+1</button><button disabled={frozen || side == null || left < 1} onClick={() => raise(5)}>+5</button><button disabled={frozen || side == null || left < 1} onClick={() => raise(10)}>+10</button><button disabled={frozen || side == null || left < 1} onClick={() => raise(left)}>ALL IN</button><em>{lv ? `${lv.tok} on ${nm(lv.id, 14)}` : side == null ? 'tap a film, then raise' : `tap +1 to back ${nm(side as number, 14)}`}</em></div>; })()}
+          {m.round > 1 && m.blk && m.blk.target === pid && !m.wg[pid] ? <button className="cs-btn cs-btn--gold" disabled={pick === null} onClick={() => send({ t: 'w8', pid, id: pick as number, tok: 0 })}>❄ FROZEN · PICK WITH 0 TOKENS</button> : m.round > 1 && (m.live?.[pid] ? <em className="cs8-free">Clock decides. Raise until it hits zero.</em> : b.purse[pid] < 1 ? <button className="cs-btn cs-btn--gold" disabled={pick === null} onClick={() => send({ t: 'w8', pid, id: pick as number, tok: 0 })}>PICK (NO TOKENS LEFT)</button> : null)}
         </div>}
+      {m.blk && <p className="cs8-roast">❄ THE BLOCK: {s.players[m.blk.target].name}&apos;s tokens are frozen this round (0 wager).</p>}
       {m.bust && <p className="cs8-roast">{m.bust}</p>}
       </>}
   </div>;
