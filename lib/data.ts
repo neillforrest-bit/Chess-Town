@@ -16,7 +16,7 @@ export const TIERS=[
 {id:"cab",name:"Black Cab",tag:"New",cars:"LEVC TX · London's licensed taxi",base:4,mile:2.7,seats:6,speed:1},
 {id:"cheap",name:"Standard",tag:"Cheap",cars:"Toyota Prius or similar",base:2.5,mile:1.25,seats:4,speed:1},
 {id:"mid",name:"Comfort",tag:"Middle",cars:"Tesla Model 3, Polestar 2",base:3.5,mile:1.6,seats:4,speed:1},
-{id:"prem",name:"Executive",tag:"Premium",cars:"Mercedes E-Class, LEVC TX",base:6,mile:2.5,seats:4,speed:1}];
+{id:"prem",name:"Executive",tag:"Premium",cars:"Mercedes E-Class or similar",base:6,mile:2.5,seats:4,speed:1}];
 export const DRIVERS:Record<string,any>={
 cab:{id:"drv_cab_41",name:"Dave",rating:4.97,knowledge:true,years:19,vehicle:{make:"LEVC",model:"TX",color:"Black",plate:"KX21 TXE"},eta_minutes:4},
 cheap:{id:"drv_884",name:"Ahmed",rating:4.9,vehicle:{make:"Toyota",model:"Prius",color:"Silver",plate:"LD22 RTY"},eta_minutes:3},
@@ -39,3 +39,22 @@ export function route(a:LatLng,b:LatLng,off:number,n=24):LatLng[]{const mx=(a.la
 export const pointAt=(pts:LatLng[],p:number):LatLng=>{const f=p*(pts.length-1),i=Math.min(pts.length-2,Math.floor(f));return lerp(pts[i],pts[i+1],f-i)};
 export const TIPS=["Dave skipped the Strand queue via a bus lane.","Cutting through Covent Garden's back streets: -3 min.","Knowledge shortcut: Dave knows the gate that's open after 6pm.","Avoiding the Embankment roadworks, learned this morning.","Bus lane all the way down Whitehall."];
 export const TAGLINES=["Skip the queue. Ride the Knowledge.","Every street. Every shortcut. Every one of us.","Nineteen years of London, one tap away."];
+
+export const PERSONA:Record<string,{title:string;emoji:string;vibe:string;fact:string}>={
+cab:{title:"The Encyclopaedia",emoji:"🎓",vibe:"Chatty if you are",fact:"Memorised 25,000 streets. Never uses sat nav."},
+cheap:{title:"The Smooth Operator",emoji:"😎",vibe:"Quiet ride",fact:"4.9 stars, zero harsh braking this month."},
+mid:{title:"The Eco Pilot",emoji:"🌱",vibe:"Chill playlist",fact:"Electric. 312 kg of CO2 saved this year."},
+prem:{title:"The Concierge",emoji:"🥂",vibe:"Water & chargers on board",fact:"Door opened, bags carried, no small talk unless wanted."}};
+export const PERKS:Record<string,{accent:string;badges:string[];perks:string[]}>={
+cab:{accent:"#facc15",badges:["Bus lanes","Accessible as standard"],perks:[]},
+cheap:{accent:"#5eead4",badges:["Lowest fare","Quick pickup"],perks:["Cheapest way across town","Up to 4 seats","Fixed upfront price, no surge"]},
+mid:{accent:"#a78bfa",badges:["Electric","Quiet cabin"],perks:["Electric, silent cabin","Phone charger on board","Fixed upfront price, no surge"]},
+prem:{accent:"#f0abfc",badges:["Top-rated drivers","Water & chargers"],perks:["Top-rated chauffeurs only","Complimentary water and chargers","Fixed upfront price, no surge"]}};
+export const LEVELS=[{n:"Tourist",xp:0},{n:"Commuter",xp:60},{n:"Regular",xp:160},{n:"Local",xp:320},{n:"Knowledge Holder",xp:600}];
+export const BADGES:Record<string,{e:string;n:string;d:string}>={
+first:{e:"🚕",n:"First Fare",d:"Took your first ride"},
+bus:{e:"🚌",n:"Bus Lane Boss",d:"Banked 10+ min with the Black Cab"},
+step:{e:"♿",n:"Step-Free Champion",d:"Rode with step-free on"},
+meter:{e:"🎯",n:"Meter Whisperer",d:"Guessed the meter within 50p"},
+owl:{e:"🦉",n:"Night Owl",d:"Rode after 9pm"},
+tri:{e:"🏙️",n:"Tier Hopper",d:"Rode 3 different tiers"}};
