@@ -531,6 +531,7 @@ function PlayChesterGame() {
       {flagBanner}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
       <div className="play-chester__acc">
+        <div className="battle-acc__caption">LIVE ACCURACY</div>
         {(['w', 'b'] as const).map((c) => {
           const a = accuracy[c]; const label = c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : 'CHESTER');
           const pct = a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8));

@@ -2934,3 +2934,8 @@ a.battle-btn{text-decoration:none}
 @keyframes tapboardTrot{0%{transform:translate(0,0)}18%{transform:translate(calc(var(--dx)*18%),calc(var(--dy)*18%)) translateY(-5%)}36%{transform:translate(calc(var(--dx)*36%),calc(var(--dy)*36%))}54%{transform:translate(calc(var(--dx)*54%),calc(var(--dy)*54%)) translateY(-5%)}72%{transform:translate(calc(var(--dx)*72%),calc(var(--dy)*72%))}88%{transform:translate(calc(var(--dx)*88%),calc(var(--dy)*88%)) translateY(-3%)}100%{transform:translate(calc(var(--dx)*100%),calc(var(--dy)*100%))}}
 .tapboard__fallen{position:absolute;width:12.5%;height:12.5%;object-fit:contain;pointer-events:none;z-index:4;transform-origin:50% 88%;animation:tapboardTip .55s ease-in .5s both}
 @keyframes tapboardTip{0%{transform:rotate(0);opacity:1}18%{transform:rotate(-9deg)}34%{transform:rotate(7deg)}48%{transform:rotate(-4deg)}100%{transform:rotate(84deg) translateY(10%);opacity:0}}
+
+/* BUILD 153c: plain-English labels so the bars explain themselves */
+.fighthud__caption{margin-top:.15rem;text-align:center;font:900 .52rem/1 Arial,sans-serif;letter-spacing:1.5px;color:#9db2b7}
+.battle-acc__caption{width:min(100vw - 1rem,600px,60dvh);margin-top:.1rem;text-align:center;font:900 .52rem/1 Arial,sans-serif;letter-spacing:1.5px;color:#9db2b7}
+.play-chester__acc .battle-acc__caption{width:100%}

@@ -461,6 +461,7 @@ export default function BattlePage() {
         <span className="fighthud__pct fighthud__pct--you">{odds}%</span>
         <span className="fighthud__pct fighthud__pct--opp">{100 - odds}%</span>
       </div>
+      <div className="fighthud__caption">LIVE WIN ODDS</div>
     </div>
     <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}${mood ? ` battle-fx--${mood}` : ''}`}>
       <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn || ghostArm} lastMove={lastMove} onMove={onMove} ghostSquares={ghostSquares} />
@@ -475,6 +476,7 @@ export default function BattlePage() {
         <span>{banter && <><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</>}{edu && <small className="battle-commentary__edu">{edu.text}</small>}</span>
       </div>}
     </div>
+    <div className="battle-acc__caption">LIVE ACCURACY</div>
     {([['w', 'WHITE', accuracy.w], ['b', 'BLACK', accuracy.b]] as const).map(([c, label, a]) => {
       const pct = a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8));
       return <div key={c} className="battle-acc" aria-label={`${label} accuracy ${pct} percent`}>

@@ -163,6 +163,7 @@ export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER
         <span className="fighthud__pct fighthud__pct--you">{youR}%</span>
         <span className="fighthud__pct fighthud__pct--opp">{100 - youR}%</span>
       </div>
+      <div className="fighthud__caption">LIVE WIN ODDS</div>
     </div>
   );
 }
