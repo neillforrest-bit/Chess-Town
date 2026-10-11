@@ -6,6 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
+import MatchCountdown from '@/components/MatchCountdown';
+import { ChesterAvatar } from '@/components/ChesterUI';
+import { direct } from '@/lib/chester-director';
+import { playSfx } from '@/lib/sounds';
 import { createClient } from '@/utils/supabase/client';
 import { getStockfishClient } from '@/lib/stockfish';
 
@@ -43,6 +47,8 @@ export default function BattlePage() {
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState('');
   const [ready, setReady] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [banter, setBanter] = useState<{ key: string; color: 'w' | 'b'; text: string; hot: boolean } | null>(null);
   const stateRef = useRef(state);
   const dbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const matchIdRef = useRef('');
@@ -119,6 +125,26 @@ export default function BattlePage() {
   const opponentHere = seated >= 2;
   const myColor = seat === 1 ? 'b' : 'w';
   const chess = useMemo(() => loadChess(state.pgn), [state.pgn]);
+
+  // READY / STEADY / GO: fire when both fighters are seated for a fresh game, and again on rematch.
+  const wasConnected = useRef(false);
+  const prevPgn = useRef(state.pgn);
+  useEffect(() => {
+    const fresh = state.pgn === '' && state.result === null;
+    if (connected && fresh && (!wasConnected.current || prevPgn.current !== '')) setCountdown((n) => n + 1);
+    wasConnected.current = connected;
+    prevPgn.current = state.pgn;
+  }, [connected, state.pgn, state.result]);
+
+  // Move/capture/check sound on every synced move (both phones).
+  useEffect(() => {
+    if (!state.pgn) return;
+    const c = loadChess(state.pgn);
+    const last = c.history({ verbose: true }).pop();
+    if (!last) return;
+    playSfx(c.isCheckmate() ? 'win' : c.isCheck() ? 'check' : last.captured ? 'capture' : 'move');
+  }, [state.pgn]);
+  useEffect(() => { if (!banter) return; const t = setTimeout(() => setBanter(null), 4500); return () => clearTimeout(t); }, [banter]);
   const turn = chess.turn();
   const over = chess.isGameOver() || state.result !== null;
   const paused = state.pausedBy !== null;
@@ -141,6 +167,7 @@ export default function BattlePage() {
   const bestRefEarly = null; void bestRefEarly;
   const evalRef = useRef<{ pgn: string; pawns: number } | null>(null);
   const [swing, setSwing] = useState<{ n: number; text: string; good: boolean } | null>(null);
+  const [shakeBattle, setShakeBattle] = useState(false);
   const [pawnsNow, setPawnsNow] = useState<number | null>(null);
   useEffect(() => {
     if (!connected || !state.pgn) return;
@@ -154,15 +181,38 @@ export default function BattlePage() {
       const pawns = raw * stm;
       setPawnsNow(pawns);
       try { const c = loadChess(pgn); const u = a.pv[0]; const m = u ? c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }) : null; bestRef.current = m ? m.san : null; } catch { bestRef.current = null; }
-      const prev = evalRef.current;
+      const prev = evalRef.current ?? { pgn: '', pawns: 0.2 };
       evalRef.current = { pgn, pawns };
-      if (!prev || prev.pgn === pgn || pgn.length < prev.pgn.length) return;
+      if (prev.pgn === pgn || pgn.length < prev.pgn.length) return;
       const d = pawns - prev.pawns;
       if (Math.abs(d) > 2.0) {
         const goodForWhite = d > 0;
         const good = goodForWhite === (myColorRef.current === 'w');
         setSwing({ n: Date.now(), good, text: good ? '[THE CROWD ROARS]' : '[THE ARENA GOES DEAD SILENT]' });
       }
+      // Chester commentary, same deterministic voice as Play Chester (zero cost per move).
+      // No freeze cards and no best-move reveals here: live PvP with running clocks, so
+      // blocking the board or whispering engine moves to one fighter would break the fight.
+      try {
+        const cNow = loadChess(pgn);
+        const hist = cNow.history({ verbose: true });
+        const last = hist[hist.length - 1];
+        if (last) {
+          const mover = last.color;
+          const beforeM = prev ? (mover === 'w' ? prev.pawns : -prev.pawns) : 0;
+          const afterM = mover === 'w' ? pawns : -pawns;
+          const delta = Math.max(0, Math.round((beforeM - afterM) * 100));
+          const cls = delta >= 250 ? 'BLUNDER' : delta >= 120 ? 'MISTAKE' : delta >= 50 ? 'INACCURACY' : delta <= 12 ? 'BEST' : 'GOOD';
+          const fenBefore = prev ? loadChess(prev.pgn).fen() : new Chess().fen();
+          const d2 = direct({ classification: cls, evalDelta: delta, playerColor: mover, captured: last.captured ?? null, check: cNow.isCheck(), mate: cNow.isCheckmate(), ply: hist.length, moveSan: last.san, fenBefore: fenBefore, move: last.san });
+          if (d2.chester_immediate_chat) {
+            setBanter({ key: `${hist.length}-${last.san}`, color: mover, text: d2.chester_immediate_chat, hot: d2.ui_action !== 'none' });
+            if (d2.ui_action === 'freeze_red') { setShakeBattle(true); window.setTimeout(() => setShakeBattle(false), 700); playSfx('bad'); }
+            else if (d2.ui_action === 'freeze_green') playSfx('brilliant');
+            else if (d2.ui_action === 'shake') { setShakeBattle(true); window.setTimeout(() => setShakeBattle(false), 700); playSfx('shaky'); }
+          }
+        }
+      } catch { /* commentary is garnish - never break the match */ }
     }).catch(() => undefined);
     return () => { dead = true; };
   }, [state.pgn, connected]);
@@ -260,8 +310,15 @@ export default function BattlePage() {
   return <main className={`battle-shell battle-arena${swing ? (swing.good ? ' battle-arena--roar' : ' battle-arena--silent') : ''}`}>
     <div className="battle-glow" aria-hidden="true" />
     {swing && <div key={swing.n} className={`battle-banner ${swing.good ? 'battle-banner--roar' : 'battle-banner--silent'}`}>{swing.text}</div>}
+    {countdown > 0 && <MatchCountdown key={countdown} />}
     <div className="battle-clock" data-active={running && turn !== myColor}><span>OPPONENT{opponentHere ? '' : ' (AWAY)'}</span><b>{fmt(theirs)}</b></div>
-    <div className="battle-board"><TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn} lastMove={lastMove} onMove={onMove} /></div>
+    <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}`}>
+      <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn} lastMove={lastMove} onMove={onMove} />
+      {banter && <div key={banter.key} className={`battle-commentary${banter.hot ? ' battle-commentary--hot' : ''}`} aria-live="polite">
+        <ChesterAvatar isThinking={false} size="small" />
+        <span><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</span>
+      </div>}
+    </div>
     <div className="battle-clock" data-active={running && turn === myColor}><span>FORREST 🌲</span><b>{fmt(mine)}</b></div>
     {over ? <>
       <p className="battle-sub battle-outcome">{outcome}</p>
