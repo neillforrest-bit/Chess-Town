@@ -2839,7 +2839,7 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .road-strip__top b { color: #ffd84d; letter-spacing: 1px; }
 
 /* BUILD 136 - Battle Mode shell */
-.battle-shell{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:.5rem;padding:.6rem 1rem;background:#050708;color:#e8f4f6;font-family:Arial,sans-serif;text-align:center;overflow-y:auto;overflow-x:hidden}
+.battle-shell{position:fixed;inset:0;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:.5rem;padding:.6rem 1rem calc(.6rem + env(safe-area-inset-bottom));background:#050708;color:#e8f4f6;font-family:Arial,sans-serif;text-align:center;overflow-y:auto;overflow-x:hidden}
 .battle-kicker{color:#ffd84d;font-size:.68rem;font-weight:900;letter-spacing:2px}
 .battle-title{font-family:Georgia,serif;font-size:1.8rem;margin:0}
 .battle-sub{color:#9db2b7;font-size:.9rem;margin:0}
@@ -2939,3 +2939,25 @@ a.battle-btn{text-decoration:none}
 .fighthud__caption{margin-top:.15rem;text-align:center;font:900 .52rem/1 Arial,sans-serif;letter-spacing:1.5px;color:#9db2b7}
 .battle-acc__caption{width:min(100vw - 1rem,600px,60dvh);margin-top:.1rem;text-align:center;font:900 .52rem/1 Arial,sans-serif;letter-spacing:1.5px;color:#9db2b7}
 .play-chester__acc .battle-acc__caption{width:100%}
+
+/* BUILD 154: real iPhone Safari chrome - compress the battle stack when height is tight */
+@media (max-height: 740px){
+  .battle-shell{gap:.28rem;padding:.3rem .6rem calc(.4rem + env(safe-area-inset-bottom))}
+  .battle-clock{padding:.22rem .6rem;font-size:.68rem}
+  .battle-clock b{font-size:.95rem}
+  .battle-board,.battle-commentary-slot,.battle-odds,.battle-acc,.battle-acc__caption,.battle-actions,.battle-clock,.battle-fighthud{width:min(100vw - 1rem,600px,52dvh)}
+  .battle-shell .fighthud{gap:2px;padding-bottom:2px}
+  .battle-shell .fighthud__name{font-size:.95rem}
+  .battle-shell .fighthud__bar{height:18px;border-width:2px;border-radius:8px}
+  .battle-commentary-slot{min-height:1.9rem}
+  .battle-commentary{font-size:.62rem;padding:.18rem .4rem;gap:.35rem}
+  .battle-commentary__edu{font-size:.58rem}
+  .fighthud__caption,.battle-acc__caption{font-size:.46rem;margin-top:.05rem}
+  .battle-acc{gap:.3rem}
+  .battle-acc__label{font-size:.54rem;min-width:2.2rem}
+  .battle-acc__pct{font-size:.58rem;min-width:1.8rem}
+  .battle-actions .battle-btn{padding:.4rem .05rem;font-size:.5rem}
+}
+
+/* BUILD 154: every mode clears the iPhone home indicator / Safari chrome */
+.minigame-page,.play-chester-page,.arcade-page,.bossmap-page,.verdict-page,.training-page,.daily-page,.gameplay-page{padding-bottom:calc(.9rem + env(safe-area-inset-bottom)) !important}
