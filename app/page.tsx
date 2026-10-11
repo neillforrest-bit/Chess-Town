@@ -66,8 +66,9 @@ export default function KnockoutTrivia() {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stateRef = useRef({ phase, mode, roundDrive, picked, bots, round, game, qi, questions });
-  stateRef.current = { phase, mode, roundDrive, picked, bots, round, game, qi, questions };
+  const targetedAt = useRef<number>(0);
+  const stateRef = useRef({ phase, mode, roundDrive, picked, bots, round, game, qi, questions, reveal });
+  stateRef.current = { phase, mode, roundDrive, picked, bots, round, game, qi, questions, reveal };
 
   const later = useCallback((fn: () => void, ms: number) => { timers.current.push(setTimeout(fn, ms)); }, []);
   const clearAll = useCallback(() => {
@@ -101,6 +102,7 @@ export default function KnockoutTrivia() {
     } catch { return; }
     if (!d.live || !d.game) {
       // slate ended while playing: survivors win
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       setPhase("victory");
       return;
     }
@@ -109,13 +111,15 @@ export default function KnockoutTrivia() {
     const rd = stateRef.current.roundDrive;
     if (rd) {
       const res = d.results?.[rd.id];
-      if (res) {
-        if (res.cls === null) {
-          // half/quarter end: free pass, retarget to the next drive
+      if (res && stateRef.current.reveal === null) {
+        const unfair = stateRef.current.picked === null && Date.now() - targetedAt.current < 12000;
+        if (res.cls === null || unfair) {
+          // half/quarter end, or the drive ended before a fair chance to call it: free pass
           setRoundDrive(d.drive ? { id: d.drive.id, offense: d.drive.offense } : null);
+          targetedAt.current = Date.now();
           setPicked(null);
           setReveal(null);
-          setLastResolve(`Drive ended (${res.result}) - free pass, nobody out`);
+          setLastResolve(unfair ? `Drive ended (${res.result}) before you could call it - free pass` : `Drive ended (${res.result}) - free pass, nobody out`);
         } else {
           resolveLiveRound(res.cls, res.result);
         }
@@ -124,6 +128,7 @@ export default function KnockoutTrivia() {
       // tracked game changed under us -> retarget
       if (stateRef.current.game && d.game.id !== stateRef.current.game.id) {
         setRoundDrive(d.drive ? { id: d.drive.id, offense: d.drive.offense } : null);
+        targetedAt.current = Date.now();
         setPicked(null);
         setReveal(null);
         setLastResolve(`Switched to ${d.game.name} (other game went final)`);
@@ -131,6 +136,7 @@ export default function KnockoutTrivia() {
     } else if (d.drive) {
       // no drive targeted yet (between drives) -> target it
       setRoundDrive({ id: d.drive.id, offense: d.drive.offense });
+      targetedAt.current = Date.now();
     }
   }, []);
 
@@ -216,6 +222,7 @@ export default function KnockoutTrivia() {
     setGame(d.game || null);
     setDrive(d.drive || null);
     setRoundDrive(d.drive ? { id: d.drive.id, offense: d.drive.offense } : null);
+    targetedAt.current = Date.now();
     setRound(1);
     setPicked(null);
     setReveal(null);
