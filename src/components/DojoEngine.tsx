@@ -840,7 +840,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
             // Live-move commentary for the play-chester page (Chester games AND pass & play):
             // the page listens for chester-coaching-pause; nothing else dispatches it.
-            if (isAiMover) window.dispatchEvent(new CustomEvent('chester-ai-graded', { detail: { evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null } }));
+            if (isAiMover) window.dispatchEvent(new CustomEvent('chester-ai-graded', { detail: { evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null, fen: gameRef.current.chess.fen() } }));
             if (!isAiMover) { (window as any).__ctEval = engineTelemetry?.evaluationAfter ?? (window as any).__ctEval ?? null; (window as any).__ctPending = false; }
             if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
               detail: {
