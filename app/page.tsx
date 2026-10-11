@@ -45,6 +45,7 @@ export default function KnockoutTrivia() {
   const [qsrc, setQsrc] = useState<"live" | "pack" | null>(null);
   const [joining, setJoining] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const later = useCallback((fn: () => void, ms: number) => {
     timers.current.push(setTimeout(fn, ms));
@@ -52,6 +53,7 @@ export default function KnockoutTrivia() {
   const clearAll = useCallback(() => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
   }, []);
 
   // dev-only answer key for automated tests (stripped from production logic)
@@ -76,13 +78,14 @@ export default function KnockoutTrivia() {
     setPicked(null);
     setReveal(false);
     setTimeLeft(QUESTION_MS);
+    if (tickRef.current) clearInterval(tickRef.current);
     const t0 = Date.now();
     const tick = setInterval(() => {
       const left = Math.max(0, QUESTION_MS - (Date.now() - t0));
       setTimeLeft(left);
-      if (left <= 0) clearInterval(tick);
+      if (left <= 0) { if (tickRef.current) clearInterval(tickRef.current); tickRef.current = null; }
     }, 50);
-    timers.current.push(tick as unknown as ReturnType<typeof setTimeout>);
+    tickRef.current = tick;
     // timeout = elimination, handled by effect below via timeLeft
   }, []);
 
