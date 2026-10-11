@@ -1,26 +1,10 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Q } from "../lib/nfl";
+import { BAKED } from "../lib/nflBaked";
 
 /* ---------------------------------- data ---------------------------------- */
-type Q = { q: string; options: string[]; answer: number };
-const QUESTIONS: Q[] = [
-  // Round 1
-  { q: "Which planet has the most moons?", options: ["Jupiter", "Saturn", "Uranus", "Neptune"], answer: 1 },
-  { q: "What year did the first iPhone launch?", options: ["2005", "2006", "2007", "2008"], answer: 2 },
-  { q: "Which country invented paper?", options: ["Egypt", "Greece", "China", "India"], answer: 2 },
-  { q: "What is the chemical symbol for gold?", options: ["Ag", "Au", "Gd", "Go"], answer: 1 },
-  // Round 2
-  { q: "Which film won the first Best Picture Oscar?", options: ["Wings", "Sunrise", "The Jazz Singer", "Metropolis"], answer: 0 },
-  { q: "How many players are on a rugby union team?", options: ["11", "13", "15", "17"], answer: 2 },
-  { q: "What is the smallest prime number?", options: ["0", "1", "2", "3"], answer: 2 },
-  { q: "Which ocean is the deepest?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], answer: 3 },
-  // Round 3
-  { q: "Who painted the ceiling of the Sistine Chapel?", options: ["Da Vinci", "Michelangelo", "Raphael", "Donatello"], answer: 1 },
-  { q: "What is the speed of light in km/s (approx)?", options: ["150,000", "300,000", "450,000", "600,000"], answer: 1 },
-  { q: "Which language has the most native speakers?", options: ["English", "Hindi", "Spanish", "Mandarin"], answer: 3 },
-  { q: "In computing, what does 'HTTP' stand for?", options: ["HyperText Transfer Protocol", "High Throughput Transfer Process", "HyperText Transmission Program", "Host Transfer Text Protocol"], answer: 0 },
-];
 const ROUND_SIZE = 4;
 const TOTAL_PLAYERS = 100;
 const QUESTION_MS = 10000;
@@ -57,6 +41,9 @@ export default function KnockoutTrivia() {
   const [placement, setPlacement] = useState<number | null>(null);
   const [spectating, setSpectating] = useState(false);
   const [flash, setFlash] = useState<"red" | "green" | null>(null);
+  const [questions, setQuestions] = useState<Q[]>(BAKED);
+  const [qsrc, setQsrc] = useState<"live" | "pack" | null>(null);
+  const [joining, setJoining] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const later = useCallback((fn: () => void, ms: number) => {
@@ -69,8 +56,8 @@ export default function KnockoutTrivia() {
 
   // dev-only answer key for automated tests (stripped from production logic)
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") (window as any).__KT = QUESTIONS;
-  }, []);
+    if (process.env.NODE_ENV === "development") (window as any).__KT = questions;
+  }, [questions]);
 
   const round = Math.floor(qi / ROUND_SIZE) + 1;
   const qInRound = (qi % ROUND_SIZE) + 1;
@@ -112,7 +99,7 @@ export default function KnockoutTrivia() {
   // resolve a question once (answer picked or timer out)
   const resolveQuestion = useCallback((userPicked: number | null) => {
     setReveal(true);
-    const q = QUESTIONS[qi];
+    const q = questions[qi];
     const correct = userPicked === q.answer;
     setBots((prevBots) => {
       const after = attritBots(prevBots);
@@ -121,7 +108,7 @@ export default function KnockoutTrivia() {
       } else {
         setFlash("green");
         later(() => setFlash(null), 500);
-        if (qi + 1 >= QUESTIONS.length) {
+        if (qi + 1 >= questions.length) {
           later(() => setPhase("victory"), 800);
         } else {
           later(() => startQuestion(qi + 1), 900);
@@ -129,7 +116,7 @@ export default function KnockoutTrivia() {
       }
       return after;
     });
-  }, [qi, attritBots, eliminateUser, later, startQuestion]);
+  }, [qi, questions, attritBots, eliminateUser, later, startQuestion]);
 
   // countdown expiry
   useEffect(() => {
@@ -138,13 +125,27 @@ export default function KnockoutTrivia() {
     }
   }, [timeLeft, phase, reveal, resolveQuestion]);
 
-  const join = () => {
+  const begin = (qs: Q[], src: "live" | "pack") => {
     clearAll();
+    setQuestions(qs);
+    setQsrc(src);
     setBots(99);
     setPlacement(null);
     setSpectating(false);
+    setJoining(false);
     setPhase("playing");
     startQuestion(0);
+  };
+
+  const join = () => {
+    if (joining) return;
+    setJoining(true);
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 3000);
+    fetch("/api/nfl", { signal: ctrl.signal, cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { clearTimeout(to); if (d.live && Array.isArray(d.questions) && d.questions.length >= 12) begin(d.questions.slice(0, 12), "live"); else begin(BAKED, "pack"); })
+      .catch(() => { clearTimeout(to); begin(BAKED, "pack"); });
   };
 
   const pick = (i: number) => {
@@ -223,7 +224,7 @@ export default function KnockoutTrivia() {
               onClick={join}
               className="w-full max-w-sm rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-600 px-6 py-5 text-lg font-extrabold tracking-wide shadow-[0_0_40px_rgba(34,211,238,.35)]"
             >
-              JOIN NEXT CONTEST (100 PLAYERS)
+              {joining ? "FINDING 99 OPPONENTS…" : "JOIN NEXT CONTEST (100 PLAYERS)"}
             </motion.button>
           </motion.section>
         )}
@@ -240,14 +241,22 @@ export default function KnockoutTrivia() {
           >
             {/* header */}
             <div className="flex items-center justify-between text-xs font-bold tracking-widest text-zinc-400">
-              <span className="rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1.5">
-                ROUND {round} · Q{qInRound}/{ROUND_SIZE}
+              <span className="whitespace-nowrap rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1.5">
+                R{round} · Q{qInRound}/{ROUND_SIZE}
               </span>
               <span className="flex items-center gap-1.5 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-cyan-300">
                 <Icon d={ICONS.users} className="h-3.5 w-3.5" />
                 PLAYERS REMAINING: {playersRemaining} / {TOTAL_PLAYERS}
               </span>
             </div>
+
+            {qsrc && (
+              <div className="mt-2 text-center text-[10px] font-bold tracking-widest">
+                {qsrc === "live"
+                  ? <span className="text-emerald-400">● LIVE NFL SCORES FROM TODAY'S GAMES</span>
+                  : <span className="text-zinc-500">QUESTION PACK (LIVE FEED UNAVAILABLE)</span>}
+              </div>
+            )}
 
             {/* countdown bar */}
             <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-zinc-800">
@@ -263,15 +272,15 @@ export default function KnockoutTrivia() {
 
             {/* question */}
             <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 shadow-[0_0_30px_rgba(0,0,0,.5)]">
-              <p className="text-xl font-bold leading-snug">{QUESTIONS[qi].q}</p>
+              <p className="text-xl font-bold leading-snug">{questions[qi].q}</p>
             </div>
 
             {/* answers */}
             <div className="mt-5 flex flex-1 flex-col justify-end gap-3">
-              {QUESTIONS[qi].options.map((opt, i) => {
+              {questions[qi].options.map((opt, i) => {
                 const isPicked = picked === i;
-                const isRight = reveal && i === QUESTIONS[qi].answer;
-                const isWrong = reveal && isPicked && i !== QUESTIONS[qi].answer;
+                const isRight = reveal && i === questions[qi].answer;
+                const isWrong = reveal && isPicked && i !== questions[qi].answer;
                 return (
                   <motion.button
                     key={i}
@@ -354,7 +363,7 @@ export default function KnockoutTrivia() {
                 CHAMPION
               </h2>
               <p className="mt-3 text-lg text-zinc-300">
-                You survived all {QUESTIONS.length} questions — <span className="font-black text-white">1st place</span> of {TOTAL_PLAYERS}
+                You survived all {questions.length} questions — <span className="font-black text-white">1st place</span> of {TOTAL_PLAYERS}
               </p>
             </div>
             <motion.button
