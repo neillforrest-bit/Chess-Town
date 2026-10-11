@@ -20,6 +20,17 @@ type Synced = {
 };
 const FRESH: Synced = { pgn: '', playerOneTime: START_MS, playerTwoTime: START_MS, playerOneTimeoutUsed: false, playerTwoTimeoutUsed: false, rev: 0, result: null, drawBy: null, rematchBy: null, pausedBy: null };
 type Peer = { id: string; at: number; seat: 0 | 1 | null };
+// BUILD 150 fun pass: Chester calls the fight like a corner-man with a microphone.
+const OPENERS = [
+  'Two walk in. One walks out smug. Touch gloves.',
+  'No coaching from the cheap seats. Except me. I am the cheap seats.',
+  'Ten minutes each. I have seen friendships end over less.',
+  'The crowd wants blood. The crowd is me.',
+];
+const FIRST_BLOOD = ['FIRST BLOOD. The arena smells it.', 'First piece falls. Somebody came to play.'];
+const COOKING = ['is COOKING. Somebody call the fire brigade.', 'cannot miss right now. Rude, honestly.', 'is on a heater. The crowd is on its feet.'];
+const PANIC = ['ONE MINUTE, {c}. Breathe. In through the nose, out through the tactics.', '{c} has sixty seconds and a whole lot of feelings.'];
+const pick = <T,>(arr: T[], seed: number) => arr[Math.abs(seed) % arr.length];
 const fmt = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const loadChess = (pgn: string) => { const c = new Chess(); if (pgn) { try { c.loadPgn(pgn); } catch { /* keep start */ } } return c; };
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
@@ -131,7 +142,12 @@ export default function BattlePage() {
   const prevPgn = useRef(state.pgn);
   useEffect(() => {
     const fresh = state.pgn === '' && state.result === null;
-    if (connected && fresh && (!wasConnected.current || prevPgn.current !== '')) setCountdown((n) => n + 1);
+    if (connected && fresh && (!wasConnected.current || prevPgn.current !== '')) {
+      setCountdown((n) => n + 1);
+      playSfx('start');
+      const seed = matchIdRef.current.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0);
+      window.setTimeout(() => setBanter({ key: `opener-${Date.now()}`, color: 'w', text: pick(OPENERS, seed), hot: true }), 4800);
+    }
     wasConnected.current = connected;
     prevPgn.current = state.pgn;
   }, [connected, state.pgn, state.result]);
@@ -144,7 +160,7 @@ export default function BattlePage() {
     if (!last) return;
     playSfx(c.isCheckmate() ? 'win' : c.isCheck() ? 'check' : last.captured ? 'capture' : 'move');
   }, [state.pgn]);
-  useEffect(() => { if (!banter) return; const t = setTimeout(() => setBanter(null), 4500); return () => clearTimeout(t); }, [banter]);
+  useEffect(() => { if (!banter || banter.key === 'verdict') return; const t = setTimeout(() => setBanter(null), 4500); return () => clearTimeout(t); }, [banter]);
   const turn = chess.turn();
   const over = chess.isGameOver() || state.result !== null;
   const paused = state.pausedBy !== null;
@@ -163,9 +179,34 @@ export default function BattlePage() {
     else if (liveTwo <= 0) commit({ result: 'timeout:b', playerTwoTime: 0 });
   }, [running, liveOne, liveTwo, seat, commit]);
 
+  // Clock panic: one warning per fighter when they cross 60 seconds.
+  const panicFired = useRef<{ w: boolean; b: boolean }>({ w: false, b: false });
+  useEffect(() => {
+    if (!running) return;
+    const low: 'w' | 'b' | null = liveOne <= 60000 && liveOne > 0 && !panicFired.current.w ? 'w' : liveTwo <= 60000 && liveTwo > 0 && !panicFired.current.b ? 'b' : null;
+    if (!low) return;
+    panicFired.current[low] = true;
+    setBanter({ key: `panic-${low}`, color: low, text: pick(PANIC, Date.now()).replace('{c}', low === 'w' ? 'WHITE' : 'BLACK'), hot: true });
+    playSfx('shaky');
+  }, [running, liveOne, liveTwo]);
+
+  // Game over: Chester's verdict + the win sting.
+  const verdictFired = useRef(false);
+  useEffect(() => {
+    if (!over || verdictFired.current) return;
+    verdictFired.current = true;
+    const r = state.result || '';
+    const winner = r.startsWith('timeout:') ? (r.endsWith(':w') ? 'BLACK' : 'WHITE') : r.startsWith('resign:') ? (r.endsWith(':w') ? 'BLACK' : 'WHITE') : chess.isCheckmate() ? (turn === 'w' ? 'BLACK' : 'WHITE') : null;
+    const text = r.startsWith('timeout:') ? `THE CLOCK IS THE ONLY UNDEFEATED FIGHTER. ${winner} takes it.` : r.startsWith('resign:') ? `${winner === 'WHITE' ? 'BLACK' : 'WHITE'} taps out. ${winner} takes the arena.` : r.startsWith('draw:') || !winner ? 'A draw. The crowd boos politely. Run it back.' : `LIGHTS OUT. ${winner} takes the arena.`;
+    setBanter({ key: 'verdict', color: winner === 'BLACK' ? 'b' : 'w', text, hot: true });
+    playSfx(winner ? 'win' : 'shaky');
+  }, [over, state.result, chess, turn]);
+  useEffect(() => { if (!over) verdictFired.current = false; }, [over]);
+
   // ---- Stage 2: arena swing. Each phone runs its own Stockfish on the new position (white-absolute pawns).
   const bestRefEarly = null; void bestRefEarly;
   const evalRef = useRef<{ pgn: string; pawns: number } | null>(null);
+  const streakRef = useRef<{ w: number; b: number }>({ w: 0, b: 0 });
   const [swing, setSwing] = useState<{ n: number; text: string; good: boolean } | null>(null);
   const [shakeBattle, setShakeBattle] = useState(false);
   const [pawnsNow, setPawnsNow] = useState<number | null>(null);
@@ -195,6 +236,7 @@ export default function BattlePage() {
       // blocking the board or whispering engine moves to one fighter would break the fight.
       try {
         const cNow = loadChess(pgn);
+        if (cNow.isGameOver()) return; // the verdict owns the mic once the fight is over
         const hist = cNow.history({ verbose: true });
         const last = hist[hist.length - 1];
         if (last) {
@@ -205,8 +247,15 @@ export default function BattlePage() {
           const cls = delta >= 250 ? 'BLUNDER' : delta >= 120 ? 'MISTAKE' : delta >= 50 ? 'INACCURACY' : delta <= 12 ? 'BEST' : 'GOOD';
           const fenBefore = prev ? loadChess(prev.pgn).fen() : new Chess().fen();
           const d2 = direct({ classification: cls, evalDelta: delta, playerColor: mover, captured: last.captured ?? null, check: cNow.isCheck(), mate: cNow.isCheckmate(), ply: hist.length, moveSan: last.san, fenBefore: fenBefore, move: last.san });
-          if (d2.chester_immediate_chat) {
-            setBanter({ key: `${hist.length}-${last.san}`, color: mover, text: d2.chester_immediate_chat, hot: d2.ui_action !== 'none' });
+          let line = d2.chester_immediate_chat;
+          let hot = d2.ui_action !== 'none';
+          const captureCount = hist.filter((m) => m.captured).length;
+          if (last.captured && captureCount === 1) { line = pick(FIRST_BLOOD, hist.length); hot = true; playSfx('brilliant'); }
+          const sharp = delta <= 12 || cNow.isCheck() || cNow.isCheckmate();
+          streakRef.current[mover] = sharp ? streakRef.current[mover] + 1 : 0;
+          if (streakRef.current[mover] > 0 && streakRef.current[mover] % 3 === 0) { line = `${mover === 'w' ? 'WHITE' : 'BLACK'} ${pick(COOKING, hist.length)}`; hot = true; playSfx('brilliant'); }
+          if (line) {
+            setBanter({ key: `${hist.length}-${last.san}`, color: mover, text: line, hot });
             if (d2.ui_action === 'freeze_red') { setShakeBattle(true); window.setTimeout(() => setShakeBattle(false), 700); playSfx('bad'); }
             else if (d2.ui_action === 'freeze_green') playSfx('brilliant');
             else if (d2.ui_action === 'shake') { setShakeBattle(true); window.setTimeout(() => setShakeBattle(false), 700); playSfx('shaky'); }
@@ -312,8 +361,8 @@ export default function BattlePage() {
     {swing && <div key={swing.n} className={`battle-banner ${swing.good ? 'battle-banner--roar' : 'battle-banner--silent'}`}>{swing.text}</div>}
     {countdown > 0 && <MatchCountdown key={countdown} />}
     <div className="battle-clock" data-active={running && turn !== myColor}><span>OPPONENT{opponentHere ? '' : ' (AWAY)'}</span><b>{fmt(theirs)}</b></div>
-    <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}`}>
-      <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn} lastMove={lastMove} onMove={onMove} />
+    <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}`}><TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn} lastMove={lastMove} onMove={onMove} /></div>
+    <div className="battle-commentary-slot">
       {banter && <div key={banter.key} className={`battle-commentary${banter.hot ? ' battle-commentary--hot' : ''}`} aria-live="polite">
         <ChesterAvatar isThinking={false} size="small" />
         <span><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</span>
