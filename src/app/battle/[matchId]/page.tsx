@@ -385,7 +385,6 @@ export default function BattlePage() {
     if (!yes) { commit({ takebackBy: null }); return; }
     const c = loadChess(stateRef.current.pgn); c.undo();
     commit({ pgn: c.pgn(), takebackBy: null, ...(state.takebackBy === 1 ? { playerTwoTakebackUsed: true } : { playerOneTakebackUsed: true }) });
-    setBanter({ key: `tb-${Date.now()}`, color: state.takebackBy === 1 ? 'b' : 'w', text: 'Takeback granted. We do not speak of that move again.', hot: true });
   };
   const playGhost = () => { if (seat === null || myGhostUsed || over || !myTurn || ghostLive) return; setGhostArm(true); };
   const pickGhost = (square: string) => {
@@ -393,7 +392,6 @@ export default function BattlePage() {
     const piece = chess.get(square as never) as { color: string } | null;
     if (!piece || piece.color !== myColor || seat === null) return;
     commit({ ghost: { by: seat, square, untilPly: ply + 6, castPly: ply }, ...(seat === 1 ? { playerTwoGhostUsed: true } : { playerOneGhostUsed: true }) });
-    setBanter({ key: `ghost-${Date.now()}`, color: myColor, text: 'A piece slips into the shadows. Three moves of hide and seek.', hot: true });
     playSfx('shaky');
   };
   const askHint = () => {
@@ -403,6 +401,20 @@ export default function BattlePage() {
     setBanter({ key: `hint-${Date.now()}`, color: myColor, text: tip ? `Chester taps the board: ${tip}. You did not hear it from me.` : 'Chester is still reading the position - ask again in a breath.', hot: true });
     if (tip) playSfx('good');
   };
+
+  // Chester keeps a running tally of wild cards: announce availability at the bell, call every spend.
+  const wildRef = useRef({ ghost: false, wHint: false, bHint: false, wTb: false, bTb: false, welcomed: false });
+  useEffect(() => {
+    const prev = wildRef.current;
+    const say = (text: string, color: 'w' | 'b') => setBanter({ key: `wild-${Date.now()}`, color, text, hot: true });
+    if (!prev.welcomed && connected && state.pgn !== '') { prev.welcomed = true; window.setTimeout(() => say('Wild cards loaded: TAKEBACK, GHOST and HINT - one each. Spend them like you mean it.', myColorRef.current), 9500); }
+    if (state.ghost && !prev.ghost) say(`${state.ghost.by === 1 ? 'BLACK' : 'WHITE'} plays a wild card - a piece slips into the shadows. Three moves of hide and seek.`, state.ghost.by === 1 ? 'b' : 'w');
+    if (state.playerOneHintUsed && !prev.wHint) say('WHITE asked Chester for a hint. Rattled?', 'w');
+    if (state.playerTwoHintUsed && !prev.bHint) say('BLACK asked Chester for a hint. Rattled?', 'b');
+    if (state.playerOneTakebackUsed && !prev.wTb) say('WHITE takes a move back. We do not speak of it again.', 'w');
+    if (state.playerTwoTakebackUsed && !prev.bTb) say('BLACK takes a move back. We do not speak of it again.', 'b');
+    wildRef.current = { ghost: !!state.ghost, wHint: state.playerOneHintUsed, bHint: state.playerTwoHintUsed, wTb: state.playerOneTakebackUsed, bTb: state.playerTwoTakebackUsed, welcomed: prev.welcomed };
+  }, [connected, state.pgn, state.ghost, state.playerOneHintUsed, state.playerTwoHintUsed, state.playerOneTakebackUsed, state.playerTwoTakebackUsed]);
 
   const outcome = (() => {
     if (!over) return '';
@@ -437,6 +449,19 @@ export default function BattlePage() {
     {swing && <div key={swing.n} className={`battle-banner ${swing.good ? 'battle-banner--roar' : 'battle-banner--silent'}`}>{swing.text}</div>}
     {countdown > 0 && <MatchCountdown key={countdown} />}
     <div className="battle-clock" data-active={running && turn !== myColor}><span>OPPONENT{opponentHere ? '' : ' (AWAY)'}</span><b>{fmt(theirs)}</b></div>
+    <div className="fighthud battle-fighthud">
+      <div className="fighthud__names">
+        <div className={`fighthud__name fighthud__name--you ${turn === 'w' ? 'is-turn' : ''}`}><span>WHITE</span></div>
+        <div className={`fighthud__name fighthud__name--opp ${turn === 'b' ? 'is-turn' : ''}`}><span>BLACK</span></div>
+      </div>
+      <div className="fighthud__bar" role="img" aria-label={`Tug of war: white ${odds} percent, black ${100 - odds} percent`}>
+        <i className="fighthud__you" style={{ width: `${odds}%` }} />
+        <i className="fighthud__opp" style={{ width: `${100 - odds}%` }} />
+        <b className="fighthud__notch" aria-hidden="true" />
+        <span className="fighthud__pct fighthud__pct--you">{odds}%</span>
+        <span className="fighthud__pct fighthud__pct--opp">{100 - odds}%</span>
+      </div>
+    </div>
     <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}${mood ? ` battle-fx--${mood}` : ''}`}>
       <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn || ghostArm} lastMove={lastMove} onMove={onMove} ghostSquares={ghostSquares} />
       {ghostArm && <div className="battle-ghostgrid" role="dialog" aria-label="Pick a piece to turn invisible">
@@ -445,16 +470,10 @@ export default function BattlePage() {
       </div>}
     </div>
     <div className="battle-commentary-slot">
-      {banter && <div key={banter.key} className={`battle-commentary${banter.hot ? ' battle-commentary--hot' : ''}`} aria-live="polite">
+      {(banter || edu) && <div key={(banter || edu)!.key} className={`battle-commentary${banter?.hot ? ' battle-commentary--hot' : ''}`} aria-live="polite">
         <ChesterAvatar isThinking={false} size="small" />
-        <span><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</span>
+        <span>{banter && <><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</>}{edu && <small className="battle-commentary__edu">{edu.text}</small>}</span>
       </div>}
-      {edu && <div key={edu.key} className="battle-edu" aria-live="polite">{edu.text}</div>}
-    </div>
-    <div className="battle-odds" role="img" aria-label={`win odds: white ${odds} percent`}>
-      <span className="battle-odds__num">{odds}</span>
-      <div className="battle-odds__bar"><i style={{ width: `${odds}%` }} /></div>
-      <span className="battle-odds__num battle-odds__num--b">{100 - odds}</span>
     </div>
     {([['w', 'WHITE', accuracy.w], ['b', 'BLACK', accuracy.b]] as const).map(([c, label, a]) => {
       const pct = a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8));
@@ -474,7 +493,7 @@ export default function BattlePage() {
         <button type="button" className="battle-btn battle-btn--sm" onClick={() => answerDraw(true)}>ACCEPT</button>
         <button type="button" className="battle-btn battle-btn--ghost" onClick={() => answerDraw(false)}>DECLINE</button>
       </> : <>
-        <button type="button" className="battle-btn battle-btn--ghost" onClick={offerDraw} disabled={state.drawBy === seat || !state.pgn}>{state.drawBy === seat ? 'DRAW OFFERED' : 'OFFER DRAW'}</button>
+        <button type="button" className="battle-btn battle-btn--ghost" onClick={offerDraw} disabled={state.drawBy === seat || !state.pgn}>{state.drawBy === seat ? 'DRAW SENT' : 'DRAW'}</button>
         <button type="button" className="battle-btn battle-btn--ghost" onClick={resign} disabled={!state.pgn}>RESIGN</button>
         {myTurn && !myTimeoutUsed && <button type="button" className="battle-btn battle-btn--timeout" onClick={callTimeout}>CALL TIMEOUT</button>}
       </>}
@@ -482,11 +501,11 @@ export default function BattlePage() {
         <span className="battle-sub">Opponent wants to take a move back</span>
         <button type="button" className="battle-btn battle-btn--sm" onClick={() => answerTakeback(true)}>ALLOW</button>
         <button type="button" className="battle-btn battle-btn--ghost" onClick={() => answerTakeback(false)}>NO WAY</button>
-      </div> : <div className="battle-wildrow">
-        <button type="button" className="battle-btn battle-btn--wild" onClick={askTakeback} disabled={myTakebackUsed || !state.pgn || turn === myColor || state.takebackBy !== null}>{state.takebackBy === seat ? 'TAKEBACK ASKED...' : myTakebackUsed ? 'TAKEBACK SPENT' : '⏪ TAKEBACK'}</button>
-        <button type="button" className="battle-btn battle-btn--wild" onClick={playGhost} disabled={myGhostUsed || !myTurn || !!ghostLive}>{myGhostUsed ? 'GHOST SPENT' : ghostLive ? '👻 ACTIVE' : '👻 GHOST'}</button>
-        <button type="button" className="battle-btn battle-btn--wild" onClick={askHint} disabled={myHintUsed || !myTurn}>{myHintUsed ? 'HINT SPENT' : '💡 HINT'}</button>
-      </div>}
+      </div> : <>
+        <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-takeback" onClick={askTakeback} disabled={myTakebackUsed || !state.pgn || turn === myColor || state.takebackBy !== null}>{state.takebackBy === seat ? '⏪ ASKED' : myTakebackUsed ? '⏪ SPENT' : '⏪ BACK'}</button>
+        <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-ghost" onClick={playGhost} disabled={myGhostUsed || !myTurn || !!ghostLive}>{myGhostUsed ? '👻 SPENT' : ghostLive ? '👻 ON' : '👻 GHOST'}</button>
+        <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-hint" onClick={askHint} disabled={myHintUsed || !myTurn}>{myHintUsed ? '💡 SPENT' : '💡 HINT'}</button>
+      </>}
     </div>}
     {paused && !iCalled && <div className="battle-overlay" role="alert"><h2>OPPONENT CALLED TIMEOUT</h2><p>Clocks are stopped. Hold your ground - the fight resumes when they are ready.</p></div>}
     {iCalled && <div className="battle-overlay battle-overlay--corner" role="dialog" aria-label="Chester in your corner">

@@ -2839,7 +2839,7 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .road-strip__top b { color: #ffd84d; letter-spacing: 1px; }
 
 /* BUILD 136 - Battle Mode shell */
-.battle-shell{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;padding:1rem;background:#050708;color:#e8f4f6;font-family:Arial,sans-serif;text-align:center;overflow:hidden}
+.battle-shell{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:.5rem;padding:.6rem 1rem;background:#050708;color:#e8f4f6;font-family:Arial,sans-serif;text-align:center;overflow-y:auto;overflow-x:hidden}
 .battle-kicker{color:#ffd84d;font-size:.68rem;font-weight:900;letter-spacing:2px}
 .battle-title{font-family:Georgia,serif;font-size:1.8rem;margin:0}
 .battle-sub{color:#9db2b7;font-size:.9rem;margin:0}
@@ -2884,7 +2884,8 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .battle-acc__scale i{position:absolute;top:50%;width:.7rem;height:.7rem;border-radius:50%;background:#f4f7ff;border:2px solid #0b1113;transform:translate(-50%,-50%);transition:left .8s cubic-bezier(.2,.8,.2,1)}
 .battle-clock{display:flex;justify-content:space-between;align-items:center;width:min(100vw - 1rem,600px,60dvh);padding:.45rem .8rem;border:1px solid rgba(238,252,255,.18);border-radius:8px;font-weight:900;letter-spacing:1px;font-size:.8rem}
 .battle-clock[data-active="true"]{border-color:#ffd84d;color:#ffd84d}.battle-clock b{font-size:1.3rem;font-variant-numeric:tabular-nums}
-.battle-actions{display:flex;gap:.6rem;align-items:center;justify-content:center;flex-wrap:wrap}
+.battle-actions{display:flex;gap:.25rem;align-items:stretch;justify-content:center;flex-wrap:nowrap;width:min(100vw - 1rem,600px,60dvh)}
+.battle-actions .battle-btn{flex:1;min-width:0;padding:.55rem .1rem;font-size:.56rem;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}
 .battle-btn--sm{padding:.55rem .9rem}
 .battle-btn--ghost{padding:.55rem .9rem;background:transparent;color:#9db2b7;border:1px solid rgba(238,252,255,.25)}
 .battle-btn--ghost:disabled{opacity:.4;cursor:default}
@@ -2918,3 +2919,18 @@ a.battle-btn{text-decoration:none}
 .qa-flag--logged{color:#ef4444;filter:drop-shadow(0 4px 6px rgba(239,68,68,.55));animation:qaGlow 1.4s ease-out forwards}
 .qa-flag--error{color:#f59e0b}
 @keyframes qaGlow{0%{filter:drop-shadow(0 4px 10px rgba(239,68,68,.9))}100%{color:#22c55e;filter:none}}
+
+/* BUILD 153: tug-of-war above the board (Play Chester fighthud format) + capture animations */
+.battle-fighthud{width:min(100vw - 1rem,600px,60dvh);margin:0 auto}
+.battle-commentary__edu{display:block;margin-top:.15rem;color:#9de8f2;font-weight:600;font-size:.66rem}
+.battle-btn--wild-takeback{border:1px solid rgba(255,216,77,.8);background:rgba(255,216,77,.16);color:#ffd84d}
+.battle-btn--wild-ghost{border:1px solid rgba(34,211,238,.8);background:rgba(34,211,238,.14);color:#7ee7f5}
+.battle-btn--wild-hint{border:1px solid rgba(74,222,128,.8);background:rgba(74,222,128,.14);color:#86efac}
+.play-chester__acc{display:flex;flex-direction:column;gap:.2rem;width:min(100%,600px);margin:.35rem auto 0}
+.tapboard{position:relative}
+.tapboard__pathflash{position:absolute;width:12.5%;height:12.5%;background:rgba(255,216,77,0);pointer-events:none;z-index:3;animation:tapboardFlash .5s ease-out both}
+@keyframes tapboardFlash{0%{background:rgba(255,216,77,0)}25%{background:rgba(255,216,77,.55)}100%{background:rgba(255,216,77,0)}}
+.tapboard__trot{position:absolute;width:12.5%;height:12.5%;object-fit:contain;pointer-events:none;z-index:5;animation:tapboardTrot .55s cubic-bezier(.45,.05,.55,1) both}
+@keyframes tapboardTrot{0%{transform:translate(0,0)}18%{transform:translate(calc(var(--dx)*18%),calc(var(--dy)*18%)) translateY(-5%)}36%{transform:translate(calc(var(--dx)*36%),calc(var(--dy)*36%))}54%{transform:translate(calc(var(--dx)*54%),calc(var(--dy)*54%)) translateY(-5%)}72%{transform:translate(calc(var(--dx)*72%),calc(var(--dy)*72%))}88%{transform:translate(calc(var(--dx)*88%),calc(var(--dy)*88%)) translateY(-3%)}100%{transform:translate(calc(var(--dx)*100%),calc(var(--dy)*100%))}}
+.tapboard__fallen{position:absolute;width:12.5%;height:12.5%;object-fit:contain;pointer-events:none;z-index:4;transform-origin:50% 88%;animation:tapboardTip .55s ease-in .5s both}
+@keyframes tapboardTip{0%{transform:rotate(0);opacity:1}18%{transform:rotate(-9deg)}34%{transform:rotate(7deg)}48%{transform:rotate(-4deg)}100%{transform:rotate(84deg) translateY(10%);opacity:0}}

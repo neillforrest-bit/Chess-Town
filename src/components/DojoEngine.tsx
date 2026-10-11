@@ -613,16 +613,38 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
 
             const attackingPiece = pieceContainers[move.from];
-            if (attackingPiece) attackingPiece.setAlpha(0);
             capturedPiece.setDepth(30).setInteractive(false);
             const capturedIsWhite = move.color === 'b';
             const targetX = domJails ? (capturedIsWhite ? 64 : 736) : (capturedIsWhite ? greenJailX : jailX);
             const targetColor = capturedIsWhite ? 0x2563eb : 0xf43f7a;
             const targetY = domJails ? 780 : jailY;
-            const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0.45).setDepth(29);
-            scene.tweens.add({ targets: impact, scale: 1.8, alpha: 0, duration: 420, ease: 'Quad.Out', onComplete: () => impact.destroy() });
-            const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2);
-            scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 1250, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
+            // BUILD 153 capture spec: flash the path squares, the attacker trots in, then the fight.
+            const centerOf = (sq: string) => ({ x: boardOffset + sx(files.indexOf(sq[0])) * tileSize + tileSize / 2, y: boardOffset + sy(ranks.indexOf(sq[1])) * tileSize + tileSize / 2 });
+            const pathSquares: string[] = [move.from];
+            if ('rbq'.includes(move.piece)) {
+              const fc = files.indexOf(move.from[0]); const fr = ranks.indexOf(move.from[1]);
+              const tc = files.indexOf(move.to[0]); const tr = ranks.indexOf(move.to[1]);
+              const dc = Math.sign(tc - fc); const dr = Math.sign(tr - fr);
+              let c = fc + dc; let r = fr + dr;
+              while (c !== tc || r !== tr) { pathSquares.push(`${files[c]}${ranks[r]}`); c += dc; r += dr; }
+            }
+            pathSquares.push(move.to);
+            pathSquares.forEach((sq, i) => {
+              const fp = centerOf(sq);
+              const flash = scene.add.rectangle(fp.x, fp.y, tileSize * 0.94, tileSize * 0.94, 0xffd84d, 0).setDepth(28);
+              scene.tweens.add({ targets: flash, alpha: 0.5, duration: 110, delay: i * 70, yoyo: true, ease: 'Quad.Out', onComplete: () => flash.destroy() });
+            });
+            const trotMs = 460 + pathSquares.length * 70;
+            if (attackingPiece) {
+              const dest = centerOf(move.to);
+              attackingPiece.setDepth(32);
+              scene.tweens.add({ targets: attackingPiece, x: dest.x, y: dest.y, duration: trotMs, ease: 'Sine.InOut', onUpdate: (_tw: any, t: any) => { t.y -= Math.abs(Math.sin(_tw.totalProgress * Math.PI * 5)) * 3; }, onComplete: () => attackingPiece.setAlpha(0) });
+            }
+            const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0).setDepth(29);
+            scene.tweens.add({ targets: impact, scale: 1.8, alpha: { from: 0.45, to: 0 }, duration: 420, delay: trotMs, ease: 'Quad.Out', onComplete: () => impact.destroy() });
+            const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2).setAlpha(0);
+            scene.tweens.add({ targets: legs, alpha: 1, duration: 120, delay: trotMs });
+            scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 1250, delay: trotMs + 480, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
 
             // The captured-piece moonwalk hid the attacker (alpha 0) and only the onComplete
             // restored the board - but the domJails path returned BEFORE renderBoard, so every
@@ -638,14 +660,16 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               renderBoard();
               showCaptureBubble(move);
             };
-            // His capture spec: the taken piece pops larger first, then waddles off.
+            // His capture spec: the taken piece pops larger, TIPS OVER, then waddles off.
             capturedPiece.setScale(1.02);
-            scene.tweens.add({ targets: capturedPiece, scaleX: 1.4, scaleY: 1.4, duration: 200, ease: 'Back.Out' });
+            scene.tweens.add({ targets: capturedPiece, scaleX: 1.4, scaleY: 1.4, duration: 200, delay: trotMs, ease: 'Back.Out' });
+            scene.tweens.add({ targets: capturedPiece, angle: 84, duration: 240, delay: trotMs + 210, ease: 'Bounce.Out' });
             const moonwalk = scene.tweens.add({
               targets: capturedPiece,
               x: targetX,
               y: targetY,
-              angle: { from: -14, to: 14 },
+              delay: trotMs + 480,
+              angle: { from: 84, to: -10 },
               scaleX: { from: 1.4, to: 0.52 },
               scaleY: { from: 1.4, to: 0.52 },
               duration: 1250,
@@ -669,7 +693,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             });
 
             moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => settleCapture());
-            scene.time.delayedCall(1700, settleCapture);
+            scene.time.delayedCall(trotMs + 2400, settleCapture);
           };
 
           // Engine line in words: walk the PV from the resulting position and phrase each
@@ -816,6 +840,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }));
             // Live-move commentary for the play-chester page (Chester games AND pass & play):
             // the page listens for chester-coaching-pause; nothing else dispatches it.
+            if (isAiMover) window.dispatchEvent(new CustomEvent('chester-ai-graded', { detail: { evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null } }));
             if (!isAiMover) { (window as any).__ctEval = engineTelemetry?.evaluationAfter ?? (window as any).__ctEval ?? null; (window as any).__ctPending = false; }
             if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
               detail: {
