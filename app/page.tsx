@@ -343,7 +343,7 @@ export default function KnockoutTrivia() {
             className="relative z-10 flex h-full flex-col px-5 pt-5 pb-6">
             <div className="flex items-center justify-between text-xs font-bold tracking-widest text-zinc-400">
               <span className="whitespace-nowrap rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1.5">ROUND {round}/{TOTAL_ROUNDS}</span>
-              <span className="flex items-center gap-1.5 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-cyan-300">
+              <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] text-cyan-300">
                 <Icon d={ICONS.users} className="h-3.5 w-3.5" />
                 PLAYERS REMAINING: {playersRemaining} / {TOTAL_PLAYERS}
               </span>
@@ -412,7 +412,7 @@ export default function KnockoutTrivia() {
             className="relative z-10 flex h-full flex-col px-5 pt-5 pb-6">
             <div className="flex items-center justify-between text-xs font-bold tracking-widest text-zinc-400">
               <span className="whitespace-nowrap rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1.5">R{Math.floor(qi / 4) + 1} · Q{(qi % 4) + 1}/4</span>
-              <span className="flex items-center gap-1.5 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-cyan-300">
+              <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] text-cyan-300">
                 <Icon d={ICONS.users} className="h-3.5 w-3.5" />
                 PLAYERS REMAINING: {playersRemaining} / {TOTAL_PLAYERS}
               </span>
