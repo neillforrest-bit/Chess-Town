@@ -18,13 +18,15 @@ type TapBoardProps = {
   lastMove?: { from: string; to: string } | null;
   onMove?: (from: string, to: string, promotion?: string) => void;
   label?: string;
+  // square -> opacity override (battle wild card: invisible piece)
+  ghostSquares?: Record<string, number>;
 };
 
 function rows(fen: string): string[][] {
   return fen.split(' ')[0].split('/').map((rank) => rank.split('').flatMap((piece) => Number.isInteger(Number(piece)) ? Array(Number(piece)).fill('') : [piece]));
 }
 
-export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label }: TapBoardProps) {
+export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares }: TapBoardProps) {
   const [sprites, setSprites] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -81,10 +83,11 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
         target ? (target.capture ? 'tapboard__square--capture' : 'tapboard__square--target') : '',
         lastMove && (lastMove.from === square || lastMove.to === square) ? 'tapboard__square--last' : '',
       ].filter(Boolean).join(' ');
+      const ghostOpacity = ghostSquares && square in ghostSquares ? ghostSquares[square] : 1;
       return <button type="button" className={classes} key={square} onClick={() => tap(square, piece)} aria-label={`${square}${piece ? ` ${piece}` : ''}`}>
         {piece ? (sprite
-          ? <img src={sprite} alt="" draggable={false} style={{ width: '88%', height: '88%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
-          : <span data-color={isWhite ? 'white' : 'black'}>{PIECES[piece.toLowerCase()] + '︎'}</span>) : ''}
+          ? <img src={sprite} alt="" draggable={false} style={{ width: '88%', height: '88%', objectFit: 'contain', display: 'block', pointerEvents: 'none', opacity: ghostOpacity, transition: 'opacity .5s' }} />
+          : <span data-color={isWhite ? 'white' : 'black'} style={{ opacity: ghostOpacity, transition: 'opacity .5s' }}>{PIECES[piece.toLowerCase()] + '︎'}</span>) : ''}
         {ri === 7 && <i className="tapboard__coord tapboard__coord--file" aria-hidden="true">{FILES[col]}</i>}
         {ci === 0 && <i className="tapboard__coord tapboard__coord--rank" aria-hidden="true">{8 - row}</i>}
       </button>;

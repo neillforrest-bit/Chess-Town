@@ -10,6 +10,7 @@ import MatchCountdown from '@/components/MatchCountdown';
 import { ChesterAvatar } from '@/components/ChesterUI';
 import { direct } from '@/lib/chester-director';
 import { playSfx } from '@/lib/sounds';
+import { winOddsPct } from '@/lib/chester-voice';
 import { createClient } from '@/utils/supabase/client';
 import { getStockfishClient } from '@/lib/stockfish';
 
@@ -17,8 +18,12 @@ const START_MS = 10 * 60 * 1000;
 type Synced = {
   pgn: string; playerOneTime: number; playerTwoTime: number; playerOneTimeoutUsed: boolean; playerTwoTimeoutUsed: boolean;
   rev: number; result: string | null; drawBy: 0 | 1 | null; rematchBy: 0 | 1 | null; pausedBy: 0 | 1 | null;
+  // WILD CARDS (one each per fighter per game)
+  takebackBy: 0 | 1 | null; playerOneTakebackUsed: boolean; playerTwoTakebackUsed: boolean;
+  ghost: { by: 0 | 1; square: string; untilPly: number; castPly: number } | null; playerOneGhostUsed: boolean; playerTwoGhostUsed: boolean;
+  playerOneHintUsed: boolean; playerTwoHintUsed: boolean;
 };
-const FRESH: Synced = { pgn: '', playerOneTime: START_MS, playerTwoTime: START_MS, playerOneTimeoutUsed: false, playerTwoTimeoutUsed: false, rev: 0, result: null, drawBy: null, rematchBy: null, pausedBy: null };
+const FRESH: Synced = { pgn: '', playerOneTime: START_MS, playerTwoTime: START_MS, playerOneTimeoutUsed: false, playerTwoTimeoutUsed: false, rev: 0, result: null, drawBy: null, rematchBy: null, pausedBy: null, takebackBy: null, playerOneTakebackUsed: false, playerTwoTakebackUsed: false, ghost: null, playerOneGhostUsed: false, playerTwoGhostUsed: false, playerOneHintUsed: false, playerTwoHintUsed: false };
 type Peer = { id: string; at: number; seat: 0 | 1 | null };
 // BUILD 150 fun pass: Chester calls the fight like a corner-man with a microphone.
 const OPENERS = [
@@ -60,6 +65,9 @@ export default function BattlePage() {
   const [ready, setReady] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [banter, setBanter] = useState<{ key: string; color: 'w' | 'b'; text: string; hot: boolean } | null>(null);
+  const [mood, setMood] = useState<'great' | 'good' | 'slip' | 'bad' | 'terrible' | null>(null);
+  const [edu, setEdu] = useState<{ key: string; text: string } | null>(null);
+  const [ghostArm, setGhostArm] = useState(false);
   const stateRef = useRef(state);
   const dbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const matchIdRef = useRef('');
@@ -73,7 +81,8 @@ export default function BattlePage() {
 
   const apply = useCallback((s: Synced, fromNet: boolean) => {
     if (fromNet && s.rev <= stateRef.current.rev) return;
-    stamp.current = Date.now(); stateRef.current = s; setState(s);
+    const merged = { ...FRESH, ...s };
+    stamp.current = Date.now(); stateRef.current = merged; setState(merged);
     try { localStorage.setItem(key + ':state', JSON.stringify(s)); } catch { /* private mode */ }
   }, [key]);
   const commit = useCallback((patch: Partial<Synced>, event: 'state' | 'pause_game' | 'resume_game' = 'state') => {
@@ -161,6 +170,7 @@ export default function BattlePage() {
     playSfx(c.isCheckmate() ? 'win' : c.isCheck() ? 'check' : last.captured ? 'capture' : 'move');
   }, [state.pgn]);
   useEffect(() => { if (!banter || banter.key === 'verdict') return; const t = setTimeout(() => setBanter(null), 4500); return () => clearTimeout(t); }, [banter]);
+  useEffect(() => { if (!edu) return; const t = setTimeout(() => setEdu(null), 6000); return () => clearTimeout(t); }, [edu]);
   const turn = chess.turn();
   const over = chess.isGameOver() || state.result !== null;
   const paused = state.pausedBy !== null;
@@ -207,6 +217,10 @@ export default function BattlePage() {
   const bestRefEarly = null; void bestRefEarly;
   const evalRef = useRef<{ pgn: string; pawns: number } | null>(null);
   const streakRef = useRef<{ w: number; b: number }>({ w: 0, b: 0 });
+  const accRef = useRef<{ w: { loss: number; n: number }; b: { loss: number; n: number } }>({ w: { loss: 0, n: 0 }, b: { loss: 0, n: 0 } });
+  const oddsBandRef = useRef<number>(50);
+  const [accuracy, setAccuracy] = useState<{ w: { loss: number; n: number }; b: { loss: number; n: number } }>({ w: { loss: 0, n: 0 }, b: { loss: 0, n: 0 } });
+  const [odds, setOdds] = useState<number>(50);
   const [swing, setSwing] = useState<{ n: number; text: string; good: boolean } | null>(null);
   const [shakeBattle, setShakeBattle] = useState(false);
   const [pawnsNow, setPawnsNow] = useState<number | null>(null);
@@ -231,6 +245,7 @@ export default function BattlePage() {
         const good = goodForWhite === (myColorRef.current === 'w');
         setSwing({ n: Date.now(), good, text: good ? '[THE CROWD ROARS]' : '[THE ARENA GOES DEAD SILENT]' });
       }
+      const prevBest = bestRef.current; // engine's preferred move BEFORE this move was played
       // Chester commentary, same deterministic voice as Play Chester (zero cost per move).
       // No freeze cards and no best-move reveals here: live PvP with running clocks, so
       // blocking the board or whispering engine moves to one fighter would break the fight.
@@ -254,6 +269,27 @@ export default function BattlePage() {
           const sharp = delta <= 12 || cNow.isCheck() || cNow.isCheckmate();
           streakRef.current[mover] = sharp ? streakRef.current[mover] + 1 : 0;
           if (streakRef.current[mover] > 0 && streakRef.current[mover] % 3 === 0) { line = `${mover === 'w' ? 'WHITE' : 'BLACK'} ${pick(COOKING, hist.length)}`; hot = true; playSfx('brilliant'); }
+          // Educational layer (his ask): what was good/bad + what the engine preferred. Both phones see it.
+          const eduText = cNow.isCheckmate() || cNow.isCheck() ? (cNow.isCheckmate() ? 'That is mate. The arena erupts.' : 'Check - the king is running.')
+            : delta <= 15 ? 'The engine agrees with that move.' : prevBest ? `Engine preferred ${prevBest}. That cost about ${(delta / 100).toFixed(1)} pawns.` : delta >= 120 ? `That cost about ${(delta / 100).toFixed(1)} pawns.` : '';
+          if (eduText) setEdu({ key: `edu-${hist.length}`, text: eduText });
+          // live accuracy: chess.com-style curve over centipawn loss per move
+          const acc = accRef.current[mover]; acc.loss += delta; acc.n += 1;
+          setAccuracy({ ...accRef.current });
+          // tug-of-war commentary: Chester calls the odds when the band moves
+          const oddsNow = winOddsPct(Math.round(pawns * 100), 'w');
+          if (oddsNow !== null) {
+            setOdds(oddsNow);
+            const band = Math.round(oddsNow / 10) * 10;
+            if (band !== oddsBandRef.current && hist.length > 4) {
+              oddsBandRef.current = band;
+              const leader = oddsNow >= 55 ? 'WHITE' : oddsNow <= 45 ? 'BLACK' : null;
+              if (leader) setEdu({ key: `odds-${hist.length}`, text: `Chester's tote board: ${leader} holds ${leader === 'WHITE' ? oddsNow : 100 - oddsNow}% of the arena.` });
+            }
+          }
+          // Eval-scaled board animation: terrible -> great.
+          setMood(cNow.isCheckmate() || cNow.isCheck() || delta <= 15 ? 'great' : delta <= 50 ? 'good' : delta <= 120 ? 'slip' : delta <= 250 ? 'bad' : 'terrible');
+          window.setTimeout(() => setMood(null), 1400);
           if (line) {
             setBanter({ key: `${hist.length}-${last.san}`, color: mover, text: line, hot });
             if (d2.ui_action === 'freeze_red') { setShakeBattle(true); window.setTimeout(() => setShakeBattle(false), 700); playSfx('bad'); }
@@ -328,6 +364,46 @@ export default function BattlePage() {
     else commit({ rematchBy: seat });
   };
 
+  // ---- WILD CARDS ----
+  const myTakebackUsed = seat === 1 ? state.playerTwoTakebackUsed : state.playerOneTakebackUsed;
+  const myGhostUsed = seat === 1 ? state.playerTwoGhostUsed : state.playerOneGhostUsed;
+  const myHintUsed = seat === 1 ? state.playerTwoHintUsed : state.playerOneHintUsed;
+  const histVerbose = chess.history({ verbose: true });
+  const ply = histVerbose.length;
+  const ghostLive = state.ghost && ply < state.ghost.untilPly ? state.ghost : null;
+  // The ghost follows its piece: replay every move since it was cast.
+  let ghostSq = ghostLive ? ghostLive.square : '';
+  if (ghostLive) for (let i = ghostLive.castPly; i < histVerbose.length; i++) { if (histVerbose[i].from === ghostSq) ghostSq = histVerbose[i].to; }
+  const ghostOwnerColor = ghostLive ? (ghostLive.by === 1 ? 'b' : 'w') : null;
+  const ghostPieceGone = ghostLive ? (() => { const pc = chess.get(ghostSq as never) as { color: string } | null; return !pc || pc.color !== ghostOwnerColor; })() : true;
+  // The ghost is invisible on the OPPONENT's board, a shimmer on yours.
+  const ghostSquares: Record<string, number> = ghostLive && !ghostPieceGone ? { [ghostSq]: ghostLive.by === seat ? 0.25 : 0 } : {};
+
+  const askTakeback = () => { if (seat === null || myTakebackUsed || over || !state.pgn || turn === myColor || state.takebackBy !== null) return; commit({ takebackBy: seat }); };
+  const answerTakeback = (yes: boolean) => {
+    if (seat === null || state.takebackBy === null || state.takebackBy === seat) return;
+    if (!yes) { commit({ takebackBy: null }); return; }
+    const c = loadChess(stateRef.current.pgn); c.undo();
+    commit({ pgn: c.pgn(), takebackBy: null, ...(state.takebackBy === 1 ? { playerTwoTakebackUsed: true } : { playerOneTakebackUsed: true }) });
+    setBanter({ key: `tb-${Date.now()}`, color: state.takebackBy === 1 ? 'b' : 'w', text: 'Takeback granted. We do not speak of that move again.', hot: true });
+  };
+  const playGhost = () => { if (seat === null || myGhostUsed || over || !myTurn || ghostLive) return; setGhostArm(true); };
+  const pickGhost = (square: string) => {
+    setGhostArm(false);
+    const piece = chess.get(square as never) as { color: string } | null;
+    if (!piece || piece.color !== myColor || seat === null) return;
+    commit({ ghost: { by: seat, square, untilPly: ply + 6, castPly: ply }, ...(seat === 1 ? { playerTwoGhostUsed: true } : { playerOneGhostUsed: true }) });
+    setBanter({ key: `ghost-${Date.now()}`, color: myColor, text: 'A piece slips into the shadows. Three moves of hide and seek.', hot: true });
+    playSfx('shaky');
+  };
+  const askHint = () => {
+    if (seat === null || myHintUsed || over || !myTurn) return;
+    const tip = bestRef.current;
+    commit(seat === 1 ? { playerTwoHintUsed: true } : { playerOneHintUsed: true });
+    setBanter({ key: `hint-${Date.now()}`, color: myColor, text: tip ? `Chester taps the board: ${tip}. You did not hear it from me.` : 'Chester is still reading the position - ask again in a breath.', hot: true });
+    if (tip) playSfx('good');
+  };
+
   const outcome = (() => {
     if (!over) return '';
     const r = state.result;
@@ -361,13 +437,33 @@ export default function BattlePage() {
     {swing && <div key={swing.n} className={`battle-banner ${swing.good ? 'battle-banner--roar' : 'battle-banner--silent'}`}>{swing.text}</div>}
     {countdown > 0 && <MatchCountdown key={countdown} />}
     <div className="battle-clock" data-active={running && turn !== myColor}><span>OPPONENT{opponentHere ? '' : ' (AWAY)'}</span><b>{fmt(theirs)}</b></div>
-    <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}`}><TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn} lastMove={lastMove} onMove={onMove} /></div>
+    <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}${mood ? ` battle-fx--${mood}` : ''}`}>
+      <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn || ghostArm} lastMove={lastMove} onMove={onMove} ghostSquares={ghostSquares} />
+      {ghostArm && <div className="battle-ghostgrid" role="dialog" aria-label="Pick a piece to turn invisible">
+        {Array.from({ length: 64 }, (_, i) => { const f = myColor === 'w' ? i % 8 : 7 - (i % 8); const r = myColor === 'w' ? 8 - Math.floor(i / 8) : Math.floor(i / 8) + 1; const sq = `${'abcdefgh'[f]}${r}`; const pc = chess.get(sq as never) as { color: string } | null; return <button key={sq} type="button" className={`battle-ghostgrid__cell${pc && pc.color === myColor ? ' battle-ghostgrid__cell--pick' : ''}`} aria-label={`vanish ${sq}`} onClick={() => pickGhost(sq)} />; })}
+        <span className="battle-ghostgrid__label">TAP ONE OF YOUR PIECES - IT VANISHES FOR 3 MOVES</span>
+      </div>}
+    </div>
     <div className="battle-commentary-slot">
       {banter && <div key={banter.key} className={`battle-commentary${banter.hot ? ' battle-commentary--hot' : ''}`} aria-live="polite">
         <ChesterAvatar isThinking={false} size="small" />
         <span><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</span>
       </div>}
+      {edu && <div key={edu.key} className="battle-edu" aria-live="polite">{edu.text}</div>}
     </div>
+    <div className="battle-odds" role="img" aria-label={`win odds: white ${odds} percent`}>
+      <span className="battle-odds__num">{odds}</span>
+      <div className="battle-odds__bar"><i style={{ width: `${odds}%` }} /></div>
+      <span className="battle-odds__num battle-odds__num--b">{100 - odds}</span>
+    </div>
+    {([['w', 'WHITE', accuracy.w], ['b', 'BLACK', accuracy.b]] as const).map(([c, label, a]) => {
+      const pct = a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8));
+      return <div key={c} className="battle-acc" aria-label={`${label} accuracy ${pct} percent`}>
+        <span className="battle-acc__label">{label}</span>
+        <div className="battle-acc__scale"><i style={{ left: `${pct}%` }} /></div>
+        <span className="battle-acc__pct">{pct}%</span>
+      </div>;
+    })}
     <div className="battle-clock" data-active={running && turn === myColor}><span>FORREST 🌲</span><b>{fmt(mine)}</b></div>
     {over ? <>
       <p className="battle-sub battle-outcome">{outcome}</p>
@@ -382,6 +478,15 @@ export default function BattlePage() {
         <button type="button" className="battle-btn battle-btn--ghost" onClick={resign} disabled={!state.pgn}>RESIGN</button>
         {myTurn && !myTimeoutUsed && <button type="button" className="battle-btn battle-btn--timeout" onClick={callTimeout}>CALL TIMEOUT</button>}
       </>}
+      {state.takebackBy !== null && state.takebackBy !== seat ? <div className="battle-wildrow">
+        <span className="battle-sub">Opponent wants to take a move back</span>
+        <button type="button" className="battle-btn battle-btn--sm" onClick={() => answerTakeback(true)}>ALLOW</button>
+        <button type="button" className="battle-btn battle-btn--ghost" onClick={() => answerTakeback(false)}>NO WAY</button>
+      </div> : <div className="battle-wildrow">
+        <button type="button" className="battle-btn battle-btn--wild" onClick={askTakeback} disabled={myTakebackUsed || !state.pgn || turn === myColor || state.takebackBy !== null}>{state.takebackBy === seat ? 'TAKEBACK ASKED...' : myTakebackUsed ? 'TAKEBACK SPENT' : '⏪ TAKEBACK'}</button>
+        <button type="button" className="battle-btn battle-btn--wild" onClick={playGhost} disabled={myGhostUsed || !myTurn || !!ghostLive}>{myGhostUsed ? 'GHOST SPENT' : ghostLive ? '👻 ACTIVE' : '👻 GHOST'}</button>
+        <button type="button" className="battle-btn battle-btn--wild" onClick={askHint} disabled={myHintUsed || !myTurn}>{myHintUsed ? 'HINT SPENT' : '💡 HINT'}</button>
+      </div>}
     </div>}
     {paused && !iCalled && <div className="battle-overlay" role="alert"><h2>OPPONENT CALLED TIMEOUT</h2><p>Clocks are stopped. Hold your ground - the fight resumes when they are ready.</p></div>}
     {iCalled && <div className="battle-overlay battle-overlay--corner" role="dialog" aria-label="Chester in your corner">
