@@ -2,17 +2,6 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// classify an ESPN drive result into the 4 answer buckets (or null = skip round)
-function classify(result: string | undefined | null): number | null {
-  if (!result) return null;
-  const r = result.toUpperCase();
-  if (r === "TD") return 0;
-  if (r === "FG") return 1;
-  if (r === "PUNT" || r === "BLOCKED PUNT") return 2;
-  if (r.includes("END OF")) return null;
-  return 3; // INT, FUMBLE, DOWNS, MISSED FG, SAFETY, etc -> TURNOVER
-}
-
 export async function GET() {
   try {
     const sb = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard", { cache: "no-store" });
@@ -33,18 +22,19 @@ export async function GET() {
     const away = comp.competitors.find((c: any) => c.homeAway === "away");
     const drives = s.drives || {};
     const cur = drives.current || null;
-    const prev: any[] = drives.previous || [];
-    const results: Record<string, { result: string; cls: number | null; description: string }> = {};
-    for (const d of prev) {
-      if (d.id && d.result) results[d.id] = { result: d.result, cls: classify(d.result), description: d.description || "" };
-    }
-    if (cur?.id && cur?.result) {
-      results[cur.id] = { result: cur.result, cls: classify(cur.result), description: cur.description || "" };
-    }
+
     let drive = null;
     if (cur && !cur.result) {
       const plays: any[] = cur.plays || [];
-      const lastPlay = plays.length ? plays[plays.length - 1] : null;
+      // last real snap (skip timeouts/penalties/kicks for state purposes)
+      let lastPlay: any = null;
+      for (let i = plays.length - 1; i >= 0; i--) {
+        const tt = (plays[i]?.type?.text || "").toLowerCase();
+        if (/timeout|end of|coin toss|kickoff|extra point/.test(tt)) continue;
+        lastPlay = plays[i];
+        break;
+      }
+      if (!lastPlay && plays.length) lastPlay = plays[plays.length - 1];
       let offense = cur.team?.displayName || null;
       for (let i = plays.length - 1; i >= 0; i--) {
         const t = plays[i]?.start?.team?.id;
@@ -57,8 +47,14 @@ export async function GET() {
         id: cur.id,
         offense,
         description: cur.description || "",
-        lastPlayText: lastPlay?.text || "",
-        downDist: lastPlay?.end?.downDistanceText || lastPlay?.start?.downDistanceText || "",
+        lastPlay: lastPlay ? {
+          id: lastPlay.id,
+          typeText: lastPlay.type?.text || "",
+          text: lastPlay.text || "",
+          endDown: lastPlay.end?.down ?? null,
+          endDist: lastPlay.end?.distance ?? null,
+          downDist: lastPlay.end?.downDistanceText || lastPlay.start?.downDistanceText || "",
+        } : null,
       };
     }
     return NextResponse.json({
@@ -73,7 +69,6 @@ export async function GET() {
         final: ev.status?.type?.completed === true,
       },
       drive,
-      results,
       at: new Date().toISOString(),
     });
   } catch (e) {

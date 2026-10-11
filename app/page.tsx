@@ -5,20 +5,18 @@ import type { Q } from "../lib/nfl";
 import { BAKED } from "../lib/nflBaked";
 
 /* ---------------------------------- types --------------------------------- */
-type DriveInfo = { id: string; offense: string | null; description: string; lastPlayText: string; downDist: string };
+type LastPlay = { id: string; typeText: string; text: string; endDown: number | null; endDist: number | null; downDist: string };
+type DriveInfo = { id: string; offense: string | null; description: string; lastPlay: LastPlay | null };
 type LiveGame = { id: string; name: string; home: string; away: string; hs: number; as: number; status: string; halftime: boolean; final: boolean };
-type LiveResp = {
-  live: boolean; reason?: string;
-  game?: LiveGame;
-  drive?: DriveInfo | null;
-  results?: Record<string, { result: string; cls: number | null; description: string }>;
-};
-type Phase = "lobby" | "playing" | "eliminated" | "victory";
+type LiveResp = { live: boolean; reason?: string; game?: LiveGame; drive?: DriveInfo | null };
+type Phase = "lobby" | "intro" | "playing" | "eliminated" | "victory";
 type Mode = "live" | "trivia";
+type LiveQ = { kind: "play" | "convert"; offense: string; driveId: string; playId: string; options: string[]; text: string };
+
 const TOTAL_PLAYERS = 100;
 const TOTAL_ROUNDS = 12;
 const QUESTION_MS = 10000;
-const DRIVE_OPTIONS = ["TOUCHDOWN", "FIELD GOAL", "PUNT", "TURNOVER"];
+const GRACE_MS = 12000;
 
 /* --------------------------------- helpers -------------------------------- */
 const ordinal = (n: number) => {
@@ -33,28 +31,38 @@ const ICONS = {
   users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   skull: "M12 2a8 8 0 0 0-8 8c0 2.9 1.6 5.4 4 6.7V20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.3c2.4-1.3 4-3.8 4-6.7a8 8 0 0 0-8-8zM9 12h.01M15 12h.01",
   trophy: "M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z",
+  wheel: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM2 12h3M19 12h3M12 2v3M12 19v3",
   timer: "M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z",
-  radio: "M4.9 19.1a10 10 0 0 1 0-14.2M7.8 16.2a6 6 0 0 1 0-8.4M16.2 16.2a6 6 0 0 0 0-8.4M19.1 19.1a10 10 0 0 0 0-14.2M12 12h.01",
+};
+const pick1 = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
+const HOST = {
+  intro: "100 of you. One seat left. Call the plays or get out of the car.",
+  play: ["They're at the line. What's the call?", "New snap coming. Run or pass?", "Read the offense. Go.", "Next play. Don't blink."],
+  convert: ["Money down. Do they move the chains?", "Third down. Convert or walk.", "This is where drives live or die."],
+  correct: ["Clean call.", "You know ball.", "Right read. Still breathing.", "Sharp. Next one."],
+  freepass: ["Drive ended early. Nobody out.", "Stoppage. Free pass.", "Whistle. We go again."],
+  wrong: ["WRONG. Out of the car.", "That's you done. Door's that way.", "Bad read. The bus doesn't wait."],
+  win: "Last one in the car. Take the wheel, champion.",
 };
 
-/* ---------------------------------- page ----------------------------------- */
-export default function KnockoutTrivia() {
+/* ------------------------------ page component ----------------------------- */
+export default function LastDriveStanding() {
   const [phase, setPhase] = useState<Phase>("lobby");
   const [mode, setMode] = useState<Mode>("live");
   const [bots, setBots] = useState(99);
   const [picked, setPicked] = useState<number | null>(null);
-  const [reveal, setReveal] = useState<number | null>(null); // resolved correct index
+  const [reveal, setReveal] = useState<number | null>(null);
   const [placement, setPlacement] = useState<number | null>(null);
   const [spectating, setSpectating] = useState(false);
   const [flash, setFlash] = useState<"red" | "green" | null>(null);
   const [joining, setJoining] = useState(false);
   const [round, setRound] = useState(1);
+  const [hostLine, setHostLine] = useState("");
 
   // live-mode state
   const [game, setGame] = useState<LiveGame | null>(null);
   const [drive, setDrive] = useState<DriveInfo | null>(null);
-  const [roundDrive, setRoundDrive] = useState<{ id: string; offense: string | null } | null>(null);
-  const [lastResolve, setLastResolve] = useState<string | null>(null);
+  const [lq, setLq] = useState<LiveQ | null>(null);
 
   // trivia-mode state
   const [questions, setQuestions] = useState<Q[]>(BAKED);
@@ -67,8 +75,9 @@ export default function KnockoutTrivia() {
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const targetedAt = useRef<number>(0);
-  const stateRef = useRef({ phase, mode, roundDrive, picked, bots, round, game, qi, questions, reveal });
-  stateRef.current = { phase, mode, roundDrive, picked, bots, round, game, qi, questions, reveal };
+  const narratedRef = useRef<string>("");
+  const stateRef = useRef({ phase, mode, lq, picked, bots, round, game, qi, questions, reveal });
+  stateRef.current = { phase, mode, lq, picked, bots, round, game, qi, questions, reveal };
 
   const later = useCallback((fn: () => void, ms: number) => { timers.current.push(setTimeout(fn, ms)); }, []);
   const clearAll = useCallback(() => {
@@ -91,7 +100,73 @@ export default function KnockoutTrivia() {
     later(() => { setFlash(null); setPhase("eliminated"); setSpectating(true); }, 900);
   }, [later]);
 
+  /* --------------------------- question construction ----------------------- */
+  const buildQuestion = (d: DriveInfo): LiveQ | null => {
+    if (!d.lastPlay) return null;
+    const lp = d.lastPlay;
+    const off = d.offense || "the offense";
+    if (lp.endDown === 3) {
+      return { kind: "convert", offense: off, driveId: d.id, playId: lp.id, options: ["FIRST DOWN", "STOPPED"],
+        text: `3rd & ${lp.endDist ?? "?"} - do ${off} move the chains?` };
+    }
+    return { kind: "play", offense: off, driveId: d.id, playId: lp.id, options: ["RUN", "PASS", "TURNOVER"],
+      text: `Next ${off} play: what's the call?` };
+  };
+
+  // classify a new real play against the open question; null = keep waiting
+  const classifyNewPlay = (q: LiveQ, d: DriveInfo): number | "skip" | "freepass" => {
+    if (!d.lastPlay || d.lastPlay.id === q.playId) return "skip";
+    const tt = (d.lastPlay.typeText + " " + d.lastPlay.text).toLowerCase();
+    if (/timeout|two-minute|end of|coin toss|extra point|kickoff/.test(tt)) return "skip";
+    if (d.id !== q.driveId) return q.kind === "convert" ? 1 : "freepass"; // drive ended
+    if (q.kind === "convert") {
+      if (/interception|fumble|punt|field goal|downs/.test(tt)) return 1; // STOPPED
+      if (d.lastPlay.endDown === 1) return 0; // FIRST DOWN
+      if (d.lastPlay.endDown === 4) return 1;
+      return "skip";
+    }
+    if (/interception|intercepted|fumble/.test(tt)) return 2; // TURNOVER
+    if (/punt|field goal/.test(tt)) return "freepass"; // drive ended on a kick
+    if (/pass|sack/.test(tt)) return 1; // PASS
+    if (/rush|run|scramble/.test(tt)) return 0; // RUN
+    return "skip";
+  };
+
   /* ------------------------------ live polling ----------------------------- */
+  const resolveLiveRound = useCallback((cls: number, note: string) => {
+    const s = stateRef.current;
+    if (s.phase !== "playing" || s.reveal !== null) return;
+    setReveal(cls);
+    const correct = s.picked === cls;
+    setBots((prevBots) => {
+      const after = attritBots(prevBots);
+      if (!correct) {
+        setHostLine(pick1(HOST.wrong));
+        later(() => eliminateUser(after), 600);
+      } else {
+        setHostLine(pick1(HOST.correct) + " (" + note + ")");
+        setFlash("green");
+        later(() => setFlash(null), 600);
+        if (s.round >= TOTAL_ROUNDS) {
+          later(() => setPhase("victory"), 1200);
+        } else {
+          later(() => { setRound(s.round + 1); setPicked(null); setReveal(null); setLq(null); }, 1600);
+        }
+      }
+      return after;
+    });
+  }, [attritBots, eliminateUser, later]);
+
+  const freePass = useCallback((d: DriveInfo | null) => {
+    const nq = d ? buildQuestion(d) : null;
+    setLq(nq);
+    narratedRef.current = d?.lastPlay?.id || "";
+    targetedAt.current = Date.now();
+    setPicked(null);
+    setReveal(null);
+    setHostLine(pick1(HOST.freepass));
+  }, []);
+
   const pollLive = useCallback(async () => {
     const s = stateRef.current;
     if (s.phase !== "playing" || s.mode !== "live") return;
@@ -101,74 +176,42 @@ export default function KnockoutTrivia() {
       d = await r.json();
     } catch { return; }
     if (!d.live || !d.game) {
-      // slate ended while playing: survivors win
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       setPhase("victory");
       return;
     }
     setGame(d.game);
     setDrive(d.drive || null);
-    const rd = stateRef.current.roundDrive;
-    if (rd) {
-      const res = d.results?.[rd.id];
-      if (res && stateRef.current.reveal === null) {
-        const unfair = stateRef.current.picked === null && Date.now() - targetedAt.current < 12000;
-        if (res.cls === null || unfair) {
-          // half/quarter end, or the drive ended before a fair chance to call it: free pass
-          setRoundDrive(d.drive ? { id: d.drive.id, offense: d.drive.offense } : null);
+    const cur = stateRef.current.lq;
+    if (!cur) {
+      if (d.drive) {
+        const nq = buildQuestion(d.drive);
+        if (nq) {
+          setLq(nq);
           targetedAt.current = Date.now();
-          setPicked(null);
-          setReveal(null);
-          setLastResolve(unfair ? `Drive ended (${res.result}) before you could call it - free pass` : `Drive ended (${res.result}) - free pass, nobody out`);
-        } else {
-          resolveLiveRound(res.cls, res.result);
+          narratedRef.current = d.drive.lastPlay?.id || "";
+          setHostLine(nq.kind === "convert" ? pick1(HOST.convert) : pick1(HOST.play));
         }
-        return;
       }
-      // tracked game changed under us -> retarget
-      if (stateRef.current.game && d.game.id !== stateRef.current.game.id) {
-        setRoundDrive(d.drive ? { id: d.drive.id, offense: d.drive.offense } : null);
-        targetedAt.current = Date.now();
-        setPicked(null);
-        setReveal(null);
-        setLastResolve(`Switched to ${d.game.name} (other game went final)`);
-      }
-    } else if (d.drive) {
-      // no drive targeted yet (between drives) -> target it
-      setRoundDrive({ id: d.drive.id, offense: d.drive.offense });
-      targetedAt.current = Date.now();
+      return;
     }
-  }, []);
-
-  const resolveLiveRound = useCallback((cls: number, rawResult: string) => {
-    const s = stateRef.current;
-    if (s.phase !== "playing") return;
-    setReveal(cls);
-    setLastResolve(`Drive result: ${rawResult}`);
-    const correct = s.picked === cls;
-    setBots((prevBots) => {
-      const after = attritBots(prevBots);
-      if (!correct) {
-        later(() => eliminateUser(after), 600);
-      } else {
-        setFlash("green");
-        later(() => setFlash(null), 600);
-        if (s.round >= TOTAL_ROUNDS) {
-          later(() => setPhase("victory"), 1000);
-        } else {
-          later(() => {
-            setRound(s.round + 1);
-            setPicked(null);
-            setReveal(null);
-            setRoundDrive(null); // wait for the next real drive
-          }, 1400);
-        }
+    if (stateRef.current.reveal !== null) return;
+    if (!d.drive) return; // between drives; keep waiting
+    const cls = classifyNewPlay(cur, d.drive);
+    if (cls === "skip") {
+      // host calls the action live as plays land
+      if (d.drive.lastPlay && d.drive.lastPlay.id !== narratedRef.current && d.drive.lastPlay.text) {
+        narratedRef.current = d.drive.lastPlay.id;
+        setHostLine(d.drive.lastPlay.text);
       }
-      return after;
-    });
-  }, [attritBots, eliminateUser, later]);
+      return;
+    }
+    if (cls === "freepass") { freePass(d.drive); return; }
+    const unfair = stateRef.current.picked === null && Date.now() - targetedAt.current < GRACE_MS;
+    if (unfair) { freePass(d.drive); return; }
+    resolveLiveRound(cls, d.drive.lastPlay?.text.slice(0, 60) || "");
+  }, [freePass, resolveLiveRound]);
 
-  // start/stop polling with phase
   useEffect(() => {
     if (phase === "playing" && mode === "live" && !pollRef.current) {
       pollRef.current = setInterval(pollLive, 4000);
@@ -200,6 +243,7 @@ export default function KnockoutTrivia() {
     setBots((prevBots) => {
       const after = attritBots(prevBots);
       if (!correct) {
+        setHostLine(pick1(HOST.wrong));
         later(() => eliminateUser(after), 500);
       } else {
         setFlash("green");
@@ -216,13 +260,8 @@ export default function KnockoutTrivia() {
   }, [timeLeft, phase, mode, triviaReveal, resolveTrivia]);
 
   /* --------------------------------- actions ------------------------------- */
-  const beginLive = (d: LiveResp) => {
+  const resetCommon = () => {
     clearAll();
-    setMode("live");
-    setGame(d.game || null);
-    setDrive(d.drive || null);
-    setRoundDrive(d.drive ? { id: d.drive.id, offense: d.drive.offense } : null);
-    targetedAt.current = Date.now();
     setRound(1);
     setPicked(null);
     setReveal(null);
@@ -230,23 +269,31 @@ export default function KnockoutTrivia() {
     setPlacement(null);
     setSpectating(false);
     setJoining(false);
-    setLastResolve(null);
-    setPhase("playing");
+    setHostLine("");
+  };
+
+  const beginLive = (d: LiveResp) => {
+    resetCommon();
+    setMode("live");
+    setGame(d.game || null);
+    setDrive(d.drive || null);
+    const nq = d.drive ? buildQuestion(d.drive) : null;
+    setLq(nq);
+    narratedRef.current = d.drive?.lastPlay?.id || "";
+    targetedAt.current = Date.now();
+    setHostLine(HOST.intro);
+    setPhase("intro");
+    later(() => setPhase("playing"), 2800);
   };
 
   const beginTrivia = (qs: Q[], src: "live" | "pack") => {
-    clearAll();
+    resetCommon();
     setMode("trivia");
     setQuestions(qs);
     setQsrc(src);
-    setRound(1);
-    setPicked(null);
-    setBots(99);
-    setPlacement(null);
-    setSpectating(false);
-    setJoining(false);
-    setPhase("playing");
-    startTriviaQuestion(0);
+    setHostLine(HOST.intro);
+    setPhase("intro");
+    later(() => { setPhase("playing"); startTriviaQuestion(0); }, 2800);
   };
 
   const join = () => {
@@ -259,7 +306,6 @@ export default function KnockoutTrivia() {
       .then((d: LiveResp) => {
         clearTimeout(to);
         if (d.live && d.game) { beginLive(d); return; }
-        // no live game -> trivia fallback
         fetch("/api/nfl", { cache: "no-store" })
           .then((r) => r.json())
           .then((n) => { if (n.live && Array.isArray(n.questions) && n.questions.length >= 12) beginTrivia(n.questions.slice(0, 12), "live"); else beginTrivia(BAKED, "pack"); })
@@ -271,7 +317,7 @@ export default function KnockoutTrivia() {
   const pick = (i: number) => {
     if (picked !== null || phase !== "playing") return;
     if (mode === "live") {
-      if (!roundDrive || reveal !== null) return;
+      if (!lq || reveal !== null) return;
       setPicked(i);
     } else {
       if (triviaReveal) return;
@@ -299,6 +345,17 @@ export default function KnockoutTrivia() {
   const pct = Math.max(0, timeLeft / QUESTION_MS);
   const timerColor = pct > 0.5 ? "bg-cyan-400" : pct > 0.25 ? "bg-fuchsia-500" : "bg-red-500";
 
+  const HostChip = ({ line }: { line: string }) => (
+    <motion.div key={line} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="mt-3 flex items-start gap-2.5 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/5 p-3">
+      <Icon d={ICONS.wheel} className="mt-0.5 h-5 w-5 shrink-0 text-fuchsia-400" />
+      <div>
+        <div className="text-[10px] font-black tracking-widest text-fuchsia-400">LAST DRIVER</div>
+        <div className="text-sm font-semibold text-zinc-200">{line}</div>
+      </div>
+    </motion.div>
+  );
+
   /* --------------------------------- render -------------------------------- */
   return (
     <main className="fixed inset-0 bg-zinc-950 text-white overflow-hidden select-none">
@@ -318,12 +375,12 @@ export default function KnockoutTrivia() {
           <motion.section key="lobby" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -24 }}
             className="relative z-10 flex h-full flex-col items-center justify-center gap-8 px-6 text-center">
             <div className="flex flex-col items-center gap-3">
-              <Icon d={ICONS.bolt} className="h-14 w-14 text-cyan-400 drop-shadow-[0_0_18px_rgba(34,211,238,.9)]" />
+              <Icon d={ICONS.wheel} className="h-14 w-14 text-cyan-400 drop-shadow-[0_0_18px_rgba(34,211,238,.9)]" />
               <h1 className="text-4xl font-black tracking-tight">
-                KNOCKOUT
-                <span className="block bg-gradient-to-r from-cyan-400 to-fuchsia-500 bg-clip-text text-transparent">NFL LIVE</span>
+                LAST DRIVE
+                <span className="block bg-gradient-to-r from-cyan-400 to-fuchsia-500 bg-clip-text text-transparent">STANDING</span>
               </h1>
-              <p className="text-sm text-zinc-400">100 enter. One wins. Call every drive, live.</p>
+              <p className="text-sm text-zinc-400">100 enter. One survives. Call every play, live.</p>
             </div>
             <div className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs text-zinc-400">
               <Icon d={ICONS.users} className="h-4 w-4 text-fuchsia-400" />
@@ -336,12 +393,26 @@ export default function KnockoutTrivia() {
           </motion.section>
         )}
 
+        {/* ---------------------------- HOST INTRO ----------------------------- */}
+        {phase === "intro" && (
+          <motion.section key="intro" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.15 }}
+            className="relative z-10 flex h-full flex-col items-center justify-center gap-5 px-6 text-center">
+            <motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 2.4, ease: "easeInOut" }}>
+              <Icon d={ICONS.wheel} className="h-20 w-20 text-fuchsia-400 drop-shadow-[0_0_30px_rgba(232,121,249,.9)]" />
+            </motion.div>
+            <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+              className="text-3xl font-black tracking-widest text-fuchsia-400">LAST DRIVER</motion.h2>
+            <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
+              className="max-w-xs text-lg font-semibold text-zinc-200">"{hostLine}"</motion.p>
+          </motion.section>
+        )}
+
         {/* ------------------------------ GAMEPLAY ----------------------------- */}
         {phase === "playing" && mode === "live" && (
           <motion.section key={`live-${round}`} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            className="relative z-10 flex h-full flex-col px-5 pt-5 pb-6">
-            <div className="flex items-center justify-between text-xs font-bold tracking-widest text-zinc-400">
+            className="relative z-10 flex h-full flex-col overflow-y-auto px-5 pt-5 pb-6">
+            <div className="flex items-center justify-between gap-2 text-xs font-bold tracking-widest text-zinc-400">
               <span className="whitespace-nowrap rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1.5">ROUND {round}/{TOTAL_ROUNDS}</span>
               <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] text-cyan-300">
                 <Icon d={ICONS.users} className="h-3.5 w-3.5" />
@@ -350,49 +421,48 @@ export default function KnockoutTrivia() {
             </div>
 
             {/* live game strip */}
-            <div className="mt-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 font-bold text-emerald-400">
+            <div className="mt-3 shrink-0 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-1.5 whitespace-nowrap font-bold text-emerald-400">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
                   LIVE · {game?.status || "…"}
                 </span>
-                <span className="font-black text-white">{game ? `${game.away.split(" ").pop()} ${game.as} - ${game.hs} ${game.home.split(" ").pop()}` : ""}</span>
+                <span className="whitespace-nowrap font-black text-white">{game ? `${game.away.split(" ").pop()} ${game.as} - ${game.hs} ${game.home.split(" ").pop()}` : ""}</span>
               </div>
               <div className="mt-2 min-h-8 text-xs leading-snug text-zinc-400">
-                {drive ? (
+                {drive?.lastPlay ? (
                   <>
-                    {drive.downDist ? <span className="font-bold text-zinc-300">{drive.downDist} · </span> : null}
-                    {drive.lastPlayText || "Waiting for the next play…"}
+                    {drive.lastPlay.downDist ? <span className="font-bold text-zinc-300">{drive.lastPlay.downDist} · </span> : null}
+                    {drive.lastPlay.text || "Waiting for the next play…"}
                   </>
-                ) : (game?.halftime ? "Halftime - next drive starts the second half." : "Between drives - next question loads with the next drive.")}
+                ) : (game?.halftime ? "Halftime - contest resumes with the second half." : "Between plays - next question loads with the next snap.")}
               </div>
             </div>
 
+            {hostLine ? <HostChip line={hostLine} /> : null}
+
             {/* question */}
             <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 shadow-[0_0_30px_rgba(0,0,0,.5)]">
-              {roundDrive ? (
-                <p className="text-xl font-bold leading-snug">
-                  How does this <span className="text-cyan-300">{roundDrive.offense || "offense"}</span> drive end?
-                </p>
+              {lq ? (
+                <p className="text-xl font-bold leading-snug">{lq.text}</p>
               ) : (
-                <p className="text-xl font-bold leading-snug text-zinc-400">Waiting for the next real drive…</p>
+                <p className="text-xl font-bold leading-snug text-zinc-400">Waiting for the next real play…</p>
               )}
-              {lastResolve && <p className="mt-2 text-xs text-zinc-500">{lastResolve}</p>}
             </div>
 
             {/* answers */}
             <div className="mt-5 flex flex-1 flex-col justify-end gap-3">
-              {DRIVE_OPTIONS.map((opt, i) => {
+              {(lq ? lq.options : []).map((opt, i) => {
                 const isPicked = picked === i;
                 const isRight = reveal !== null && i === reveal;
                 const isWrong = reveal !== null && isPicked && i !== reveal;
                 return (
-                  <motion.button key={opt} whileTap={{ scale: 0.97 }} onClick={() => pick(i)} disabled={!roundDrive}
+                  <motion.button key={opt} whileTap={{ scale: 0.97 }} onClick={() => pick(i)} disabled={!lq}
                     className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-4 text-left text-base font-semibold transition-colors
                       ${isRight ? "border-emerald-400 bg-emerald-500/20 text-emerald-300 shadow-[0_0_24px_rgba(52,211,153,.4)]"
                       : isWrong ? "border-red-500 bg-red-500/20 text-red-300 shadow-[0_0_24px_rgba(239,68,68,.4)]"
                       : isPicked ? "border-fuchsia-500 bg-fuchsia-500/15"
-                      : "border-zinc-800 bg-zinc-900/70 active:border-cyan-400/60"} ${!roundDrive ? "opacity-40" : ""}`}>
+                      : "border-zinc-800 bg-zinc-900/70 active:border-cyan-400/60"} ${!lq ? "opacity-40" : ""}`}>
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-black
                       ${isRight ? "bg-emerald-400 text-zinc-950" : isWrong ? "bg-red-500 text-white" : "bg-zinc-800 text-cyan-300"}`}>
                       {"ABCD"[i]}
@@ -409,8 +479,8 @@ export default function KnockoutTrivia() {
         {phase === "playing" && mode === "trivia" && (
           <motion.section key={`trivia-${qi}`} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            className="relative z-10 flex h-full flex-col px-5 pt-5 pb-6">
-            <div className="flex items-center justify-between text-xs font-bold tracking-widest text-zinc-400">
+            className="relative z-10 flex h-full flex-col overflow-y-auto px-5 pt-5 pb-6">
+            <div className="flex items-center justify-between gap-2 text-xs font-bold tracking-widest text-zinc-400">
               <span className="whitespace-nowrap rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1.5">R{Math.floor(qi / 4) + 1} · Q{(qi % 4) + 1}/4</span>
               <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] text-cyan-300">
                 <Icon d={ICONS.users} className="h-3.5 w-3.5" />
@@ -466,6 +536,7 @@ export default function KnockoutTrivia() {
               <p className="mt-3 text-lg text-zinc-300">You finished in <span className="font-black text-white">{placement ? ordinal(placement) : "?"}</span> place</p>
               <p className="mt-1 text-sm text-zinc-500">of {TOTAL_PLAYERS} players</p>
             </div>
+            {hostLine ? <HostChip line={hostLine} /> : null}
             <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
               {spectating ? (
                 <div className="flex items-center justify-center gap-2">
@@ -491,7 +562,8 @@ export default function KnockoutTrivia() {
             </motion.div>
             <div>
               <h2 className="bg-gradient-to-r from-amber-300 via-cyan-300 to-fuchsia-400 bg-clip-text text-5xl font-black tracking-tight text-transparent">CHAMPION</h2>
-              <p className="mt-3 text-lg text-zinc-300">You outlasted the lobby - <span className="font-black text-white">1st place</span> of {TOTAL_PLAYERS}</p>
+              <p className="mt-3 text-lg text-zinc-300">"{HOST.win}"</p>
+              <p className="mt-1 text-sm text-zinc-500">1st place of {TOTAL_PLAYERS}</p>
             </div>
             <motion.button whileTap={{ scale: 0.96 }} onClick={join}
               className="w-full max-w-sm rounded-2xl bg-gradient-to-r from-amber-400 to-fuchsia-600 px-6 py-4 text-base font-extrabold tracking-wide text-zinc-950 shadow-[0_0_40px_rgba(251,191,36,.35)]">
