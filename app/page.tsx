@@ -283,7 +283,10 @@ export default function LastDriveStanding() {
     targetedAt.current = Date.now();
     setHostLine(HOST.intro);
     setPhase("intro");
-    later(() => setPhase("playing"), 2800);
+    later(() => {
+      setPhase("playing");
+      if (nq) setHostLine(nq.kind === "convert" ? pick1(HOST.convert) : pick1(HOST.play));
+    }, 2800);
   };
 
   const beginTrivia = (qs: Q[], src: "live" | "pack") => {
