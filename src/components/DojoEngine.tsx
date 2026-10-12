@@ -387,6 +387,13 @@ function getChesterDifficulty(difficulty: string) {
   return 'INTERMEDIATE' as const;
 }
 
+// BUILD 155: module-level cache of decoded piece images. Scene instances come and go
+// (StrictMode remount, BuildWatcher reload) and iOS Safari occasionally drops a pending
+// SVG decode under memory pressure - either way a texture could silently never register
+// and its pieces rendered blank (his invisible black bishops). Decoded images are kept
+// here so any scene can re-register synchronously, forever.
+const pieceImageCache = new Map<string, HTMLImageElement>();
+
 export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE', rookieTeaching = false, domJails = false }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO'; rookieTeaching?: boolean; domJails?: boolean }) {
   const { p1Difficulty, p2Difficulty, setActiveChaosEvent } = useBrawlState();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -484,6 +491,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (!imageUrl || royalCatTextures[pieceType]) return;
               const image = new Image();
               image.onload = () => {
+                if (!scene.add || !scene.sys) return; // BUILD 155: dead remount scene - drop quietly
                 const textureKey = `royal-cat-${pieceType}`;
                 let source: HTMLImageElement | HTMLCanvasElement = image;
                 const MAX_CAT_PX = 288;
@@ -505,17 +513,34 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           // Piece textures: the SVG set rasterized at 288px - bitmaps once decoded, so
           // iOS emoji presentation can never override the art (batch 88).
+          // BUILD 155: decode results are cached at module scope, failures retry with
+          // backoff, late onloads from a dead remounted scene are dropped instead of
+          // crashing, and renderBoard re-registers from cache before drawing - a piece
+          // can never silently render blank again.
+          const registerPieceTexture = (color: 'w' | 'b', type: string, attempt = 0) => {
+            const key = `piece-${color}-${type}`;
+            if (!scene.add || !scene.sys) return;
+            if (scene.textures.exists(key)) return;
+            const cached = pieceImageCache.get(key);
+            if (cached) {
+              try { scene.textures.addImage(key, cached); } catch { return; }
+              renderBoard?.();
+              return;
+            }
+            const image = new Image();
+            image.onload = () => {
+              pieceImageCache.set(key, image);
+              if (!scene.add || !scene.sys) return; // dead StrictMode/remount scene - drop quietly
+              try { if (!scene.textures.exists(key)) scene.textures.addImage(key, image); } catch { return; }
+              renderBoard?.();
+            };
+            image.onerror = () => {
+              if (attempt < 5 && scene.add) setTimeout(() => registerPieceTexture(color, type, attempt + 1), 350 * (attempt + 1));
+            };
+            image.src = getPieceSpriteDataUrl(color, type) || '';
+          };
           (['w', 'b'] as const).forEach((color) => {
-            ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => {
-              const key = `piece-${color}-${type}`;
-              if (scene.textures.exists(key)) return;
-              const image = new Image();
-              image.onload = () => {
-                if (!scene.textures.exists(key)) scene.textures.addImage(key, image);
-                renderBoard?.();
-              };
-              image.src = getPieceSpriteDataUrl(color, type) || '';
-            });
+            ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => registerPieceTexture(color, type));
           });
 
           const jailY = 16;
@@ -632,16 +657,16 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             pathSquares.forEach((sq, i) => {
               const fp = centerOf(sq);
               const flash = scene.add.rectangle(fp.x, fp.y, tileSize * 0.94, tileSize * 0.94, 0xffd84d, 0).setDepth(28);
-              scene.tweens.add({ targets: flash, alpha: 0.5, duration: 110, delay: i * 70, yoyo: true, ease: 'Quad.Out', onComplete: () => flash.destroy() });
+              scene.tweens.add({ targets: flash, alpha: 0.75, duration: 150, delay: i * 70, yoyo: true, ease: 'Quad.Out', onComplete: () => flash.destroy() });
             });
             const trotMs = 460 + pathSquares.length * 70;
             if (attackingPiece) {
               const dest = centerOf(move.to);
               attackingPiece.setDepth(32);
-              scene.tweens.add({ targets: attackingPiece, x: dest.x, y: dest.y, duration: trotMs, ease: 'Sine.InOut', onUpdate: (_tw: any, t: any) => { t.y -= Math.abs(Math.sin(_tw.totalProgress * Math.PI * 5)) * 3; }, onComplete: () => attackingPiece.setAlpha(0) });
+              scene.tweens.add({ targets: attackingPiece, x: dest.x, y: dest.y, duration: trotMs, ease: 'Sine.InOut', onUpdate: (_tw: any, t: any) => { t.y -= Math.abs(Math.sin(_tw.totalProgress * Math.PI * 7)) * 7; }, onComplete: () => attackingPiece.setAlpha(0) });
             }
             const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0).setDepth(29);
-            scene.tweens.add({ targets: impact, scale: 1.8, alpha: { from: 0.45, to: 0 }, duration: 420, delay: trotMs, ease: 'Quad.Out', onComplete: () => impact.destroy() });
+            scene.tweens.add({ targets: impact, scale: 2.7, alpha: { from: 0.65, to: 0 }, duration: 520, delay: trotMs, ease: 'Quad.Out', onComplete: () => impact.destroy() });
             const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2).setAlpha(0);
             scene.tweens.add({ targets: legs, alpha: 1, duration: 120, delay: trotMs });
             scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 1250, delay: trotMs + 480, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
@@ -661,17 +686,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               showCaptureBubble(move);
             };
             // His capture spec: the taken piece pops larger, TIPS OVER, then waddles off.
-            capturedPiece.setScale(1.02);
-            scene.tweens.add({ targets: capturedPiece, scaleX: 1.4, scaleY: 1.4, duration: 200, delay: trotMs, ease: 'Back.Out' });
-            scene.tweens.add({ targets: capturedPiece, angle: 84, duration: 240, delay: trotMs + 210, ease: 'Bounce.Out' });
+            capturedPiece.setScale(1.08);
+            scene.tweens.add({ targets: capturedPiece, scaleX: 1.7, scaleY: 1.7, duration: 240, delay: trotMs, ease: 'Back.Out' });
+            scene.tweens.add({ targets: capturedPiece, angle: 102, duration: 300, delay: trotMs + 250, ease: 'Bounce.Out' });
             const moonwalk = scene.tweens.add({
               targets: capturedPiece,
               x: targetX,
               y: targetY,
               delay: trotMs + 480,
-              angle: { from: 84, to: -10 },
-              scaleX: { from: 1.4, to: 0.52 },
-              scaleY: { from: 1.4, to: 0.52 },
+              angle: { from: 102, to: -14 },
+              scaleX: { from: 1.7, to: 0.52 },
+              scaleY: { from: 1.7, to: 0.52 },
               duration: 1250,
               ease: 'Sine.InOut',
               onUpdate: (_tween, target) => {
@@ -1225,6 +1250,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           renderBoard = () => {
+            if (!scene.add || !scene.sys) return; // BUILD 155: a destroyed remount scene must never paint (was 12 boot crashes)
             (gameRef.current as any).selectLift = null;
             updateSpotlights();
             graphics.clear();
@@ -1440,9 +1466,23 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const isNeonBlind = gameRef.current.neonBlindnessColor === piece.color;
                   const displayPieceType = gameRef.current.trojanPawnSquare === squareName ? 'p' : piece.type;
                   const royalTexture = displayPieceType === piece.type && (piece.type === 'q' || piece.type === 'k') ? royalCatTextures[piece.type] : undefined;
+                  const pieceKey = `piece-${piece.color}-${displayPieceType}`;
+                  if (!royalTexture && !scene.textures.exists(pieceKey)) {
+                    const cached = pieceImageCache.get(pieceKey);
+                    if (cached) { try { scene.textures.addImage(pieceKey, cached); } catch { /* scene gone */ } }
+                    else registerPieceTexture(piece.color as 'w' | 'b', displayPieceType);
+                  }
+                  // Last resort so a piece can never be invisible: a letter on a team-tinted disc.
                   const pieceVisual = royalTexture
                     ? scene.add.image(0, 0, royalTexture).setDisplaySize(tileSize * 1.22, tileSize * 1.22).setOrigin(0.5)
-                    : scene.add.image(0, 0, `piece-${piece.color}-${displayPieceType}`).setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5);
+                    : scene.textures.exists(pieceKey)
+                      ? scene.add.image(0, 0, pieceKey).setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5)
+                      : (() => {
+                          const fb = scene.add.container(0, 0);
+                          fb.add(scene.add.circle(0, 0, tileSize * 0.42, isWhite ? 0x1d4ed8 : 0xc2410c, 0.95).setStrokeStyle(3, isWhite ? 0xbfdbfe : 0xffe27a, 1));
+                          fb.add(scene.add.text(0, 0, displayPieceType.toUpperCase(), { fontFamily: 'sans-serif', fontSize: `${Math.round(tileSize * 0.5)}px`, fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5));
+                          return fb;
+                        })();
 
                   // No permanent discs, no dimming - the board stays clean. Only the
                   // last move, a hint suggestion, and tapped-piece targets get marks.

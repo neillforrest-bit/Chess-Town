@@ -68,6 +68,7 @@ export default function BattlePage() {
   const [mood, setMood] = useState<'great' | 'good' | 'slip' | 'bad' | 'terrible' | null>(null);
   const [edu, setEdu] = useState<{ key: string; text: string } | null>(null);
   const [ghostArm, setGhostArm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const stateRef = useRef(state);
   const dbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const matchIdRef = useRef('');
@@ -446,6 +447,16 @@ export default function BattlePage() {
   const iCalled = paused && state.pausedBy === seat;
   return <main className={`battle-shell battle-arena${swing ? (swing.good ? ' battle-arena--roar' : ' battle-arena--silent') : ''}`}>
     <div className="battle-glow" aria-hidden="true" />
+    {!over && <div className="battle-menuwrap">
+      <button type="button" className="battle-menubtn" aria-label="Battle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>☰</button>
+      {menuOpen && <>
+        <button type="button" className="battle-menuwrap__scrim" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
+        <div className="battle-menu" role="menu">
+          <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); offerDraw(); }} disabled={state.drawBy === seat || !state.pgn}>{state.drawBy === seat ? 'DRAW OFFERED - WAITING' : '🤝 OFFER DRAW'}</button>
+          <button type="button" role="menuitem" className="battle-menu__danger" onClick={() => { setMenuOpen(false); resign(); }} disabled={!state.pgn}>🏳 RESIGN</button>
+        </div>
+      </>}
+    </div>}
     {swing && <div key={swing.n} className={`battle-banner ${swing.good ? 'battle-banner--roar' : 'battle-banner--silent'}`}>{swing.text}</div>}
     {countdown > 0 && <MatchCountdown key={countdown} />}
     <div className="battle-clock" data-active={running && turn !== myColor}><span>OPPONENT{opponentHere ? '' : ' (AWAY)'}</span><b>{fmt(theirs)}</b></div>
@@ -495,8 +506,6 @@ export default function BattlePage() {
         <button type="button" className="battle-btn battle-btn--sm" onClick={() => answerDraw(true)}>ACCEPT</button>
         <button type="button" className="battle-btn battle-btn--ghost" onClick={() => answerDraw(false)}>DECLINE</button>
       </> : <>
-        <button type="button" className="battle-btn battle-btn--ghost" onClick={offerDraw} disabled={state.drawBy === seat || !state.pgn}>{state.drawBy === seat ? 'DRAW SENT' : 'DRAW'}</button>
-        <button type="button" className="battle-btn battle-btn--ghost" onClick={resign} disabled={!state.pgn}>RESIGN</button>
         {myTurn && !myTimeoutUsed && <button type="button" className="battle-btn battle-btn--timeout" onClick={callTimeout}>CALL TIMEOUT</button>}
       </>}
       {state.takebackBy !== null && state.takebackBy !== seat ? <div className="battle-wildrow">
@@ -504,9 +513,14 @@ export default function BattlePage() {
         <button type="button" className="battle-btn battle-btn--sm" onClick={() => answerTakeback(true)}>ALLOW</button>
         <button type="button" className="battle-btn battle-btn--ghost" onClick={() => answerTakeback(false)}>NO WAY</button>
       </div> : <>
-        <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-takeback" onClick={askTakeback} disabled={myTakebackUsed || !state.pgn || turn === myColor || state.takebackBy !== null}>{state.takebackBy === seat ? '⏪ ASKED' : myTakebackUsed ? '⏪ SPENT' : '⏪ BACK'}</button>
-        <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-ghost" onClick={playGhost} disabled={myGhostUsed || !myTurn || !!ghostLive}>{myGhostUsed ? '👻 SPENT' : ghostLive ? '👻 ON' : '👻 GHOST'}</button>
-        <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-hint" onClick={askHint} disabled={myHintUsed || !myTurn}>{myHintUsed ? '💡 SPENT' : '💡 HINT'}</button>
+        <div className="battle-wildcards" aria-label="Wild cards">
+          <span className="battle-wildcards__label">WILD CARDS</span>
+          <div className="battle-wildcards__row">
+            <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-takeback" onClick={askTakeback} disabled={myTakebackUsed || !state.pgn || turn === myColor || state.takebackBy !== null}>{state.takebackBy === seat ? '⏪ ASKED' : myTakebackUsed ? '⏪ SPENT' : '⏪ BACK'}</button>
+            <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-ghost" onClick={playGhost} disabled={myGhostUsed || !myTurn || !!ghostLive}>{myGhostUsed ? '👻 SPENT' : ghostLive ? '👻 ON' : '👻 GHOST'}</button>
+            <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-hint" onClick={askHint} disabled={myHintUsed || !myTurn}>{myHintUsed ? '💡 SPENT' : '💡 HINT'}</button>
+          </div>
+        </div>
       </>}
     </div>}
     {paused && !iCalled && <div className="battle-overlay" role="alert"><h2>OPPONENT CALLED TIMEOUT</h2><p>Clocks are stopped. Hold your ground - the fight resumes when they are ready.</p></div>}
