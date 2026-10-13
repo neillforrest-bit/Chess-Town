@@ -324,7 +324,7 @@ export default function PlayRoom({ code }: { code: string }) {
     <div className="cs-receipts">
       <div><b>{r.overlap}/{DRAFT_SIZE}</b><span>drafts overlapped</span></div>
       <div><b>{r.wildWins}/{r.wildBouts}</b><span>wildcard wins</span></div>
-      <div><b>{r.cavedA}·{r.cavedB}</b><span>caved {s.players.A.name.slice(0, 5)}·{s.players.B.name.slice(0, 5)}</span></div>
+      {s.b8 ? <div><b>{100 - (s.b8.purse.A ?? 0)}·{100 - (s.b8.purse.B ?? 0)}</b><span>net spent {s.players.A.name.slice(0, 5)}·{s.players.B.name.slice(0, 5)}</span></div> : <div><b>{r.cavedA}·{r.cavedB}</b><span>caved {s.players.A.name.slice(0, 5)}·{s.players.B.name.slice(0, 5)}</span></div>}
     </div>
     <div className="cs-row">
       {!s.b8 && iLost && !s.fin.rematchUsed && !s.fin.tie && <button className="cs-btn cs-btn--bullet" onClick={() => { buzz(60); send({ t: 'rematch' }); }}>REMATCH</button>}

@@ -136,7 +136,7 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
       <div className="cs8-ex"><b>1 · THE WAR ROOM</b><p>You spent 100 hype tokens, held a Golden Ticket and loaded a Silver Bullet. Four titles each survived. Two conferences, one winner.</p></div>
       <div className="cs8-ex"><b>2 · THE SEEDING</b><p>Pure hype. Your Golden Ticket is your seed 1, the rest rank by tokens spent. Nobody else decides this, so blame yourselves.</p></div>
       <div className="cs8-ex"><b>3 · THE PATH</b><p>Quarterfinals cross the conferences: your #1 faces their #4, your #2 faces their #3. Win three bouts and your title is tonight&apos;s film.</p></div>
-      <div className="cs8-ex"><b>4 · THE BIDS</b><p>Every bout is a tug of war. Stake wager tokens from 1 up. Back the winner and the stake returns, back an upset and it returns double. A Golden Ticket wins any dead heat.</p></div>
+      <div className="cs8-ex"><b>4 · THE BIDS</b><p>Every bout is a tug of war. Stake wager tokens from 1 up. Every token you spend is gone for good, win or lose. Wild cards bend the odds. A Golden Ticket wins any dead heat.</p></div>
       <div className="cs8-ex"><b>5 · THE BRACKET RETURNS</b><p>After every bout we come back here. Green means through. Struck out means gone.</p></div>
     </div>}
     {stage === 'rank' && <div className="cs8-rank">{ranked.map((id) => <div key={id} className="cs8-rk"><i>{b.seed[id]}</i><b>{clip(BY_ID[id].t, tv ? 30 : 17)}</b><em>{tag(id)}</em></div>)}</div>}

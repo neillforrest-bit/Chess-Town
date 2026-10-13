@@ -109,7 +109,7 @@ export async function effects(code: string, origin: string): Promise<void> {
     const side = (id: number) => { const p = defender(id); return { t: BY_ID[id].t, y: BY_ID[id].y, r: BY_ID[id].r, by: s.players[p].name, pitch: f.pitch[p] || '' }; };
     const d = await orson(origin, { type: 'judge', roast: s.roast, rematch: f.rematchUsed, takeover: true, forced: f.forced !== undefined ? (f.forced === A.id ? 'A' : 'B') : undefined, a: side(A.id), b: side(B.id) }, 25000);
     if (d && d.winner) { await ap({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd || 0 }); await ap({ t: 'verdict', winner: d.winner === 'A' ? A.id : B.id, reason: d.verdict || '', lines: Array.isArray(d.lines) ? d.lines.slice(0, 4) : undefined }); }
-    else { const w = f.forced !== undefined ? f.forced : A.r >= B.r ? A.id : B.id; await ap({ t: 'verdict', winner: w, reason: 'Orson lost the signal, so the higher rated film takes it.', lines: [`${A.t} against ${B.t}. A fight for the ages, or at least for tonight.`, `${(A.r >= B.r ? B : A).t}, I say this with love: no.`, 'Drumroll, please. I have never been wrong. Mostly.'] }); }
+    else { const w = f.forced !== undefined ? f.forced : A.r >= B.r ? A.id : B.id; const lo = w === A.id ? B : A; const wn = BY_ID[w]; await ap({ t: 'verdict', winner: w, reason: 'Orson lost the signal, so the bids decide: the final bout stands.', lines: [`${A.t} against ${B.t}. A fight for the ages, or at least for tonight.`, `${lo.t}, I say this with love: no.`, 'The bout has spoken. I am only the messenger.'] }); void wn; }
   })());
 
   // Hit List and bracket: Orson writes a "why you'd like it" for every title that is on the table and has no pitch yet

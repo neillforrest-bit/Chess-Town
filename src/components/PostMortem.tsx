@@ -12,7 +12,7 @@ export default function PostMortem({ s }: { s: State }) {
     if (fresh) { seen.current.add(fresh.id); setId(fresh.id); const t = setTimeout(() => setId(null), 5000); return () => clearTimeout(t); }
   }); // eslint-disable-line react-hooks/exhaustive-deps
   const m = id ? s.b8?.matches.find((x) => x.id === id) : null; if (!m) return null;
-  const a = m.wg.A?.tok || 0, b = m.wg.B?.tok || 0; const w = m.winner === m.wg.A?.id ? s.players.A.name : s.players.B.name;
-  const line = m.mortem || `${s.players.A.name} spent ${a}, ${s.players.B.name} spent ${b}. ${w} takes it. ${a + b === 0 ? 'Pure apathy.' : Math.max(a, b) > 25 ? 'Desperation was noted.' : 'Restraint, how dull.'}`;
+  const a = m.wg.A?.tok || 0, b = m.wg.B?.tok || 0; const cf = s.b8?.conf?.[m.winner as number]; const w = cf ? s.players[cf.p].name : (m.wg.A?.id === m.winner ? s.players.A.name : s.players.B.name);
+  const line = m.mortem || `${s.players.A.name} spent ${a}, ${s.players.B.name} spent ${b}. ${w} takes it. ${a + b === 0 ? 'Pure apathy.' : Math.max(a, b) > 25 ? 'Desperation was noted.' : Math.max(a, b) >= 10 ? 'A proper wager.' : 'Small stakes.'}`;
   return <div className="cs-toast"><b>POST-MORTEM</b><span>{line}</span></div>;
 }

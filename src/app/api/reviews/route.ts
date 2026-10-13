@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       if (!rs.length) return;
       const score = (x: Rv) => (x.author_details?.rating == null ? 0.5 : Math.abs(x.author_details.rating - 5.5)) * 1000 + Math.min(x.content.length, 900) / 10;
       const best = rs.sort((a, b) => score(b) - score(a))[0];
-      let q = best.content.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').replace(/[*_#>]/g, '').trim();
+      let q = best.content.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').replace(/<[^>]*>?/g, ' ').replace(/https?:\/\/\S+/g, '').replace(/^\s*Full review:?\s*/i, '').replace(/[*_#>]/g, '').replace(/\s+/g, ' ').trim();
       const cut = q.slice(0, 170); const dot = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
       q = dot > 60 ? cut.slice(0, dot + 1) : cut.replace(/\s+\S*$/, '') + '...';
       out[id] = { a: best.author.slice(0, 20), q, r: best.author_details?.rating ?? null };

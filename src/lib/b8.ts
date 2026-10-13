@@ -258,6 +258,7 @@ export function finish(s: State, m: M8, winner: number, via: string, now: number
   const mult = gap >= R.UPSET_GAP ? R.UPSET_MULT : 1;
   if (gap > 0) b.upsets.push({ winner, loser, gap });
   for (const p of ['A', 'B'] as PID[]) { const w = m.wg[p]; if (w && w.id === winner) { b.backed[p]++; if (m.round > 1 && !R.NO_REFRESH) b.purse[p] += w.tok * mult; } }
+  if (b.wilds.includes(winner) || b.wilds.includes(loser)) s.stats.wildBouts++;
   if (BY_ID[winner] && b.wilds.includes(winner)) s.stats.wildWins++;
   s.log.unshift(`${BY_ID[winner].t} beats ${BY_ID[loser].t} (${via}).${gap >= R.UPSET_GAP ? ' UPSET!' : ''}`);
   const cl = b.calls; let champMock = '';
