@@ -281,6 +281,17 @@ export function excluded(m: Movie, t: number[], nos: string[] = []): boolean {
   return false;
 }
 // 0-100: how well a film fits the shared vibe (for the card)
+/** Honest mood match for one card: how well the film's genre tags and feel line up with the locked tropes. Returns the real percentage and the reason (best trope plus the tags that matched). */
+export function moodMatch(m: Movie, tropes: string[] | null | undefined, target: number[]): { pct: number; why: string } {
+  const axis = fitPct(m, target); const tags = tagsOf(m);
+  const names = (tropes || []).filter(Boolean); if (!names.length) return { pct: axis, why: '' };
+  let best = { n: '', hit: [] as string[], sc: -1 };
+  for (const n of names) { const tr = TROPE_MATRIX.find((x) => x.n === n); if (!tr) continue; const hit = tr.tastes.filter((x) => tags.includes(x)); const sc = hit.length / Math.min(2, tr.tastes.length); if (sc > best.sc) best = { n, hit, sc }; }
+  const tagFit = Math.min(1, Math.max(0, best.sc));
+  const pct = Math.max(5, Math.min(99, Math.round(tagFit * 60 + axis * 0.4)));
+  return { pct, why: best.sc > 0 ? best.n + ' · ' + best.hit.slice(0, 2).join('/') : 'weak match: ' + (tags.slice(0, 2).join('/') || 'mixed') };
+}
+const franchiseKey = (m: Movie) => m.t.toLowerCase().replace(/[:\-–].*$/, '').replace(/\b(part|chapter|vol\.?|volume)\b.*$/, '').replace(/\b([ivx]{1,4}|\d+)\b\s*$/, '').replace(/[^a-z0-9 ]/g, '').trim();
 export const fitPct = (m: Movie, t: number[]) => Math.max(0, Math.min(99, Math.round(100 - dist(vecOf(m), t) * 3.6)));
 export const W = [1.15, 1.15, 1, 0.8];
 export const wdist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + W[i] * (x - b[i]) ** 2, 0));
@@ -426,10 +437,12 @@ export function buildDeck(target: number[], code: string, banned: number[] = [],
   const ok = poolOf(kind, gm, cl).filter((m) => !m.w && !banned.includes(m.id));
   const jr = seeded(code, 'variety');
   const jit: Record<number, number> = {}; for (const m of poolOf(kind)) jit[m.id] = (jr() - 0.5) * 1.8; // per-night randomness: different titles surface each room
-  const score = (m: Movie) => (jit[m.id] || 0) + wdist(vecOf(m), target) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012 - tasteBonus(m, taste, actors) - subBonus(m);
-  const good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8).sort((x, y) => score(x) - score(y));
+  const score = (m: Movie) => (jit[m.id] || 0) + wdist(vecOf(m), target) - 0.15 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.004 - 2 * tasteBonus(m, taste, actors) - subBonus(m);
+  const wantTags = Array.from(new Set([...(taste.A || []), ...(taste.B || [])])); const onVibe = (m: Movie) => !wantTags.length || tagsOf(m).some((x) => wantTags.includes(x));
+  let good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 6.2 && onVibe(m)).sort((x, y) => score(x) - score(y)); if (good.length < 40) good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8 && onVibe(m)).sort((x, y) => score(x) - score(y));
   const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
-  const ids = [...good, ...rest].slice(0, 150).map((m) => m.id);
+  const seenF = new Set<string>(); const pool = [...good, ...rest]; const lead: Movie[] = [], later: Movie[] = []; for (const m of pool) { const k = franchiseKey(m); if (!seenF.has(k) || k.length < 3) { seenF.add(k); lead.push(m); } else later.push(m); }
+  const ids = [...lead, ...later].slice(0, 150).map((m) => m.id);
   if (ids.length < 30) for (const m of ok.sort((x, y) => score(x) - score(y))) { if (ids.length >= 40) break; if (!ids.includes(m.id)) ids.push(m.id); }
   if (gm === 'clash' && cl) { const A = ids.filter((i) => BY_ID[i].g.includes(cl[0])), B = ids.filter((i) => !BY_ID[i].g.includes(cl[0])); const o: number[] = []; for (let i = 0; i < Math.max(A.length, B.length); i++) { if (A[i] !== undefined) o.push(A[i]); if (B[i] !== undefined) o.push(B[i]); } return o; }
   return shuffled(ids, code, 'deck');

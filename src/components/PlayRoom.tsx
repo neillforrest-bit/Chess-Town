@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
+import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import CineSyncPipeline from './CineSyncPipeline';
 import TokenHUD from './TokenHUD';
@@ -41,6 +41,15 @@ function ScrollCard({ children }: { children: React.ReactNode }) {
   return <div className="cs-cardwrap"><div className="cs-card" ref={r} onScroll={chk}>{children}</div>{more && <div className="cs-more">SCROLL FOR MORE ▼</div>}</div>;
 }
 
+/** v3.4 MOOD BOARD: six tonight-moods replace the bare sliders as the first calibration screen. v = [dark/light, indie/blockbuster, brainy/brain-off] slider values. */
+const MOODS: { k: string; e: string; n: string; ex: string; v: number[] }[] = [
+  { k: 'cozy', e: '🧸', n: 'COZY & LIGHT', ex: 'Paddington 2 · Mamma Mia!', v: [88, 45, 85] },
+  { k: 'edge', e: '😰', n: 'EDGE OF YOUR SEAT', ex: 'Prisoners · Sicario', v: [30, 65, 60] },
+  { k: 'mind', e: '🌀', n: 'MIND-BENDERS', ex: 'Inception · Primer', v: [40, 30, 8] },
+  { k: 'big', e: '💥', n: 'BIG SPECTACLE', ex: 'Dune · Top Gun: Maverick', v: [62, 95, 85] },
+  { k: 'dark', e: '🕯️', n: 'DARK & DREADFUL', ex: 'Hereditary · The Witch', v: [8, 30, 40] },
+  { k: 'heart', e: '💛', n: 'HEARTSTRINGS', ex: 'Past Lives · Coco', v: [55, 25, 55] },
+];
 const CARD_CACHE = new Map<number, CardInfo>();
 
 function loadCard(id: number, send: (i: Intent) => void, bump: () => void) {
@@ -88,7 +97,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const [pitchText, setPitchText] = useState('');
   const [tkDone, setTkDone] = useState('');
   const [tapN, setTapN] = useState(0);
-  const [slv, setSlv] = useState<number[]>([50, 50, 50]);
+  const [slv, setSlv] = useState<number[]>([50, 50, 50]); const [moodSel, setMoodSel] = useState<string[]>([]); const [fine, setFine] = useState(false);
   const [swap, setSwap] = useState<number | null>(null);
   const lastTapSend = useRef(0);
   const tapKey = useRef('');
@@ -167,10 +176,12 @@ export default function PlayRoom({ code }: { code: string }) {
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
     // THE VIBE CHECK (v2.0): three sliders feed live TMDB discovery; the trope matrix stays as the flavour layer.
     if (!s.vibe.sl?.[pid]) { const LB = [['Dark / Gritty', 'Light / Fun'], ['Indie / Auteur', 'Blockbuster'], ['Brain-Bending', 'Turn-Brain-Off']];
-      return shell(<div className="cs-ask cs-ask--tight"><div className="cs-orson">THE VIBE CHECK · 3 SLIDERS</div>
-        {LB.map((l, i) => <div key={i} className="cs-sl"><div className="cs-sl-l"><span>{l[0]}</span><span>{l[1]}</span></div><input type="range" min={0} max={100} value={slv[i]} onChange={(e) => { const v = [...slv]; v[i] = Number(e.target.value); setSlv(v); }} /><em>{slv[i]}</em></div>)}
+      return shell(<div className="cs-ask cs-ask--tight"><div className="cs-orson">TONIGHT&apos;S MOOD · PICK UP TO 2</div>
+        <div className="cs-moods">{MOODS.map((mo) => { const on = moodSel.includes(mo.k); return <button key={mo.k} className={'cs-mood' + (on ? ' is-on' : '')} onClick={() => { buzz(10); const sel = on ? moodSel.filter((x) => x !== mo.k) : [...moodSel, mo.k].slice(-2); setMoodSel(sel); const ms = MOODS.filter((x) => sel.includes(x.k)); if (ms.length) setSlv([0, 1, 2].map((i) => Math.round(ms.reduce((q, x) => q + x.v[i], 0) / ms.length))); }}><i>{mo.e}</i><b>{mo.n}</b><em>{mo.ex}</em></button>; })}</div>
+        <button className="cs-fine" onClick={() => setFine(!fine)}>{fine ? 'HIDE FINE-TUNE' : 'FINE-TUNE SLIDERS'}</button>
+        {fine && LB.map((l, i) => <div key={i} className="cs-sl"><div className="cs-sl-l"><span>{l[0]}</span><span>{l[1]}</span></div><input type="range" min={0} max={100} value={slv[i]} onChange={(e) => { const v = [...slv]; v[i] = Number(e.target.value); setSlv(v); }} /><em>{slv[i]}</em></div>)}
         <ConsPicker value={cons} onChange={setCons} />
-        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv, cons }); }}>LOCK MY VIBE</button></div>); }
+        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv, cons }); }}>NEXT: SWIPE YOUR VIBES</button></div>); }
     // v2.1 VIBE SWIPER: one vibe phrase at a time; the first 3 both players swipe right on lock in instantly.
     const mineT = s.vibe.tropes?.[pid] || null; const swm = s.vibe.sw?.[pid] || {};
     const order = [...TROPE_NAMES].sort((x, y) => hashStr(s.code + x) - hashStr(s.code + y)); const cur = order.find((x) => swm[x] === undefined);
@@ -196,7 +207,7 @@ export default function PlayRoom({ code }: { code: string }) {
     const m = BY_ID[id]; const sur = s.draft.inbox[pid][0] === id ? s.draft.sur[id] : undefined;
     const ask = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); setWhy([]); setPend(null); send({ t: 'swipe', pid, id, yes, why: [] }); };
     const go = (yes: boolean, w: string[] = []) => { setPend(null); setWhy([]); send({ t: 'swipe', pid, id, yes, why: w }); };
-    const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]);
+    const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]); const mm = moodMatch(m, s.vibe.tropes?.A, s.vibe.target || [5, 5, 5, 5]);
     const critic = m.rt != null ? (m.rt >= 85 ? 'Critics raved' : m.rt >= 70 ? 'Critics liked it' : m.rt >= 50 ? 'Critics were split' : 'Critics were not kind') : m.mc != null ? (m.mc >= 70 ? 'Critics liked it' : m.mc >= 50 ? 'Critics were mixed' : 'Critics were not kind') : null;
     const runtime = m.sr ? `${m.sr.s} season${m.sr.s === 1 ? '' : 's'} · ${m.sr.e} eps · ~${m.rn} min` : m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
     const vn = s.dx?.vn[pid] ?? (pw.bullet ? 1 : 0); const gt = s.dx?.gt[pid] ?? false; const golden = s.dx?.gold.A === id || s.dx?.gold.B === id;
@@ -205,7 +216,8 @@ export default function PlayRoom({ code }: { code: string }) {
       onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
       onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70 && pend === null) ask(dx > 0); }}>
       <PivotModal s={s} pid={pid} send={send as (i: Intent) => void} />
-      <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><DraftTimer k={id} paused={pend !== null} onZero={() => go(false)} /><span className="cs-fit">{fit}% TONIGHT&apos;S MOOD</span></div>
+      <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><DraftTimer k={id} paused={pend !== null} onZero={() => go(false)} /><span className="cs-fit">{mm.pct}% MOOD</span></div>
+      {mm.why && <div className="cs-why"><em>WHY THIS CARD</em> {mm.why}{s.vibe.tropes?.A ? ' · locked: ' + s.vibe.tropes.A.join(', ') : ''}</div>}
       <PassPips s={s} pid={pid} />
       <ScrollCard key={id}>
         {sur && <div className="cs-surprise">SURPRISE FROM {s.players[sur].name.toUpperCase()}</div>}
