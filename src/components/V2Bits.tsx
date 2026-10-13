@@ -38,7 +38,7 @@ export function PivotModal({ s, pid, send }: { s: State; pid: PID; send: (i: Int
 
 /** consecutive-pass meter + the strict rules in force, shown under the draft counter */
 export function PassPips({ s, pid }: { s: State; pid: PID }) {
-  const n = s.dx?.passes[pid].length || 0; const lab = consLabel(s.cons); const sup = (s.dx?.sup[pid] || []).filter((x) => x.until > s.draft.learn[pid].n);
+  const n = s.dx?.passes[pid].length || 0; const lab = (['A', 'B'] as const).flatMap((q) => consLabel(s.consP?.[q]).map((x) => x + ' · ' + s.players[q].name.slice(0, 6))).filter((x, i, a) => a.indexOf(x) === i); const sup = (s.dx?.sup[pid] || []).filter((x) => x.until > s.draft.learn[pid].n);
   if (n < 3 && !lab.length && !sup.length) return null;
   return <div className="cs-pips">
     {n >= 3 && <span className={'cs-pips-r' + (n >= 7 ? ' hot' : '')}>{Array.from({ length: PIVOT_N }, (_, i) => <i key={i} className={i < n ? 'on' : ''} />)}<b>{n} PASSES IN A ROW</b></span>}

@@ -318,7 +318,7 @@ export default function PlayRoom({ code }: { code: string }) {
     <Confetti />
     <div className="cs-orson">TONIGHT YOU WATCH</div>
     {w && <><Poster id={w.id} big cls="cs-poster--win" /><h2>{w.t}</h2></>}
-    {w && (() => { const ci = CARD_CACHE.get(w.id); return ci && ci !== 'err' && ci !== 'wait' && ci.providers && ci.providers.names.length > 0 ? <p className="cs-small cs-watch"><em>WATCH ON</em> {ci.providers.names.slice(0, 4).join(' · ')} <span className="cs-jw">({ci.providers.region}) Streaming data by JustWatch</span></p> : null; })()}
+    {w && <WhereToWatch id={w.id} tv={!!w.sr} />}
     {s.fin.verdict?.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
     {!s.fin.tie && s.fin.loser && <p className="cs-small cs-gold">{s.players[s.fin.loser].name} owes the popcorn. {led || ''}</p>}
     <div className="cs-receipts">
@@ -337,4 +337,24 @@ export default function PlayRoom({ code }: { code: string }) {
 function TapSync({ n, send, pid }: { n: number; send: (i: { t: 'tapcount'; pid: PID; n: number }) => void; pid: PID }) {
   useEffect(() => { const t = setTimeout(() => send({ t: 'tapcount', pid, n }), 120); return () => clearTimeout(t); }, [n]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
+}
+
+
+type WatchInfo = { ok: boolean; region?: string; stream?: string[]; free?: string[]; rent?: string[]; buy?: string[] };
+const WATCH_CACHE = new Map<number, WatchInfo>();
+/** Where to watch the locked winner: TMDB providers via /api/watch (independent of the AI). */
+function WhereToWatch({ id, tv }: { id: number; tv: boolean }) {
+  const [info, setInfo] = useState<WatchInfo | null>(WATCH_CACHE.get(id) || null);
+  useEffect(() => {
+    if (WATCH_CACHE.has(id)) return; let live = true;
+    fetch('/api/watch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: tv ? id - 10000000 : id, tv }) })
+      .then((r) => r.json()).then((d: WatchInfo) => { WATCH_CACHE.set(id, d); if (live) setInfo(d); }).catch(() => { if (live) setInfo({ ok: false }); });
+    return () => { live = false; };
+  }, [id, tv]);
+  if (!info) return <p className="cs-small cs-watch"><em>WHERE TO WATCH</em> checking...</p>;
+  if (!info.ok) return <p className="cs-small cs-watch"><em>WHERE TO WATCH</em> streaming data unavailable right now</p>;
+  const rows: [string, string[] | undefined][] = [['STREAM', info.stream], ['FREE', info.free], ['RENT', info.rent], ['BUY', info.buy]];
+  const shown = rows.filter(([, v]) => v && v.length);
+  if (!shown.length) return <p className="cs-small cs-watch"><em>WHERE TO WATCH</em> no streaming listing found in {info.region}</p>;
+  return <div className="cs-watch cs-watch--box"><em>WHERE TO WATCH · {info.region}</em>{shown.slice(0, 3).map(([k, v]) => <p key={k}><b>{k}</b> {(v as string[]).join(' · ')}</p>)}<span className="cs-jw">Streaming data by JustWatch via TMDB</span></div>;
 }

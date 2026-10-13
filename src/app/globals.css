@@ -680,3 +680,4 @@ body[data-gm=clash] .cs-play[class*=cw-]{background:linear-gradient(115deg,#4a0b
 .cs-toast{bottom:auto!important;top:92px}
 .cs-tk-film.is-in{transform:scale(1.12)}
 .cs-takeover{overflow:hidden}
+.cs-watch--box{display:flex;flex-direction:column;gap:3px;margin:6px 0;padding:8px 12px;border:1px solid #35e0a1aa;border-radius:12px;background:#06140fcc;text-align:left;font-size:.78rem}.cs-watch--box em{font-style:normal;font-size:.6rem;letter-spacing:.18em;color:#35e0a1}.cs-watch--box p{margin:0}.cs-watch--box b{color:#f5c542;margin-right:4px}

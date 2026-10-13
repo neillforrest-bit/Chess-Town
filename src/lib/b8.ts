@@ -5,7 +5,7 @@ import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type P
 
 export const R = {
   HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 40000, CALLS_MS: [9000, 9000, 10000, 11000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
-  NO_REFRESH: true, WC_STEAL: 10, WC_MUL: 2,
+  NO_REFRESH: true, RATING_W: 0.4, WC_STEAL: 10, WC_MUL: 2,
   PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
@@ -104,6 +104,8 @@ export function resolveHit(s: State, now: number) {
 }
 
 /** Seeding score: movies 0.4 RT + 0.3 TMDB + 0.3 swipe velocity; series TMDB only (0.7) + velocity (0.3). */
+/** Rating on a 0-100 scale from the catalogue's TMDB score (the only rating stored on every title). RT/Metacritic/IMDB are fetched live per card and are not in server state, so they are not used here yet. */
+export function ratingPts(id: number): number { const m = BY_ID[id]; return m && m.r ? m.r * 10 : 0; }
 function seedScore(s: State, id: number): number {
   const m = BY_ID[id]; const isSeries = s.kind === 'series';
   const vi = (p: PID) => { const i = s.draft.picks[p].indexOf(id); return i < 0 ? null : 1 - i / 10; };
@@ -124,7 +126,7 @@ export function buildBracket(s: State, now: number) {
   const mine: Record<PID, number[]> = { A: [], B: [] };
   for (const id of surv) { const o = h.owner[id]; mine[o === 'AB' ? (tk('B', id) > tk('A', id) ? 'B' : 'A') : (o as PID)].push(id); }
   if (gA !== null && gB === gA) { /* both ticketed the same shared title: it stays with its owner by tokens, the other conference simply has no champion */ }
-  const rank = (p: PID) => { const g = golden(p); const rest = mine[p].filter((x) => x !== g).sort((a, c) => tk(p, c) - tk(p, a) || score(c) - score(a) || a - c); return g !== null && mine[p].includes(g) ? [g, ...rest] : rest; };
+  const rank = (p: PID) => { const g = golden(p); const key = (x: number) => tk(p, x) + R.RATING_W * ratingPts(x); const rest = mine[p].filter((x) => x !== g).sort((a, c) => key(c) - key(a) || score(c) - score(a) || a - c); return g !== null && mine[p].includes(g) ? [g, ...rest] : rest; };
   let rA = rank('A'), rB = rank('B');
   // guard: a Silver Bullet can leave a conference short; backfill from the other conference's surplus
   while (rA.length < 4 && rB.length > 4) rA.push(rB.pop() as number);
