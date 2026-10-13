@@ -9,6 +9,9 @@ import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactio
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import CineSyncPipeline from './CineSyncPipeline';
 import TokenHUD from './TokenHUD';
+import { ConsPicker, PivotModal, PassPips, EconomyBar, useGraveSync } from './V2Bits';
+import { newCons, type Cons } from '@/lib/cons';
+import { setTokens } from '@/lib/tokenStore';
 import PostMortem from './PostMortem';
 import { OrsonFace, Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
@@ -109,6 +112,9 @@ export default function PlayRoom({ code }: { code: string }) {
   const [actor, setActor] = useState('');
   const [arm, setArm] = useState('');
   const [bp, setBp] = useState<'' | 'bullet' | 'veto'>('');
+  const [cons, setCons] = useState<Cons>(newCons());
+  useGraveSync(s, code, send as (i: Intent) => void);
+  useEffect(() => { if (s?.b8) setTokens(code, s.b8.purse); }, [s?.b8?.purse.A, s?.b8?.purse.B, code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mt = s && s.phase === 'bracket' ? s.br.matches[s.br.cur] : null;
   useEffect(() => { const k = mt?.tap ? mt.id : ''; if (k !== tapKey.current) { tapKey.current = k; setTapN(0); if (k) buzz([30, 40, 30]); } }, [mt?.id, mt?.tap]);
@@ -128,7 +134,8 @@ export default function PlayRoom({ code }: { code: string }) {
   const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
   const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
   const hud = s.b8 && s.phase === 'bracket' ? <TokenHUD s={s} me={pid} /> : null;
-  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} now={now} send={send as (i: Intent) => void}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{foot}<PostMortem s={s} /></CineSyncPipeline>;
+  const eco = s.b8 && s.phase === 'bracket' && !s.b8.show ? <EconomyBar s={s} me={pid} code={code} /> : null;
+  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} now={now} send={send as (i: Intent) => void}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{eco}{foot}<PostMortem s={s} /></CineSyncPipeline>;
   const led = ledgerLine(s);
 
   // ---- LOBBY
@@ -162,7 +169,8 @@ export default function PlayRoom({ code }: { code: string }) {
     if (!s.vibe.sl?.[pid]) { const LB = [['Dark / Gritty', 'Light / Fun'], ['Indie / Auteur', 'Blockbuster'], ['Brain-Bending', 'Turn-Brain-Off']];
       return shell(<div className="cs-ask cs-ask--tight"><div className="cs-orson">THE VIBE CHECK · 3 SLIDERS</div>
         {LB.map((l, i) => <div key={i} className="cs-sl"><div className="cs-sl-l"><span>{l[0]}</span><span>{l[1]}</span></div><input type="range" min={0} max={100} value={slv[i]} onChange={(e) => { const v = [...slv]; v[i] = Number(e.target.value); setSlv(v); }} /><em>{slv[i]}</em></div>)}
-        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv }); }}>LOCK MY VIBE</button></div>); }
+        <ConsPicker value={cons} onChange={setCons} />
+        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv, cons }); }}>LOCK MY VIBE</button></div>); }
     // v2.1 VIBE SWIPER: one vibe phrase at a time; the first 3 both players swipe right on lock in instantly.
     const mineT = s.vibe.tropes?.[pid] || null; const swm = s.vibe.sw?.[pid] || {};
     const order = [...TROPE_NAMES].sort((x, y) => hashStr(s.code + x) - hashStr(s.code + y)); const cur = order.find((x) => swm[x] === undefined);
@@ -191,11 +199,14 @@ export default function PlayRoom({ code }: { code: string }) {
     const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]);
     const critic = m.rt != null ? (m.rt >= 85 ? 'Critics raved' : m.rt >= 70 ? 'Critics liked it' : m.rt >= 50 ? 'Critics were split' : 'Critics were not kind') : m.mc != null ? (m.mc >= 70 ? 'Critics liked it' : m.mc >= 50 ? 'Critics were mixed' : 'Critics were not kind') : null;
     const runtime = m.sr ? `${m.sr.s} season${m.sr.s === 1 ? '' : 's'} · ${m.sr.e} eps · ~${m.rn} min` : m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
-    const press = (kind: 'veto' | 'surprise') => { const key = kind + ':' + id; if (arm === key) { buzz([40, 30, 60]); setArm(''); send({ t: kind, pid, id }); } else setArm(key); };
+    const vn = s.dx?.vn[pid] ?? (pw.bullet ? 1 : 0); const gt = s.dx?.gt[pid] ?? false; const golden = s.dx?.gold.A === id || s.dx?.gold.B === id;
+    const press = (kind: 'veto' | 'surprise' | 'gold') => { const key = kind + ':' + id; if (arm === key) { buzz([40, 30, 60]); setArm(''); send({ t: kind, pid, id }); } else setArm(key); };
     return shell(<div className="cs-draft"
       onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
       onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70 && pend === null) ask(dx > 0); }}>
+      <PivotModal s={s} pid={pid} send={send as (i: Intent) => void} />
       <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><DraftTimer k={id} paused={pend !== null} onZero={() => go(false)} /><span className="cs-fit">{fit}% TONIGHT&apos;S MOOD</span></div>
+      <PassPips s={s} pid={pid} />
       <ScrollCard key={id}>
         {sur && <div className="cs-surprise">SURPRISE FROM {s.players[sur].name.toUpperCase()}</div>}
         <div className="cs-card-top">
@@ -217,7 +228,8 @@ export default function PlayRoom({ code }: { code: string }) {
       </ScrollCard>
       {pend === null ? <>
         <div className="cs-powers cs-powers--big">
-          <button className={'cs-pw cs-pw--bullet' + (pw.bullet ? ' is-ready' : '') + (arm === 'veto:' + id ? ' is-armed' : '')} disabled={!pw.bullet} onClick={() => press('veto')}><b>{!pw.bullet ? 'BULLET SPENT' : arm === 'veto:' + id ? 'TAP TO FIRE' : 'SILVER BULLET'}</b><small>{pw.bullet ? 'erase this film for both of you' : 'one per game'}</small></button>
+          <button className={'cs-pw cs-pw--gold' + (gt ? ' is-ready' : '') + (arm === 'gold:' + id ? ' is-armed' : '')} disabled={!gt} onClick={() => press('gold')}><b>{!gt ? 'TICKET SPENT' : arm === 'gold:' + id ? 'TAP TO LOCK' : 'GOLDEN TICKET'}</b><small>{gt ? 'straight into your Top 10' : 'one per player'}</small></button>
+          <button className={'cs-pw cs-pw--bullet' + (vn > 0 && !golden ? ' is-ready' : '') + (arm === 'veto:' + id ? ' is-armed' : '')} disabled={vn < 1 || golden} onClick={() => press('veto')}><b>{vn < 1 ? 'VETOES SPENT' : arm === 'veto:' + id ? 'TAP TO BURY' : 'VETO · ' + vn + ' LEFT'}</b><small>{vn > 0 ? '🪦 buried forever, for both' : 'two per player'}</small></button>
           <button className={'cs-pw cs-pw--surprise' + (pw.surprise ? ' is-ready' : '') + (arm === 'surprise:' + id ? ' is-armed' : '')} disabled={!pw.surprise} onClick={() => press('surprise')}><b>{!pw.surprise ? 'SURPRISE SPENT' : arm === 'surprise:' + id ? 'TAP TO SEND' : 'SURPRISE ' + them.name.slice(0, 8).toUpperCase()}</b><small>{pw.surprise ? 'gift this to their stack' : 'one per game'}</small></button>
         </div>
         <div className="cs-swipes"><button className="cs-btn cs-btn--no" onClick={() => ask(false)}>PASS</button><button className="cs-btn cs-btn--gold" onClick={() => ask(true)}>DRAFT</button></div>

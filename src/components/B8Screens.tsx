@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BY_ID, TROPE_NAMES, type Intent, type PID, type State } from '@/lib/game';
 import { R, bars, previewMatches, type M8 } from '@/lib/b8';
 import { Poster, secs, buzz, Scores, OrsonFace } from './shared';
+import { WildRow } from './V2Bits';
 
 type P = { s: State; pid: PID; send: (i: Intent) => void; now: number };
 const pitchOf = (s: State, id: number) => (s.draft.pitches[id] || BY_ID[id].o || '').replace(/\s+/g, ' ');
@@ -163,6 +164,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
   return <div className={'cs8-br' + '' + (m.round === 4 ? ' cs8-final' : '')}>
     <div className="cs8-top"><span className="cs-orson">{RNDN[m.round - 1]}{m.round < 4 ? ` · ${m.slot - OFFR(b, m.round) + 1}/${b.matches.filter((x) => x.round === m.round).length}` : ''}</span>{m.status === 'VOTING_ACTIVE' && !m.trivia && (m.round === 1 ? m.endsAt : m.bidEnds) ? <b className={'cs8-clock cs8-bigclock' + (secs((m.round === 1 ? m.endsAt : m.bidEnds) as number, now) <= 5 ? ' is-hot' : '')}>{secs((m.round === 1 ? m.endsAt : m.bidEnds) as number, now)}s</b> : null}<button className="cs8-mapbtn" onClick={() => setMap(true)}>BRACKET</button></div>
     {m.round > 1 ? <div className="cs8-tokrow">{[pid, other].map((p) => { const l = m.wg[p] || m.live?.[p]; return <div key={p} className={'cs8-tkc' + (p === pid ? ' is-me' : '')}><small>{p === pid ? 'YOU' : s.players[p].name.toUpperCase().slice(0, 8)}{m.wg[p] ? ' · LOCKED' : ''}</small><b>◈ {b.purse[p]}</b><em>{l ? `${l.tok} on ${nm(l.id, 12)}` : 'no bid yet'}</em></div>; })}</div> : <p className="cs8-tokc">Blitz is free</p>}
+    {m.status !== 'RESOLVED' && <WildRow s={s} pid={pid} send={send} />}
     {map && <div className="cs-sheet" onClick={() => setMap(false)}><div className="cs-sheet-in"><BracketMap s={s} /></div></div>}
     {m.status === 'LOCKED_FOR_VETO' && <div className="cs8-glitch"><b>ORSON IS RUINING YOUR BRACKET...</b></div>}
     {m.wc && <div className={'cs8-wc cs8-wc--' + m.wc}><b>{m.wc === 'blind' ? '🎲 WILDCARD · BLIND BET' : m.wc === 'swap' ? '🎲 WILDCARD · GENRE SWAP' : '🎲 WILDCARD · RESURRECTION'}</b><span>{m.wc === 'blind' ? 'Posters and titles masked. Bet on the synopsis.' : m.wc === 'swap' ? `${m.was ? clip(BY_ID[m.was.a].t, 14) + ' and ' + clip(BY_ID[m.was.b].t, 14) + ' ' : ''}swapped for two cult/vintage picks.` : 'An eliminated film is back in the fight.'}</span></div>}

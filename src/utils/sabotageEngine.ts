@@ -1,4 +1,5 @@
 /** CineSync v3.0 sabotage + chaos: one use per session per player (Veto, Block, Genre Roulette, Orson Takes the Wheel), Feline Intervention (5%), Spectacle Multiplier. Pure state mutations; game.ts's reducer calls sabIntent. */
+import { consOk } from '@/lib/cons';
 import { BY_ID, poolOf, seeded, shuffled, type State, type Sab, type Wheel, type SabKey, type PID, type Movie } from '@/lib/game';
 import { finish, type B8, type M8 } from '@/lib/b8';
 
@@ -73,9 +74,9 @@ export function genreRoulette(s: State): string | null {
   if (!opts.length) return null; const r = seeded(s.code, 'roulette' + (s.log.length)); return opts[Math.floor(r() * opts.length)];
 }
 export function genreDeck(s: State, genre: string): number[] {
-  const ban = new Set([...(s.seenBan || []), ...s.draft.picks.A, ...s.draft.picks.B]);
-  const ok = poolOf(s.kind, s.gm, s.cl).filter((m) => !m.w && m.g.includes(genre) && m.r >= 5.8 && !ban.has(m.id)).sort((a, c) => c.r + c.pop / 400 - (a.r + a.pop / 400)).slice(0, 40).map((m) => m.id);
-  const rest = poolOf(s.kind, s.gm, s.cl).filter((m) => !m.w && !ban.has(m.id) && !ok.includes(m.id) && m.r >= 6.6).sort((a, c) => c.r - a.r).map((m) => m.id);
+  const ban = new Set([...(s.seenBan || []), ...(s.grave || []), ...s.draft.picks.A, ...s.draft.picks.B]);
+  const ok = poolOf(s.kind, s.gm, s.cl).filter((m) => !m.w && m.g.includes(genre) && m.r >= 5.8 && !ban.has(m.id) && consOk(m, s.cons)).sort((a, c) => c.r + c.pop / 400 - (a.r + a.pop / 400)).slice(0, 40).map((m) => m.id);
+  const rest = poolOf(s.kind, s.gm, s.cl).filter((m) => !m.w && !ban.has(m.id) && !ok.includes(m.id) && m.r >= 6.6 && consOk(m, s.cons)).sort((a, c) => c.r - a.r).map((m) => m.id);
   return [...shuffled(ok, s.code, 'rdeck' + genre), ...shuffled(rest.slice(0, Math.max(0, 36 - ok.length)), s.code, 'rpad' + genre)].slice(0, 40);
 }
 

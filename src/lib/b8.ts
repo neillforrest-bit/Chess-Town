@@ -5,6 +5,7 @@ import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type P
 
 export const R = {
   HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 40000, CALLS_MS: [9000, 9000, 10000, 11000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  NO_REFRESH: true, WC_STEAL: 10, WC_MUL: 2,
   PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
@@ -19,9 +20,15 @@ export type M8 = {
   winner: number | null; mortem?: string; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
   live?: { A?: { id: number; tok: number }; B?: { id: number; tok: number } }; bidEnds?: number;
   blk?: { by: PID; target: PID }; veto?: { by: PID; dead: number }; orsonPick?: { by: PID; winner: number }; cat?: { by: string; out: number; in: number } | null;
+  mul?: PID; spy?: PID[]; thief?: PID;
   wc?: 'blind' | 'swap' | 'res' | null; cry?: { a: string; b: string; ai?: boolean }; was?: { a: number; b: number };
 };
+export type WK = 'spy' | 'mul' | 'thief';
+export const WK_ALL: WK[] = ['spy', 'mul', 'thief'];
+export type WCard = { pick: WK | null; used: boolean };
 export type B8 = {
+  /** v2.0 pick-1 wild card held by each player for the whole tournament */
+  wcard?: { A: WCard; B: WCard };
   matches: M8[]; cur: number; seed: Record<number, number>; shield: Record<number, PID>; purse: { A: number; B: number };
   buster: { A: boolean; B: boolean }; upsets: { winner: number; loser: number; gap: number }[]; vetoLog: { by: PID; id: number; score: number; line?: string }[];
   base: number; conf: Record<number, { p: PID; rank: number; golden: boolean; tok: number }>; wilds: number[]; backed: { A: number; B: number }; bonus: { A: number; B: number };
@@ -161,6 +168,7 @@ function intro8(s: State, m: M8) { const l = introLine(s, m); if (l) say8(s, l.l
 export function bidIntent(s: State, it: { pid: PID; id: number; add: number }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
   if (!m || m.round < 2 || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || (it.id !== m.a && it.id !== m.b)) return;
+  autoWild(s, it.pid);
   const cur = m.live?.[it.pid]; if (cur && cur.id !== it.id) return;
   if (m.blk && m.blk.target === it.pid) return;
   const add = Math.max(1, Math.min(Math.floor(it.add || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) return;
@@ -172,11 +180,12 @@ export function lockBid(s: State, it: { pid: PID }, now: number) {
   if (!m || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || !m.live?.[it.pid]) return;
   m.wg[it.pid] = m.live[it.pid]; if (m.wg.A && m.wg.B) settle(s, m, now);
 }
-const MATCH_WEIGHT = (m: M8, p: PID, tok: number) => (m.blk && m.blk.target === p ? 0 : m.round === 1 ? R.FREE_WEIGHT : tok);
+const MATCH_WEIGHT = (m: M8, p: PID, tok: number) => (m.blk && m.blk.target === p ? 0 : m.round === 1 ? R.FREE_WEIGHT : tok * (m.mul === p ? R.WC_MUL : 1));
 
 export function wagerIntent(s: State, it: { pid: PID; id: number; tok: number }, now: number) {
   const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur];
   if (!m || m.status !== 'VOTING_ACTIVE' || m.wg[it.pid] || m.live?.[it.pid] || (it.id !== m.a && it.id !== m.b)) return;
+  autoWild(s, it.pid);
   let tok = 0;
   if (m.blk && m.blk.target === it.pid) tok = 0;
   else if (m.round > 1) { tok = Math.max(1, Math.min(Math.floor(it.tok || 1), b.purse[it.pid])); if (b.purse[it.pid] < 1) tok = 0; if (tok === 0) tok = 0; b.purse[it.pid] -= tok; }
@@ -184,6 +193,26 @@ export function wagerIntent(s: State, it: { pid: PID; id: number; tok: number },
   if (m.wg.A && m.wg.B) settle(s, m, now);
 }
 
+/** v2.0 wild cards. Each player holds ONE for the whole tournament (Spyglass, Multiplier or Thief); a card nobody chose by round 2 is dealt for them. */
+export const wcOf = (b: B8, p: PID): WCard => (b.wcard ||= { A: { pick: null, used: false }, B: { pick: null, used: false } })[p];
+export function wcPick(s: State, it: { pid: PID; k: WK }) {
+  const b = s.b8; if (!b || s.phase !== 'bracket' || !WK_ALL.includes(it.k)) return; const w = wcOf(b, it.pid); if (w.pick) return;
+  w.pick = it.k; s.log.unshift(`${s.players[it.pid].name} is holding a wild card.`);
+}
+export function autoWild(s: State, pid: PID) {
+  const b = s.b8; if (!b) return; const w = wcOf(b, pid); if (w.pick) return;
+  w.pick = WK_ALL[Math.floor(seeded(s.code, 'wcauto' + pid)() * 3)]; s.log.unshift(`${s.players[pid].name} did not choose in time. A wild card was dealt: ${WK_NAME[w.pick]}.`);
+}
+export const WK_NAME: Record<WK, string> = { spy: 'THE SPYGLASS', mul: 'THE MULTIPLIER', thief: 'THE THIEF' };
+export function wcUse(s: State, it: { pid: PID; k: WK }, now: number) {
+  const b = s.b8; if (!b || s.phase !== 'bracket') return; const m = b.matches[b.cur]; void now;
+  const w = wcOf(b, it.pid); if (w.pick !== it.k || w.used) return;
+  if (!m || m.round < 2 || m.status !== 'VOTING_ACTIVE' || m.winner !== null || m.trivia || m.wg[it.pid]) return;
+  const o: PID = it.pid === 'A' ? 'B' : 'A'; const nm = s.players[it.pid].name;
+  if (it.k === 'spy') { m.spy = [...(m.spy || []), it.pid]; w.used = true; say8(s, `${nm} raised THE SPYGLASS. Nothing is private now. Nothing was ever private.`, 'scheme'); s.log.unshift(`${nm} used the Spyglass on ${s.players[o].name}.`); return; }
+  if (it.k === 'mul') { if (m.mul) return; m.mul = it.pid; w.used = true; say8(s, `THE MULTIPLIER. ${nm}'s tokens count double this round. Spend them like they are rich.`, 'glee'); s.log.unshift(`${nm} used the Multiplier: tokens count x${R.WC_MUL} this round.`); return; }
+  if (it.k === 'thief') { const n = Math.min(R.WC_STEAL, b.purse[o]); if (n < 1) return; b.purse[o] -= n; b.purse[it.pid] += n; m.thief = it.pid; w.used = true; say8(s, `THE THIEF. ${nm} lifted ${n} unspent tokens from ${s.players[o].name}. Crime pays, apparently.`, 'smug'); s.log.unshift(`${nm} stole ${n} tokens from ${s.players[o].name}.`); }
+}
 export function bars(b: B8, m: M8) {
   const src = (p: PID) => m.wg[p] || m.live?.[p];
   const t = (id: number | null) => (['A', 'B'] as PID[]).reduce((n, p) => n + (src(p) && src(p)!.id === id ? MATCH_WEIGHT(m, p, src(p)!.tok) : 0), 0) * (id !== null && b.shield[id] ? R.OVERDRIVE : 1) * (m.round > 1 && isSpectacle(id) ? 2 : 1);
@@ -228,13 +257,13 @@ export function finish(s: State, m: M8, winner: number, via: string, now: number
   const sw = b.seed[winner], sl = b.seed[loser]; const gap = sw - sl;
   const mult = gap >= R.UPSET_GAP ? R.UPSET_MULT : 1;
   if (gap > 0) b.upsets.push({ winner, loser, gap });
-  for (const p of ['A', 'B'] as PID[]) { const w = m.wg[p]; if (w && w.id === winner) { b.backed[p]++; if (m.round > 1) b.purse[p] += w.tok * mult; } }
+  for (const p of ['A', 'B'] as PID[]) { const w = m.wg[p]; if (w && w.id === winner) { b.backed[p]++; if (m.round > 1 && !R.NO_REFRESH) b.purse[p] += w.tok * mult; } }
   if (BY_ID[winner] && b.wilds.includes(winner)) s.stats.wildWins++;
   s.log.unshift(`${BY_ID[winner].t} beats ${BY_ID[loser].t} (${via}).${gap >= R.UPSET_GAP ? ' UPSET!' : ''}`);
   const cl = b.calls; let champMock = '';
   if (cl) for (const p of ['A', 'B'] as PID[]) {
     const pk = cl.pick[p][m.slot];
-    if (pk !== undefined) { if (pk === winner) { cl.streak[p]++; const bon = R.CALL_BONUS[m.round - 1] + (cl.streak[p] >= 3 ? 1 : 0); b.purse[p] += bon; cl.score[p] += bon; m.calledBy = [...(m.calledBy || []), p]; } else cl.streak[p] = 0; }
+    if (pk !== undefined) { if (pk === winner) { cl.streak[p]++; const bon = R.CALL_BONUS[m.round - 1] + (cl.streak[p] >= 3 ? 1 : 0); if (!R.NO_REFRESH) b.purse[p] += bon; cl.score[p] += bon; m.calledBy = [...(m.calledBy || []), p]; } else cl.streak[p] = 0; }
     if (cl.champ[p] === loser) champMock += `${s.players[p].name} called ${BY_ID[loser].t} to win it all. It is dead. `;
     if (m.round === 4 && cl.champ[p] === winner) { s.b8Bonus = { ...(s.b8Bonus || { A: 0, B: 0 }), [p]: ((s.b8Bonus || { A: 0, B: 0 })[p] || 0) + 1 }; s.log.unshift(`${s.players[p].name} called the champion. +10 hype tokens next game.`); }
   }

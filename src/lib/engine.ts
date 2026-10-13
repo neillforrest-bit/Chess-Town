@@ -212,9 +212,16 @@ export async function effects(code: string, origin: string): Promise<void> {
   if (s.vibe && s.vibe.disc === 'req') ps.push((async () => {
     const c = await claim(code, 'discover'); if (!c.ok) return;
     let movies: any[] = [];
-    try { const r = await fetch(origin + '/api/discover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sl: slAvg(s), ban: s.seenBan || [] }), signal: AbortSignal.timeout(15000) }); movies = ((await r.json()) as any).movies || []; } catch { /* fall back to the catalogue */ }
+    try { const r = await fetch(origin + '/api/discover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sl: slAvg(s), ban: [...(s.seenBan || []), ...(s.grave || [])], cons: s.cons, seed: Date.now() }), signal: AbortSignal.timeout(15000) }); movies = ((await r.json()) as any).movies || []; } catch { /* fall back to the catalogue */ }
     await ap({ t: 'extras', movies });
   })());
+  // v2.0 10-pass pivot: after a player answers the "we're missing the mark" checklist, fetch a fresh batch steered by their answers (strict rules + Graveyard still apply)
+  for (const p of ['A', 'B'] as const) { const f = s.dx?.fresh?.[p]; if (s.phase === 'draft' && f && !f.done) ps.push((async () => {
+    const c = await claim(code, 'fresh' + p + f.at); if (!c.ok) return;
+    let movies: any[] = [];
+    try { const r = await fetch(origin + '/api/discover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sl: slAvg(s), ban: [...(s.seenBan || []), ...(s.grave || []), ...s.draft.picks.A, ...s.draft.picks.B], cons: s.cons, mode: 'pivot', avoid: f.avoid, sup: s.dx?.sup?.[p] || [], seed: Date.now() }), signal: AbortSignal.timeout(20000) }); movies = ((await r.json()) as any).movies || []; } catch { /* the instant local re-rank already happened */ }
+    await ap({ t: 'fresh', pid: p, at: f.at, movies });
+  })()); }
   // Blind Bet: Orson rewrites the two masked synopses (a deterministic redacted overview is already on screen as the fallback)
   if (s.phase === 'bracket' && s.b8) for (const m of s.b8.matches) if (m.wc === 'blind' && m.cry && !m.cry.ai && m.status !== 'RESOLVED' && m.a !== null && m.b !== null) ps.push((async () => {
     const c = await claim(code, 'cry' + m.id + m.a + m.b); if (!c.ok) return;

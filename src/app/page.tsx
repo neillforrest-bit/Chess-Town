@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BY_ID } from '@/lib/game';
 
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join('');
@@ -19,6 +20,9 @@ export default function Home() {
   useEffect(() => { setName(localStorage.getItem('cs-name') || ''); setP2(localStorage.getItem('cs-p2') || 'Player 2'); if (!localStorage.getItem('cs-callsigns')) { setName((n) => n || 'Player 1'); setModal(true); } }, []);
   const saveCallsigns = () => { localStorage.setItem('cs-name', (name || 'Player 1').trim()); localStorage.setItem('cs-p2', (p2 || 'Player 2').trim()); localStorage.setItem('cs-callsigns', '1'); setName((name || 'Player 1').trim()); setModal(false); };
   const [code, setCode] = useState('');
+  const [gv, setGv] = useState(false); const [grave, setGrave] = useState<number[]>([]);
+  useEffect(() => { try { setGrave(JSON.parse(localStorage.getItem('cs-graveyard') || '[]')); } catch { setGrave([]); } }, [gv]);
+  const resurrect = (id: number) => { const n = grave.filter((x) => x !== id); setGrave(n); try { localStorage.setItem('cs-graveyard', JSON.stringify(n)); } catch { /* ignore */ } };
   const [night, setNight] = useState<'classic' | 'series' | 'oscar' | 'rotten' | 'clash'>('classic'); const kind: 'movie' | 'series' = night === 'series' ? 'series' : 'movie'; const gm = night === 'oscar' || night === 'rotten' || night === 'clash' ? night : '';
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };
   return (
@@ -40,6 +44,8 @@ export default function Home() {
         <button className="cs-btn" disabled={code.length < 4} onClick={() => go(`/play/${code}?p=B&n=${encodeURIComponent(name.trim())}`)}>JOIN</button></div>
       <div className="cs-row"><button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO VS ORSON</button>
         <button className="cs-btn" onClick={() => window.dispatchEvent(new CustomEvent('cs-setview', { detail: 'casual' }))}>📚 LIBRARY</button></div>
+      {grave.length > 0 && <button className="cs-small" onClick={() => setGv(!gv)}>🪦 Graveyard · {grave.length} buried {gv ? '▴' : '▾'}</button>}
+      {gv && <div className="cs-grave">{grave.map((id) => <button key={id} onClick={() => resurrect(id)}><span>{BY_ID[id]?.t || 'Film #' + id}</span><b>BRING BACK</b></button>)}</div>}
       <p className="cs-small">Got a TV? Open the room code on it at <b>/tv/CODE</b> and cast the screen.</p>
     </main>
   );
