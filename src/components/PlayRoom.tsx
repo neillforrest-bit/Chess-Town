@@ -206,7 +206,7 @@ export default function PlayRoom({ code }: { code: string }) {
     if (id === undefined) return shell(<div className="cs-center">Out of films.</div>);
     const m = BY_ID[id]; const sur = s.draft.inbox[pid][0] === id ? s.draft.sur[id] : undefined;
     const ask = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); setWhy([]); setPend(null); send({ t: 'swipe', pid, id, yes, why: [] }); };
-    const go = (yes: boolean, w: string[] = []) => { setPend(null); setWhy([]); send({ t: 'swipe', pid, id, yes, why: w }); };
+    const go = (yes: boolean, w: string[] = [], to = false) => { setPend(null); setWhy([]); send({ t: 'swipe', pid, id, yes, why: w, to }); };
     const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]); const mm = moodMatch(m, s.vibe.tropes?.A, s.vibe.target || [5, 5, 5, 5]);
     const critic = m.rt != null ? (m.rt >= 85 ? 'Critics raved' : m.rt >= 70 ? 'Critics liked it' : m.rt >= 50 ? 'Critics were split' : 'Critics were not kind') : m.mc != null ? (m.mc >= 70 ? 'Critics liked it' : m.mc >= 50 ? 'Critics were mixed' : 'Critics were not kind') : null;
     const runtime = m.sr ? `${m.sr.s} season${m.sr.s === 1 ? '' : 's'} · ${m.sr.e} eps · ~${m.rn} min` : m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
@@ -216,7 +216,7 @@ export default function PlayRoom({ code }: { code: string }) {
       onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
       onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70 && pend === null) ask(dx > 0); }}>
       <PivotModal s={s} pid={pid} send={send as (i: Intent) => void} />
-      <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><DraftTimer k={id} paused={pend !== null} onZero={() => go(false)} /><span className="cs-fit">{mm.pct}% MOOD</span></div>
+      <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><DraftTimer k={id} paused={pend !== null} onZero={() => go(false, [], true)} /><span className="cs-fit">{mm.pct}% MOOD</span></div>
       {mm.why && <div className="cs-why"><em>WHY THIS CARD</em> {mm.why}{s.vibe.tropes?.A ? ' · locked: ' + s.vibe.tropes.A.join(', ') : ''}</div>}
       <PassPips s={s} pid={pid} />
       <ScrollCard key={id}>

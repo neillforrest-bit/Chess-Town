@@ -19,7 +19,7 @@ type Job = { path: string; q: Record<string, string>; label: string };
  */
 export async function POST(req: Request) {
   const key = process.env.TMDB_API_KEY;
-  const body = await req.json().catch(() => ({})) as { sl?: number[]; ban?: number[]; cons?: Partial<Cons>; mode?: string; avoid?: string[]; sup?: Sup[]; seed?: number; n?: number };
+  const body = await req.json().catch(() => ({})) as { sl?: number[]; ban?: number[]; cons?: Partial<Cons>; mode?: string; avoid?: string[]; sup?: Sup[]; seed?: number; n?: number; tastes?: string[] };
   if (!key) return NextResponse.json({ movies: [], error: 'no key' });
   const cons = cleanCons(body.cons); const sl = (body.sl || [50, 50, 50]).map((x) => Math.max(0, Math.min(100, Number(x) || 50)));
   const seed = Number.isFinite(body.seed) ? Number(body.seed) : Date.now(); const rnd = rng(seed); const pg = (max: number) => Math.floor(rnd() * max) + 1;
@@ -31,7 +31,10 @@ export async function POST(req: Request) {
   const xgIds = new Set<number>(cons.xg.map((g) => GID[g]).filter(Boolean));
   for (const a of avoid) { const [g] = a.split('|'); if (g && g !== '*' && GID[g]) xgIds.add(GID[g]); }
   const without = Array.from(xgIds).join(',');
-  const pools = strictIn ? [strictIn] : [g1, g2, ''].filter((x, i, a) => x || a.indexOf(x) === i);
+  // locked Vibe Matrix tropes -> genre pools (OR within a pool, one pool per 2-3 genres) so TMDB discovery is led by the room's actual mood, not the sliders
+  const tIds = Array.from(new Set((body.tastes || []).map((g) => GID[g] ?? GID[g === 'Sci-fi' ? 'Science Fiction' : g]).filter(Boolean))).filter((id) => !xgIds.has(id));
+  const tPools: string[] = []; for (let i = 0; i < tIds.length; i += 2) tPools.push(tIds.slice(i, i + 2).join('|'));
+  const pools = strictIn ? [strictIn] : tPools.length ? tPools : [g1, g2, ''].filter((x, i, a) => x || a.indexOf(x) === i);
   const dateLo = cons.era === 'new' ? `${NEW_FROM}-01-01` : cons.era === 'pre2000' ? '1960-01-01' : '1990-01-01'; const dateHi = cons.era === 'pre2000' ? '1999-12-31' : '';
   const blockbuster = bb > 65, indie = bb < 35; const minAvg = indie ? '6.8' : blockbuster ? '6.0' : '6.4';
   const base = (): Record<string, string> => { const q: Record<string, string> = { language: 'en-US', include_adult: 'false', 'primary_release_date.gte': dateLo, with_original_language: 'en' }; if (dateHi) q['primary_release_date.lte'] = dateHi; if (without) q.without_genres = without; if (cons.rt === 'u2') { q['with_runtime.lte'] = '120'; q['with_runtime.gte'] = '60'; } return q; };

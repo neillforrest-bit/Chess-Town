@@ -504,7 +504,7 @@ export type Intent =
   | { t: 'vswipe'; pid: PID; name: string; yes: boolean } | { t: 'reviews'; map: Record<number, { a: string; q: string; r: number | null }> }
   | { t: 'sliders'; pid: PID; v: number[]; cons?: Partial<Cons> } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
   | { t: 'join'; pid: PID; name?: string; kind?: Kind; gm?: string } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
-  | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[] }
+  | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[]; to?: boolean }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
   | { t: 'verdict'; winner: number; reason: string; lines?: string[] } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
@@ -686,6 +686,7 @@ export function reduce(prev: State, it: Intent): State {
       if (s.phase !== 'vibe' || s.vibe.sl[it.pid]) break;
       s.vibe.sl[it.pid] = [0, 1, 2].map((i) => Math.max(0, Math.min(100, Math.round(Number(it.v?.[i] ?? 50)))));
       s.consP = { ...(s.consP || {}), [it.pid]: cleanCons(it.cons) }; s.cons = mergeCons(s.consP.A, s.consP.B);
+      { const c = s.consP[it.pid]; const xs = c ? c.xg : []; if (xs && xs.length) { const ln = `${s.players[it.pid].name} ruled out ${xs.join(', ')} for the room. Both of you play by it.`; s.orson = { line: ln, mood: 'smug', n: s.orson.n + 1 }; s.log.unshift(ln); } }
       if (s.vibe.sl.A && s.vibe.sl.B && s.vibe.disc === 'off') s.vibe.disc = 'req';
       break;
     }
@@ -735,9 +736,9 @@ export function reduce(prev: State, it: Intent): State {
       if (ib.length) { if (ib[0] !== it.id) break; ib.shift(); }
       else { if (q[0] !== it.id) break; q.shift(); }
       if (it.yes && !picks.includes(it.id)) picks.push(it.id);
-      learnFrom(s.draft.learn[it.pid], BY_ID[it.id], it.yes, (it.why || []).slice(0, 3));
+      if (!it.to) learnFrom(s.draft.learn[it.pid], BY_ID[it.id], it.yes, (it.why || []).slice(0, 3));
       { const r = swipeLine(s.draft.learn[it.pid], BY_ID[it.id], it.yes, (it.why || []).slice(0, 3), s.draft.learn[it.pid].n); s.orson = { line: r.line, mood: r.mood, n: s.orson.n + 1, emo: r.emo }; }
-      trackPass(s, it.pid, it.id, it.yes);
+      if (!it.to) trackPass(s, it.pid, it.id, it.yes);
       // re-rank what is left for this player using what they have taught us
       { const base = s.vibe.target || [5, 5, 5, 5]; const nos = Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])); const pr = s.draft.learn[it.pid];
         const rnd = seeded(s.code, 'rr' + it.pid + pr.n);

@@ -5,7 +5,7 @@ import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type P
 
 export const R = {
   HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 40000, CALLS_MS: [9000, 9000, 10000, 11000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
-  NO_REFRESH: true, RATING_W: 0.4, WC_STEAL: 10, WC_MUL: 2,
+  NO_REFRESH: true, RATING_W: 0.4, BOTH_BONUS: 18, RATING_BOUT: 0.12, WC_STEAL: 10, WC_MUL: 2,
   PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
 
@@ -126,7 +126,7 @@ export function buildBracket(s: State, now: number) {
   const mine: Record<PID, number[]> = { A: [], B: [] };
   for (const id of surv) { const o = h.owner[id]; mine[o === 'AB' ? (tk('B', id) > tk('A', id) ? 'B' : 'A') : (o as PID)].push(id); }
   if (gA !== null && gB === gA) { /* both ticketed the same shared title: it stays with its owner by tokens, the other conference simply has no champion */ }
-  const rank = (p: PID) => { const g = golden(p); const key = (x: number) => tk(p, x) + R.RATING_W * ratingPts(x); const rest = mine[p].filter((x) => x !== g).sort((a, c) => key(c) - key(a) || score(c) - score(a) || a - c); return g !== null && mine[p].includes(g) ? [g, ...rest] : rest; };
+  const rank = (p: PID) => { const g = golden(p); const key = (x: number) => tk(p, x) + R.RATING_W * ratingPts(x) + (h.owner[x] === 'AB' ? R.BOTH_BONUS : 0); const rest = mine[p].filter((x) => x !== g).sort((a, c) => key(c) - key(a) || score(c) - score(a) || a - c); return g !== null && mine[p].includes(g) ? [g, ...rest] : rest; };
   let rA = rank('A'), rB = rank('B');
   // guard: a Silver Bullet can leave a conference short; backfill from the other conference's surplus
   while (rA.length < 4 && rB.length > 4) rA.push(rB.pop() as number);
@@ -217,7 +217,7 @@ export function wcUse(s: State, it: { pid: PID; k: WK }, now: number) {
 }
 export function bars(b: B8, m: M8) {
   const src = (p: PID) => m.wg[p] || m.live?.[p];
-  const t = (id: number | null) => (['A', 'B'] as PID[]).reduce((n, p) => n + (src(p) && src(p)!.id === id ? MATCH_WEIGHT(m, p, src(p)!.tok) : 0), 0) * (id !== null && b.shield[id] ? R.OVERDRIVE : 1) * (m.round > 1 && isSpectacle(id) ? 2 : 1);
+  const t = (id: number | null) => (['A', 'B'] as PID[]).reduce((n, p) => n + (src(p) && src(p)!.id === id ? MATCH_WEIGHT(m, p, src(p)!.tok) : 0), 0) * (id !== null && b.shield[id] ? R.OVERDRIVE : 1) * (m.round > 1 && isSpectacle(id) ? 2 : 1) * (m.round > 1 && id !== null && BY_ID[id] ? 1 + R.RATING_BOUT * (BY_ID[id].r - 7) : 1);
   return { a: t(m.a), b: t(m.b) };
 }
 
