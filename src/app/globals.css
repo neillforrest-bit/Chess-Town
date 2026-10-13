@@ -2907,7 +2907,7 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 a.battle-btn{text-decoration:none}
 /* BUILD 138 - Battle arena + timeout */
 .battle-arena{background:#050708;isolation:isolate}
-.battle-glow{position:absolute;inset:-40%;z-index:-1;background:radial-gradient(circle at 30% 30%,rgba(34,211,238,.28),transparent 45%),radial-gradient(circle at 70% 70%,rgba(255,216,77,.22),transparent 45%),radial-gradient(circle at 70% 25%,rgba(244,63,94,.18),transparent 40%);animation:battleSpin 28s linear infinite}
+.battle-glow{position:fixed;pointer-events:none;inset:-40%;z-index:-1;background:radial-gradient(circle at 30% 30%,rgba(34,211,238,.28),transparent 45%),radial-gradient(circle at 70% 70%,rgba(255,216,77,.22),transparent 45%),radial-gradient(circle at 70% 25%,rgba(244,63,94,.18),transparent 40%);animation:battleSpin 28s linear infinite}
 @keyframes battleSpin{to{transform:rotate(360deg)}}
 .battle-arena--roar .battle-board{animation:battleRoar .7s ease-out 2}
 .battle-arena--silent .battle-board{animation:battleShake .45s linear 2}
