@@ -28,8 +28,9 @@ export function useRoom(code: string, pid: PID | null, name: string, kind: 'movi
     let dead = false;
     const pull = () => fetch(url, { cache: 'no-store' }).then((r) => r.json()).then((s) => { if (!dead && s && s.code) take(s as State); }).catch(() => {});
     pull().then(() => { if (!dead && pid) send({ t: 'join', pid, name, kind, gm } as Intent); });
-    const ch = sb().channel('cs-row-' + code).on('postgres_changes', { event: '*', schema: 'public', table: 'cinesync_rooms', filter: `code=eq.${code}` }, (p) => { const row = (p as { new?: { state?: State } }).new; if (row?.state) take({ ...row.state, now: Date.now() + (stRef.current ? stRef.current.now - Date.now() : 0) }); }).subscribe();
-    const poll = setInterval(pull, 2500); // safety net if Realtime drops
+    let rt = false; let n = 0;
+    const ch = sb().channel('cs-row-' + code).on('postgres_changes', { event: '*', schema: 'public', table: 'cinesync_rooms', filter: `code=eq.${code}` }, (p) => { const row = (p as { new?: { state?: State } }).new; if (row?.state) take({ ...row.state, now: Date.now() + (stRef.current ? stRef.current.now - Date.now() : 0) }); }).subscribe((st) => { rt = st === 'SUBSCRIBED'; });
+    const poll = setInterval(() => { n++; if (document.visibilityState === 'hidden') return; if (rt && n % 4 !== 0) return; pull(); }, 2500); // safety net: every 2.5s without Realtime, every 10s with it; skipped while the tab is hidden
     const rejoin = setInterval(() => { const s = stRef.current; if (pid && s && !s.players[pid].joined) send({ t: 'join', pid, name } as Intent); }, 2000);
     return () => { dead = true; clearInterval(poll); clearInterval(rejoin); ch.unsubscribe(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
