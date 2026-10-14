@@ -145,7 +145,7 @@ export function buildBracket(s: State, now: number) {
   const ms: M8[] = [mk('q0', 2, 0, rA[0], rB[3]), mk('q1', 2, 1, rB[1], rA[2]), mk('q2', 2, 2, rB[0], rA[3]), mk('q3', 2, 3, rA[1], rB[2]), mk('s0', 3, 4, null, null), mk('s1', 3, 5, null, null), mk('f1', 4, 6, null, null)];
   const bonus = s.b8Bonus || { A: 0, B: 0 };
   const all = [...rA, ...rB];
-  s.b8 = { matches: ms, cur: 0, seed, shield: goldMap, base: 0, conf, purse: { A: R.PURSE, B: R.PURSE }, buster: { A: true, B: true }, upsets: [], vetoLog: (s as { _vl?: B8['vetoLog'] })._vl || [], wilds: [], backed: { A: 0, B: 0 }, bonus, show: { until: now + R.HOLD_MS, kind: 'explain', round: 0 }, ack: { A: false, B: false }, calls: { champ: {}, pick: { A: {}, B: {} }, score: { A: 0, B: 0 }, streak: { A: 0, B: 0 } } };
+  s.b8 = { matches: ms, cur: 0, seed, shield: goldMap, base: 0, conf, purse: { A: R.PURSE, B: R.PURSE }, buster: { A: true, B: true }, upsets: [], vetoLog: (s as { _vl?: B8['vetoLog'] })._vl || [], wilds: [], backed: { A: 0, B: 0 }, bonus, show: { until: now + R.HOLD_MS, kind: 'explain', round: 0 }, wcard: (() => { const wp = (s.hit as (Hit & { wpick?: Partial<Record<PID, WK>> }) | null)?.wpick || {}; return { A: { pick: wp.A || null, used: false }, B: { pick: wp.B || null, used: false } }; })(), ack: { A: false, B: false }, calls: { champ: {}, pick: { A: {}, B: {} }, score: { A: 0, B: 0 }, streak: { A: 0, B: 0 } } };
   delete (s as { _vl?: unknown })._vl;
   s.pool = all; s.phase = 'bracket';
   s.log.unshift(`Bracket set: ${BY_ID[rA[0]].t} and ${BY_ID[rB[0]].t} lead the two conferences.`);
@@ -198,6 +198,7 @@ export function wagerIntent(s: State, it: { pid: PID; id: number; tok: number },
 /** v2.0 wild cards. Each player holds ONE for the whole tournament (Spyglass, Multiplier or Thief); a card nobody chose by round 2 is dealt for them. */
 export const wcOf = (b: B8, p: PID): WCard => (b.wcard ||= { A: { pick: null, used: false }, B: { pick: null, used: false } })[p];
 export function wcPick(s: State, it: { pid: PID; k: WK }) {
+  if (s.phase === 'hitlist' && s.hit && WK_ALL.includes(it.k)) { const h = s.hit as Hit & { wpick?: Partial<Record<PID, WK>> }; h.wpick ||= {}; if (!h.wpick[it.pid]) { h.wpick[it.pid] = it.k; s.log.unshift(`${s.players[it.pid].name} is holding a wild card.`); } return; }
   const b = s.b8; if (!b || s.phase !== 'bracket' || !WK_ALL.includes(it.k)) return; const w = wcOf(b, it.pid); if (w.pick) return;
   w.pick = it.k; s.log.unshift(`${s.players[it.pid].name} is holding a wild card.`);
 }

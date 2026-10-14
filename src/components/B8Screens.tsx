@@ -5,6 +5,7 @@ import { BY_ID, TROPE_NAMES, type Intent, type PID, type State } from '@/lib/gam
 import { R, bars, previewMatches, type M8 } from '@/lib/b8';
 import { Poster, secs, buzz, Scores, OrsonFace } from './shared';
 import { WildRow } from './V2Bits';
+import { WK_ALL, WK_NAME, type WK } from '@/lib/b8';
 
 type P = { s: State; pid: PID; send: (i: Intent) => void; now: number };
 const pitchOf = (s: State, id: number) => (s.draft.pitches[id] || BY_ID[id].o || '').replace(/\s+/g, ' ');
@@ -48,6 +49,7 @@ export function HitScreen({ s, pid, send, now }: P) {
       <div className="cs8-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>{theirs.map((id) => <button key={id} disabled={me.done} className={'cs8-tile' + (me.veto === id ? ' is-strike' : '')} onClick={() => { buzz(8); send({ t: 'hit', pid, veto: me.veto === id ? null : id }); setSel(id); }}><Poster id={id} />{me.veto === id && <em className="cs8-x">⌖</em>}</button>)}</div>
       {sel !== null && theirs.includes(sel) && <p className="cs8-sel"><b>{BY_ID[sel].t}</b> · {BY_ID[sel].y} · {BY_ID[sel].r.toFixed(1)}</p>}
     </div>}
+    {(() => { const hp = (h as unknown as { wpick?: Partial<Record<PID, WK>> }).wpick || {}; const got = hp[pid]; return got ? <p className="cs8-sel">🃏 Wild card held: {WK_NAME[got]}. Used from round 2.</p> : <div className="cs8-wpick"><span>🃏 PICK 1 WILD CARD</span>{WK_ALL.map((k) => <button key={k} disabled={me.done} onClick={() => { buzz(14); send({ t: 'wcpick', pid, k }); }}>{k === 'spy' ? '🔭 Spy' : k === 'mul' ? '✖️ x2' : '🦝 Thief'}</button>)}</div>; })()}
     <p className="cs8-sel">{golden !== undefined ? `★ Golden Ticket: ${clip(BY_ID[golden].t, 24)} (seed 1)` : '★ = your Golden Ticket, locked as seed 1.'}</p>
     <button className="cs-btn" disabled={me.done} onClick={() => send({ t: 'hit', pid, done: true })}>{me.done ? 'LOCKED. WAITING...' : 'LOCK IN'}</button>
   </div>;
