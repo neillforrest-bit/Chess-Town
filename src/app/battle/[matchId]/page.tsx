@@ -298,7 +298,7 @@ export default function BattlePage() {
 
   // ---- Stage 2: arena swing. Each phone runs its own Stockfish on the new position (white-absolute pawns).
   const bestRefEarly = null; void bestRefEarly;
-  const evalRef = useRef<{ pgn: string; pawns: number } | null>(null);
+  const evalRef = useRef<{ pgn: string; pawns: number; best: string | null } | null>(null);
   const streakRef = useRef<{ w: number; b: number }>({ w: 0, b: 0 });
   const accRef = useRef<{ w: { loss: number; n: number }; b: { loss: number; n: number } }>({ w: { loss: 0, n: 0 }, b: { loss: 0, n: 0 } });
   const oddsBandRef = useRef<number>(50);
@@ -326,12 +326,13 @@ export default function BattlePage() {
       const cTerm = loadChess(pgn);
       if (cTerm.isCheckmate()) pawns = cTerm.turn() === 'w' ? -10 : 10;
       else if (cTerm.isGameOver()) pawns = 0;
-      if (live) {
-        setPawnsNow(pawns);
-        try { const c = loadChess(pgn); const u = a.pv[0]; const m = u ? c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }) : null; bestRef.current = m ? m.san : null; } catch { bestRef.current = null; }
-      }
-      const prev = evalRef.current ?? { pgn: '', pawns: 0.2 };
-      evalRef.current = { pgn, pawns };
+      // Best move belongs to the position it was computed for; it advances with the data
+      // pipeline (stale callbacks too), or "engine preferred X" names the OTHER side's move.
+      let bestNow: string | null = null;
+      try { const c = loadChess(pgn); const u = a.pv[0]; const m = u ? c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }) : null; bestNow = m ? m.san : null; } catch { bestNow = null; }
+      if (live) { setPawnsNow(pawns); bestRef.current = bestNow; }
+      const prev = evalRef.current ?? { pgn: '', pawns: 0.2, best: null };
+      evalRef.current = { pgn, pawns, best: bestNow };
       if (prev.pgn === pgn || pgn.length < prev.pgn.length) return;
       const d = pawns - prev.pawns;
       if (live && Math.abs(d) > 2.0) {
@@ -339,7 +340,7 @@ export default function BattlePage() {
         const good = goodForWhite === (myColorRef.current === 'w');
         setSwing({ n: Date.now(), good, text: good ? '[THE CROWD ROARS]' : '[THE ARENA GOES DEAD SILENT]' });
       }
-      const prevBest = bestRef.current; // engine's preferred move BEFORE this move was played
+      const prevBest = prev.best; // engine's preferred move at the position the mover just moved from
       // Chester commentary, same deterministic voice as Play Chester (zero cost per move).
       // No freeze cards and no best-move reveals here: live PvP with running clocks, so
       // blocking the board or whispering engine moves to one fighter would break the fight.
