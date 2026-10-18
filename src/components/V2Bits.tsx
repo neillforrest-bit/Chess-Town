@@ -65,7 +65,7 @@ export function EconomyBar({ s, me, code }: { s: State; me: PID; code: string })
   const pct = (n: number) => Math.max(0, Math.min(100, (n / R.PURSE) * 100)); const low = (n: number) => n <= 20;
   return <div className="cs-eco" aria-label="Token economy">
     <div className="cs-eco-bar"><div className="cs-eco-h"><i className={'cs-eco-a' + (low(p.A) ? ' low' : '')} style={{ width: pct(p.A) + '%' }} /></div><u /><div className="cs-eco-h cs-eco-hb"><i className={'cs-eco-b' + (low(p.B) ? ' low' : '')} style={{ width: pct(p.B) + '%' }} /></div></div>
-    <div className="cs-eco-l"><span className={me === 'A' ? 'me' : ''}>{me === 'A' ? 'YOU' : s.players.A.name.slice(0, 8).toUpperCase()} ◈{p.A}</span><small>BANK · NO REFILLS</small><span className={me === 'B' ? 'me' : ''}>◈{p.B} {me === 'B' ? 'YOU' : s.players.B.name.slice(0, 8).toUpperCase()}</span></div>
+    <div className="cs-eco-l"><span className={me === 'A' ? 'me' : ''}>{me === 'A' ? 'YOU' : (s.players.A.name.split(' ')[0] || s.players.A.name).slice(0, 12).toUpperCase()} ◈{p.A}</span><small>BANK · NO REFILLS</small><span className={me === 'B' ? 'me' : ''}>◈{p.B} {me === 'B' ? 'YOU' : (s.players.B.name.split(' ')[0] || s.players.B.name).slice(0, 12).toUpperCase()}</span></div>
   </div>;
 }
 
@@ -81,7 +81,7 @@ export function WildRow({ s, pid, send }: { s: State; pid: PID; send: (i: Intent
   const fire = () => { if (arm !== w.pick) { setArm(w.pick as WK); setTimeout(() => setArm(''), 3500); return; } setArm(''); buzz([30, 30, 50]); send({ t: 'wcuse', pid, k: w.pick as WK }); };
   return <div className="cs-wild cs-wild--held">
     <button className={'cs-wild-b' + (arm ? ' is-armed' : '') + (w.used ? ' is-spent' : '')} disabled={w.used || !live || (w.pick === 'mul' && !!m.mul)} onClick={fire}><i>{WK_ICON[w.pick]}</i><b>{w.used ? WK_NAME[w.pick] + ' · USED' : arm ? 'TAP AGAIN TO FIRE' : WK_NAME[w.pick]}</b><small>{w.used ? 'spent' : live ? WK_HELP[w.pick] : m.round < 2 ? 'live from round 2' : 'wait for your round'}</small></button>
-    {m.mul && <span className="cs-wild-x">✖️ {m.mul === pid ? 'YOUR' : s.players[m.mul].name.toUpperCase().slice(0, 8) + "'S"} TOKENS COUNT x{R.WC_MUL}</span>}
-    {spying && <span className="cs-wild-spy">🔭 {s.players[o].name.toUpperCase().slice(0, 8)}: ◈{b.purse[o]} bank · {l ? `${l.tok} on ${BY_ID[l.id].t.slice(0, 16)}` : 'no bid yet'} · holds {ow.pick ? (ow.used ? WK_NAME[ow.pick] + ' (spent)' : WK_NAME[ow.pick]) : 'nothing yet'}</span>}
+    {m.mul && <span className="cs-wild-x">✖️ {m.mul === pid ? 'YOUR' : (s.players[m.mul].name.split(' ')[0] || s.players[m.mul].name).toUpperCase().slice(0, 12) + "'S"} TOKENS COUNT x{R.WC_MUL}</span>}
+    {spying && <span className="cs-wild-spy">🔭 {(s.players[o].name.split(' ')[0] || s.players[o].name).toUpperCase().slice(0, 12)}: ◈{b.purse[o]} bank · {l ? `${l.tok} on ${BY_ID[l.id].t.slice(0, 16)}` : 'no bid yet'} · holds {ow.pick ? (ow.used ? WK_NAME[ow.pick] + ' (spent)' : WK_NAME[ow.pick]) : 'nothing yet'}</span>}
   </div>;
 }

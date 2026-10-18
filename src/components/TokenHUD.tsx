@@ -12,5 +12,5 @@ function Roll({ v }: { v: number }) {
 /** Persistent sticky War Chest: both players' token banks on every tournament screen. */
 export default function TokenHUD({ s, me }: { s: State; me: 'A' | 'B' }) {
   const b = s.b8; if (!b) return null;
-  return <div className="cs-hud">{(['A', 'B'] as const).map((p) => <div key={p} className={'cs-hud-p cs-hud-p--' + p + (p === me ? ' is-me' : '')}><small>{p === me ? 'YOU · ' : ''}{s.players[p].name.toUpperCase().slice(0, 9)}</small><b>◈ <Roll v={b.purse[p]} /></b></div>)}</div>;
+  return <div className="cs-hud">{(['A', 'B'] as const).map((p) => <div key={p} className={'cs-hud-p cs-hud-p--' + p + (p === me ? ' is-me' : '')}><small>{p === me ? 'YOU · ' : ''}{(s.players[p].name.split(' ')[0] || s.players[p].name).toUpperCase().slice(0, 12)}</small><b>◈ <Roll v={b.purse[p]} /></b></div>)}</div>;
 }
