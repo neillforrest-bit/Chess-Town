@@ -10,6 +10,7 @@ import { GEMINI_MODEL } from '@/lib/gemini-model';
 import QAFlagButton from '@/components/QAFlagButton';
 import { CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { buildGameRecord, recordGameToFile } from '@/lib/player-file';
+import { getProfile, saveProfile } from '@/lib/profile';
 import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
@@ -85,6 +86,50 @@ function PlayChesterGame() {
   const leanT = useRef(0);
   const fireReact = (emoji: string, ms = 1900) => { setReaction(emoji); window.clearTimeout(reactT.current); reactT.current = window.setTimeout(() => setReaction(null), ms); };
   const [bossStrike, setBossStrike] = useState(0);
+  // BUILD 158: Chester Challenge - one mid-match micro-objective per game, +150 pts even in a loss.
+  type Challenge = { id: 'dfile' | 'fork' | 'survive'; label: string; n: number; target: number; done: boolean };
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const chalRef = useRef<Challenge | null>(null);
+  const [skinUnlocked, setSkinUnlocked] = useState<string | null>(null);
+  const [skinNow, setSkinNow] = useState<string>(() => { try { return localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } });
+  const setChal = (c: Challenge | null) => { chalRef.current = c; setChallenge(c ? { ...c } : null); };
+  const startChallenge = () => {
+    const games = (() => { try { return getProfile().games.chester.played; } catch { return 0; } })();
+    const defs: Array<Omit<Challenge, 'n' | 'done'>> = [
+      { id: 'dfile', label: 'HOLD THE D-FILE', target: 3 },
+      { id: 'fork', label: 'FIND THE FORK', target: 1 },
+      { id: 'survive', label: 'SURVIVE THE STORM', target: 5 },
+    ];
+    setChal({ ...defs[games % defs.length], n: 0, done: false });
+  };
+  const completeChallenge = (ch: Challenge) => {
+    ch.done = true; setChal(ch); playSfx('brilliant'); buzz([20, 40, 20]);
+    try { const prof = getProfile(); prof.totalPoints += 150; saveProfile(prof); } catch { /* points are a bonus */ }
+  };
+  const updateChallenge = (detail: { fen?: string | null; fenBefore?: string | null; move?: string | null; classification?: string | null }) => {
+    const ch = chalRef.current; if (!ch || ch.done) return;
+    try {
+      if (ch.id === 'dfile') {
+        if (!detail.fen) return;
+        const c = new Chess(detail.fen);
+        const onD = c.board().flat().some((sq) => sq && sq.square[0] === 'd' && sq.color === 'w');
+        ch.n = onD ? ch.n + 1 : 0;
+        if (ch.n >= ch.target) completeChallenge(ch); else setChal(ch);
+      } else if (ch.id === 'fork') {
+        if (!detail.fenBefore || !detail.move || !detail.fen) return;
+        const c = new Chess(detail.fenBefore);
+        const m = c.move(detail.move);
+        const parts = c.fen().split(' '); parts[1] = parts[1] === 'w' ? 'b' : 'w'; parts[3] = '-';
+        const c2 = new Chess(parts.join(' '));
+        const caps = c2.moves({ square: m.to, verbose: true }).filter((x) => x.captured && x.captured !== 'k');
+        if (caps.length >= 2 || (caps.length >= 1 && new Chess(detail.fen).isCheck())) completeChallenge(ch);
+      } else {
+        const rc = (detail.classification || '').toUpperCase();
+        ch.n = rc === 'BLUNDER' || rc === 'MISTAKE' ? 0 : ch.n + 1;
+        if (ch.n >= ch.target) completeChallenge(ch); else setChal(ch);
+      }
+    } catch { /* challenge is garnish */ }
+  };
   const isJosephFight = boss?.name === 'Joseph';
   const isJosephFightRef = useRef(false);
   isJosephFightRef.current = isJosephFight;
@@ -159,10 +204,11 @@ function PlayChesterGame() {
         mk(55); mk(82.5 * Math.pow(2, 3 / 12)); mk(110); // A1 + C2 (minor third) + A2
         lp.connect(gain); gain.connect(ctx.destination);
         josephDrone.current = { ctx, gain };
+        (window as unknown as { __ctJosephDrone?: { ctx: AudioContext; gain: GainNode } | null }).__ctJosephDrone = josephDrone.current;
       } catch { /* audio is garnish */ }
     };
     boot();
-    return () => { stopped = true; const d = josephDrone.current; josephDrone.current = null; if (d) { try { d.gain.gain.linearRampToValueAtTime(0, d.ctx.currentTime + 0.3); window.setTimeout(() => { try { void d.ctx.close(); } catch { /* */ } }, 400); } catch { /* */ } } };
+    return () => { stopped = true; const d = josephDrone.current; josephDrone.current = null; (window as unknown as { __ctJosephDrone?: unknown }).__ctJosephDrone = null; if (d) { try { d.gain.gain.linearRampToValueAtTime(0, d.ctx.currentTime + 0.3); window.setTimeout(() => { try { void d.ctx.close(); } catch { /* */ } }, 400); } catch { /* */ } } };
   }, [isJosephFight, started]);
   useEffect(() => {
     const d = josephDrone.current;
@@ -300,7 +346,7 @@ function PlayChesterGame() {
         const habit = weakestHabit(detail, myMoves.filter((entry) => entry.grade === 'F').length);
         setLadder(recordLadderGame({ level: difficulty, result, grade: detail.grade, focus: habit.focus, weakness: habit.key }));
       }
-      if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(ROAD_MAX, lv + 1)); setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); }
+      if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(ROAD_MAX, lv + 1)); setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); if (isBossLevel(lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);
@@ -315,7 +361,7 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); if (bossRef.current.on) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) bumpAcc(detail.ply % 2 === 1 ? 'w' : 'b', detail.evalDelta); if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); } };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); if (bossRef.current.on) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red') { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) bumpAcc(detail.ply % 2 === 1 ? 'w' : 'b', detail.evalDelta); if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); } };
     const aiGraded = (event: Event) => { const d = (event as CustomEvent<{ evalDelta: number | null }>).detail; if (d && d.evalDelta != null) { bumpAcc('b', d.evalDelta); if (d.evalDelta >= 250) fireReact('😬'); } if (bossRef.current.on) setBossStrike(Date.now()); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
@@ -595,6 +641,8 @@ function PlayChesterGame() {
         })}
       </div>
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
+      {challenge && !challenge.done && <div className="chester-challenge" role="status"><b>CHALLENGE: {challenge.label}</b><span>{challenge.n}/{challenge.target}</span></div>}
+      {challenge?.done && <div className="chester-challenge is-done" role="status"><b>✓ CHALLENGE COMPLETE · +150 PTS</b></div>}
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {victoryState !== 'none' && (() => {
           const finalWin = roadLevel >= ROAD_MAX;
@@ -605,6 +653,7 @@ function PlayChesterGame() {
             <div className={`road-victory road-victory--${victoryState}`} role="dialog" aria-live="polite">
               <h2>{title}</h2>
               <p>{sub}</p>
+              {skinUnlocked && <p className="road-victory__skin">🏆 SKIN UNLOCKED: {skinUnlocked} — wear it from ☰ MENU → BOARD SKIN.</p>}
               <button type="button" className="road-victory__next" onClick={handleNextLevel}>{finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
             </div>
           );
@@ -701,6 +750,7 @@ function PlayChesterGame() {
         <div className="chester-navdrawer__toggles">
           <button type="button" onClick={() => { const next = !muted; setMuted(next); setMutedState(next); if (!next) playSfx('select'); }}><b>{muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'}</b><small>tap to {muted ? 'unmute' : 'mute'}</small></button>
           <button type="button" onClick={() => { const next = !haptics; setHaptics(next); setHapticsState(next); if (next) buzz(18); }}><b>{haptics ? '📳 HAPTICS: ON' : '📴 HAPTICS: OFF'}</b><small>tap to {haptics ? 'disable' : 'enable'}</small></button>
+          <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent('toggle-board-theme')); window.setTimeout(() => { try { setSkinNow(localStorage.getItem('ct-board-theme') || 'NEON'); } catch { /* */ } }, 150); }}><b>🎨 BOARD SKIN: {skinNow}</b><small>beat road bosses to unlock more</small></button>
         </div>
         <div className="chester-navdrawer__actions">
           {resignArmed

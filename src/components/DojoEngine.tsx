@@ -28,7 +28,19 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 const BOARD_THEMES = {
   NEON: [0xfffaf0, 0xecd9b0],
   RETRO: [0xe8d9b5, 0x4a3728],
+  // BUILD 158 trophy skins: one per Road to Joseph boss checkpoint.
+  EMBER: [0xffe8c9, 0x9a4a1c],
+  SHADOW: [0xcfc3e8, 0x3d2b5c],
+  CRIMSON: [0xf5d0d0, 0x7a1020],
+  FROST: [0xeaf7ff, 0x5c93b8],
+  GOLD: [0xfff3c2, 0x8a6a1c],
 } as const;
+const BOARD_THEME_ORDER = Object.keys(BOARD_THEMES);
+const unlockedBoardThemes = (): string[] => {
+  let skins: string[] = [];
+  try { skins = JSON.parse(window.localStorage.getItem('ct-skins') || '[]'); } catch { /* */ }
+  return BOARD_THEME_ORDER.filter((t) => t === 'NEON' || t === 'RETRO' || skins.includes(t));
+};
 
 const AI_TAGS: Record<string, { player: string; rival: string; title: string }> = {
   SIMULATION: { player: 'Neill', rival: 'Brendan 🦸‍♂️', title: 'Neill vs. Brendan 🦸‍♂️' },
@@ -414,7 +426,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     timeline: [],
     isGameOver: false,
     ply: 0,
-    boardTheme: 'NEON',
+    boardTheme: (() => { try { return window.localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } })(),
     coachMarks: [] as any[],
   });
 
@@ -1818,7 +1830,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
           window.addEventListener('chester-rewind', handleRewind);
           const handleToggleBoardTheme = () => {
-            gameRef.current.boardTheme = gameRef.current.boardTheme === 'RETRO' ? 'NEON' : 'RETRO';
+            const unlocked = unlockedBoardThemes();
+            const i = unlocked.indexOf(gameRef.current.boardTheme);
+            const next = unlocked[(i + 1) % unlocked.length] || 'NEON';
+            gameRef.current.boardTheme = next;
+            try { window.localStorage.setItem('ct-board-theme', next); } catch { /* */ }
             renderBoard();
           };
           window.addEventListener('toggle-board-theme', handleToggleBoardTheme);
