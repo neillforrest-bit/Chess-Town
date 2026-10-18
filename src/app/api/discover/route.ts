@@ -56,8 +56,8 @@ export async function POST(req: Request) {
   disc('popularity.asc', { 'vote_count.gte': '600', 'vote_count.lte': '4000', 'vote_average.gte': '6.8' }, gp(2), 12, 'discover hidden gems');
   }
   // trending / top_rated / now_playing have no runtime or genre filters: they only run when no strict hard filters would be needed server-side; validation still re-checks everything
-  if (deep) { jobs.push({ path: 'movie/top_rated', q: { page: String(pg(30)), language: 'en-US' }, label: 'top rated' }); }
-  else if (cons.rt !== 'u2') { jobs.push({ path: 'trending/movie/week', q: { page: String(pg(5)) }, label: 'trending' }); jobs.push({ path: 'movie/top_rated', q: { page: String(pg(20)), language: 'en-US' }, label: 'top rated' }); }
+  // deep: no top_rated endpoint - it has no vote floor, so pre-release blockbusters sneak in as fake 'hidden gems'
+  if (!deep && cons.rt !== 'u2') { jobs.push({ path: 'trending/movie/week', q: { page: String(pg(5)) }, label: 'trending' }); jobs.push({ path: 'movie/top_rated', q: { page: String(pg(20)), language: 'en-US' }, label: 'top rated' }); }
   if (!deep && (cons.era === 'new' || cons.era === 'any')) jobs.push({ path: 'movie/now_playing', q: { page: String(pg(3)), language: 'en-US' }, label: 'now playing' });
   // Batch 7 actor input (his 18 Oct add): first actor name -> TMDB person -> with_cast on half the jobs,
   // so actor films surface without starving the mood-led pool. 1-2 extra TMDB calls per room, free key.
