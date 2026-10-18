@@ -10,7 +10,7 @@ import MatchCountdown from '@/components/MatchCountdown';
 import { ChesterAvatar } from '@/components/ChesterUI';
 import { direct } from '@/lib/chester-director';
 import { buzz, playSfx } from '@/lib/sounds';
-import { winOddsPct } from '@/lib/chester-voice';
+import { winOddsPct, accPoints } from '@/lib/chester-voice';
 import { createClient } from '@/utils/supabase/client';
 import { getStockfishClient } from '@/lib/stockfish';
 
@@ -355,7 +355,7 @@ export default function BattlePage() {
           const cls = delta >= 250 ? 'BLUNDER' : delta >= 120 ? 'MISTAKE' : delta >= 50 ? 'INACCURACY' : delta <= 12 ? 'BEST' : 'GOOD';
           // Data pipeline: always advances in order, even for stale callbacks.
           if (cls === 'BLUNDER') blunderRef.current[mover] += 1;
-          const acc = accRef.current[mover]; acc.loss += delta; acc.n += 1;
+          const acc = accRef.current[mover]; acc.loss += accPoints(Math.round(beforeM * 100), Math.round(afterM * 100)); acc.n += 1;
           setAccuracy({ ...accRef.current });
           const oddsNow = winOddsPct(Math.round(pawns * 100), 'w');
           if (oddsNow !== null) setOdds(oddsNow);
@@ -370,8 +370,19 @@ export default function BattlePage() {
           streakRef.current[mover] = sharp ? streakRef.current[mover] + 1 : 0;
           if (streakRef.current[mover] > 0 && streakRef.current[mover] % 3 === 0) { line = `${mover === 'w' ? 'WHITE' : 'BLACK'} ${pick(COOKING, hist.length)}`; hot = true; playSfx('brilliant'); }
           // Educational layer (his ask): what was good/bad + what the engine preferred. Both phones see it.
-          const eduText = cNow.isCheckmate() || cNow.isCheck() ? (cNow.isCheckmate() ? 'That is mate. The arena erupts.' : 'Check - the king is running.')
-            : delta <= 15 ? 'The engine agrees with that move.' : prevBest ? `Engine preferred ${prevBest}. That cost about ${(delta / 100).toFixed(1)} pawns.` : delta >= 120 ? `That cost about ${(delta / 100).toFixed(1)} pawns.` : '';
+          const PN: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+          const movedPiece = PN[last.piece] || 'piece'; const took = last.captured ? (PN[last.captured] || 'piece') : null;
+          // BUILD 159 richer why: capture-aware reason + what the engine would have done. Rule-based, zero API.
+          const eduText = cNow.isCheckmate() ? 'That is mate. The arena erupts.'
+            : cNow.isCheck() ? `Check from the ${movedPiece} - the king is running.`
+            : delta <= 15 ? (took ? `Clean - takes the ${took} and the engine agrees.` : hist.length <= 10 ? `Good development - the ${movedPiece} is exactly where the engine wants it.` : 'The engine agrees with that move.')
+            : (() => {
+              const cost = `That cost about ${(delta / 100).toFixed(1)} pawns.`;
+              const eng = prevBest ? ` Engine preferred ${prevBest}.` : '';
+              if (delta >= 250) return (took ? `That grabs the ${took} but loses far more back.` : `That leaves the ${movedPiece} exposed - material or a tactic is going.` ) + eng + ' ' + cost;
+              if (delta >= 120) return (took ? `The ${took} costs too much in reply.` : `That gives up a clear pull - the ${movedPiece} had a stronger square.`) + eng + ' ' + cost;
+              return (took ? `Wins the ${took}, though the engine had more.` : 'Slightly slow - there was a sharper idea.') + eng + ' ' + cost;
+            })();
           if (eduText) setEdu({ key: `edu-${hist.length}`, text: eduText });
           // tug-of-war commentary: Chester calls the odds when the band moves
           if (oddsNow !== null) {

@@ -703,6 +703,20 @@ export function winOddsPct(evaluationAfter: number | null | undefined, viewerCol
   return Math.max(1, Math.min(99, Math.round(w)));
 }
 
+// Live accuracy feeds these, NOT raw centipawns: the chess.com-style display curve
+// (103.16 * e^(-0.0435 * avg) - 0.8) is calibrated for win-probability loss. Raw cp deltas
+// collapse it: 8cp of search noise read as 72%, one queen blunder as 4%, and eval wobble in
+// an already-won position tanked the WINNING side (his sister's game read 1% / 1.2%).
+// 1 point ~ one percentage point of win probability lost, weighted 1.5x so an early queen
+// blunder lands the game in the 65-75% range.
+function winProbOf(cp: number): number { const c = Math.max(-1000, Math.min(1000, cp)); return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1); }
+export function accPoints(beforeCpMover: number | null | undefined, afterCpMover: number | null | undefined): number {
+  if (beforeCpMover === null || beforeCpMover === undefined || afterCpMover === null || afterCpMover === undefined) return 0;
+  return Math.max(0, (winProbOf(beforeCpMover) - winProbOf(afterCpMover)) * 1.5);
+}
+/** Fallback when only a mover-relative cp delta exists (no before/after evals): score it from an even position. */
+export function accPointsFromDelta(deltaCp: number): number { return accPoints(0, -Math.min(1500, Math.abs(deltaCp))); }
+
 function winOdds(evaluationAfter: number | null | undefined, opponentName?: string | null, viewerColor?: 'w' | 'b' | null): string | null {
   const p = winOddsPct(evaluationAfter, viewerColor);
   if (p === null) return null;
