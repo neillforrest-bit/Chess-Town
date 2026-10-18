@@ -60,7 +60,7 @@ export function nextBotIntent(s: State): Intent | null {
     const h = s.hit; if (!h || h.res) return null;
     const w = h.weap.B; if (w.done) return null;
     const mine = h.grid.filter((id) => h.owner[id] === 'B' || h.owner[id] === 'AB').sort((a, b) => (BY_ID[b]?.r || 0) - (BY_ID[a]?.r || 0));
-    const yours = h.grid.filter((id) => h.owner[id] === 'A' || h.owner[id] === 'AB').sort((a, b) => (BY_ID[b]?.r || 0) - (BY_ID[a]?.r || 0));
+    const yours = h.grid.filter((id) => h.owner[id] === 'A').sort((a, b) => (BY_ID[b]?.r || 0) - (BY_ID[a]?.r || 0));
     const spent = Object.keys(h.tok.B).length;
     const split = [0.4, 0.35, 0.25];
     if (spent < Math.min(3, mine.length) && h.budget.B > 0) {
