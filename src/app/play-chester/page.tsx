@@ -223,6 +223,38 @@ function PlayChesterGame() {
     const target = muted ? 0 : 0.05 + (josephPressure / 100) * 0.16;
     try { d.gain.gain.setTargetAtTime(target, d.ctx.currentTime, 0.6); } catch { /* */ }
   }, [josephPressure, muted]);
+  const breakdownPivotOf = (r: GameReport | null) => {
+    if (!r || !r.gradeHistory?.length) return null;
+    const graded = r.gradeHistory.filter((g) => g.centipawnLoss !== null && g.centipawnLoss !== undefined);
+    if (!graded.length) return null;
+    return graded.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b));
+  };
+  const breakdownOn = !!report && !reportOpen && victoryState === 'none' && !!report?.pgn && !!breakdownPivotOf(report);
+  useEffect(() => {
+    if (!breakdownOn || !report) return;
+    const pv = breakdownPivotOf(report); if (!pv) return;
+    const onStatus = (e: Event) => { const d = (e as CustomEvent<{ index: number; total: number; move: string }>).detail; setScrubIdx(d.index); setScrubTotal(d.total); setScrubMove(d.move || ''); };
+    window.addEventListener('replay-status', onStatus);
+    window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: pv.ply - 1 } }));
+    return () => window.removeEventListener('replay-status', onStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakdownOn]);
+  useEffect(() => {
+    if (!breakdownOn || !report?.pgn) return;
+    const pv = breakdownPivotOf(report); if (!pv) return;
+    let dead = false;
+    setFeared(null);
+    try {
+      const fen = fenBeforePly(report.pgn, pv.ply);
+      if (!fen) return;
+      void getStockfishClient().analyzeForDisplay(fen).then((a) => {
+        if (dead) return;
+        try { const u = a.pv[0]; const m = u ? new Chess(fen).move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] as 'q' | 'r' | 'b' | 'n' | undefined }) : null; setFeared(m ? m.san : null); } catch { setFeared(null); }
+      }).catch(() => undefined);
+    } catch { /* breakdown is garnish */ }
+    return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakdownOn]);
   const [lessonStep, setLessonStep] = useState(0);
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   const [chatOpen, setChatOpen] = useState(false);
@@ -617,37 +649,9 @@ function PlayChesterGame() {
   const coachMovePrompt = coachPrompt?.kind === 'move' && !isThinking ? coachPrompt : null;
   const coachBullets = coachMovePrompt && !isBossFight ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
   // Chester's Breakdown: pivot = biggest single-move swing of the game.
-  const pivot = (() => {
-    if (!report || !report.gradeHistory?.length) return null;
-    const graded = report.gradeHistory.filter((g) => g.centipawnLoss !== null && g.centipawnLoss !== undefined);
-    if (!graded.length) return null;
-    return graded.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b));
-  })();
+  const pivot = breakdownPivotOf(report);
   const breakdownVisible = !!report && !reportOpen && victoryState === 'none' && !!pivot && !!report?.pgn;
   const pivotIdx = pivot ? pivot.ply - 1 : 0;
-  useEffect(() => {
-    if (!breakdownVisible) return;
-    const onStatus = (e: Event) => { const d = (e as CustomEvent<{ index: number; total: number; move: string }>).detail; setScrubIdx(d.index); setScrubTotal(d.total); setScrubMove(d.move || ''); };
-    window.addEventListener('replay-status', onStatus);
-    window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: pivotIdx } }));
-    return () => window.removeEventListener('replay-status', onStatus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [breakdownVisible]);
-  useEffect(() => {
-    if (!breakdownVisible || !report?.pgn || !pivot) return;
-    let dead = false;
-    setFeared(null);
-    try {
-      const fen = fenBeforePly(report.pgn, pivot.ply);
-      if (!fen) return;
-      void getStockfishClient().analyzeForDisplay(fen).then((a) => {
-        if (dead) return;
-        try { const u = a.pv[0]; const m = u ? new Chess(fen).move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] as 'q' | 'r' | 'b' | 'n' | undefined }) : null; setFeared(m ? m.san : null); } catch { setFeared(null); }
-      }).catch(() => undefined);
-    } catch { /* breakdown is garnish */ }
-    return () => { dead = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [breakdownVisible]);
   const breakdownStep = (d: number) => {
     const cur = scrubIdx ?? pivotIdx;
     const total = scrubTotal || (report?.gradeHistory?.length ?? 1);
