@@ -713,3 +713,18 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 /* Orson's mood-correlation call on the duel */
 .cs8-moodcall{flex:none;margin:0;font:italic 600 .66rem/1.35 Georgia,serif;color:#ffe9a8;opacity:.92}
 .cs8-moodcall b{color:#ffc83d;font-style:normal}
+
+/* Discovery night (solo) */
+.cs-dgenres{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0}
+.cs-dgenres .cs-chip{min-height:0;padding:8px 12px;font-size:.72rem;letter-spacing:.06em;border-radius:999px}
+.cs-dcard{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.cs-dcard .cs-poster{width:min(46vw,200px);border-radius:12px;border:1px solid #4a3a6b;box-shadow:0 8px 28px #000c}
+.cs-dcard>b{font-size:1.05rem}.cs-dcard>small{color:#c9bfd6;font-size:.66rem;letter-spacing:.08em}
+.cs-dwhy{font-family:var(--serif);font-style:italic;font-size:.8rem;color:#fff1c2;margin:4px 8px 0}
+.cs-dsyn{font-size:.68rem;line-height:1.35;color:#b9aec9;margin:2px 4px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cs-drow{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:#18121f;border:1px solid #4a3a6b;border-radius:12px;padding:8px;color:#e4dcef}
+.cs-drow.is-on{border-color:var(--gold);background:#2d2210;box-shadow:0 0 14px #f5c54244}
+.cs-drow .cs-poster{width:52px;flex:none;border-radius:8px}
+.cs-drow>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cs-drow b{font-size:.82rem}.cs-drow small{font-size:.6rem;color:#c9bfd6;letter-spacing:.05em}
+.cs-drow em{font-style:italic;font-family:var(--serif);font-size:.68rem;color:#fff1c2;line-height:1.25}
