@@ -237,10 +237,12 @@ export function tagsOf(m: Movie): string[] {
   if (/won \d+ oscar|won an oscar|oscars?\b/i.test(m.aw || '') && /won|nominated/i.test(m.aw || '')) t.push('Award winner');
   return t;
 }
+export const actorList = (raw: string) => raw.toLowerCase().split(/,| and /).map((x) => x.trim()).filter((x) => x.length > 2).slice(0, 2);
+
 export function tasteHits(m: Movie, t: { A: string[] | null; B: string[] | null }, actors: { A: string; B: string }): string[] {
   const mine = tagsOf(m); const out: string[] = [];
   for (const tag of mine) if ((t.A || []).includes(tag) || (t.B || []).includes(tag)) { if (tag !== 'Pure fiction' && tag !== 'Real events') out.push(tag); else if ((t.A || []).includes(tag) !== (t.B || []).includes(tag) || true) out.push(tag); }
-  for (const p of ['A', 'B'] as const) { const a = actors[p].trim().toLowerCase(); if (a.length > 2 && (m.c || []).some((c) => c.toLowerCase().includes(a))) out.push('Stars ' + (m.c || []).find((c) => c.toLowerCase().includes(a))); }
+  for (const p of ['A', 'B'] as const) { for (const a of actorList(actors[p])) { const hit = (m.c || []).find((c) => c.toLowerCase().includes(a)); if (hit) out.push('Stars ' + hit); } }
   return Array.from(new Set(out));
 }
 const tasteBonus = (m: Movie, t: { A: string[] | null; B: string[] | null }, actors: { A: string; B: string }) => {
@@ -248,7 +250,7 @@ const tasteBonus = (m: Movie, t: { A: string[] | null; B: string[] | null }, act
   for (const tag of tags) { const a = (t.A || []).includes(tag), c = (t.B || []).includes(tag); b += a && c ? 1.8 : a || c ? 0.7 : 0; }
   const wantReal = [(t.A || []).includes('Real events'), (t.B || []).includes('Real events')], wantFic = [(t.A || []).includes('Pure fiction'), (t.B || []).includes('Pure fiction')];
   if (tags.includes('Real events') && wantFic[0] && wantFic[1]) b -= 2; if (tags.includes('Pure fiction') && wantReal[0] && wantReal[1]) b -= 2;
-  for (const p of ['A', 'B'] as const) { const a = actors[p].trim().toLowerCase(); if (a.length > 2 && (m.c || []).some((c) => c.toLowerCase().includes(a))) b += 2.2; }
+  for (const p of ['A', 'B'] as const) { for (const a of actorList(actors[p])) if ((m.c || []).some((c) => c.toLowerCase().includes(a))) b += 2.2; }
   return b;
 };
 const clamp = (x: number) => Math.max(0, Math.min(10, x));
@@ -686,6 +688,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'sliders': {
       if (s.phase !== 'vibe' || s.vibe.sl[it.pid]) break;
       s.vibe.sl[it.pid] = [0, 1, 2].map((i) => Math.max(0, Math.min(100, Math.round(Number(it.v?.[i] ?? 50)))));
+      if (typeof it.actors === 'string') s.vibe.actors[it.pid] = it.actors.slice(0, 60);
       s.consP = { ...(s.consP || {}), [it.pid]: cleanCons(it.cons) }; s.cons = mergeCons(s.consP.A, s.consP.B);
       { const c = s.consP[it.pid]; const xs = c ? c.xg : []; if (xs && xs.length) { const ln = `${s.players[it.pid].name} ruled out ${xs.join(', ')} for the room. Both of you play by it.`; s.orson = { line: ln, mood: 'smug', n: s.orson.n + 1 }; s.log.unshift(ln); } }
       if (s.vibe.sl.A && s.vibe.sl.B && s.vibe.disc === 'off') s.vibe.disc = 'req';
