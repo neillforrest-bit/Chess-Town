@@ -772,7 +772,11 @@ export function reduce(prev: State, it: Intent): State {
       // re-rank what is left for this player using what they have taught us
       { const base = s.vibe.target || [5, 5, 5, 5]; const nos = Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])); const pr = s.draft.learn[it.pid];
         const rnd = seeded(s.code, 'rr' + it.pid + pr.n);
-        s.draft.q[it.pid] = benchSuppressed(s, it.pid, q.map((id) => ({ id, sc: learnScore(BY_ID[id], base, pr, nos) + rnd() * 0.25 })).sort((a, b) => a.sc - b.sc).map((x) => x.id)); }
+        const reranked = benchSuppressed(s, it.pid, q.map((id) => ({ id, sc: learnScore(BY_ID[id], base, pr, nos) + rnd() * 0.25 })).sort((a, b) => a.sc - b.sc).map((x) => x.id));
+        // Orson's tagged suggestions keep their promised spots: the learn re-rank must not bury them
+        const osp = s.draft.orson.filter((x) => reranked.includes(x));
+        s.draft.q[it.pid] = reranked.filter((x) => !osp.includes(x));
+        osp.forEach((id, i) => s.draft.q[it.pid].splice(Math.min([2, 6, 10, 14][i] ?? 14, s.draft.q[it.pid].length), 0, id)); }
       // deck exhausted without 10: fill with the best unpicked cards
       if (picks.length < DRAFT_SIZE && !ib.length && s.draft.q[it.pid].length === 0) {
         for (const id of s.draft.deck) { if (picks.length >= DRAFT_SIZE) break; if (!picks.includes(id)) picks.push(id); }
