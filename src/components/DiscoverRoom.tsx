@@ -67,7 +67,7 @@ export default function DiscoverRoom() {
     try {
       const r = await fetch('/api/discover', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'deep', cons: { ig: gids, xg: [], rt: 'any', era: 'any' }, sl: [50, 50, 50], seed, n: 40 }) });
       const d = (await r.json()) as { movies?: FM[] };
-      let fresh = (d.movies || []).filter((m) => m && m.id && m.p && m.r >= 6.9 && !seen.has(m.id));
+      let fresh = (d.movies || []).filter((m) => m && m.id && m.p && m.r >= 6.9 && m.pop >= 60 && !seen.has(m.id));
       if (docMode) { const re = cats.length ? SHELF_KW[cats[0]] : null; fresh = fresh.filter((m) => m.g.includes('Documentary') && (!re || re.test(m.t + ' ' + m.o))); }
       fresh.sort((a, b) => obscurity(b) - obscurity(a));
       registerExtra(fresh);
