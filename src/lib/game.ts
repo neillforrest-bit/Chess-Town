@@ -373,6 +373,7 @@ export type State = {
   code: string; kind: Kind; gm?: GM; cl?: [string, string]; v: number; now: number;
   phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
+  /** Solo 1v1: B is Orson, driven client-side by the host (soloBot). */ solo?: boolean;
   vibe: { sw: { A: Record<string, boolean>; B: Record<string, boolean> }; lock: string[]; sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
   draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; orson: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
@@ -524,7 +525,7 @@ export type Intent =
   | { t: 'inter'; key: string; line: string } | { t: 'asym'; a: string; b: string } | { t: 'mortem'; slot: number; line: string }
   | { t: 'vswipe'; pid: PID; name: string; yes: boolean } | { t: 'reviews'; map: Record<number, { a: string; q: string; r: number | null }> }
   | { t: 'sliders'; pid: PID; v: number[]; cons?: Partial<Cons>; actors?: string } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
-  | { t: 'join'; pid: PID; name?: string; kind?: Kind; gm?: string } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
+  | { t: 'join'; pid: PID; name?: string; kind?: Kind; gm?: string; solo?: boolean } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
   | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[]; to?: boolean }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
   | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
@@ -675,6 +676,7 @@ export function reduce(prev: State, it: Intent): State {
   switch (it.t) {
     case 'join': {
       s.players[it.pid] = { name: (it.name || s.players[it.pid].name).slice(0, 14), joined: true };
+      if (it.solo && it.pid === 'A') { s.solo = true; if (!s.players.B.joined) s.players.B = { name: 'ORSON', joined: true }; }
       if (it.pid === 'A' && it.kind && s.phase === 'lobby') { s.kind = it.kind === 'series' ? 'series' : 'movie'; const g = it.gm; s.gm = s.kind === 'movie' && (g === 'oscar' || g === 'rotten' || g === 'clash' || (typeof g === 'string' && g.startsWith('docs'))) ? g as GM : undefined; s.cl = s.gm === 'clash' ? CLASHES[seededInt(s.code, CLASHES.length)] : undefined; }
       if (s.players.A.joined && s.players.B.joined && s.phase === 'lobby') s.phase = 'vibe';
       break;
@@ -952,7 +954,7 @@ export function reduce(prev: State, it: Intent): State {
       }
       break;
     }
-    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, v: s.v + 1, players: s.players, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
+    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, v: s.v + 1, players: s.players, solo: s.solo, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
   }
   return s;
 }

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
+import { nextBotIntent } from '@/lib/soloBot';
 import { TROPE_NAMES, SWIPER_CAP, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent, actorHit } from '@/lib/game';
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import CineSyncPipeline from './CineSyncPipeline';
@@ -89,7 +90,22 @@ export default function PlayRoom({ code }: { code: string }) {
   const sp = useSearchParams();
   const pid = (sp.get('p') === 'B' ? 'B' : 'A') as PID;
   const name = sp.get('n') || '';
-  const { state: s, send, skew, online } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie', sp.get('gm') || undefined);
+  const solo = sp.get('solo') === '1';
+  const { state: s, send, skew, online } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie', sp.get('gm') || undefined, solo);
+  // Solo 1v1: the host's browser plays Orson (pid B) straight from room state. Rule-based, zero AI spend.
+  const sRef = useRef(s); sRef.current = s;
+  useEffect(() => {
+    if (!solo || pid !== 'A') return;
+    let dead = false; let t: ReturnType<typeof setTimeout> | null = null;
+    const beat = () => {
+      if (dead) return;
+      const cur = sRef.current;
+      if (cur) { const it = nextBotIntent(cur); if (it) t = setTimeout(() => { if (!dead) send(it); }, 550 + Math.random() * 950); }
+    };
+    beat();
+    const iv = setInterval(beat, 3500);
+    return () => { dead = true; if (t) clearTimeout(t); clearInterval(iv); };
+  }, [solo, pid, s, send]);
   const now = useNow(skew);
   useEffect(() => { const n2 = sp.get('n2'); if (pid === 'A' && n2) { const t = setTimeout(() => send({ t: 'preset', pid: 'B', name: n2 }), 1200); return () => clearTimeout(t); } }, [pid]); // eslint-disable-line react-hooks/exhaustive-deps
   const other: PID = pid === 'A' ? 'B' : 'A';

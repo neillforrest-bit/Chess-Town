@@ -49,7 +49,8 @@ export default function Home() {
       <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&n2=${encodeURIComponent(p2.trim())}${night === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>START {NIGHTS.find((x) => x.id === night)!.n.toUpperCase()} ROOM</button>
       <div className="cs-row"><input className="cs-input cs-input--code" placeholder="PARTNER CODE" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
         <button className="cs-btn" disabled={code.length < 4} onClick={() => go(`/play/${code}?p=B&n=${encodeURIComponent(name.trim())}`)}>JOIN</button></div>
-      <div className="cs-row"><button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO VS ORSON</button>
+      <div className="cs-row"><button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&solo=1${night === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>1V1 VS ORSON</button>
+        <button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO VS ORSON</button>
         <button className="cs-btn" onClick={() => window.dispatchEvent(new CustomEvent('cs-setview', { detail: 'casual' }))}>📚 LIBRARY</button></div>
       {grave.length > 0 && <button className="cs-small" onClick={() => setGv(!gv)}>🪦 Graveyard · {grave.length} buried {gv ? '▴' : '▾'}</button>}
       {gv && <div className="cs-grave">{grave.map((id) => <button key={id} onClick={() => resurrect(id)}><span>{BY_ID[id]?.t || 'Film #' + id}</span><b>BRING BACK</b></button>)}</div>}

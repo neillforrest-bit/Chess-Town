@@ -5,7 +5,7 @@ import { loadMem, recordNight, coupleKey, nightsKey } from '@/lib/memory';
 import { BY_ID, registerExtra, sanitizeIds, type Intent, type PID, type State } from '@/lib/game';
 
 /** Server-authoritative: the room lives in ONE Supabase row. Every client (phones and TV) POSTs intents to the API and renders the row via Realtime. */
-export function useRoom(code: string, pid: PID | null, name: string, kind: 'movie' | 'series' = 'movie', gm?: string) {
+export function useRoom(code: string, pid: PID | null, name: string, kind: 'movie' | 'series' = 'movie', gm?: string, solo?: boolean) {
   const host = pid === 'A'; // only used to pick who writes Orson's cross-night memory
   const [state, setState] = useState<State | null>(null);
   const [skew, setSkew] = useState(0);
@@ -27,7 +27,7 @@ export function useRoom(code: string, pid: PID | null, name: string, kind: 'movi
   useEffect(() => {
     let dead = false;
     const pull = () => fetch(url, { cache: 'no-store' }).then((r) => r.json()).then((s) => { if (!dead && s && s.code) take(s as State); }).catch(() => {});
-    pull().then(() => { if (!dead && pid) send({ t: 'join', pid, name, kind, gm } as Intent); });
+    pull().then(() => { if (!dead && pid) send({ t: 'join', pid, name, kind, gm, solo } as Intent); });
     let rt = false; let n = 0;
     const ch = sb().channel('cs-row-' + code).on('postgres_changes', { event: '*', schema: 'public', table: 'cinesync_rooms', filter: `code=eq.${code}` }, (p) => { const row = (p as { new?: { state?: State } }).new; if (row?.state) take({ ...row.state, now: Date.now() + (stRef.current ? stRef.current.now - Date.now() : 0) }); }).subscribe((st) => { rt = st === 'SUBSCRIBED'; });
     const poll = setInterval(() => { n++; if (document.visibilityState === 'hidden') return; if (rt && n % 4 !== 0) return; pull(); }, 2500); // safety net: every 2.5s without Realtime, every 10s with it; skipped while the tab is hidden
