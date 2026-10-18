@@ -20,6 +20,7 @@ import PawnWarDuel from '@/components/PawnWarDuel';
 import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
+import { getStockfishClient } from '@/lib/stockfish';
 import { awardPoints, completeBossNode, DIFFICULTY_POINTS } from '@/lib/rating';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { loadPlayerFile, analyse } from '@/lib/player-file';
@@ -162,6 +163,12 @@ function PlayChesterGame() {
   const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
   const [helpRemaining, setHelpRemaining] = useState(3);
   const [report, setReport] = useState<GameReport | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  // BUILD 158: Chester's Breakdown - interactive post-mortem pivot scrubber.
+  const [scrubIdx, setScrubIdx] = useState<number | null>(null);
+  const [scrubTotal, setScrubTotal] = useState(0);
+  const [scrubMove, setScrubMove] = useState<string>('');
+  const [feared, setFeared] = useState<string | null>(null);
   const [millCount, setMillCount] = useState(0);
   useEffect(() => { setMillCount(loadMill().length); }, []);
   const [review, setReview] = useState('');
@@ -180,7 +187,7 @@ function PlayChesterGame() {
     const atTop = roadLevel >= ROAD_MAX;
     const next = atTop ? 1 : roadLevel + 1; // beating Joseph restarts the climb at level 1
     setRoadLevel(next); setRoadLevelState(next);
-    setVictoryState('none'); setReport(null); setMatchOver(false); setCoachPrompt(null); setCoachReply(''); setFreeze(null); setBanter(''); setCapturedPieces([]);
+    setVictoryState('none'); setReport(null); setReportOpen(false); setScrubIdx(null); setMatchOver(false); setCoachPrompt(null); setCoachReply(''); setFreeze(null); setBanter(''); setCapturedPieces([]);
     (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false;
     window.dispatchEvent(new CustomEvent('chester-clear-better'));
     window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } }));
@@ -338,7 +345,7 @@ function PlayChesterGame() {
     const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const gameReport = (event: Event) => {
       const detail = (event as CustomEvent<GameReport>).detail;
-      setReport(detail);
+      setReport(detail); setReportOpen(true);
       if (!isFriendMode) {
         const result = /1-0\s*$/.test(detail.pgn || '') ? 'win' : /0-1\s*$/.test(detail.pgn || '') ? 'loss' : 'draw';
         const myMoves = detail.gradeHistory.filter((entry) => entry.player === 'You');
@@ -519,7 +526,7 @@ function PlayChesterGame() {
     const worstMove = myMoves.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b));
     const fen = fenBeforePly(report.pgn, worstMove.ply);
     if (!fen) return;
-    setReport(null);
+    setReport(null); setReportOpen(false);
     window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode, fen } }));
   };
 
@@ -609,6 +616,44 @@ function PlayChesterGame() {
   const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
   const coachMovePrompt = coachPrompt?.kind === 'move' && !isThinking ? coachPrompt : null;
   const coachBullets = coachMovePrompt && !isBossFight ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
+  // Chester's Breakdown: pivot = biggest single-move swing of the game.
+  const pivot = (() => {
+    if (!report || !report.gradeHistory?.length) return null;
+    const graded = report.gradeHistory.filter((g) => g.centipawnLoss !== null && g.centipawnLoss !== undefined);
+    if (!graded.length) return null;
+    return graded.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b));
+  })();
+  const breakdownVisible = !!report && !reportOpen && victoryState === 'none' && !!pivot && !!report?.pgn;
+  const pivotIdx = pivot ? pivot.ply - 1 : 0;
+  useEffect(() => {
+    if (!breakdownVisible) return;
+    const onStatus = (e: Event) => { const d = (e as CustomEvent<{ index: number; total: number; move: string }>).detail; setScrubIdx(d.index); setScrubTotal(d.total); setScrubMove(d.move || ''); };
+    window.addEventListener('replay-status', onStatus);
+    window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: pivotIdx } }));
+    return () => window.removeEventListener('replay-status', onStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakdownVisible]);
+  useEffect(() => {
+    if (!breakdownVisible || !report?.pgn || !pivot) return;
+    let dead = false;
+    setFeared(null);
+    try {
+      const fen = fenBeforePly(report.pgn, pivot.ply);
+      if (!fen) return;
+      void getStockfishClient().analyzeForDisplay(fen).then((a) => {
+        if (dead) return;
+        try { const u = a.pv[0]; const m = u ? new Chess(fen).move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] as 'q' | 'r' | 'b' | 'n' | undefined }) : null; setFeared(m ? m.san : null); } catch { setFeared(null); }
+      }).catch(() => undefined);
+    } catch { /* breakdown is garnish */ }
+    return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakdownVisible]);
+  const breakdownStep = (d: number) => {
+    const cur = scrubIdx ?? pivotIdx;
+    const total = scrubTotal || (report?.gradeHistory?.length ?? 1);
+    const next = Math.max(0, Math.min(total - 1, cur + d));
+    window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: next } }));
+  };
   return <main className={`chester-game${boss ? ` boss-${boss.name.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}`} aria-label="Play Chester guided game">
     {bossStrike > 0 && <div key={bossStrike} className="boss-strike" aria-hidden="true" />}
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
@@ -776,7 +821,21 @@ function PlayChesterGame() {
       </section>
     </div>}
     {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
-    {report && victoryState === 'none' && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReport(null)} onRetry={isFriendMode ? null : retryMistake} />}
+    {report && reportOpen && victoryState === 'none' && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReportOpen(false)} onRetry={isFriendMode ? null : retryMistake} />}
+    {breakdownVisible && pivot && (
+      <div className="breakdown" role="dialog" aria-label="Chester's breakdown">
+        <header><b>CHESTER'S BREAKDOWN</b><button type="button" aria-label="Close breakdown" onClick={() => setReport(null)}>×</button></header>
+        <p className="breakdown__pivot">PIVOT · MOVE {Math.ceil(pivot.ply / 2)}{pivot.ply % 2 === 1 ? '.' : '…'} <b>{pivot.move}</b> - the move that swung it ({(((pivot.centipawnLoss ?? 0) / 100)).toFixed(1)} pawns).</p>
+        <p className="breakdown__vs">YOU SAW <b>{pivot.move}</b> · I FEARED <b>{feared ?? 'calculating…'}</b></p>
+        <div className="breakdown__scrub">
+          <button type="button" onClick={() => breakdownStep(-1)} aria-label="Previous move">‹</button>
+          <span>{(scrubIdx ?? pivotIdx) + 1}/{scrubTotal || '…'}{scrubMove ? ` · ${scrubMove}` : ''}</span>
+          <button type="button" onClick={() => breakdownStep(1)} aria-label="Next move">›</button>
+          {(scrubIdx ?? pivotIdx) !== pivotIdx && <button type="button" className="breakdown__jump" onClick={() => window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: pivotIdx } }))}>PIVOT</button>}
+          <button type="button" className="breakdown__report" onClick={() => setReportOpen(true)}>REPORT</button>
+        </div>
+      </div>
+    )}
   </main>;
 }
 

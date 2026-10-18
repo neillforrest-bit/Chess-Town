@@ -3045,3 +3045,15 @@ a.battle-btn{text-decoration:none}
 .chester-challenge.is-done { border-color: rgba(80, 255, 140, 0.7); color: #5cff9a; animation: challengePop 0.5s ease; }
 @keyframes challengePop { 0% { transform: scale(0.7); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
 .road-victory__skin { margin-top: 8px; color: #ffd45e; font-weight: 700; font-size: 0.85rem; }
+
+/* BUILD 158: Chester's Breakdown - post-mortem pivot scrubber (overlay sheet, zero layout cost) */
+.breakdown { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 70; padding: 10px 12px; border: 1px solid rgba(34, 211, 238, 0.65); border-radius: 8px; background: linear-gradient(160deg, rgba(6, 16, 22, 0.96), rgba(3, 8, 12, 0.96)); box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6), 0 0 18px rgba(34, 211, 238, 0.25); color: #cfedf5; }
+.breakdown header { display: flex; justify-content: space-between; align-items: center; font-size: 10px; letter-spacing: 0.16em; color: var(--arena-cyan, #22d3ee); }
+.breakdown header button { width: 26px; height: 26px; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: #fff; font-size: 15px; }
+.breakdown__pivot { margin: 8px 0 4px; font-size: 13px; line-height: 1.4; }
+.breakdown__pivot b, .breakdown__vs b { color: #ffd45e; }
+.breakdown__vs { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.06em; color: #9fd7e8; }
+.breakdown__scrub { display: flex; align-items: center; gap: 8px; }
+.breakdown__scrub button { min-width: 34px; height: 30px; border: 1px solid rgba(34, 211, 238, 0.6); border-radius: 5px; background: rgba(34, 211, 238, 0.08); color: #cfedf5; font-size: 15px; font-weight: 900; }
+.breakdown__scrub span { flex: 1; text-align: center; font-size: 12px; font-weight: 700; }
+.breakdown__scrub .breakdown__jump, .breakdown__scrub .breakdown__report { font-size: 9px; letter-spacing: 0.1em; padding: 0 8px; }
