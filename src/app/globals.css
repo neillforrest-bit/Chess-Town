@@ -2946,8 +2946,13 @@ a.battle-btn{text-decoration:none}
 @keyframes tapboardFlash{0%{background:rgba(255,216,77,0)}25%{background:rgba(255,216,77,.55)}100%{background:rgba(255,216,77,0)}}
 .tapboard__trot{position:absolute;width:12.5%;height:12.5%;object-fit:contain;pointer-events:none;z-index:5;animation:tapboardTrot .8s cubic-bezier(.45,.05,.55,1) both}
 @keyframes tapboardTrot{0%{transform:translate(0,0) scale(1)}14%{transform:translate(calc(var(--dx)*14%),calc(var(--dy)*14%)) translateY(-14%) scale(1.12)}28%{transform:translate(calc(var(--dx)*28%),calc(var(--dy)*28%)) scale(1)}42%{transform:translate(calc(var(--dx)*42%),calc(var(--dy)*42%)) translateY(-14%) scale(1.12)}56%{transform:translate(calc(var(--dx)*56%),calc(var(--dy)*56%)) scale(1)}70%{transform:translate(calc(var(--dx)*70%),calc(var(--dy)*70%)) translateY(-14%) scale(1.12)}84%{transform:translate(calc(var(--dx)*84%),calc(var(--dy)*84%)) scale(1.05)}100%{transform:translate(calc(var(--dx)*100%),calc(var(--dy)*100%)) scale(1)}}
-.tapboard__fallen{position:absolute;width:12.5%;height:12.5%;object-fit:contain;pointer-events:none;z-index:4;transform-origin:50% 88%;animation:tapboardTip .8s ease-in .72s both}
+.tapboard__fallen{position:absolute;width:12.5%;height:12.5%;object-fit:contain;pointer-events:none;z-index:6;transform-origin:50% 60%;animation:tapboardYeet .85s cubic-bezier(.45,-.15,.6,1) .68s both;opacity:0}
 @keyframes tapboardTip{0%{transform:rotate(0);opacity:1}14%{transform:rotate(-18deg)}28%{transform:rotate(14deg)}40%{transform:rotate(-9deg)}70%{transform:rotate(96deg) translateY(8%) scale(1.1)}100%{transform:rotate(120deg) translateY(22%);opacity:0}}
+@keyframes tapboardYeet{0%{opacity:1;transform:rotate(0) scale(1)}16%{opacity:1;transform:rotate(-16deg) scale(1.28)}30%{opacity:1;transform:rotate(10deg) scale(1.18)}100%{opacity:0;transform:translate(calc(var(--flyx)*180%),calc(var(--flyy)*-220% - 40px)) rotate(calc(var(--flyx)*560deg)) scale(.35)}}
+.tapboard__burst{position:absolute;width:12.5%;height:12.5%;pointer-events:none;z-index:4;border-radius:50%;box-sizing:border-box;border:4px solid rgba(255,216,77,.95);opacity:0;animation:tapboardBurst .5s cubic-bezier(.2,.7,.3,1) .72s both}
+@keyframes tapboardBurst{0%{opacity:.95;transform:scale(.25)}100%{opacity:0;transform:scale(1.75)}}
+.tapboard--punch{animation:tapboardPunch .4s cubic-bezier(.3,.9,.4,1) .7s}
+@keyframes tapboardPunch{0%{transform:translate(0,0)}20%{transform:translate(calc(var(--punch,4px)*-1),calc(var(--punch,4px)*.65))}42%{transform:translate(calc(var(--punch,4px)*.8),calc(var(--punch,4px)*-.5))}64%{transform:translate(calc(var(--punch,4px)*-.45),calc(var(--punch,4px)*.3))}84%{transform:translate(calc(var(--punch,4px)*.2),0)}100%{transform:translate(0,0)}}
 
 /* BUILD 153c: plain-English labels so the bars explain themselves */
 .fighthud__caption{margin-top:.15rem;text-align:center;font:900 .52rem/1 Arial,sans-serif;letter-spacing:1.5px;color:#9db2b7}

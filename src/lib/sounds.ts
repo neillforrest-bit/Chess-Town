@@ -61,7 +61,7 @@ function noise(c: AudioContext, dur: number, vol: number, delay = 0, lowpass = 2
   src.start(t0);
 }
 
-export type SfxName = 'select' | 'move' | 'capture' | 'good' | 'brilliant' | 'shaky' | 'bad' | 'check' | 'start' | 'win';
+export type SfxName = 'select' | 'move' | 'capture' | 'capture-big' | 'good' | 'brilliant' | 'shaky' | 'bad' | 'check' | 'start' | 'win';
 
 export function playSfx(name: SfxName, pitch = 1) {
   // BUILD 157: optional pitch lift (clutch time raises the sound design).
@@ -88,6 +88,15 @@ export function playSfx(name: SfxName, pitch = 1) {
         tn(c, 2600, 3400, 'square', 0.03, 0.045, 0.012);
         tn(c, 3400, 2400, 'square', 0.026, 0.04, 0.038);
         noise(c, 0.05, 0.06, 0.01, 5200);
+        break;
+      case 'capture-big':
+        // BUILD 160: heavy piece falls - deep boom under the shatter
+        tn(c, 120, 40, 'sine', 0.3, 0.5);
+        tn(c, 260, 90, 'triangle', 0.14, 0.24, 0.01);
+        noise(c, 0.05, 0.2, 0, 700);
+        tn(c, 2600, 3600, 'square', 0.04, 0.06, 0.02);
+        tn(c, 3400, 2200, 'square', 0.035, 0.05, 0.05);
+        noise(c, 0.09, 0.1, 0.02, 5200);
         break;
       case 'good':
         tn(c, 659, 659, 'sine', 0.1, 0.18);

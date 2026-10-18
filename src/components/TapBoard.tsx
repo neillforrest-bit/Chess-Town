@@ -22,21 +22,26 @@ type TapBoardProps = {
   ghostSquares?: Record<string, number>;
   // BUILD 157: checkmate - the king on this square topples over.
   toppleSquare?: string;
+  // BUILD 160: battle's motion-FX toggle - off means no capture theatre, just the new position.
+  motion?: boolean;
 };
 
 function rows(fen: string): string[][] {
   return fen.split(' ')[0].split('/').map((rank) => rank.split('').flatMap((piece) => Number.isInteger(Number(piece)) ? Array(Number(piece)).fill('') : [piece]));
 }
 
-export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares, toppleSquare }: TapBoardProps) {
+export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares, toppleSquare, motion = true }: TapBoardProps) {
   const [sprites, setSprites] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
-  // Capture battle: the attacker trots in along a flashing path, the loser tips over.
-  type CapAnim = { key: number; from: string; to: string; mover: string; captured: string; capturedSq: string; path: string[] };
+  // Capture battle: the attacker trots in along a flashing path, the loser gets yeeted off the board.
+  type CapAnim = { key: number; from: string; to: string; mover: string; captured: string; capturedSq: string; path: string[]; punch: number };
   const prevFenRef = useRef<string>(fen);
   const [capAnim, setCapAnim] = useState<CapAnim | null>(null);
 
+  const lastFrom = lastMove?.from || '';
+  const lastTo = lastMove?.to || '';
   useEffect(() => {
+    if (!motion) { setCapAnim(null); prevFenRef.current = fen; return; }
     const prev = prevFenRef.current;
     prevFenRef.current = fen;
     if (!lastMove || prev === fen) return;
@@ -58,10 +63,12 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
       let f = ff + df; let r = fr + dr;
       while (f !== tf || r !== tr) { path.push(`${FILES[f]}${r}`); f += df; r += dr; }
     }
-    setCapAnim({ key: Date.now(), from: lastMove.from, to: lastMove.to, mover, captured, capturedSq, path });
-    const t = setTimeout(() => setCapAnim(null), 1250);
+    const PVAL: Record<string, number> = { p: 2, n: 5, b: 5, r: 8, q: 12, k: 12 };
+    setCapAnim({ key: Date.now(), from: lastMove.from, to: lastMove.to, mover, captured, capturedSq, path, punch: PVAL[captured.toLowerCase()] || 4 });
+    const t = setTimeout(() => setCapAnim(null), 1650);
     return () => clearTimeout(t);
-  }, [fen, lastMove]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fen, lastFrom, lastTo, motion]);
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -102,7 +109,7 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
   const rankOrder = orientation === 'w' ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
   const fileOrder = orientation === 'w' ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
 
-  return <div className="neon-chessboard tapboard" aria-label={label || 'Chess board - tap a piece, then tap where it goes'} role="grid">
+  return <div className={`neon-chessboard tapboard${capAnim ? ' tapboard--punch' : ''}`} style={capAnim ? { ['--punch' as never]: `${capAnim.punch}px` } : undefined} aria-label={label || 'Chess board - tap a piece, then tap where it goes'} role="grid">
     {rankOrder.map((row, ri) => fileOrder.map((col, ci) => {
       const piece = grid[row][col];
       const square = `${FILES[col]}${8 - row}`;
@@ -139,7 +146,8 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
       const capSprite = sprites[`${capAnim.captured === capAnim.captured.toUpperCase() ? 'w' : 'b'}${capAnim.captured.toLowerCase()}`];
       return <>
         {[capAnim.from, ...capAnim.path, capAnim.to].map((sq, i) => <i key={`${capAnim.key}-${sq}`} className="tapboard__pathflash" style={{ ...pos(sq), animationDelay: `${i * 55}ms` }} />)}
-        {capSprite && <img key={`cap-${capAnim.key}`} className="tapboard__fallen" style={pos(capAnim.capturedSq)} src={capSprite} alt="" />}
+        <i key={`burst-${capAnim.key}`} className="tapboard__burst" style={pos(capAnim.to)} />
+        {capSprite && <img key={`cap-${capAnim.key}`} className="tapboard__fallen" style={{ ...pos(capAnim.capturedSq), ['--flyx' as never]: Math.sign(dx) || (Math.random() > 0.5 ? 1 : -1), ['--flyy' as never]: Math.sign(dy) || -1 }} src={capSprite} alt="" />}
         {moverSprite && <img key={`mv-${capAnim.key}`} className="tapboard__trot" style={{ ...fromPos, ['--dx' as never]: dx, ['--dy' as never]: dy }} src={moverSprite} alt="" />}
       </>;
     })()}

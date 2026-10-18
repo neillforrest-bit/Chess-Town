@@ -196,7 +196,8 @@ export default function BattlePage() {
     if (!last) return;
     const mate = c.isCheckmate(); const check = !mate && c.isCheck();
     const pitch = clutchRef.current ? 1.35 : 1; // clutch time: the sound design rises in pitch
-    playSfx(mate ? 'win' : check ? 'check' : last.captured ? 'capture' : 'move', pitch);
+    const CV: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    playSfx(mate ? 'win' : check ? 'check' : last.captured ? ((CV[last.captured] || 1) >= 5 ? 'capture-big' : 'capture') : 'move', pitch);
     if (mate) buzz(240); else if (check) buzz([25, 45, 25]); else if (last.captured) buzz(12); else buzz(5);
     if (last.promotion) buzz([16, 32, 16]);
     let kingSq: string | undefined;
@@ -616,7 +617,7 @@ export default function BattlePage() {
       <div className="fighthud__caption">LIVE WIN ODDS</div>
     </div>}
     <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}${mood ? ` battle-fx--${mood}` : ''}${fx?.kind === 'mate' ? ' battle-board--mate' : ''}`}>
-      <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn || ghostArm} lastMove={lastMove} onMove={onMove} ghostSquares={ghostSquares} toppleSquare={motion && fx?.kind === 'mate' ? fx.kingSq : undefined} />
+      <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn || ghostArm} lastMove={lastMove} onMove={onMove} ghostSquares={ghostSquares} toppleSquare={motion && fx?.kind === 'mate' ? fx.kingSq : undefined} motion={motion} />
       {motion && fx && fx.kind !== 'move' && <div className="battle-fxlayer" aria-hidden="true">
         {fx.kind === 'capture' && <i key={fx.key} className="battle-fxpuff" style={sqPos(fx.to)} />}
         {(fx.kind === 'check' || fx.kind === 'mate') && fx.kingSq && <i key={fx.key} className={`battle-fxhalo${fx.kind === 'mate' ? ' battle-fxhalo--mate' : ''}`} style={sqPos(fx.kingSq)} />}
