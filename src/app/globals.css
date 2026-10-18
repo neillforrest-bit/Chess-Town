@@ -706,3 +706,10 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-dock-veto{display:flex;flex-direction:column;gap:4px}
 .cs-dock-veto-r{display:flex;gap:6px}
 .cs-dock-veto-r button{flex:1;background:#3d0f0f;border:1px solid #c2371a;color:#ffd9d9;border-radius:8px;padding:9px 6px;font:800 .62rem/1.2 inherit;letter-spacing:.06em}
+
+/* actor preference highlight: whose typed star is in this film */
+.cs-actorhit{display:inline-block;flex:none;font:700 .58rem/1.2 system-ui;letter-spacing:.08em;color:#0b0614;background:linear-gradient(180deg,#ffe9a8,#ffc83d);border-radius:999px;padding:3px 9px;margin-top:2px}
+.cs-actorhit--them{background:linear-gradient(180deg,#d8b4fe,#a78bfa);color:#170b2e}
+/* Orson's mood-correlation call on the duel */
+.cs8-moodcall{flex:none;margin:0;font:italic 600 .66rem/1.35 Georgia,serif;color:#ffe9a8;opacity:.92}
+.cs8-moodcall b{color:#ffc83d;font-style:normal}

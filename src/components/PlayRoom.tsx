@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { TROPE_NAMES, SWIPER_CAP, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
+import { TROPE_NAMES, SWIPER_CAP, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent, actorHit } from '@/lib/game';
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import CineSyncPipeline from './CineSyncPipeline';
 import TokenHUD from './TokenHUD';
@@ -230,6 +230,7 @@ export default function PlayRoom({ code }: { code: string }) {
             <span className="cs-meta">{[m.y, runtime, m.k].filter(Boolean).join(' · ')}</span>
             <span className="cs-genres">{m.g.slice(0, 3).map((g) => <i key={g}>{g}</i>)}{tasteHits(m, s.vibe.tastes, s.vibe.actors).slice(0, 3).map((g) => <i key={g} className="hit">{g}</i>)}</span>
             {m.c && m.c.length > 0 && <span className="cs-cast"><em>Starring</em> {m.c.slice(0, 3).join(', ')}</span>}
+            {(() => { const ah = actorHit(m, s.vibe.actors, pid); return ah ? <span className="cs-actorhit">🎭 {ah.toUpperCase()} · YOUR PICK</span> : null; })()}
             {m.aw && <span className="cs-award">{m.aw.replace(/\.? ?$/, '')}</span>}
           </div>
         </div>

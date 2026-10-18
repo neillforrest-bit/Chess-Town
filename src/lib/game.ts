@@ -248,6 +248,12 @@ export function tasteHits(m: Movie, t: { A: string[] | null; B: string[] | null 
   for (const p of ['A', 'B'] as const) { for (const a of actorList(actors[p])) { const hit = (m.c || []).find((c) => c.toLowerCase().includes(a)); if (hit) out.push('Stars ' + hit); } }
   return Array.from(new Set(out));
 }
+/** Exact cast member matching one player's typed actor (case-insensitive substring, first hit). */
+export const actorHit = (m: Movie, actors: { A: string; B: string } | undefined, pid: PID): string | null => {
+  if (!actors) return null;
+  for (const a of actorList(actors[pid] || '')) { const hit = (m.c || []).find((c) => c.toLowerCase().includes(a)); if (hit) return hit; }
+  return null;
+};
 const tasteBonus = (m: Movie, t: { A: string[] | null; B: string[] | null }, actors: { A: string; B: string }) => {
   const tags = tagsOf(m); let b = 0;
   for (const tag of tags) { const a = (t.A || []).includes(tag), c = (t.B || []).includes(tag); b += a && c ? 1.8 : a || c ? 0.7 : 0; }
