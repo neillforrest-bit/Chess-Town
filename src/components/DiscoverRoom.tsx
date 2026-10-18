@@ -113,14 +113,14 @@ export default function DiscoverRoom() {
   }, [phase, kept, wilds, finalists]);
 
   const cur = shelf[si];
+  const head = <div className="cs-solohead"><span>CINE<b>SYNC</b> DISCOVERY</span><span>{phase === 'setup' ? 'DEEP CUTS' : (genres.filter((g) => !g.startsWith('docs')).join(' + ') || DOC_SHELVES.find((x) => x.id === docShelf)?.n || 'DOCS').toUpperCase()}</span></div>;
+  const bar = <p className="cs-solo-orson"><em>ORSON</em> {line}</p>;
   return (
-    <main className="cs-main">
-      <header className="cs-top"><b>CINESYNC</b><span>{name || 'SOLO'} · DISCOVERY</span></header>
-      <div className="cs-orson"><div className="cs-orson-ava" /><p>{line}</p></div>
+    <main className="cs-play">{head}{bar}<section className="cs-body">
 
       {phase === 'setup' && (
         <section className="cs-ask">
-          <h2>WHAT ARE WE DIGGING IN?</h2>
+          <div className="cs-orson">WHAT ARE WE DIGGING IN?</div>
           <div className="cs-dgenres">
             {GENRES.map((g) => (
               <button key={g} className={'cs-chip' + (genres.includes(g) ? ' is-on' : '')} onClick={() => setGenres((x) => {
@@ -144,7 +144,7 @@ export default function DiscoverRoom() {
 
       {phase === 'shelf' && cur && (
         <section className="cs-ask">
-          <h2>THE SHELF · {si + 1}/{shelf.length} · KEPT {kept.length}/6</h2>
+          <div className="cs-orson">THE SHELF · {si + 1}/{shelf.length} · KEPT {kept.length}/6</div>
           <div className="cs-dcard">
             <img className="cs-poster" src={posterUrl(cur, 'w342')} alt={cur.t} draggable={false} />
             <b>{cur.t}</b><small>{cur.y} · {cur.g.slice(0, 3).join(' / ')}{cur.ol && cur.ol !== 'en' ? ' · ' + cur.ol.toUpperCase() : ''}</small>
@@ -158,7 +158,7 @@ export default function DiscoverRoom() {
 
       {(phase === 'shortlist' || phase === 'final') && (
         <section className="cs-ask">
-          <h2>{phase === 'shortlist' ? `THE SHORTLIST · PICK ${finalists.length}/3` : 'THE ONE'}</h2>
+          <div className="cs-orson">{phase === 'shortlist' ? `THE SHORTLIST · PICK ${finalists.length}/3` : 'THE ONE'}</div>
           {cards.map((m) => (
             <button key={m.id} className={'cs-drow' + (finalists.includes(m.id) ? ' is-on' : '')} onClick={() => phase === 'shortlist' ? toggleFinal(m.id) : crown(m)}>
               <img className="cs-poster" src={posterUrl(m)} alt={m.t} draggable={false} />
@@ -172,7 +172,7 @@ export default function DiscoverRoom() {
       {phase === 'done' && winner && (
         <section className="cs-ask">
           <Confetti />
-          <h2>TONIGHT'S DISCOVERY</h2>
+          <div className="cs-orson">TONIGHT&apos;S DISCOVERY</div>
           <div className="cs-dcard">
             <img className="cs-poster" src={posterUrl(winner, 'w500')} alt={winner.t} draggable={false} />
             <b>{winner.t}</b><small>{winner.y} · {winner.g.slice(0, 3).join(' / ')} · TMDB {winner.r.toFixed(1)}</small>
@@ -187,6 +187,6 @@ export default function DiscoverRoom() {
           <button className="cs-btn cs-btn--gold" onClick={() => { setPhase('setup'); setGenres([]); setLine('Again? Pick another shelf.'); }}>AGAIN</button>
         </section>
       )}
-    </main>
+    </section></main>
   );
 }
