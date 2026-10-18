@@ -59,7 +59,7 @@ export default function DiscoverRoom() {
     const docMode = genres.includes('Documentary');
     const cats = docShelf && docShelf !== 'docs' ? [docShelf] : [];
     const inShelf = (m: FM) => !cats.length || cats.some((c) => (m.kw || []).includes('doccat:' + c.slice(5)));
-    const cl = MOVIES.filter((m) => (docMode ? m.g.includes('Documentary') && inShelf(m as FM) : genres.some((g) => m.g.includes(GID_OF[g] || g))) && m.r >= 7 && m.y >= 1960) as FM[];
+    const cl = MOVIES.filter((m) => (docMode ? m.g.includes('Documentary') && inShelf(m as FM) : genres.some((g) => m.g.includes(GID_OF[g] || g))) && m.r >= 7 && m.pop >= 60 && m.y >= 1960) as FM[];
     cl.sort((a, b) => obscurity(b) - obscurity(a));
     for (const m of cl.slice(0, 7)) { if (!seen.has(m.id)) { seen.add(m.id); pool.push(m); } }
     // TMDB deep fetch: low floors, foreign allowed, 1960+
