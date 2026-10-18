@@ -320,7 +320,12 @@ export default function BattlePage() {
       const live = !dead;
       const stm = fen.split(' ')[1] === 'w' ? 1 : -1;
       const raw = a.mate !== null ? (a.mate > 0 ? 10 : -10) : Math.max(-10, Math.min(10, (a.score ?? 0) / 100));
-      const pawns = raw * stm;
+      let pawns = raw * stm;
+      // Terminal positions return no engine score (Stockfish has no bestmove when mated),
+      // which used to read as 0.00 and sink the winner's accuracy on the mating move.
+      const cTerm = loadChess(pgn);
+      if (cTerm.isCheckmate()) pawns = cTerm.turn() === 'w' ? -10 : 10;
+      else if (cTerm.isGameOver()) pawns = 0;
       if (live) {
         setPawnsNow(pawns);
         try { const c = loadChess(pgn); const u = a.pv[0]; const m = u ? c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }) : null; bestRef.current = m ? m.san : null; } catch { bestRef.current = null; }
