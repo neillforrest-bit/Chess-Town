@@ -829,7 +829,7 @@ function PlayChesterGame() {
     {breakdownVisible && pivot && (
       <div className="breakdown" role="dialog" aria-label="Chester's breakdown">
         <header><b>CHESTER'S BREAKDOWN</b><button type="button" aria-label="Close breakdown" onClick={() => setReport(null)}>×</button></header>
-        <p className="breakdown__pivot">PIVOT · MOVE {Math.ceil(pivot.ply / 2)}{pivot.ply % 2 === 1 ? '.' : '…'} <b>{pivot.move}</b> - the move that swung it ({(((pivot.centipawnLoss ?? 0) / 100)).toFixed(1)} pawns).</p>
+        <p className="breakdown__pivot">PIVOT · MOVE {Math.ceil(pivot.ply / 2)}{pivot.ply % 2 === 1 ? '.' : '…'} <b>{pivot.move}</b> - the move that swung it ({(pivot.centipawnLoss ?? 0) >= 90000 ? 'mate on the board' : `${((pivot.centipawnLoss ?? 0) / 100).toFixed(1)} pawns`}).</p>
         <p className="breakdown__vs">YOU SAW <b>{pivot.move}</b> · I FEARED <b>{feared ?? 'calculating…'}</b></p>
         <div className="breakdown__scrub">
           <button type="button" onClick={() => breakdownStep(-1)} aria-label="Previous move">‹</button>
