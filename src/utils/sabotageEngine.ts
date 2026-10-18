@@ -23,7 +23,9 @@ export function canUse(s: State, pid: PID, k: SabKey): boolean {
   if (k === 'roulette') return !s.sab?.wheel && (s.phase === 'vibe' || (s.phase === 'draft' && !s.draft.loading && s.draft.gren.id === null));
   const b = s.b8; if (s.phase !== 'bracket' || !b) return false;
   const m = b.matches[b.cur]; if (!m || m.round < 2 || m.a === null || m.b === null || m.status !== 'VOTING_ACTIVE' || m.winner !== null || m.trivia) return false;
-  if (k === 'block') return !(m.wg[other(pid)] || m.live?.[other(pid)]) && !m.blk;
+  // one power per matchup between both players: once any of VETO/BLOCK/ORSON lands, the rest are locked out
+  if (m.veto || m.blk || m.orsonPick) return false;
+  if (k === 'block') return !(m.wg[other(pid)] || m.live?.[other(pid)]);
   return true;
 }
 
@@ -34,7 +36,7 @@ function vetoTarget(b: B8, m: M8, pid: PID): number {
   return m.seedA > m.seedB ? a : c;
 }
 
-export function sabIntent(s: State, it: { pid: PID; kind: SabKey; winner?: number; genre?: string }, now: number) {
+export function sabIntent(s: State, it: { pid: PID; kind: SabKey; winner?: number; genre?: string; dead?: number }, now: number) {
   s.sab ||= newSab(); const pid = it.pid; if (pid !== 'A' && pid !== 'B') return;
   if (!canUse(s, pid, it.kind)) return;
   const nm = s.players[pid].name; const b = s.b8; const m = b ? b.matches[b.cur] : null;
@@ -48,7 +50,8 @@ export function sabIntent(s: State, it: { pid: PID; kind: SabKey; winner?: numbe
   }
   if (!b || !m) return;
   if (it.kind === 'veto') {
-    const dead = vetoTarget(b, m, pid), live = dead === m.a ? (m.b as number) : (m.a as number); s.sab[pid].veto = false; s.vetoed.push(dead);
+    // explicit target from the UI (tap the film you want dead); fallback keeps the old conference heuristic
+    const dead = (it.dead === m.a || it.dead === m.b) ? it.dead : vetoTarget(b, m, pid), live = dead === m.a ? (m.b as number) : (m.a as number); s.sab[pid].veto = false; s.vetoed.push(dead);
     say(s, `VETO! ${nm} struck ${BY_ID[dead].t.slice(0, 22)}. ${BY_ID[live].t.slice(0, 22)} advances.`);
     m.veto = { by: pid, dead }; s.sab.log.unshift(`${nm} vetoed ${BY_ID[dead].t}`); finish(s, m, live, `${nm} played THE VETO on ${BY_ID[dead].t}`, now); return;
   }
