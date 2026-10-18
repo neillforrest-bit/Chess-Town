@@ -578,6 +578,9 @@ export default function BattlePage() {
     {!zen && <div className="fighthud battle-fighthud">
       <div className="fighthud__names">
         <div className={`fighthud__name fighthud__name--you ${turn === 'w' ? 'is-turn' : ''}`}><span>WHITE</span></div>
+        {!over && connected && seat !== null && <div className="battle-chits" aria-label="Quick-fire banter">
+          {CHITS.map((c) => <button key={c.id} type="button" className="battle-chit" aria-label={c.text} title={c.text} disabled={now < chitCool.current} onClick={() => sendChit(c)}>{c.id === 'bogen' ? '🤔' : c.id === 'ticktock' ? '⏳' : '🛡'}</button>)}
+        </div>}
         <div className={`fighthud__name fighthud__name--opp ${turn === 'b' ? 'is-turn' : ''}`}><span>BLACK</span></div>
       </div>
       <div className={`fighthud__bar${swing ? ' fighthud__bar--surge' : ''}`} role="img" aria-label={`Tug of war: white ${odds} percent, black ${100 - odds} percent`}>
@@ -606,9 +609,6 @@ export default function BattlePage() {
       {!zen && (banter || edu) && <div key={(banter || edu)!.key} className={`battle-commentary${banter?.hot ? ' battle-commentary--hot' : ''}`} aria-live="polite">
         <ChesterAvatar isThinking={false} size="small" />
         <span>{banter && <><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</>}{edu && <small className="battle-commentary__edu">{edu.text}</small>}</span>
-      </div>}
-      {!zen && !banter && !edu && connected && !over && seat !== null && <div className="battle-chits" aria-label="Quick-fire banter">
-        {CHITS.map((c) => <button key={c.id} type="button" className="battle-chit" disabled={now < chitCool.current} onClick={() => sendChit(c)}>{c.text}</button>)}
       </div>}
     </div>
     {!zen && <><div className="battle-acc__caption">LIVE ACCURACY</div>

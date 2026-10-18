@@ -2981,8 +2981,8 @@ a.battle-btn{text-decoration:none}
 @keyframes clutchPulse{0%,100%{opacity:.55}50%{opacity:1}}
 .battle-clock--clutch{border-color:#f43f5e!important;color:#ff9ebb;background:rgba(244,63,94,.12)}
 .battle-clock--clutch b{font-size:1.9rem;color:#fff;text-shadow:0 0 18px rgba(244,63,94,.9)}
-.battle-chits{display:flex;flex:1;gap:.35rem;align-items:center;justify-content:center}
-.battle-chit{padding:.5rem .55rem;border-radius:99px;border:1px solid rgba(34,211,238,.5);background:rgba(5,7,8,.85);color:#7ee7f5;font:800 .6rem/1 Arial,sans-serif;letter-spacing:.3px;cursor:pointer;white-space:nowrap}
+.battle-chits{display:flex;gap:.3rem;align-items:center;justify-content:center}
+.battle-chit{padding:.35rem .5rem;border-radius:99px;font-size:.8rem;border:1px solid rgba(34,211,238,.5);background:rgba(5,7,8,.85);color:#7ee7f5;cursor:pointer;line-height:1}
 .battle-chit:disabled{opacity:.35;cursor:default}
 .battle-chittoast{position:absolute;top:.4rem;left:50%;transform:translateX(-50%);z-index:40;padding:.45rem .9rem;border-radius:99px;background:rgba(5,7,8,.92);border:1px solid rgba(255,216,77,.65);color:#ffd84d;font:900 .72rem/1 Arial,sans-serif;letter-spacing:.5px;animation:battleToast 2.6s ease forwards;pointer-events:none;white-space:nowrap}
 .battle-chittoast--mine{border-color:rgba(34,211,238,.6);color:#7ee7f5}
