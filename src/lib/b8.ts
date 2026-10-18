@@ -4,7 +4,7 @@ import { rollFeline, isSpectacle, SPEC_TAG } from '@/utils/sabotageEngine';
 import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
-  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 10, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 40000, CALLS_MS: [9000, 9000, 10000, 11000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 6, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 40000, CALLS_MS: [9000, 9000, 10000, 11000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
   NO_REFRESH: true, RATING_W: 0.4, BOTH_BONUS: 18, RATING_BOUT: 0.12, WC_STEAL: 10, WC_MUL: 2,
   PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
 };
@@ -15,6 +15,8 @@ export type Hit = { endsAt: number; grid: number[]; owner: Record<number, 'A' | 
 export type Trivia = { q: string; opts: string[]; ans: number; endsAt: number; locked: { A?: boolean; B?: boolean }; winner: PID | null };
 export type M8 = {
   id: string; round: 1 | 2 | 3 | 4; slot: number; a: number | null; b: number | null; seedA: number; seedB: number;
+  /** Winner feeds match slot `nx` on side `ns` (explicit: bracket size is adaptive). */
+  nx?: number; ns?: 'a' | 'b';
   status: 'PENDING' | 'VOTING_ACTIVE' | 'LOCKED_FOR_VETO' | 'RESOLVED';
   wg: { A?: { id: number; tok: number }; B?: { id: number; tok: number } };
   winner: number | null; mortem?: string; via: string | null; wild: boolean; trivia: Trivia | null; busting: { by: PID; id: number; at: number } | null; nextAt: number | null; bust?: string; endsAt?: number; calledBy?: PID[]; tape?: string;
@@ -131,18 +133,28 @@ export function buildBracket(s: State, now: number) {
   // guard: a Silver Bullet can leave a conference short; backfill from the other conference's surplus
   while (rA.length < 4 && rB.length > 4) rA.push(rB.pop() as number);
   while (rB.length < 4 && rA.length > 4) rB.push(rA.pop() as number);
-  if (rA.length < 4 || rB.length < 4) {
-    const extra = pickWildcards(new Set([...surv, ...res.dead, ...s.vetoed]), s.vibe.target || [5, 5, 5, 5], 8, s.code + 'top', s.kind, s.gm, s.cl);
-    for (const id of extra) { if (rA.length < 4) { rA.push(id); h.owner[id] = 'A'; } else if (rB.length < 4) { rB.push(id); h.owner[id] = 'B'; } }
+  // Batch 7: NO Orson backfill. Only player-chosen titles advance, so the bracket adapts instead:
+  // 4v4 full quarters, 3v3 with top-seed byes, 2v2 straight semis, 1v1 straight final.
+  // If one conference is empty (max overlap + veto), split the union alternately by seed score.
+  if (rA.length === 0 || rB.length === 0) {
+    const all = [...surv].sort((a, b) => score(b) - score(a));
+    rA = all.filter((_, i) => i % 2 === 0); rB = all.filter((_, i) => i % 2 === 1);
   }
-  rA = rA.slice(0, 4); rB = rB.slice(0, 4);
+  const n = Math.min(4, rA.length, rB.length);
+  rA = rA.slice(0, n); rB = rB.slice(0, n);
   const conf: B8['conf'] = {}; const seed: Record<number, number> = {};
   rA.forEach((id, i) => { conf[id] = { p: 'A', rank: i + 1, golden: id === gA, tok: tk('A', id) }; seed[id] = 2 * i + 1; });
   rB.forEach((id, i) => { conf[id] = { p: 'B', rank: i + 1, golden: id === gB, tok: tk('B', id) }; seed[id] = 2 * i + 2; });
   const goldMap: Record<number, PID> = {}; if (gA !== null && conf[gA]) goldMap[gA] = 'A'; if (gB !== null && conf[gB] && gB !== gA) goldMap[gB] = 'B';
-  const mk = (id: string, round: 1 | 2 | 3 | 4, slot: number, a: number | null, b: number | null): M8 => ({ id, round, slot, a, b, seedA: a ? seed[a] : 0, seedB: b ? seed[b] : 0, status: 'PENDING', wg: {}, winner: null, via: null, wild: false, trivia: null, busting: null, nextAt: null });
-  // spec pairings: QF1 A#1 v B#4, QF2 B#2 v A#3, QF3 B#1 v A#4, QF4 A#2 v B#3
-  const ms: M8[] = [mk('q0', 2, 0, rA[0], rB[3]), mk('q1', 2, 1, rB[1], rA[2]), mk('q2', 2, 2, rB[0], rA[3]), mk('q3', 2, 3, rA[1], rB[2]), mk('s0', 3, 4, null, null), mk('s1', 3, 5, null, null), mk('f1', 4, 6, null, null)];
+  const mk = (id: string, round: 1 | 2 | 3 | 4, slot: number, a: number | null, b: number | null, nx?: number, ns?: 'a' | 'b'): M8 => ({ id, round, slot, a, b, seedA: a ? seed[a] : 0, seedB: b ? seed[b] : 0, status: 'PENDING', wg: {}, winner: null, via: null, wild: false, trivia: null, busting: null, nextAt: null, ...(nx !== undefined ? { nx, ns } : {}) });
+  // slots are array indexes; winners follow the explicit nx/ns links set here
+  const ms: M8[] = n >= 4
+    ? [mk('q0', 2, 0, rA[0], rB[3], 4, 'a'), mk('q1', 2, 1, rB[1], rA[2], 4, 'b'), mk('q2', 2, 2, rB[0], rA[3], 5, 'a'), mk('q3', 2, 3, rA[1], rB[2], 5, 'b'), mk('s0', 3, 4, null, null, 6, 'a'), mk('s1', 3, 5, null, null, 6, 'b'), mk('f1', 4, 6, null, null)]
+    : n === 3
+      ? [mk('q0', 2, 0, rA[1], rB[2], 2, 'b'), mk('q1', 2, 1, rB[1], rA[2], 3, 'a'), mk('s0', 3, 2, rA[0], null, 4, 'a'), mk('s1', 3, 3, null, rB[0], 4, 'b'), mk('f1', 4, 4, null, null)]
+      : n === 2
+        ? [mk('s0', 3, 0, rA[0], rB[1], 2, 'a'), mk('s1', 3, 1, rB[0], rA[1], 2, 'b'), mk('f1', 4, 2, null, null)]
+        : [mk('f1', 4, 0, rA[0] ?? null, rB[0] ?? null)];
   const bonus = s.b8Bonus || { A: 0, B: 0 };
   const all = [...rA, ...rB];
   s.b8 = { matches: ms, cur: 0, seed, shield: goldMap, base: 0, conf, purse: { A: R.PURSE, B: R.PURSE }, buster: { A: true, B: true }, upsets: [], vetoLog: (s as { _vl?: B8['vetoLog'] })._vl || [], wilds: [], backed: { A: 0, B: 0 }, bonus, show: { until: now + R.HOLD_MS, kind: 'explain', round: 0 }, wcard: (() => { const wp = (s.hit as (Hit & { wpick?: Partial<Record<PID, WK>> }) | null)?.wpick || {}; return { A: { pick: wp.A || null, used: false }, B: { pick: wp.B || null, used: false } }; })(), ack: { A: false, B: false }, calls: { champ: {}, pick: { A: {}, B: {} }, score: { A: 0, B: 0 }, streak: { A: 0, B: 0 } } };
@@ -380,9 +392,7 @@ export function tick8(s: State, now: number) {
 
 function advance8(s: State, now: number) {
   const b = s.b8 as B8; const m = b.matches[b.cur];
-  const feed = (to: number, side: 'a' | 'b', id: number) => { const t = b.matches[to]; t[side] = id; if (side === 'a') t.seedA = b.seed[id]; else t.seedB = b.seed[id]; };
-  if (m.round === 2) { const j = m.slot - b.base; feed(b.base + 4 + (j >> 1), j % 2 === 0 ? 'a' : 'b', m.winner as number); }
-  else if (m.round === 3) feed(b.base + 6, (m.slot - b.base) === 4 ? 'a' : 'b', m.winner as number);
+  if (m.nx !== undefined && b.matches[m.nx]) { const t = b.matches[m.nx]; const side = m.ns || 'a'; t[side] = m.winner as number; if (side === 'a') t.seedA = b.seed[m.winner as number]; else t.seedB = b.seed[m.winner as number]; }
   if (b.cur < b.matches.length - 1) {
     m.nextAt = null; const nx = b.matches[b.cur + 1];
     // bracket, matchup, bracket, matchup: the full bracket returns after EVERY match (longer at the end of a round)

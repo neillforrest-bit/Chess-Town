@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
-import { TROPE_NAMES, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
+import { TROPE_NAMES, SWIPER_CAP, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent } from '@/lib/game';
 import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
 import CineSyncPipeline from './CineSyncPipeline';
 import TokenHUD from './TokenHUD';
@@ -180,11 +180,12 @@ export default function PlayRoom({ code }: { code: string }) {
         <div className="cs-moods">{MOODS.map((mo) => { const on = moodSel.includes(mo.k); return <button key={mo.k} className={'cs-mood' + (on ? ' is-on' : '')} onClick={() => { buzz(10); const sel = on ? moodSel.filter((x) => x !== mo.k) : [...moodSel, mo.k].slice(-2); setMoodSel(sel); const ms = MOODS.filter((x) => sel.includes(x.k)); if (ms.length) setSlv([0, 1, 2].map((i) => Math.round(ms.reduce((q, x) => q + x.v[i], 0) / ms.length))); }}><i>{mo.e}</i><b>{mo.n}</b><em>{mo.ex}</em></button>; })}</div>
         <button className="cs-fine" onClick={() => setFine(!fine)}>{fine ? 'HIDE FINE-TUNE' : 'FINE-TUNE SLIDERS'}</button>
         {fine && LB.map((l, i) => <div key={i} className="cs-sl"><div className="cs-sl-l"><span>{l[0]}</span><span>{l[1]}</span></div><input type="range" min={0} max={100} value={slv[i]} onChange={(e) => { const v = [...slv]; v[i] = Number(e.target.value); setSlv(v); }} /><em>{slv[i]}</em></div>)}
+        <div className="cs-actor"><label>OPTIONAL · AN ACTOR OR TWO YOU BOTH RATE</label><input value={actor} onChange={(e) => setActor(e.target.value)} placeholder="e.g. Florence Pugh, Denzel" maxLength={60} /></div>
         <ConsPicker value={cons} onChange={setCons} />
-        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv, cons }); }}>NEXT: SWIPE YOUR VIBES</button></div>); }
+        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv, cons, actors: actor }); }}>NEXT: SWIPE YOUR VIBES</button></div>); }
     // v2.1 VIBE SWIPER: one vibe phrase at a time; the first 3 both players swipe right on lock in instantly.
     const mineT = s.vibe.tropes?.[pid] || null; const swm = s.vibe.sw?.[pid] || {};
-    const order = [...TROPE_NAMES].sort((x, y) => hashStr(s.code + x) - hashStr(s.code + y)); const cur = order.find((x) => swm[x] === undefined);
+    const order = [...TROPE_NAMES].sort((x, y) => hashStr(s.code + x) - hashStr(s.code + y)).slice(0, SWIPER_CAP); const cur = order.find((x) => swm[x] === undefined);
     if (!mineT && cur) return shell(<div className="cs-ask cs-ask--tight cs-vsw">
       <div className="cs-orson">THE VIBE SWIPER · {s.vibe.lock.length}/3 LOCKED</div>
       <div className="cs-vsw-lock">{[0, 1, 2].map((i) => <span key={i} className={s.vibe.lock[i] ? 'is-on' : ''}>{s.vibe.lock[i] || '?'}</span>)}</div>
@@ -202,7 +203,7 @@ export default function PlayRoom({ code }: { code: string }) {
       return shell(<div className="cs-gren"><div className="cs-orson">UNRESOLVED TENSION</div><p className="cs-say">I&apos;m seeing a lot of unresolved tension. Let&apos;s throw a grenade.</p>
         <div className="cs-gren-card"><Poster id={gm.id} /><b>{gm.t}</b><span>{gm.y} · {gm.r.toFixed(1)}{gm.rt != null ? ` · RT ${gm.rt}%` : ''}</span></div>
         {mine === undefined ? <div className="cs-row"><button className="cs-btn cs-btn--no" onClick={() => send({ t: 'grenvote', pid, yes: false })}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'grenvote', pid, yes: true })}>I&apos;LL TAKE IT</button></div> : <p className="cs-small cs-wait">🔒 Locked in. {them.name} is still deciding<span className="cs-dots">...</span></p>}</div>); }
-    if (picks.length >= DRAFT_SIZE) return shell(<div className="cs-center"><p className="cs-say">Ten drafted and locked. Your picks stay secret.</p><p className="cs-small">{s.draft.picks[other].length >= DRAFT_SIZE ? 'Both done.' : `${them.name} has ${s.draft.picks[other].length}/${DRAFT_SIZE}.`}</p></div>);
+    if (picks.length >= DRAFT_SIZE) return shell(<div className="cs-center"><p className="cs-say">Six drafted and locked. Your picks stay secret.</p><p className="cs-small">{s.draft.picks[other].length >= DRAFT_SIZE ? 'Both done.' : `${them.name} has ${s.draft.picks[other].length}/${DRAFT_SIZE}.`}</p></div>);
     if (id === undefined) return shell(<div className="cs-center">Out of films.</div>);
     const m = BY_ID[id]; const sur = s.draft.inbox[pid][0] === id ? s.draft.sur[id] : undefined;
     const ask = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); setWhy([]); setPend(null); send({ t: 'swipe', pid, id, yes, why: [] }); };
@@ -221,6 +222,7 @@ export default function PlayRoom({ code }: { code: string }) {
       <PassPips s={s} pid={pid} />
       <ScrollCard key={id}>
         {sur && <div className="cs-surprise">SURPRISE FROM {s.players[sur].name.toUpperCase()}</div>}
+        {!sur && s.draft.orson?.includes(id) && <div className="cs-surprise cs-surprise--orson">ORSON SUGGESTS · critic-endorsed fit</div>}
         <div className="cs-card-top">
           <Poster id={id} big />
           <div className="cs-card-info">
@@ -240,7 +242,7 @@ export default function PlayRoom({ code }: { code: string }) {
       </ScrollCard>
       {pend === null ? <>
         <div className="cs-powers cs-powers--big">
-          <button className={'cs-pw cs-pw--gold' + (gt ? ' is-ready' : '') + (arm === 'gold:' + id ? ' is-armed' : '')} disabled={!gt} onClick={() => press('gold')}><b>{!gt ? 'TICKET SPENT' : arm === 'gold:' + id ? 'TAP TO LOCK' : 'GOLDEN TICKET'}</b><small>{gt ? 'straight into your Top 10' : 'one per player'}</small></button>
+          <button className={'cs-pw cs-pw--gold' + (gt ? ' is-ready' : '') + (arm === 'gold:' + id ? ' is-armed' : '')} disabled={!gt} onClick={() => press('gold')}><b>{!gt ? 'TICKET SPENT' : arm === 'gold:' + id ? 'TAP TO LOCK' : 'GOLDEN TICKET'}</b><small>{gt ? 'straight into your Top 6' : 'one per player'}</small></button>
           <button className={'cs-pw cs-pw--bullet' + (vn > 0 && !golden ? ' is-ready' : '') + (arm === 'veto:' + id ? ' is-armed' : '')} disabled={vn < 1 || golden} onClick={() => press('veto')}><b>{vn < 1 ? 'VETOES SPENT' : arm === 'veto:' + id ? 'TAP TO BURY' : 'VETO · ' + vn + ' LEFT'}</b><small>{vn > 0 ? '🪦 buried forever, for both' : 'two per player'}</small></button>
           <button className={'cs-pw cs-pw--surprise' + (pw.surprise ? ' is-ready' : '') + (arm === 'surprise:' + id ? ' is-armed' : '')} disabled={!pw.surprise} onClick={() => press('surprise')}><b>{!pw.surprise ? 'SURPRISE SPENT' : arm === 'surprise:' + id ? 'TAP TO SEND' : 'SURPRISE ' + them.name.slice(0, 8).toUpperCase()}</b><small>{pw.surprise ? 'gift this to their stack' : 'one per game'}</small></button>
         </div>

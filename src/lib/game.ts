@@ -3,6 +3,7 @@ import { wcPick, wcUse, startHit, hitIntent, resolveHit, wagerIntent, bidIntent,
 import { CAT_WILDS } from '@/utils/catWilds';
 import { sabIntent, newSab, genreDeck, wheelIntent } from '@/utils/sabotageEngine';
 export const SWIPER_CAP = 12;
+export const DECK_LEAD = 16; // first cards stay in alignment order: the locked vibes visibly shape the opening of the draft
 import { type Cons, type Pass, type Sup, mergeCons, cleanCons, consOk, validateBatch, suppressKey, supHit, supLabel, decadeOf, PIVOT_N } from '@/lib/cons';
 import catalog from '@/data/catalog.json';
 import seriesCat from '@/data/series.json';
@@ -365,7 +366,7 @@ export type State = {
   phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
   vibe: { sw: { A: Record<string, boolean>; B: Record<string, boolean> }; lock: string[]; sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
-  draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
+  draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; orson: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
   /** v2.0 gap-fill: merged strict calibration, per-player toggles, permanent graveyard (device-synced) and draft extras. */
@@ -395,7 +396,7 @@ export const newState = (code: string): State => ({
   code, kind: 'movie', v: 0, now: Date.now(), phase: 'lobby',
   players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } },
   vibe: { sw: { A: {}, B: {} }, lock: [], sl: { A: null, B: null }, disc: 'off', pend: false, tropes: { A: null, B: null }, subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
-  draft: { gren: { used: false, id: null, votes: {} }, deck: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
+  draft: { gren: { used: false, id: null, votes: {} }, deck: [], orson: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
   fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
@@ -434,13 +435,22 @@ export function relaxBan(ban: number[], kind: Kind): number[] {
   while (b.length && base.length - b.length < 150) b = b.slice(1);
   return b;
 }
+/** Shared alignment score (lower = better fit): sliders vector + locked-vibe tag overlap + tastes/actors + quality.
+ * Batch 7: this also ORDERS the deck - before, the final shuffle buried the alignment, which is why
+ * the selection phase never reflected it (his sister's run). */
+export function alignKey(m: Movie, target: number[], taste: { A: string[] | null; B: string[] | null }, actors: { A: string; B: string }, jit: number): number {
+  const wantTags = Array.from(new Set([...(taste.A || []), ...(taste.B || [])]));
+  const tropeHits = tagsOf(m).filter((x) => wantTags.includes(x)).length;
+  return jit + wdist(vecOf(m), target) - 1.15 * tropeHits - 0.15 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.004 - 2 * tasteBonus(m, taste, actors);
+}
+
 export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }, kind: Kind = 'movie', gm?: GM, cl?: [string, string]): number[] {
   const lockedN = Object.keys(subs.A).filter((k) => subs.A[k] && subs.B[k]); const oneN = Object.keys(subs.A).filter((k) => subs.A[k] !== subs.B[k] && (subs.A[k] || subs.B[k])); const noN = Object.keys(subs.A).filter((k) => subs.A[k] === false && subs.B[k] === false);
   const subBonus = (m: Movie) => subHits(m, lockedN).length * 2.4 + subHits(m, oneN).length * 0.7 - subHits(m, noN).length * 1.4;
   const ok = poolOf(kind, gm, cl).filter((m) => !m.w && !banned.includes(m.id));
   const jr = seeded(code, 'variety');
   const jit: Record<number, number> = {}; for (const m of poolOf(kind)) jit[m.id] = (jr() - 0.5) * 1.8; // per-night randomness: different titles surface each room
-  const score = (m: Movie) => (jit[m.id] || 0) + wdist(vecOf(m), target) - 0.15 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.004 - 2 * tasteBonus(m, taste, actors) - subBonus(m);
+  const score = (m: Movie) => alignKey(m, target, taste, actors, jit[m.id] || 0) - subBonus(m);
   const wantTags = Array.from(new Set([...(taste.A || []), ...(taste.B || [])])); const onVibe = (m: Movie) => !wantTags.length || tagsOf(m).some((x) => wantTags.includes(x));
   let good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 6.2 && onVibe(m)).sort((x, y) => score(x) - score(y)); if (good.length < 40) good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8 && onVibe(m)).sort((x, y) => score(x) - score(y));
   const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
@@ -448,7 +458,7 @@ export function buildDeck(target: number[], code: string, banned: number[] = [],
   const ids = [...lead, ...later].slice(0, 150).map((m) => m.id);
   if (ids.length < 30) for (const m of ok.sort((x, y) => score(x) - score(y))) { if (ids.length >= 40) break; if (!ids.includes(m.id)) ids.push(m.id); }
   if (gm === 'clash' && cl) { const A = ids.filter((i) => BY_ID[i].g.includes(cl[0])), B = ids.filter((i) => !BY_ID[i].g.includes(cl[0])); const o: number[] = []; for (let i = 0; i < Math.max(A.length, B.length); i++) { if (A[i] !== undefined) o.push(A[i]); if (B[i] !== undefined) o.push(B[i]); } return o; }
-  return shuffled(ids, code, 'deck');
+  return [...ids.slice(0, DECK_LEAD), ...shuffled(ids.slice(DECK_LEAD), code, 'deck')];
 }
 export function pickWildcards(exclude: Set<number>, target: number[], n: number, code: string, kind: Kind = 'movie', gm?: GM, cl?: [string, string]): number[] {
   const wild = poolOf(kind, gm, cl).filter((m) => m.w && !exclude.has(m.id) && !excluded(m, target)).sort((a, b) => b.r - a.r || a.id - b.id);
@@ -542,7 +552,23 @@ function maybeLock(s: State) {
 // Gate streamlined: no swipe deck step. The draft starts the moment both partners have locked their taste map.
 function startDraft(s: State) {
   if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) return;
-  s.phase = 'draft'; s.draft.deck = buildDeck(s.vibe.target as number[], s.code, relaxBan(s.seenBan || [], s.kind), { A: s.vibe.tastes.A, B: s.vibe.tastes.B }, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind, s.gm, s.cl); s.draft.loading = true; if (s.extra.length || s.boost.length) s.draft.deck = shuffled(Array.from(new Set([...s.draft.deck, ...s.extra.map((m) => m.id), ...s.boost])), s.code, 'deck2'); if (s.sab?.genre) s.draft.deck = genreDeck(s, s.sab.genre);
+  s.phase = 'draft'; s.draft.loading = true;
+  const tgt = s.vibe.target as number[]; const tst = { A: s.vibe.tastes.A, B: s.vibe.tastes.B };
+  const merged = Array.from(new Set([...buildDeck(tgt, s.code, relaxBan(s.seenBan || [], s.kind), tst, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind, s.gm, s.cl), ...s.extra.map((m) => m.id), ...s.boost]));
+  const jr = seeded(s.code, 'variety'); const jit: Record<number, number> = {}; for (const m of poolOf(s.kind)) jit[m.id] = (jr() - 0.5) * 1.8;
+  const key = (id: number) => (BY_ID[id] ? alignKey(BY_ID[id], tgt, tst, s.vibe.actors, jit[id] || 0) : 99);
+  const ranked = merged.filter((id) => BY_ID[id]).sort((a, b) => key(a) - key(b));
+  s.draft.deck = [...ranked.slice(0, DECK_LEAD), ...shuffled(ranked.slice(DECK_LEAD), s.code, 'deck2')];
+  if (s.sab?.genre) { s.draft.deck = genreDeck(s, s.sab.genre); s.draft.orson = []; }
+  else {
+    // Orson's suggestions live ONLY in the selection phase now: ~4 critic-endorsed fits, tagged, spread through the opening of the deck.
+    const inDeck = new Set(s.draft.deck.slice(0, 40)); const ban2 = relaxBan(s.seenBan || [], s.kind);
+    const cands = poolOf(s.kind, s.gm, s.cl).filter((m) => !ban2.includes(m.id) && !inDeck.has(m.id) && m.r >= 7.0).sort((a, b) => key(a.id) - key(b.id));
+    const oPick = cands.slice(0, 12).sort((a, b) => (b.rt ?? b.r * 10) - (a.rt ?? a.r * 10)).slice(0, 4).map((m) => m.id);
+    oPick.forEach((id, i) => { s.draft.deck = s.draft.deck.filter((x) => x !== id); s.draft.deck.splice(Math.min([2, 6, 10, 14][i], s.draft.deck.length), 0, id); });
+    s.draft.orson = oPick;
+    if (oPick.length) s.log.unshift(`Orson slipped ${oPick.length} suggestions into the deck. They fight only if you draft them.`);
+  }
   s.draft.deck = enforceDeck(s, s.draft.deck);
   s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
 }

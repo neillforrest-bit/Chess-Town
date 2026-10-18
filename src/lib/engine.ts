@@ -212,7 +212,7 @@ export async function effects(code: string, origin: string): Promise<void> {
   if (s.vibe && s.vibe.disc === 'req') ps.push((async () => {
     const c = await claim(code, 'discover'); if (!c.ok) return;
     let movies: any[] = [];
-    try { const r = await fetch(origin + '/api/discover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sl: slAvg(s), ban: [...(s.seenBan || []), ...(s.grave || [])], cons: s.cons, tastes: Array.from(new Set([...(s.vibe.tastes?.A || []), ...(s.vibe.tastes?.B || [])])), seed: Date.now() }), signal: AbortSignal.timeout(15000) }); movies = ((await r.json()) as any).movies || []; } catch { /* fall back to the catalogue */ }
+    try { const r = await fetch(origin + '/api/discover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sl: slAvg(s), ban: [...(s.seenBan || []), ...(s.grave || [])], cons: s.cons, tastes: Array.from(new Set([...(s.vibe.tastes?.A || []), ...(s.vibe.tastes?.B || [])])), actors: [s.vibe.actors?.A || '', s.vibe.actors?.B || ''].filter(Boolean), seed: Date.now() }), signal: AbortSignal.timeout(15000) }); movies = ((await r.json()) as any).movies || []; } catch { /* fall back to the catalogue */ }
     await ap({ t: 'extras', movies });
   })());
   // v2.0 10-pass pivot: after a player answers the "we're missing the mark" checklist, fetch a fresh batch steered by their answers (strict rules + Graveyard still apply)

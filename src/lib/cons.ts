@@ -54,5 +54,5 @@ export const supHit = (m: { g: string[]; y: number }, sup: Sup[] | undefined, n:
 export const supLabel = (k: string): string => { const [g, d] = k.split('|'); const dn = d === '*' ? '' : Number(d) >= 2000 ? `${d}s ` : `${String(d).slice(2)}s `; return `${dn}${g === '*' ? 'films' : g}`.trim(); };
 
 // ---- 10-pass pivot (3.2) ----
-export const PIVOT_N = 10;
+export const PIVOT_N = 8;
 export const PIVOT_OPTS = ['Seen too many of these', 'Too heavy / serious', 'Need a different decade', 'Switch primary genre'] as const;

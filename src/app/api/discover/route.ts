@@ -19,7 +19,7 @@ type Job = { path: string; q: Record<string, string>; label: string };
  */
 export async function POST(req: Request) {
   const key = process.env.TMDB_API_KEY;
-  const body = await req.json().catch(() => ({})) as { sl?: number[]; ban?: number[]; cons?: Partial<Cons>; mode?: string; avoid?: string[]; sup?: Sup[]; seed?: number; n?: number; tastes?: string[] };
+  const body = await req.json().catch(() => ({})) as { sl?: number[]; ban?: number[]; cons?: Partial<Cons>; mode?: string; avoid?: string[]; sup?: Sup[]; seed?: number; n?: number; tastes?: string[]; actors?: string[] };
   if (!key) return NextResponse.json({ movies: [], error: 'no key' });
   const cons = cleanCons(body.cons); const sl = (body.sl || [50, 50, 50]).map((x) => Math.max(0, Math.min(100, Number(x) || 50)));
   const seed = Number.isFinite(body.seed) ? Number(body.seed) : Date.now(); const rnd = rng(seed); const pg = (max: number) => Math.floor(rnd() * max) + 1;
@@ -50,6 +50,18 @@ export async function POST(req: Request) {
   // trending / top_rated / now_playing have no runtime or genre filters: they only run when no strict hard filters would be needed server-side; validation still re-checks everything
   if (cons.rt !== 'u2') { jobs.push({ path: 'trending/movie/week', q: { page: String(pg(5)) }, label: 'trending' }); jobs.push({ path: 'movie/top_rated', q: { page: String(pg(20)), language: 'en-US' }, label: 'top rated' }); }
   if (cons.era === 'new' || cons.era === 'any') jobs.push({ path: 'movie/now_playing', q: { page: String(pg(3)), language: 'en-US' }, label: 'now playing' });
+  // Batch 7 actor input (his 18 Oct add): first actor name -> TMDB person -> with_cast on half the jobs,
+  // so actor films surface without starving the mood-led pool. 1-2 extra TMDB calls per room, free key.
+  let castId: number | null = null;
+  const actorName = (body.actors || []).map((x) => String(x).split(',')[0].trim()).find((x) => x.length > 2);
+  if (actorName) {
+    try {
+      const pr = await fetch(`https://api.themoviedb.org/3/search/person?api_key=${key}&query=${encodeURIComponent(actorName)}&page=1`, { signal: AbortSignal.timeout(6000) });
+      const pd = await pr.json() as { results?: { id: number }[] };
+      castId = pd.results?.[0]?.id ?? null;
+    } catch { /* actor filter is best-effort */ }
+  }
+  if (castId !== null) jobs.forEach((j, i) => { if (i % 2 === 0 && j.path === 'discover/movie') j.q.with_cast = String(castId); });
   const run = pivot ? jobs.slice(0, 8) : jobs;
   const seen = new Set<number>(body.ban || []); const cand: T[] = []; const calls: string[] = [];
   await Promise.all(run.map(async (j) => {
