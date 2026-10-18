@@ -1,6 +1,6 @@
 'use client';
 import { isSpectacle, SPEC_TAG } from '@/utils/sabotageEngine';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BY_ID, TROPE_NAMES, type Intent, type PID, type State } from '@/lib/game';
 import { R, bars, previewMatches, type M8 } from '@/lib/b8';
 import { Poster, secs, buzz, Scores, OrsonFace } from './shared';
@@ -154,6 +154,8 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
 /** PHASE 3: the March Madness bracket, one matchup at a time, with the compact map one tap away. */
 export function BracketScreen({ s, pid, send, now }: P) {
   const b = s.b8; const [pick, setPick] = useState<number | null>(null); const [tok, setTok] = useState(1); const [mid, setMid] = useState(''); const [map, setMap] = useState(false);
+  const brRef = useRef<HTMLDivElement>(null); const [canScroll, setCanScroll] = useState(false);
+  useEffect(() => { const t = setInterval(() => { const el = brRef.current; if (el) setCanScroll(el.scrollHeight > el.clientHeight + 8 && el.scrollTop < 24); }, 700); return () => clearInterval(t); }, []);
   if (!b) return null;
   if (b.show) return <BracketPage s={s} now={now} pid={pid} send={send} />;
   const m = b.matches[b.cur]; const other: PID = pid === 'A' ? 'B' : 'A';
@@ -164,7 +166,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
   const P1: PID = 'A', P2: PID = 'B';
 
   const upsetNow = m.status === 'RESOLVED' && m.winner !== null && b.upsets.some((u) => u.winner === m.winner && u.gap >= R.UPSET_GAP && (u.loser === m.a || u.loser === m.b));
-  return <div className={'cs8-br' + '' + (m.round === 4 ? ' cs8-final' : '')}>
+  return <div ref={brRef} className={'cs8-br' + '' + (m.round === 4 ? ' cs8-final' : '')}>
     <div className="cs8-top"><span className="cs-orson">{RNDN[m.round - 1]}{m.round < 4 ? ` · ${m.slot - OFFR(b, m.round) + 1}/${b.matches.filter((x) => x.round === m.round).length}` : ''}</span>{m.status === 'VOTING_ACTIVE' && !m.trivia && (m.round === 1 ? m.endsAt : m.bidEnds) ? <b className={'cs8-clock cs8-bigclock' + (secs((m.round === 1 ? m.endsAt : m.bidEnds) as number, now) <= 5 ? ' is-hot' : '')}>{secs((m.round === 1 ? m.endsAt : m.bidEnds) as number, now)}s</b> : null}<button className="cs8-mapbtn" onClick={() => setMap(true)}>BRACKET</button></div>
     {m.round > 1 ? <div className="cs8-tokrow">{[pid, other].map((p) => { const l = m.wg[p] || m.live?.[p]; return <div key={p} className={'cs8-tkc' + (p === pid ? ' is-me' : '')}><small>{p === pid ? 'YOU' : s.players[p].name.toUpperCase().slice(0, 8)}{m.wg[p] ? ' · LOCKED' : ''}</small><b>◈ {b.purse[p]}</b><em>{l ? `${l.tok} on ${nm(l.id, 12)}` : 'no bid yet'}</em></div>; })}</div> : <p className="cs8-tokc">Blitz is free</p>}
     {m.status !== 'RESOLVED' && <WildRow s={s} pid={pid} send={send} />}
@@ -191,6 +193,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
           {m.round > 1 && m.blk && m.blk.target === pid && !m.wg[pid] ? <button className="cs-btn cs-btn--gold" disabled={pick === null} onClick={() => send({ t: 'w8', pid, id: pick as number, tok: 0 })}>❄ FROZEN · PICK WITH 0 TOKENS</button> : m.round > 1 && (m.live?.[pid] ? <em className="cs8-free">Clock decides. Raise until it hits zero.</em> : b.purse[pid] < 1 ? <button className="cs-btn cs-btn--gold" disabled={pick === null} onClick={() => send({ t: 'w8', pid, id: pick as number, tok: 0 })}>PICK (NO TOKENS LEFT)</button> : null)}
         </div>}
       {m.blk && <p className="cs8-roast">❄ THE BLOCK: {s.players[m.blk.target].name}&apos;s tokens are frozen this round (0 wager).</p>}
+      {canScroll && <div className="cs8-scrollcue" aria-hidden="true"><span>⌄ SCROLL · FULL SYNOPSIS + SCORES BELOW</span></div>}
       {m.bust && <p className="cs8-roast">{m.bust}</p>}
       </>}
   </div>;

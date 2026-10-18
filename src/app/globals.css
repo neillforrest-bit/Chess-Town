@@ -571,10 +571,14 @@ em{font-style:normal;color:var(--gold)}
 @media (max-width:600px){
   .cs-play[data-stage=tournament] .cs-journey,.cs-play[data-stage=tournament] .cs-foot{display:none}
   .cs8-tokrow,.cs8-wbar{display:none!important}
-  .cs8-vs{min-height:210px;flex:1 0 210px}
-  .cs8-card p{display:none}
+  .cs8-vs{min-height:0;flex:0 0 auto}
+  .cs8-card .cs-poster{flex:none;height:clamp(150px,24vh,260px);max-height:none}
   .cs-body{scroll-padding-bottom:12px}
 }
+/* duel scroll affordance: sticky gold pill, pulses until the user scrolls */
+.cs8-scrollcue{position:sticky;bottom:0;z-index:5;pointer-events:none;display:flex;justify-content:center;flex:none}
+.cs8-scrollcue span{font:700 .6rem/1 system-ui;letter-spacing:.14em;color:#0b0614;background:linear-gradient(180deg,#ffe9a8,#ffc83d);padding:6px 14px;border-radius:999px 999px 0 0;box-shadow:0 -6px 18px #0009;animation:cs8cue 1.2s ease-in-out infinite}
+@keyframes cs8cue{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
 /* tablets: use the screen */
 @media (min-width:700px){html{font-size:19px}.cs-play{max-width:min(96vw,880px)}.cs-dock{max-width:560px;align-self:center;width:100%}.cs8-card .cs-poster{max-height:30vh}}
 @media (min-width:1000px) and (min-height:900px){html{font-size:21px}}
