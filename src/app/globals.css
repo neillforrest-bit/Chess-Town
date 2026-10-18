@@ -2975,3 +2975,36 @@ a.battle-btn{text-decoration:none}
 
 /* BUILD 154: every mode clears the iPhone home indicator / Safari chrome */
 .minigame-page,.play-chester-page,.arcade-page,.bossmap-page,.verdict-page,.training-page,.daily-page,.gameplay-page{padding-bottom:calc(.9rem + env(safe-area-inset-bottom)) !important}
+
+/* BUILD 157 - Battle Mode PRD: clutch time, banter chits, juicy board FX, rivalry dossier, zen/motion */
+.battle-clutch{position:fixed;inset:0;pointer-events:none;z-index:55;box-shadow:inset 0 0 46px rgba(244,63,94,.75),inset 0 0 120px rgba(244,63,94,.35);animation:clutchPulse 1s ease-in-out infinite}
+@keyframes clutchPulse{0%,100%{opacity:.55}50%{opacity:1}}
+.battle-clock--clutch{border-color:#f43f5e!important;color:#ff9ebb;background:rgba(244,63,94,.12)}
+.battle-clock--clutch b{font-size:1.9rem;color:#fff;text-shadow:0 0 18px rgba(244,63,94,.9)}
+.battle-chits{display:flex;flex:1;gap:.35rem;align-items:center;justify-content:center}
+.battle-chit{padding:.5rem .55rem;border-radius:99px;border:1px solid rgba(34,211,238,.5);background:rgba(5,7,8,.85);color:#7ee7f5;font:800 .6rem/1 Arial,sans-serif;letter-spacing:.3px;cursor:pointer;white-space:nowrap}
+.battle-chit:disabled{opacity:.35;cursor:default}
+.battle-chittoast{position:absolute;top:.4rem;left:50%;transform:translateX(-50%);z-index:40;padding:.45rem .9rem;border-radius:99px;background:rgba(5,7,8,.92);border:1px solid rgba(255,216,77,.65);color:#ffd84d;font:900 .72rem/1 Arial,sans-serif;letter-spacing:.5px;animation:battleToast 2.6s ease forwards;pointer-events:none;white-space:nowrap}
+.battle-chittoast--mine{border-color:rgba(34,211,238,.6);color:#7ee7f5}
+@keyframes battleToast{0%{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.8)}10%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}80%{opacity:1}100%{opacity:0}}
+.battle-fxlayer{position:absolute;inset:0;pointer-events:none;z-index:25}
+.battle-fxpuff,.battle-fxhalo,.battle-fxspark{position:absolute;width:12.5%;height:12.5%}
+.battle-fxpuff{border-radius:50%;background:radial-gradient(circle,rgba(214,186,140,.9),rgba(214,186,140,0) 65%);animation:fxPuff .6s ease-out forwards}
+@keyframes fxPuff{0%{transform:scale(.25);opacity:.95}100%{transform:scale(2.4);opacity:0}}
+.battle-fxhalo{border-radius:12px;box-shadow:0 0 0 3px rgba(255,216,77,.9),0 0 26px 8px rgba(244,63,94,.75);animation:fxHalo 1s ease-in-out forwards}
+.battle-fxhalo--mate{box-shadow:0 0 0 4px rgba(244,63,94,.95),0 0 44px 14px rgba(244,63,94,.9);animation:fxHaloMate 2.2s ease-in-out forwards}
+@keyframes fxHalo{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes fxHaloMate{0%,100%{opacity:.45}50%{opacity:1}}
+.battle-fxspark{border-radius:12px;box-shadow:0 0 0 3px rgba(45,212,191,.95),0 0 30px 10px rgba(45,212,191,.8);animation:fxSpark 1.1s ease-out forwards}
+@keyframes fxSpark{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.05)}100%{opacity:0;transform:scale(1.15)}}
+.battle-board--mate .tapboard{animation:matePullback 2.2s ease-in-out}
+@keyframes matePullback{0%{transform:scale(1)}30%{transform:scale(.93)}60%{transform:scale(.93)}100%{transform:scale(1)}}
+.tapboard__piece--topple{transform-origin:50% 90%;animation:kingTopple 1.1s cubic-bezier(.3,.1,.6,1) forwards}
+@keyframes kingTopple{0%{transform:rotate(0)}70%{transform:rotate(84deg) translateY(6%)}100%{transform:rotate(80deg) translateY(6%)}}
+.fighthud__bar--surge{animation:barSurge .7s ease-out 2}
+@keyframes barSurge{0%,100%{box-shadow:0 0 0 2px rgba(244,247,255,.35),0 4px 14px rgba(0,0,0,.6)}50%{box-shadow:0 0 0 3px rgba(255,216,77,.9),0 0 30px rgba(255,216,77,.7)}}
+.battle-dossier{margin:0;max-width:92vw;color:#9db2b7;font:700 .66rem/1.45 Arial,sans-serif;letter-spacing:.4px}
+.battle-dossier b{color:#ffd84d}
+.battle-arena--nomotion .battle-board,.battle-arena--nomotion .battle-glow,.battle-arena--nomotion .fighthud__bar--surge{animation:none!important}
+.battle-arena--nomotion .battle-fxlayer,.battle-arena--nomotion .battle-banner{display:none}
+.battle-arena--nomotion .battle-clutch{animation:none;opacity:.8}

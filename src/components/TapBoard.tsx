@@ -20,13 +20,15 @@ type TapBoardProps = {
   label?: string;
   // square -> opacity override (battle wild card: invisible piece)
   ghostSquares?: Record<string, number>;
+  // BUILD 157: checkmate - the king on this square topples over.
+  toppleSquare?: string;
 };
 
 function rows(fen: string): string[][] {
   return fen.split(' ')[0].split('/').map((rank) => rank.split('').flatMap((piece) => Number.isInteger(Number(piece)) ? Array(Number(piece)).fill('') : [piece]));
 }
 
-export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares }: TapBoardProps) {
+export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares, toppleSquare }: TapBoardProps) {
   const [sprites, setSprites] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
   // Capture battle: the attacker trots in along a flashing path, the loser tips over.
@@ -118,7 +120,7 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
       const hideForAnim = capAnim !== null && capAnim.to === square;
       return <button type="button" className={classes} key={square} onClick={() => tap(square, piece)} aria-label={`${square}${piece ? ` ${piece}` : ''}`}>
         {piece ? (sprite
-          ? <img src={sprite} alt="" draggable={false} style={{ width: '88%', height: '88%', objectFit: 'contain', display: 'block', pointerEvents: 'none', opacity: hideForAnim ? 0 : ghostOpacity, transition: 'opacity .5s' }} />
+          ? <img src={sprite} alt="" draggable={false} className={toppleSquare === square ? 'tapboard__piece--topple' : undefined} style={{ width: '88%', height: '88%', objectFit: 'contain', display: 'block', pointerEvents: 'none', opacity: hideForAnim ? 0 : ghostOpacity, transition: 'opacity .5s' }} />
           : <span data-color={isWhite ? 'white' : 'black'} style={{ opacity: hideForAnim ? 0 : ghostOpacity, transition: 'opacity .5s' }}>{PIECES[piece.toLowerCase()] + '︎'}</span>) : ''}
         {ri === 7 && <i className="tapboard__coord tapboard__coord--file" aria-hidden="true">{FILES[col]}</i>}
         {ci === 0 && <i className="tapboard__coord tapboard__coord--rank" aria-hidden="true">{8 - row}</i>}

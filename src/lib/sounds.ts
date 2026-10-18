@@ -63,61 +63,63 @@ function noise(c: AudioContext, dur: number, vol: number, delay = 0, lowpass = 2
 
 export type SfxName = 'select' | 'move' | 'capture' | 'good' | 'brilliant' | 'shaky' | 'bad' | 'check' | 'start' | 'win';
 
-export function playSfx(name: SfxName) {
+export function playSfx(name: SfxName, pitch = 1) {
+  // BUILD 157: optional pitch lift (clutch time raises the sound design).
+  const tn: typeof tone = pitch === 1 ? tone : (c, f0, f1, type, dur, vol, delay) => tone(c, f0 * pitch, f1 * pitch, type, dur, vol, delay);
   if (isMuted()) return;
   const c = ac();
   if (!c || c.state !== 'running') return;
   try {
     switch (name) {
       case 'select':
-        tone(c, 640, 660, 'sine', 0.05, 0.07);
+        tn(c, 640, 660, 'sine', 0.05, 0.07);
         break;
       case 'move':
         // Batch 92: bass-heavy magnetic thock - weighted body drop + wooden knock + contact transient
-        tone(c, 170, 65, 'sine', 0.15, 0.34);
-        tone(c, 320, 150, 'triangle', 0.07, 0.12);
+        tn(c, 170, 65, 'sine', 0.15, 0.34);
+        tn(c, 320, 150, 'triangle', 0.07, 0.12);
         noise(c, 0.028, 0.11, 0, 950);
         break;
       case 'capture':
         // Batch 92: the thock, layered with a high-frequency shatter (glass click)
-        tone(c, 170, 60, 'sine', 0.16, 0.34);
-        tone(c, 300, 130, 'triangle', 0.08, 0.14);
+        tn(c, 170, 60, 'sine', 0.16, 0.34);
+        tn(c, 300, 130, 'triangle', 0.08, 0.14);
         noise(c, 0.03, 0.12, 0, 950);
-        tone(c, 2600, 3400, 'square', 0.03, 0.045, 0.012);
-        tone(c, 3400, 2400, 'square', 0.026, 0.04, 0.038);
+        tn(c, 2600, 3400, 'square', 0.03, 0.045, 0.012);
+        tn(c, 3400, 2400, 'square', 0.026, 0.04, 0.038);
         noise(c, 0.05, 0.06, 0.01, 5200);
         break;
       case 'good':
-        tone(c, 659, 659, 'sine', 0.1, 0.18);
-        tone(c, 880, 880, 'sine', 0.16, 0.2, 0.09);
+        tn(c, 659, 659, 'sine', 0.1, 0.18);
+        tn(c, 880, 880, 'sine', 0.16, 0.2, 0.09);
         break;
       case 'brilliant':
-        tone(c, 784, 784, 'sine', 0.09, 0.18);
-        tone(c, 988, 988, 'sine', 0.09, 0.18, 0.08);
-        tone(c, 1319, 1319, 'sine', 0.2, 0.22, 0.16);
+        tn(c, 784, 784, 'sine', 0.09, 0.18);
+        tn(c, 988, 988, 'sine', 0.09, 0.18, 0.08);
+        tn(c, 1319, 1319, 'sine', 0.2, 0.22, 0.16);
         noise(c, 0.25, 0.05, 0.16, 6000);
         break;
       case 'shaky':
-        tone(c, 220, 196, 'sine', 0.16, 0.15);
+        tn(c, 220, 196, 'sine', 0.16, 0.15);
         break;
       case 'bad':
-        tone(c, 196, 147, 'square', 0.22, 0.1);
-        tone(c, 147, 98, 'sine', 0.3, 0.2, 0.06);
+        tn(c, 196, 147, 'square', 0.22, 0.1);
+        tn(c, 147, 98, 'sine', 0.3, 0.2, 0.06);
         break;
       case 'check':
-        tone(c, 988, 988, 'triangle', 0.07, 0.18);
-        tone(c, 988, 988, 'triangle', 0.1, 0.18, 0.1);
+        tn(c, 988, 988, 'triangle', 0.07, 0.18);
+        tn(c, 988, 988, 'triangle', 0.1, 0.18, 0.1);
         break;
       case 'start':
-        tone(c, 523, 523, 'triangle', 0.11, 0.16);
-        tone(c, 659, 659, 'triangle', 0.11, 0.16, 0.09);
-        tone(c, 784, 784, 'triangle', 0.2, 0.2, 0.18);
+        tn(c, 523, 523, 'triangle', 0.11, 0.16);
+        tn(c, 659, 659, 'triangle', 0.11, 0.16, 0.09);
+        tn(c, 784, 784, 'triangle', 0.2, 0.2, 0.18);
         break;
       case 'win':
-        tone(c, 523, 523, 'sine', 0.12, 0.18);
-        tone(c, 659, 659, 'sine', 0.12, 0.18, 0.11);
-        tone(c, 784, 784, 'sine', 0.12, 0.18, 0.22);
-        tone(c, 1047, 1047, 'sine', 0.3, 0.24, 0.33);
+        tn(c, 523, 523, 'sine', 0.12, 0.18);
+        tn(c, 659, 659, 'sine', 0.12, 0.18, 0.11);
+        tn(c, 784, 784, 'sine', 0.12, 0.18, 0.22);
+        tn(c, 1047, 1047, 'sine', 0.3, 0.24, 0.33);
         break;
     }
   } catch { /* sound is decoration - never break the game for it */ }
