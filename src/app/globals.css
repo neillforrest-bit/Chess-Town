@@ -3032,3 +3032,9 @@ a.battle-btn{text-decoration:none}
 @keyframes bossStrike { 0% { opacity: 0; transform: translateY(-30%); } 18% { opacity: 1; } 100% { opacity: 0; transform: translateY(18%); } }
 /* Portrait reactions pop on the console badge. */
 .chester-console__badge { transition: transform 0.18s ease; }
+
+/* BUILD 158: Joseph pressure gauge - vertical tension bar beside the board. */
+.joseph-gauge { position: absolute; right: 2px; top: 96px; bottom: 96px; width: 10px; border: 1px solid rgba(255, 205, 92, 0.5); border-radius: 6px; background: rgba(0, 0, 0, 0.55); z-index: 5; pointer-events: none; }
+.joseph-gauge i { position: absolute; left: 1px; right: 1px; bottom: 1px; border-radius: 5px; background: linear-gradient(180deg, #ff2d4d 0%, #ff8a3d 55%, #ffd45e 100%); transition: height 0.7s ease; box-shadow: 0 0 10px rgba(255, 60, 60, 0.5); }
+.joseph-gauge span { position: absolute; top: calc(100% + 6px); right: -4px; font-size: 7px; letter-spacing: 0.14em; color: rgba(255, 205, 92, 0.8); text-align: right; line-height: 1.4; }
+.chester-game__board { position: relative; }

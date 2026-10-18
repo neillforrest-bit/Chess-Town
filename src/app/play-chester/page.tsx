@@ -85,11 +85,30 @@ function PlayChesterGame() {
   const leanT = useRef(0);
   const fireReact = (emoji: string, ms = 1900) => { setReaction(emoji); window.clearTimeout(reactT.current); reactT.current = window.setTimeout(() => setReaction(null), ms); };
   const [bossStrike, setBossStrike] = useState(0);
+  const isJosephFight = boss?.name === 'Joseph';
+  const isJosephFightRef = useRef(false);
+  isJosephFightRef.current = isJosephFight;
   const [muted, setMutedState] = useState(false);
   const [haptics, setHapticsState] = useState(true);
   const [resignArmed, setResignArmed] = useState(false);
   const teleRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setHapticsState(isHaptics()); }, []);
+  // BUILD 158: Joseph pressure drone - quiet minor-key bed whose gain tracks White's danger.
+  // Gated on the app's mute switch; stops the moment the fight ends. Zero network, zero cost.
+  const josephDrone = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null);
+  const [josephPressure, setJosephPressure] = useState(50);
+  useEffect(() => {
+    if (!isJosephFight) { setJosephPressure(50); return; }
+    const onEval = (e: Event) => {
+      const es = (e as CustomEvent<{ evalScore?: number | string | null }>).detail?.evalScore;
+      let odds: number | null = null;
+      if (typeof es === 'number') odds = winOddsPct(Math.round(es * 100), 'w'); // evalScore is white-absolute pawns
+      else if (typeof es === 'string' && es.startsWith('M')) { const m = parseInt(es.slice(1), 10); odds = winOddsPct(null, 'w', Number.isFinite(m) ? m : null); }
+      if (odds !== null) setJosephPressure(100 - odds);
+    };
+    window.addEventListener('engine-evaluation', onEval);
+    return () => window.removeEventListener('engine-evaluation', onEval);
+  }, [isJosephFight]);
   useEffect(() => { const onCalc = (e: Event) => { const d = (e as CustomEvent).detail; setCalculating(!!d?.on); setDeepThought(!!d?.on && !!d?.deep); if (d?.on) { window.clearTimeout(leanT.current); } else { window.clearTimeout(leanT.current); leanT.current = window.setTimeout(() => { setReaction('🧐'); window.clearTimeout(reactT.current); reactT.current = window.setTimeout(() => setReaction(null), 2400); }, 7000); } }; window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
   useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = freeze ? 0 : el.scrollHeight; });
   useEffect(() => { setMutedState(isMuted()); }, []);
@@ -125,6 +144,32 @@ function PlayChesterGame() {
   const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-clear-better')); window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); };
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
+  useEffect(() => {
+    if (!isJosephFight || !started) return;
+    let stopped = false;
+    const boot = () => {
+      if (stopped || josephDrone.current) return;
+      try {
+        const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctor) return;
+        const ctx = new Ctor();
+        const gain = ctx.createGain(); gain.gain.value = 0;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320;
+        const mk = (f: number) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = Math.random() * 8 - 4; o.connect(lp); o.start(); return o; };
+        mk(55); mk(82.5 * Math.pow(2, 3 / 12)); mk(110); // A1 + C2 (minor third) + A2
+        lp.connect(gain); gain.connect(ctx.destination);
+        josephDrone.current = { ctx, gain };
+      } catch { /* audio is garnish */ }
+    };
+    boot();
+    return () => { stopped = true; const d = josephDrone.current; josephDrone.current = null; if (d) { try { d.gain.gain.linearRampToValueAtTime(0, d.ctx.currentTime + 0.3); window.setTimeout(() => { try { void d.ctx.close(); } catch { /* */ } }, 400); } catch { /* */ } } };
+  }, [isJosephFight, started]);
+  useEffect(() => {
+    const d = josephDrone.current;
+    if (!d) return;
+    const target = muted ? 0 : 0.05 + (josephPressure / 100) * 0.16;
+    try { d.gain.gain.setTargetAtTime(target, d.ctx.currentTime, 0.6); } catch { /* */ }
+  }, [josephPressure, muted]);
   const [lessonStep, setLessonStep] = useState(0);
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   const [chatOpen, setChatOpen] = useState(false);
@@ -549,6 +594,7 @@ function PlayChesterGame() {
           </div>;
         })}
       </div>
+      {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {victoryState !== 'none' && (() => {
           const finalWin = roadLevel >= ROAD_MAX;
