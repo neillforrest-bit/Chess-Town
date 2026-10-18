@@ -2,6 +2,7 @@
 import { wcPick, wcUse, startHit, hitIntent, resolveHit, wagerIntent, bidIntent, lockBid, triviaTap, bustIntent, bustDone, ackIntent, tapeIntent, champIntent, callIntent, rerollVote, nukeTropes, nukeUlt, nukePick, tick8, type Hit, type B8, type Reroll, type Ult } from './b8';
 import { CAT_WILDS } from '@/utils/catWilds';
 import { sabIntent, newSab, genreDeck, wheelIntent } from '@/utils/sabotageEngine';
+export const SWIPER_CAP = 12;
 import { type Cons, type Pass, type Sup, mergeCons, cleanCons, consOk, validateBatch, suppressKey, supHit, supLabel, decadeOf, PIVOT_N } from '@/lib/cons';
 import catalog from '@/data/catalog.json';
 import seriesCat from '@/data/series.json';
@@ -75,7 +76,7 @@ export const AXES = ['Pacing', 'Weight', 'Reality', 'Runtime'] as const;
 export const TAP_MS = 10000;
 export const PITCH_MS = 60000;
 export const NEXT_MS = 2200;
-export const DRAFT_SIZE = 10;
+export const DRAFT_SIZE = 6;
 export const POOL_SIZE = 30;
 
 // ---------- Phase 1: vibe questions (two sets, so a retry is a genuinely new conversation)
@@ -502,7 +503,7 @@ export type Intent =
   | { t: 'wcpick'; pid: PID; k: 'spy' | 'mul' | 'thief' } | { t: 'wcuse'; pid: PID; k: 'spy' | 'mul' | 'thief' }
   | { t: 'inter'; key: string; line: string } | { t: 'asym'; a: string; b: string } | { t: 'mortem'; slot: number; line: string }
   | { t: 'vswipe'; pid: PID; name: string; yes: boolean } | { t: 'reviews'; map: Record<number, { a: string; q: string; r: number | null }> }
-  | { t: 'sliders'; pid: PID; v: number[]; cons?: Partial<Cons> } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
+  | { t: 'sliders'; pid: PID; v: number[]; cons?: Partial<Cons>; actors?: string } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
   | { t: 'join'; pid: PID; name?: string; kind?: Kind; gm?: string } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
   | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[]; to?: boolean }
   | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
@@ -671,7 +672,7 @@ export function reduce(prev: State, it: Intent): State {
       const v = s.vibe; if (s.phase !== 'vibe' || v.passed || v.lock.length >= 3 || !(TROPE_NAMES as readonly string[]).includes(it.name) || v.sw[it.pid][it.name] !== undefined) break;
       v.sw[it.pid][it.name] = !!it.yes;
       if (v.sw.A[it.name] && v.sw.B[it.name] && !v.lock.includes(it.name)) { v.lock.push(it.name); s.orson = { ...s.orson, line: `Both of you said yes to ${it.name}. Locked. ${v.lock.length}/3.`, mood: 'smug', n: s.orson.n + 1 }; }
-      const dn = (q: PID) => Object.keys(v.sw[q]).length >= TROPE_NAMES.length;
+      const dn = (q: PID) => Object.keys(v.sw[q]).length >= SWIPER_CAP;
       if (v.lock.length < 3 && dn('A') && dn('B')) { // ran out of cards: pad with what either liked
         for (const n of [...TROPE_NAMES.filter((x) => v.sw.A[x] || v.sw.B[x]), ...TROPE_NAMES]) { if (v.lock.length >= 3) break; if (!v.lock.includes(n)) v.lock.push(n); } }
       if (v.lock.length >= 3) { const picks = v.lock.slice(0, 3); v.tropes = { A: picks, B: picks }; lockTropes(s, now); }

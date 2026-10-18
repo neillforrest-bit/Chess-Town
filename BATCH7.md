@@ -1,0 +1,12 @@
+# Batch 7 plan (movie-night). Calls reported to parent, veto-able.
+- [ ] DRAFT_SIZE 10->6 (game.ts:78) + copy ("Six drafted", "Top 6", counters, TvRoom bar)
+- [ ] GRID_EACH 10->6 (b8.ts R) + War Room grid cols adaptive (hardcoded 5-col in B8Screens x2)
+- [ ] Adaptive bracket: n=min(4,lenA,lenB); 4v4 normal; 3v3 -> A1,B1 byes + QFs A2vB3,B2vA3; 2v2 -> SFs A1vB2,B1vA2; 1v1 -> final. REMOVE pickWildcards backfill (no Orson films in tournament)
+- [ ] Feed locked tropes into buildDeck re-rank + /api/discover request (map tropes->genre/keyword ids)
+- [ ] Orson suggestions INTO draft: ~4 critic-picked catalogue films tagged s.draft.orson[], shuffled in deck; UI chip "ORSON SUGGESTS". Grenade stays. Keep Genre Swap/Resurrection wildcards (flagged)
+- [ ] Actor input: optional field on Mood Board (<=2 names); sliders intent + actor; actors split on comma in tasteBonus/tasteHits; discover: person-search -> with_cast (1st actor), TMDB free, cache
+- [ ] Matchup cards: big poster + source-labeled rating (RT if present else "TMDB x.x" labeled) + clipped synopsis (m.o/pitch, ~180ch)
+- [ ] TokenHUD: bigger stakes in matchup, first-run explainer (War Room + first token bout): "100 tokens, whole night, no refills"
+- [ ] Vibe swiper cap 24->12 (pad logic exists); intro skippable on replay
+- [ ] Verify: two-phone suite + iPad, zero-scroll 390x665; preview push only
+- PIVOT_N check (cons.ts) scale with smaller draft
