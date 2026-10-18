@@ -6,12 +6,19 @@ import { BY_ID } from '@/lib/game';
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join('');
 
-const NIGHTS: { id: 'classic' | 'series' | 'oscar' | 'rotten' | 'clash'; ic: string; n: string; t: string }[] = [
+type NightId = 'classic' | 'series' | 'oscar' | 'rotten' | 'clash' | 'docs' | 'docs_tc' | 'docs_crazy' | 'docs_power' | 'docs_nature' | 'docs_music';
+const NIGHTS: { id: NightId; ic: string; n: string; t: string }[] = [
   { id: 'classic', ic: '🎬', n: 'Movie night', t: 'Mood, draft, bracket. The full game.' },
   { id: 'series', ic: '📺', n: 'Series binge', t: 'Same game, TV shows.' },
   { id: 'oscar', ic: '🏆', n: 'Oscar Gauntlet', t: 'Award winners only. Gold theme.' },
   { id: 'rotten', ic: '🍅', n: 'Rotten Roll', t: 'Films under 60% RT. Glitchy.' },
   { id: 'clash', ic: '⚔️', n: 'Genre Clash', t: 'Two opposing genres fight it out.' },
+  { id: 'docs', ic: '🎥', n: 'Doc Night', t: 'All documentaries. Every true story in the house.' },
+  { id: 'docs_tc', ic: '🔪', n: 'True Crime Docs', t: 'Real cases, real chills.' },
+  { id: 'docs_crazy', ic: '🤯', n: 'Crazy Stories', t: 'Stranger than fiction. Actually happened.' },
+  { id: 'docs_power', ic: '🌍', n: 'Money & Power', t: 'Global politics, economies, who runs the world.' },
+  { id: 'docs_nature', ic: '🌋', n: 'Nature & Science', t: 'The planet, space and the wild, explained.' },
+  { id: 'docs_music', ic: '🎸', n: 'Music & Culture', t: 'Icons, movements and scenes.' },
 ];
 export default function Home() {
   const r = useRouter();
@@ -23,7 +30,7 @@ export default function Home() {
   const [gv, setGv] = useState(false); const [grave, setGrave] = useState<number[]>([]);
   useEffect(() => { try { setGrave(JSON.parse(localStorage.getItem('cs-graveyard') || '[]')); } catch { setGrave([]); } }, [gv]);
   const resurrect = (id: number) => { const n = grave.filter((x) => x !== id); setGrave(n); try { localStorage.setItem('cs-graveyard', JSON.stringify(n)); } catch { /* ignore */ } };
-  const [night, setNight] = useState<'classic' | 'series' | 'oscar' | 'rotten' | 'clash'>('classic'); const kind: 'movie' | 'series' = night === 'series' ? 'series' : 'movie'; const gm = night === 'oscar' || night === 'rotten' || night === 'clash' ? night : '';
+  const [night, setNight] = useState<NightId>('classic'); const kind: 'movie' | 'series' = night === 'series' ? 'series' : 'movie'; const gm = night === 'oscar' || night === 'rotten' || night === 'clash' || night.startsWith('docs') ? night : '';
   const go = (path: string) => { localStorage.setItem('cs-name', name.trim()); r.push(path); };
   return (
     <main className="cs-home">

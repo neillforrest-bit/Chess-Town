@@ -14,18 +14,20 @@ export type Movie = { id: number; t: string; y: number; r: number; g: string[]; 
 export type Kind = 'movie' | 'series';
 export const MOVIES: Movie[] = (catalog as { movies: Movie[] }).movies.filter((m) => m.y >= 1990);
 export const SERIES: Movie[] = (seriesCat as { shows: Movie[] }).shows;
-export type GM = 'oscar' | 'rotten' | 'clash';
+export type GM = 'oscar' | 'rotten' | 'clash' | 'docs' | 'docs_tc' | 'docs_crazy' | 'docs_power' | 'docs_nature' | 'docs_music';
 export const CLASHES: [string, string][] = [['Drama', 'Horror'], ['Comedy', 'Thriller'], ['Romance', 'Science Fiction'], ['Animation', 'Crime'], ['Drama', 'Thriller'], ['Fantasy', 'War']];
 /** Oscar wins parsed from the OMDb-style awards text ("Won 6 Oscars. 51 wins..."). */
 export const oscarWins = (m: Movie): number => { const x = /Won (\d+) Oscar/i.exec(m.aw || ''); return x ? Number(x[1]) : 0; };
 export const totalWins = (m: Movie): number => { const x = /(\d+) wins?/i.exec(m.aw || ''); return x ? Number(x[1]) : 0; };
 export const isHeavy = (m: Movie): boolean => oscarWins(m) >= 1 || totalWins(m) >= 40;
 export const isRotten = (m: Movie): boolean => m.rt != null && m.rt < 60;
-const gmOk = (m: Movie, gm?: GM, cl?: [string, string]): boolean => gm === 'oscar' ? isHeavy(m) : gm === 'rotten' ? isRotten(m) : gm === 'clash' && cl ? m.g.includes(cl[0]) || m.g.includes(cl[1]) : true;
+const gmOk = (m: Movie, gm?: GM, cl?: [string, string]): boolean => gm === 'oscar' ? isHeavy(m) : gm === 'rotten' ? isRotten(m) : gm === 'clash' && cl ? m.g.includes(cl[0]) || m.g.includes(cl[1]) : gm === 'docs' ? m.g.includes('Documentary') : gm && gm.startsWith('docs_') ? (m.kw || []).includes('doccat:' + gm.slice(5)) : true;
 export const poolOf = (k: Kind | undefined, gm?: GM, cl?: [string, string]): Movie[] => {
   if (k === 'series') return SERIES;
   if (!gm) return MOVIES;
-  const f = MOVIES.filter((m) => gmOk(m, gm, cl)); return f.length >= 45 ? f : MOVIES;
+  const f = MOVIES.filter((m) => gmOk(m, gm, cl));
+  if (gm.startsWith('docs')) return f.length >= 10 ? f : MOVIES.filter((m) => m.g.includes('Documentary'));
+  return f.length >= 45 ? f : MOVIES;
 };
 export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SERIES, ...CAT_WILDS].map((m) => [m.id, m]));
 /** v2.0 live-TMDB films live in state.extra; every process registers them into BY_ID before use. */
@@ -651,7 +653,8 @@ const PIVOT_OPTS_LIST = ['Seen too many of these', 'Too heavy / serious', 'Need 
 function freshIntent(s: State, it: { pid: PID; at: number; movies: Movie[] }) {
   const f = s.dx?.fresh[it.pid]; if (!f || f.done || f.at !== it.at) return; f.done = true;
   const dead = new Set([...(s.grave || []), ...(s.seenBan || []), ...s.draft.picks.A, ...s.draft.picks.B]); const n = s.draft.learn[it.pid].n;
-  const fit = validateBatch((it.movies || []).filter((m) => m && m.id && m.p && m.o && !dead.has(m.id) && !supHit(m, s.dx!.sup[it.pid], n)), s.cons).ok.slice(0, 14);
+  const docOnly = !!(s.gm && s.gm.startsWith('docs')); // doc nights stay pure even through the pivot tap
+  const fit = validateBatch((it.movies || []).filter((m) => m && m.id && m.p && m.o && (!docOnly || m.g.includes('Documentary')) && !dead.has(m.id) && !supHit(m, s.dx!.sup[it.pid], n)), s.cons).ok.slice(0, 14);
   const have = new Set([...s.draft.q.A, ...s.draft.q.B, ...s.extra.map((m) => m.id)]);
   const add = fit.filter((m) => !BASE_IDS.has(m.id) && !have.has(m.id)); s.extra = [...s.extra, ...add].slice(-120); registerExtra(add);
   const ids = fit.map((m) => m.id).filter((i) => BY_ID[i] && !s.draft.q[it.pid].includes(i) && !s.draft.picks[it.pid].includes(i));
@@ -666,7 +669,7 @@ export function reduce(prev: State, it: Intent): State {
   switch (it.t) {
     case 'join': {
       s.players[it.pid] = { name: (it.name || s.players[it.pid].name).slice(0, 14), joined: true };
-      if (it.pid === 'A' && it.kind && s.phase === 'lobby') { s.kind = it.kind === 'series' ? 'series' : 'movie'; const g = it.gm; s.gm = s.kind === 'movie' && (g === 'oscar' || g === 'rotten' || g === 'clash') ? g : undefined; s.cl = s.gm === 'clash' ? CLASHES[seededInt(s.code, CLASHES.length)] : undefined; }
+      if (it.pid === 'A' && it.kind && s.phase === 'lobby') { s.kind = it.kind === 'series' ? 'series' : 'movie'; const g = it.gm; s.gm = s.kind === 'movie' && (g === 'oscar' || g === 'rotten' || g === 'clash' || (typeof g === 'string' && g.startsWith('docs'))) ? g as GM : undefined; s.cl = s.gm === 'clash' ? CLASHES[seededInt(s.code, CLASHES.length)] : undefined; }
       if (s.players.A.joined && s.players.B.joined && s.phase === 'lobby') s.phase = 'vibe';
       break;
     }
@@ -717,7 +720,8 @@ export function reduce(prev: State, it: Intent): State {
       if (typeof it.actors === 'string') s.vibe.actors[it.pid] = it.actors.slice(0, 60);
       s.consP = { ...(s.consP || {}), [it.pid]: cleanCons(it.cons) }; s.cons = mergeCons(s.consP.A, s.consP.B);
       { const c = s.consP[it.pid]; const xs = c ? c.xg : []; if (xs && xs.length) { const ln = `${s.players[it.pid].name} ruled out ${xs.join(', ')} for the room. Both of you play by it.`; s.orson = { line: ln, mood: 'smug', n: s.orson.n + 1 }; s.log.unshift(ln); } }
-      if (s.vibe.sl.A && s.vibe.sl.B && s.vibe.disc === 'off') s.vibe.disc = 'req';
+      // Doc nights run pure-catalogue: TMDB discovery would inject fiction, and the doc pool needs no top-up.
+      if (s.vibe.sl.A && s.vibe.sl.B && s.vibe.disc === 'off' && !(s.gm && s.gm.startsWith('docs'))) s.vibe.disc = 'req';
       break;
     }
     case 'extras': {
