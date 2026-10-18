@@ -313,17 +313,23 @@ export default function BattlePage() {
     const fen = loadChess(state.pgn).fen();
     const pgn = state.pgn;
     void getStockfishClient().analyzeForDisplay(fen).then((a) => {
-      if (dead) return;
+      // BUILD 158: the engine client serializes analyses, so callbacks resolve in pgn order.
+      // A callback killed by `dead` used to skip the data pipeline too, so a fast exchange made
+      // deltas span two moves (blunder pinned on the wrong fighter, accuracy spikes). Now eval,
+      // accuracy, blunders and odds advance in order even when stale; only the UI is gated.
+      const live = !dead;
       const stm = fen.split(' ')[1] === 'w' ? 1 : -1;
       const raw = a.mate !== null ? (a.mate > 0 ? 10 : -10) : Math.max(-10, Math.min(10, (a.score ?? 0) / 100));
       const pawns = raw * stm;
-      setPawnsNow(pawns);
-      try { const c = loadChess(pgn); const u = a.pv[0]; const m = u ? c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }) : null; bestRef.current = m ? m.san : null; } catch { bestRef.current = null; }
+      if (live) {
+        setPawnsNow(pawns);
+        try { const c = loadChess(pgn); const u = a.pv[0]; const m = u ? c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }) : null; bestRef.current = m ? m.san : null; } catch { bestRef.current = null; }
+      }
       const prev = evalRef.current ?? { pgn: '', pawns: 0.2 };
       evalRef.current = { pgn, pawns };
       if (prev.pgn === pgn || pgn.length < prev.pgn.length) return;
       const d = pawns - prev.pawns;
-      if (Math.abs(d) > 2.0) {
+      if (live && Math.abs(d) > 2.0) {
         const goodForWhite = d > 0;
         const good = goodForWhite === (myColorRef.current === 'w');
         setSwing({ n: Date.now(), good, text: good ? '[THE CROWD ROARS]' : '[THE ARENA GOES DEAD SILENT]' });
@@ -334,7 +340,6 @@ export default function BattlePage() {
       // blocking the board or whispering engine moves to one fighter would break the fight.
       try {
         const cNow = loadChess(pgn);
-        if (cNow.isGameOver()) return; // the verdict owns the mic once the fight is over
         const hist = cNow.history({ verbose: true });
         const last = hist[hist.length - 1];
         if (last) {
@@ -343,7 +348,13 @@ export default function BattlePage() {
           const afterM = mover === 'w' ? pawns : -pawns;
           const delta = Math.max(0, Math.round((beforeM - afterM) * 100));
           const cls = delta >= 250 ? 'BLUNDER' : delta >= 120 ? 'MISTAKE' : delta >= 50 ? 'INACCURACY' : delta <= 12 ? 'BEST' : 'GOOD';
+          // Data pipeline: always advances in order, even for stale callbacks.
           if (cls === 'BLUNDER') blunderRef.current[mover] += 1;
+          const acc = accRef.current[mover]; acc.loss += delta; acc.n += 1;
+          setAccuracy({ ...accRef.current });
+          const oddsNow = winOddsPct(Math.round(pawns * 100), 'w');
+          if (oddsNow !== null) setOdds(oddsNow);
+          if (cNow.isGameOver() || !live) return; // data advanced; the verdict owns the mic once the fight is over
           const fenBefore = prev ? loadChess(prev.pgn).fen() : new Chess().fen();
           const d2 = direct({ classification: cls, evalDelta: delta, playerColor: mover, captured: last.captured ?? null, check: cNow.isCheck(), mate: cNow.isCheckmate(), ply: hist.length, moveSan: last.san, fenBefore: fenBefore, move: last.san });
           let line = d2.chester_immediate_chat;
@@ -357,13 +368,8 @@ export default function BattlePage() {
           const eduText = cNow.isCheckmate() || cNow.isCheck() ? (cNow.isCheckmate() ? 'That is mate. The arena erupts.' : 'Check - the king is running.')
             : delta <= 15 ? 'The engine agrees with that move.' : prevBest ? `Engine preferred ${prevBest}. That cost about ${(delta / 100).toFixed(1)} pawns.` : delta >= 120 ? `That cost about ${(delta / 100).toFixed(1)} pawns.` : '';
           if (eduText) setEdu({ key: `edu-${hist.length}`, text: eduText });
-          // live accuracy: chess.com-style curve over centipawn loss per move
-          const acc = accRef.current[mover]; acc.loss += delta; acc.n += 1;
-          setAccuracy({ ...accRef.current });
           // tug-of-war commentary: Chester calls the odds when the band moves
-          const oddsNow = winOddsPct(Math.round(pawns * 100), 'w');
           if (oddsNow !== null) {
-            setOdds(oddsNow);
             const band = Math.round(oddsNow / 10) * 10;
             if (band !== oddsBandRef.current && hist.length > 4) {
               oddsBandRef.current = band;

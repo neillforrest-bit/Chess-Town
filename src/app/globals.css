@@ -3008,3 +3008,27 @@ a.battle-btn{text-decoration:none}
 .battle-arena--nomotion .battle-board,.battle-arena--nomotion .battle-glow,.battle-arena--nomotion .fighthud__bar--surge{animation:none!important}
 .battle-arena--nomotion .battle-fxlayer,.battle-arena--nomotion .battle-banner{display:none}
 .battle-arena--nomotion .battle-clutch{animation:none;opacity:.8}
+
+/* ==================== BUILD 158: boss arena themes + strike FX ==================== */
+/* Each boss fight re-skins the whole arena: background, lighting, frame accent. */
+.chester-game.boss-pawn-solo { background: radial-gradient(120% 90% at 50% 0%, #33200f 0%, #1c1109 55%, #120a05 100%); }
+.chester-game.boss-pawn-solo .chester-board-frame { box-shadow: 0 0 26px rgba(255, 176, 66, 0.22), 0 0 4px rgba(255, 176, 66, 0.35); border-color: rgba(255, 190, 90, 0.4); }
+.chester-game.boss-dark-knight { background: radial-gradient(120% 90% at 50% 0%, #1d0b33 0%, #0d0518 55%, #060310 100%); animation: bossVignetteDrift 9s ease-in-out infinite alternate; }
+.chester-game.boss-dark-knight .chester-board-frame { box-shadow: 0 0 30px rgba(140, 82, 255, 0.3), 0 0 6px rgba(140, 82, 255, 0.4); border-color: rgba(150, 100, 255, 0.45); }
+@keyframes bossVignetteDrift { from { filter: brightness(1); } to { filter: brightness(0.88); } }
+.chester-game.boss-arch-bishop { background: radial-gradient(120% 90% at 50% 0%, #2b060a 0%, #160306 55%, #0c0203 100%); }
+.chester-game.boss-arch-bishop .chester-board-frame { border: 3px solid transparent; background: linear-gradient(#160306, #160306) padding-box, repeating-linear-gradient(45deg, #ff2d4d 0 10px, #1a0305 10px 20px) border-box; animation: bossCrimsonPulse 1.6s ease-in-out infinite; }
+@keyframes bossCrimsonPulse { 0%, 100% { box-shadow: 0 0 18px rgba(255, 45, 77, 0.25); } 50% { box-shadow: 0 0 34px rgba(255, 45, 77, 0.5); } }
+.chester-game.boss-ice-queen { background: radial-gradient(120% 90% at 50% 0%, #0a2030 0%, #051019 55%, #02070d 100%); }
+.chester-game.boss-ice-queen .chester-board-frame { box-shadow: 0 0 30px rgba(120, 220, 255, 0.3), inset 0 0 24px rgba(160, 230, 255, 0.08); border-color: rgba(150, 225, 255, 0.5); }
+.chester-game.boss-ice-queen::after { content: ''; position: fixed; inset: 0; pointer-events: none; background-image: radial-gradient(2px 2px at 18% 12%, rgba(220, 245, 255, 0.55) 50%, transparent 51%), radial-gradient(1.5px 1.5px at 63% 30%, rgba(220, 245, 255, 0.4) 50%, transparent 51%), radial-gradient(2px 2px at 84% 66%, rgba(220, 245, 255, 0.45) 50%, transparent 51%), radial-gradient(1.5px 1.5px at 35% 78%, rgba(220, 245, 255, 0.35) 50%, transparent 51%), radial-gradient(2px 2px at 48% 48%, rgba(220, 245, 255, 0.3) 50%, transparent 51%); background-size: 100% 100%; animation: bossSnow 7s linear infinite; }
+@keyframes bossSnow { from { transform: translateY(-6px); opacity: 0.9; } to { transform: translateY(26px); opacity: 0.35; } }
+.chester-game.boss-joseph { background: #030303; }
+.chester-game.boss-joseph::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: conic-gradient(from 180deg at 50% -12%, transparent 42%, rgba(255, 205, 92, 0.13) 50%, transparent 58%); }
+.chester-game.boss-joseph .chester-board-frame { border-color: rgba(255, 205, 92, 0.55); animation: bossHeartbeat 2.4s ease-in-out infinite; }
+@keyframes bossHeartbeat { 0%, 100% { box-shadow: 0 0 14px rgba(255, 205, 92, 0.18); } 12% { box-shadow: 0 0 38px rgba(255, 205, 92, 0.5); } 24% { box-shadow: 0 0 16px rgba(255, 205, 92, 0.2); } }
+/* Intimidation FX: a dark strike sweeps the arena each time the boss moves. */
+.boss-strike { position: fixed; inset: 0; pointer-events: none; z-index: 60; background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(120, 0, 10, 0.28) 40%, transparent 75%); animation: bossStrike 0.55s ease-out forwards; }
+@keyframes bossStrike { 0% { opacity: 0; transform: translateY(-30%); } 18% { opacity: 1; } 100% { opacity: 0; transform: translateY(18%); } }
+/* Portrait reactions pop on the console badge. */
+.chester-console__badge { transition: transform 0.18s ease; }
