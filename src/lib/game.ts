@@ -565,7 +565,7 @@ function startDraft(s: State) {
     const inDeck = new Set(s.draft.deck.slice(0, 40)); const ban2 = relaxBan(s.seenBan || [], s.kind);
     const cands = poolOf(s.kind, s.gm, s.cl).filter((m) => !ban2.includes(m.id) && !inDeck.has(m.id) && m.r >= 7.0).sort((a, b) => key(a.id) - key(b.id));
     const oPick = cands.slice(0, 12).sort((a, b) => (b.rt ?? b.r * 10) - (a.rt ?? a.r * 10)).slice(0, 4).map((m) => m.id);
-    oPick.forEach((id, i) => { s.draft.deck = s.draft.deck.filter((x) => x !== id); s.draft.deck.splice(Math.min([2, 6, 10, 14][i], s.draft.deck.length), 0, id); });
+    oPick.forEach((id, i) => { s.draft.deck = s.draft.deck.filter((x) => x !== id); s.draft.deck.splice(Math.min([1, 3, 5, 8][i], s.draft.deck.length), 0, id); });
     s.draft.orson = oPick;
     if (oPick.length) s.log.unshift(`Orson slipped ${oPick.length} suggestions into the deck. They fight only if you draft them.`);
   }
@@ -776,7 +776,7 @@ export function reduce(prev: State, it: Intent): State {
         // Orson's tagged suggestions keep their promised spots: the learn re-rank must not bury them
         const osp = s.draft.orson.filter((x) => reranked.includes(x));
         s.draft.q[it.pid] = reranked.filter((x) => !osp.includes(x));
-        osp.forEach((id, i) => s.draft.q[it.pid].splice(Math.min([2, 6, 10, 14][i] ?? 14, s.draft.q[it.pid].length), 0, id)); }
+        osp.forEach((id, i) => s.draft.q[it.pid].splice(Math.min([1, 3, 5, 8][i] ?? 8, s.draft.q[it.pid].length), 0, id)); }
       // deck exhausted without 10: fill with the best unpicked cards
       if (picks.length < DRAFT_SIZE && !ib.length && s.draft.q[it.pid].length === 0) {
         for (const id of s.draft.deck) { if (picks.length >= DRAFT_SIZE) break; if (!picks.includes(id)) picks.push(id); }
