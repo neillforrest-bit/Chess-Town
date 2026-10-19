@@ -26,6 +26,8 @@ import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { loadPlayerFile, analyse } from '@/lib/player-file';
 import { Chess } from 'chess.js';
 import { direct, postGamePrompt, parsePostGame, localScouting } from '@/lib/chester-director';
+import { BlueprintProvider, useBlueprint } from '@/lib/blueprint';
+import { ARMORY } from '@/lib/armory';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
@@ -45,6 +47,12 @@ const LESSONS = [
   { title: 'Develop with purpose', body: 'Tap a horse-shaped knight or a bishop, then choose a glowing square. Bring one new teammate into the game.' },
   { title: 'Protect the king', body: 'Move your king two squares toward a rook when the road is clear. That special move is castling: king safe, rook ready.' },
 ];
+
+function TypeLine({ text }: { text: string }) {
+  const [n, setN] = useState(0);
+  useEffect(() => { setN(0); const t0 = Date.now(); const iv = window.setInterval(() => { const k = Math.max(1, Math.ceil((Date.now() - t0) / 400 * text.length)); setN(Math.min(text.length, k)); if (k >= text.length) window.clearInterval(iv); }, 24); return () => window.clearInterval(iv); }, [text]);
+  return <span>{text.slice(0, n)}</span>;
+}
 
 function PlayChesterGame() {
   const searchParams = useSearchParams();
@@ -74,6 +82,8 @@ function PlayChesterGame() {
   const roadRef = useRef({ active: false, level: 1 });
   roadRef.current = { active: roadActive, level: roadLevel };
   useEffect(() => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = roadActive ? roadLevel : null; return () => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = null; }; }, [roadActive, roadLevel]);
+  const bp = useBlueprint(); const bpRef = useRef(bp); bpRef.current = bp;
+  const [armoryOpen, setArmoryOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>(roadActive ? 'BEGINNER' : requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
   useEffect(() => { if (roadActive) setDifficulty(tierForLevel(roadLevel)); }, [roadActive, roadLevel]);
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
@@ -139,6 +149,15 @@ function PlayChesterGame() {
   const [resignArmed, setResignArmed] = useState(false);
   const teleRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setHapticsState(isHaptics()); }, []);
+  // BLUEPRINT: feed every played move (user + Chester) into the BlueprintManager
+  useEffect(() => {
+    const onMove = (e: Event) => { const d = (e as CustomEvent).detail; if (d?.fen) bpRef.current.onPosition(d.fen); };
+    window.addEventListener('chester-coaching-pause', onMove);
+    window.addEventListener('chester-ai-graded', onMove);
+    return () => { window.removeEventListener('chester-coaching-pause', onMove); window.removeEventListener('chester-ai-graded', onMove); };
+  }, []);
+  // auto-dismiss the abort/handoff line after 8s
+  useEffect(() => { if (!bp.line || bp.line.kind === 'why') return; const t = window.setTimeout(() => bpRef.current.disarm(), 8000); return () => window.clearTimeout(t); }, [bp.line]);
   // BUILD 158: Joseph pressure drone - quiet minor-key bed whose gain tracks White's danger.
   // Gated on the app's mute switch; stops the moment the fight ends. Zero network, zero cost.
   const josephDrone = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null);
@@ -621,6 +640,16 @@ function PlayChesterGame() {
       {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/play-chester?road=1"><b>ROAD TO JOSEPH</b><small>15 levels · a boss every 3rd · your level is saved</small></a>}
       {!isFriendMode && requestedLevel && <p style={{ margin: '.2rem 0 .6rem', color: '#ffd84d', fontWeight: 900, letterSpacing: '1px' }}>OPPONENT: {selectedLevel.label} · {selectedLevel.note}</p>}
       {!isFriendMode && !requestedLevel && !roadActive && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? '🔒 ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small>{!locked && (() => { const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return rec?.games ? <i className="chester-level-stars">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}{rec.bestGrade ? ` · best ${rec.bestGrade}` : ''}</i> : null; })()}</button>; })}</div>}
+      {!isFriendMode && !requestedLevel && !roadActive && <div className="bp-armory">
+        <button className={`bp-toggle${bp.opening ? ' is-on' : ''}`} style={bp.opening ? { borderColor: bp.opening.color, color: bp.opening.color } : undefined} onClick={() => { if (bp.opening) bp.disarm(); else setArmoryOpen((v) => !v); }}>
+          ⚔ GUIDED OPENING{bp.opening ? `: ${bp.opening.name} ✕` : armoryOpen ? ' ▲' : ' ▼'}
+        </button>
+        {armoryOpen && !bp.opening && <div className="bp-drawer">
+          {ARMORY.map((o) => <button key={o.id} className="bp-card" style={{ borderColor: o.color }} onClick={() => { bp.arm(o.id); setArmoryOpen(false); }}>
+            <small style={{ color: o.color }}>{o.tier}</small><b>{o.name}</b><span>{o.blurb}</span>
+          </button>)}
+        </div>}
+      </div>}
       {mode === 'PVP_REMOTE' ? (
         <div style={{ margin: '.6rem 0', padding: '.7rem .9rem', border: '1px solid #ffd84d', borderRadius: 8, background: 'rgba(255,216,77,.08)' }}>
           <b style={{ color: '#ffd84d', letterSpacing: '1px' }}>{duelStatus === 'connected' ? 'FRIEND CONNECTED - FIGHT!' : duelStatus === 'failed' ? 'CONNECTION DROPPED - BOTH REOPEN THE LINK' : requestedSeat === 'w' ? `ROOM ${requestedRoom} - WAITING FOR YOUR FRIEND...` : `KNOCKING ON ROOM ${requestedRoom}...`}</b>
@@ -693,6 +722,10 @@ function PlayChesterGame() {
       {challenge && !challenge.done && <div className="chester-challenge" role="status"><b>CHALLENGE: {challenge.label}</b><span>{challenge.n}/{challenge.target}</span></div>}
       {challenge?.done && <div className="chester-challenge is-done" role="status"><b>✓ CHALLENGE COMPLETE · +150 PTS</b></div>}
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+        {bp.line && bp.opening && <div className="bp-line" style={{ borderColor: bp.opening.color }}>
+          <small style={{ color: bp.line.kind === 'abort' ? '#f59e0b' : bp.opening.color }}>{bp.line.kind === 'abort' ? '⚠ BLUEPRINT ABORTED' : bp.line.kind === 'handoff' ? '★ BLUEPRINT COMPLETE' : `BLUEPRINT · ${bp.opening.name.toUpperCase()} · ${Math.min(bp.line.step + 1, bp.line.total)}/${bp.line.total}`}</small>
+          <TypeLine text={bp.line.text} />
+        </div>}
         {victoryState !== 'none' && (() => {
           const finalWin = roadLevel >= ROAD_MAX;
           const bossName = bossFor(roadLevel)?.name || 'THE BOSS';
@@ -879,4 +912,4 @@ function FreezeSpotlight({ from, to }: { from: string; to: string }) {
   </svg>;
 }
 
-export default function PlayChesterPage() { return <Suspense fallback={<main className="chester-start-screen" />}><PlayChesterGame /></Suspense>; }
+export default function PlayChesterPage() { return <Suspense fallback={<main className="chester-start-screen" />}><BlueprintProvider><PlayChesterGame /></BlueprintProvider></Suspense>; }

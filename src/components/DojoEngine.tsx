@@ -418,6 +418,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     lastMove: null,
     coachSuggestion: null,
     betterHint: null as any,
+    blueprintHint: null as any,
+    blueprintFlash: false,
     trailPly: -1,
     openingAssessment: null,
     principleStreak: 0,
@@ -1452,6 +1454,32 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               }
             }
 
+            // BLUEPRINT guided opening: ghost piece (alpha 0.4 per spec) glides to the target,
+            // pulsing theme-colour ring on the destination square (animate-pulse ring-2 equivalent).
+            if (gameRef.current.blueprintHint) {
+              const bh = gameRef.current.blueprintHint;
+              const bfc = files.indexOf(bh.from[0]), bfr = ranks.indexOf(bh.from[1]), btc = files.indexOf(bh.to[0]), btr = ranks.indexOf(bh.to[1]);
+              if (bfc >= 0 && bfr >= 0 && btc >= 0 && btr >= 0) {
+                const bx1 = boardOffset + sx(bfc) * tileSize + tileSize / 2, by1 = boardOffset + sy(bfr) * tileSize + tileSize / 2;
+                const bx2 = boardOffset + sx(btc) * tileSize + tileSize / 2, by2 = boardOffset + sy(btr) * tileSize + tileSize / 2;
+                const btex = `piece-${bh.piece[0]}-${bh.piece[1]}`;
+                if (scene.textures.exists(btex)) {
+                  const bghost = scene.add.image(bx1, by1, btex).setDisplaySize(tileSize, tileSize).setOrigin(0.5).setDepth(46).setAlpha(0.4);
+                  scene.tweens.add({ targets: bghost, x: bx2, y: by2, duration: 900, hold: 500, repeatDelay: 300, yoyo: false, repeat: -1, ease: 'Sine.InOut', onRepeat: () => { bghost.setPosition(bx1, by1); } });
+                  (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(bghost);
+                }
+                const bring = scene.add.graphics().setDepth(44);
+                bring.lineStyle(4, bh.colorNum || 0x3b82f6, 0.95); bring.strokeRect(bx2 - tileSize / 2 + 2, by2 - tileSize / 2 + 2, tileSize - 4, tileSize - 4);
+                scene.tweens.add({ targets: bring, alpha: 0.25, duration: 500, yoyo: true, repeat: -1 });
+                (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(bring);
+              }
+            }
+            // BLUEPRINT abort flash: amber wash over the board (spec: bg-amber-500/20)
+            if (gameRef.current.blueprintFlash) {
+              gameRef.current.blueprintFlash = false;
+              const fl = scene.add.rectangle(boardOffset + 4 * tileSize, boardOffset + 4 * tileSize, 8 * tileSize, 8 * tileSize, 0xf59e0b, 0.2).setDepth(60);
+              scene.tweens.add({ targets: fl, alpha: 0, duration: 700, hold: 250, onComplete: () => fl.destroy() });
+            }
             // Draw pieces
             const board = gameRef.current.chess.board();
             for (let row = 0; row < 8; row++) {
@@ -1809,6 +1837,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           window.addEventListener('chester-help-request', handleHelpRequest);
           const handleShowBetter = (e: Event) => { gameRef.current.betterHint = (e as CustomEvent).detail; renderBoard?.(); };
           const handleClearBetter = () => { if (!gameRef.current.betterHint) return; gameRef.current.betterHint = null; renderBoard?.(); };
+          const handleBlueprintMark = (e: Event) => { gameRef.current.blueprintHint = (e as CustomEvent).detail; renderBoard?.(); };
+          const handleBlueprintClear = () => { if (!gameRef.current.blueprintHint) return; gameRef.current.blueprintHint = null; renderBoard?.(); };
+          const handleBlueprintFlash = () => { gameRef.current.blueprintFlash = true; renderBoard?.(); };
+          window.addEventListener('blueprint-mark', handleBlueprintMark);
+          window.addEventListener('blueprint-clear', handleBlueprintClear);
+          window.addEventListener('blueprint-flash', handleBlueprintFlash);
           window.addEventListener('chester-show-better', handleShowBetter);
           window.addEventListener('chester-clear-better', handleClearBetter);
           window.addEventListener('request-resign', handleRequestResign);
@@ -1848,6 +1882,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('chester-help-request', handleHelpRequest);
             window.removeEventListener('chester-show-better', handleShowBetter);
             window.removeEventListener('chester-clear-better', handleClearBetter);
+            window.removeEventListener('blueprint-mark', handleBlueprintMark);
+            window.removeEventListener('blueprint-clear', handleBlueprintClear);
+            window.removeEventListener('blueprint-flash', handleBlueprintFlash);
             window.removeEventListener('request-resign', handleRequestResign);
             window.removeEventListener('chester-rewind', handleRewind);
             window.removeEventListener('toggle-board-theme', handleToggleBoardTheme);
