@@ -43,6 +43,7 @@ export function BlueprintProvider({ children }: { children: React.ReactNode }) {
     publish({ text: byUser ? op.abortUser : op.abortFoe, kind: 'abort', step: s.current.step, total: op.steps.length });
   }, [publish]);
   const arm = useCallback((id: string) => {
+    window.dispatchEvent(new CustomEvent('blueprint-clear'));
     const o = ARMORY.find((x) => x.id === id); if (!o) return;
     g.current = { chess: new Chess(), lastFen: null };
     s.current = { opening: o, status: 'guiding', step: 0 };
@@ -77,6 +78,9 @@ export function BlueprintProvider({ children }: { children: React.ReactNode }) {
       }
       s.current = { ...s.current, step: next };
       publish({ text: op.steps[next].why, kind: 'why', step: next, total: op.steps.length });
+      // BUILD 162: tell the engine which reply the script expects (consumed one-shot,
+      // ~80% honoured) so guided lessons usually complete; 'any' = no preference.
+      window.dispatchEvent(new CustomEvent('blueprint-expect', { detail: { san: op.steps[sp].expectedOpponentSAN } }));
       return; // mark for the next step is dispatched after the opponent replies (position may make it illegal)
     }
     // sp already advanced past the user's move: the reply is validated against the

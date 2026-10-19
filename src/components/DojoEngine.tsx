@@ -1135,6 +1135,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 const casual = Math.random() < 0.85 ? pickCasualMove(gameRef.current.chess) || pickRookieMove(gameRef.current.chess) : null;
                 if (casual) aiMove = { from: casual.from, to: casual.to, promotion: casual.promotion || undefined };
               }
+              // BUILD 162: while a blueprint is armed, Chester plays the scripted reply ~80% of
+              // the time so the guided lesson usually completes; deviations stay possible (abort
+              // path lives). One-shot: set by blueprint-expect after each scripted user move.
+              const bpExpected = gameRef.current.blueprintExpect; gameRef.current.blueprintExpect = null;
+              if (bpExpected && bpExpected !== 'any' && Math.random() < 0.8) {
+                try { const t = new Chess(gameRef.current.chess.fen()); const sm = t.move(bpExpected); if (sm) aiMove = { from: sm.from, to: sm.to, promotion: sm.promotion || undefined }; } catch { /* illegal here - natural pick */ }
+              }
               const result = gameRef.current.chess.move({ from: aiMove.from, to: aiMove.to, promotion: 'q' });
               const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
               if (isBrawl && result.color === 'b' && gameRef.current.trojanPawnArmed && !gameRef.current.trojanPawnSquare) {
@@ -1838,10 +1845,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const handleShowBetter = (e: Event) => { gameRef.current.betterHint = (e as CustomEvent).detail; renderBoard?.(); };
           const handleClearBetter = () => { if (!gameRef.current.betterHint) return; gameRef.current.betterHint = null; renderBoard?.(); };
           const handleBlueprintMark = (e: Event) => { gameRef.current.blueprintHint = (e as CustomEvent).detail; renderBoard?.(); };
-          const handleBlueprintClear = () => { if (!gameRef.current.blueprintHint) return; gameRef.current.blueprintHint = null; renderBoard?.(); };
+          const handleBlueprintClear = () => { gameRef.current.blueprintExpect = null; if (!gameRef.current.blueprintHint) return; gameRef.current.blueprintHint = null; renderBoard?.(); };
+          const handleBlueprintExpect = (e: Event) => { gameRef.current.blueprintExpect = (e as CustomEvent).detail?.san || null; };
           const handleBlueprintFlash = () => { gameRef.current.blueprintFlash = true; renderBoard?.(); };
           window.addEventListener('blueprint-mark', handleBlueprintMark);
           window.addEventListener('blueprint-clear', handleBlueprintClear);
+          window.addEventListener('blueprint-expect', handleBlueprintExpect);
           window.addEventListener('blueprint-flash', handleBlueprintFlash);
           window.addEventListener('chester-show-better', handleShowBetter);
           window.addEventListener('chester-clear-better', handleClearBetter);
@@ -1884,6 +1893,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('chester-clear-better', handleClearBetter);
             window.removeEventListener('blueprint-mark', handleBlueprintMark);
             window.removeEventListener('blueprint-clear', handleBlueprintClear);
+            window.removeEventListener('blueprint-expect', handleBlueprintExpect);
             window.removeEventListener('blueprint-flash', handleBlueprintFlash);
             window.removeEventListener('request-resign', handleRequestResign);
             window.removeEventListener('chester-rewind', handleRewind);
