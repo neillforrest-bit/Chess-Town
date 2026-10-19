@@ -59,7 +59,7 @@ export default function DiscoverRoom() {
     const docMode = genres.includes('Documentary');
     const cats = docShelf && docShelf !== 'docs' ? [docShelf] : [];
     const inShelf = (m: FM) => !cats.length || cats.some((c) => (m.kw || []).includes('doccat:' + c.slice(5)));
-    const cl = MOVIES.filter((m) => (docMode ? m.g.includes('Documentary') && inShelf(m as FM) : genres.some((g) => m.g.includes(GID_OF[g] || g))) && m.r >= 7 && m.pop >= 100 && m.y >= 1960) as FM[];
+    const YR = new Date().getFullYear(); const cl = MOVIES.filter((m) => (docMode ? m.g.includes('Documentary') && inShelf(m as FM) : genres.some((g) => m.g.includes(GID_OF[g] || g))) && m.r >= 7 && m.pop >= 100 && m.y >= 1960 && m.y <= YR - 2) as FM[]; // recent English blockbusters are not discoveries - catalogue has no language field, so year-only
     cl.sort((a, b) => obscurity(b) - obscurity(a));
     for (const m of cl.slice(0, 7)) { if (!seen.has(m.id)) { seen.add(m.id); pool.push(m); } }
     // TMDB deep fetch: low floors, foreign allowed, 1960+
@@ -67,7 +67,7 @@ export default function DiscoverRoom() {
     try {
       const r = await fetch('/api/discover', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'deep', cons: { ig: gids, xg: [], rt: 'any', era: 'any' }, sl: [50, 50, 50], seed, n: 40 }) });
       const d = (await r.json()) as { movies?: FM[] };
-      let fresh = (d.movies || []).filter((m) => m && m.id && m.p && m.r >= 6.9 && m.pop >= 100 && !seen.has(m.id));
+      let fresh = (d.movies || []).filter((m) => m && m.id && m.p && m.r >= 6.9 && m.pop >= 100 && !seen.has(m.id) && (m.ol !== 'en' || m.y <= YR - 2)); // foreign any year, English must be 2+ yrs old - else recent blockbusters pose as deep cuts
       if (docMode) { const re = cats.length ? SHELF_KW[cats[0]] : null; fresh = fresh.filter((m) => m.g.includes('Documentary') && (!re || re.test(m.t + ' ' + m.o))); }
       fresh.sort((a, b) => obscurity(b) - obscurity(a));
       registerExtra(fresh);
