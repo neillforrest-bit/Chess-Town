@@ -79,7 +79,10 @@ export function BlueprintProvider({ children }: { children: React.ReactNode }) {
       publish({ text: op.steps[next].why, kind: 'why', step: next, total: op.steps.length });
       return; // mark for the next step is dispatched after the opponent replies (position may make it illegal)
     }
-    const exp = op.steps[sp].expectedOpponentSAN;
+    // sp already advanced past the user's move: the reply is validated against the
+    // step just played (sp-1), not the newly armed one. BUILD 162: with real theory
+    // replies in the armory this off-by-one aborted every on-script game.
+    const exp = sp > 0 ? op.steps[sp - 1].expectedOpponentSAN : 'any';
     if (exp !== 'any' && played !== exp) { abort(false); return; }
     try { const t = new Chess(fen); t.move(op.steps[sp].san); } catch { abort(false); return; } // blueprint move no longer legal
     markFor(op, sp, fen); // still on script: point at the next guided move
