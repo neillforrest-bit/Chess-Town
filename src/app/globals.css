@@ -3156,3 +3156,14 @@ a.battle-btn{text-decoration:none}
   .hero-jail-row .piece-jail{height:1.25rem!important}
   .hero-jail-row .piece-jail span{font-size:.45rem!important}
 }
+
+/* BUILD 164f: measured fit pass - 390x560 usable */
+@media (max-width:860px){
+  .chester-hud{min-height:34px!important}
+  .chester-hud .chester-menu-btn{padding:2px 6px!important;font-size:.62rem!important;gap:3px!important;min-height:0!important;height:auto!important}
+  .fighthud__name{line-height:.9!important}
+  .chester-console__pill{display:flex!important;align-items:center!important;gap:4px!important;min-height:30px!important;padding:.2rem .5rem!important}
+  .chester-console__pill small{margin:0!important}
+  .hero-jail-row .piece-jail{height:1.2rem!important}
+  .chester-board-frame{width:min(100cqw,calc(100cqh - 382px))!important}
+}
