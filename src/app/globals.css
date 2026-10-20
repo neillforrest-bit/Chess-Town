@@ -3124,3 +3124,15 @@ a.battle-btn{text-decoration:none}
 
 /* BUILD 164b: challenge chip joins the flow - no more overlapping the names row */
 @media (max-width:860px){.chester-challenge{position:static!important;align-self:flex-start;margin:2px 0 0 2px;pointer-events:none}}
+
+/* BUILD 164c: deeper squeeze so the console row fits real Safari height too */
+@media (max-width:860px){
+  .fighthud{gap:0!important;padding-bottom:0!important}
+  .chester-board-frame{width:min(100cqw,calc(100cqh - 335px))!important}
+  .chester-teleprompter--tappable{max-height:76px}
+  .chester-teleprompter__body{max-height:50px}
+  .hero-jail-row .piece-jail{height:1.5rem!important}
+  .chester-console__pill{min-height:34px!important}
+  .chester-taunt{width:28px!important;height:28px!important}
+  .chester-spark{height:10px}
+}
