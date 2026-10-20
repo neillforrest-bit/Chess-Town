@@ -97,6 +97,27 @@ function PlayChesterGame() {
   const reactT = useRef(0);
   const leanT = useRef(0);
   const fireReact = (emoji: string, ms = 1900) => { setReaction(emoji); window.clearTimeout(reactT.current); reactT.current = window.setTimeout(() => setReaction(null), ms); };
+
+  // BUILD 163: emoji taunts - Chester claps back, fully rule-based, 0p.
+  const tauntCool = useRef(0);
+  const sendTaunt = (t: string) => {
+    const now = Date.now();
+    if (now < tauntCool.current || freeze || !started) return;
+    tauntCool.current = now + 4000;
+    fireReact(t, 1600);
+    const lastCls = (moveTrail[moveTrail.length - 1]?.classification || '').toUpperCase();
+    const LINES: Record<string, string[]> = {
+      '😏': ['I invented that smirk.', 'Smirking already? The board disagrees.'],
+      '😤': ['Save the steam - you will need it for the ending.', 'Anger is just calculation with worse posture.'],
+      '🤯': ['Mind blown? I have not even started.', 'Yes, I saw that too. Obviously.'],
+      '💪': ['Muscles do not move pieces. Shame.', 'Flex all you like - the eval bar is mine.'],
+    };
+    let pool = LINES[t] || LINES['😏'];
+    if (lastCls === 'BLUNDER' || lastCls === 'MISTAKE') pool = ['Bold talk from someone who just gift-wrapped a piece.', 'Taunt me when the move list stops glowing red.'];
+    else if (lastCls === 'BRILLIANT' || lastCls === 'BEST') pool = ['One good move and he grows a crown. Do it again.', 'Fine. That one stung. Again.'];
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    window.setTimeout(() => { setFreeze(null); setBanter(`${t} yourself. ${line}`); }, 700);
+  };
   const [bossStrike, setBossStrike] = useState(0);
   // BUILD 158: Chester Challenge - one mid-match micro-objective per game, +150 pts even in a loss.
   type Challenge = { id: 'dfile' | 'fork' | 'survive'; label: string; n: number; target: number; done: boolean };
@@ -769,6 +790,9 @@ function PlayChesterGame() {
         <div className="chester-console__lifelines">
           <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking || isBossFight) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking || isBossFight} title={isBossFight ? 'No hints in a boss fight' : undefined} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT</b><small>{helpRemaining} LEFT</small></button>
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
+          <div className="chester-taunts" role="group" aria-label="Taunt Chester">
+            {['😏', '😤', '🤯', '💪'].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
+          </div>
         </div>
       </div>
       <div className="chester-teleprompter">

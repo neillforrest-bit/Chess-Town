@@ -2867,6 +2867,10 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .battle-wildcards{width:min(100vw - 1rem,600px);padding:.4rem .5rem .5rem;border-radius:12px;border:1px solid rgba(255,216,77,.35);background:linear-gradient(180deg,rgba(255,216,77,.07),rgba(255,216,77,.02));box-shadow:0 0 18px rgba(255,216,77,.12)}
 .battle-wildcards__label{display:block;margin-bottom:.35rem;color:#ffd84d;font:900 .62rem/1 Arial,sans-serif;letter-spacing:3px;text-align:center}
 .battle-wildcards__row{display:flex;gap:.5rem;justify-content:center}
+/* BUILD 163: emoji taunts vs Chester */
+.chester-taunts{display:flex;gap:.3rem;align-items:center}
+.chester-taunt{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,216,77,.4);background:rgba(255,216,77,.06);font-size:1.05rem;line-height:1;cursor:pointer;transition:transform .12s ease}
+.chester-taunt:active{transform:scale(1.25)}
 /* BUILD 163: wild cards must never sit below the fold - pin them to the viewport
    bottom inside the scrollable shell, and shrink the board on short screens so the
    whole battle stack fits without scrolling. */
