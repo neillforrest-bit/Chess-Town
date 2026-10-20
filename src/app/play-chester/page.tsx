@@ -102,7 +102,7 @@ function PlayChesterGame() {
   const tauntCool = useRef(0);
   const sendTaunt = (t: string) => {
     const now = Date.now();
-    if (now < tauntCool.current || freeze || !started) return;
+    if (now < tauntCool.current || freeze || !started || isBossFight) return; // exam mode: the boss does not banter
     tauntCool.current = now + 4000;
     fireReact(t, 1600);
     const lastCls = (moveTrail[moveTrail.length - 1]?.classification || '').toUpperCase();
