@@ -3172,3 +3172,11 @@ a.battle-btn{text-decoration:none}
 @media (max-width:860px){
   .chester-game__board .chester-board-frame{width:min(100cqw,600px,calc(100dvh - 327px))!important}
 }
+
+/* BUILD 164h: headroom for the floating browser bar on real devices */
+@media (max-width:860px){
+  .chester-game__board .chester-board-frame{width:min(100cqw,600px,calc(100dvh - 344px))!important}
+  .chester-teleprompter--tappable{max-height:70px}
+  .chester-teleprompter__body{max-height:44px}
+  .chester-game__board{padding-bottom:calc(24px + env(safe-area-inset-bottom))!important}
+}
