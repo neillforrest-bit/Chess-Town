@@ -2867,6 +2867,7 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .battle-wildcards{width:min(100vw - 1rem,600px);padding:.4rem .5rem .5rem;border-radius:12px;border:1px solid rgba(255,216,77,.35);background:linear-gradient(180deg,rgba(255,216,77,.07),rgba(255,216,77,.02));box-shadow:0 0 18px rgba(255,216,77,.12)}
 .battle-wildcards__label{display:block;margin-bottom:.35rem;color:#ffd84d;font:900 .62rem/1 Arial,sans-serif;letter-spacing:3px;text-align:center}
 .battle-wildcards__row{display:flex;gap:.5rem;justify-content:center}
+.chester-spark{display:block;width:100%;height:22px;margin-top:2px}
 .chester-drill{margin:.5rem 0 0;padding:.45rem .7rem;border-left:3px solid #ffd84d;background:rgba(255,216,77,.07);border-radius:0 8px 8px 0;color:#f4e9c8;font:700 .74rem/1.4 Arial,sans-serif;text-align:left}
 /* BUILD 163: emoji taunts vs Chester */
 .chester-taunts{display:flex;gap:.3rem;align-items:center}

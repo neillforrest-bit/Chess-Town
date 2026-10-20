@@ -222,7 +222,8 @@ function PlayChesterGame() {
   const accRef = useRef<{ w: { loss: number; n: number }; b: { loss: number; n: number } }>({ w: { loss: 0, n: 0 }, b: { loss: 0, n: 0 } });
   const radarTally = useRef({ hanging: 0, missed: 0 }); // BUILD 163 debrief themes
   const [accuracy, setAccuracy] = useState({ ...accRef.current });
-  const bumpAcc = (side: 'w' | 'b', points: number) => { const slot = accRef.current[side]; slot.loss += Math.max(0, points); slot.n += 1; setAccuracy({ ...accRef.current }); };
+  const [accSeries, setAccSeries] = useState<number[]>([]);
+  const bumpAcc = (side: 'w' | 'b', points: number) => { const slot = accRef.current[side]; slot.loss += Math.max(0, points); slot.n += 1; setAccuracy({ ...accRef.current }); if (side === 'w') { const p = Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * Math.max(0, points)) - 0.8))); setAccSeries((sr) => [...sr.slice(-39), p]); } };
   const releaseFreeze = () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; window.dispatchEvent(new CustomEvent('chester-clear-better')); setFreeze(null); };
   // BUILD 128 fork: ACCEPT = Chester replies at once; REWIND = take back the move (1 ply) and try again.
   const acceptConsequences = () => { (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
@@ -749,6 +750,9 @@ function PlayChesterGame() {
             <span className="battle-acc__pct">{pct}%</span>
           </div>;
         })}
+        {accSeries.length > 1 && <svg className="chester-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-label="Your move-by-move accuracy">
+          <polyline fill="none" stroke="#ffd84d" strokeWidth="1.8" strokeLinejoin="round" points={accSeries.map((pt, i) => `${(i / (accSeries.length - 1)) * 100},${23 - (pt / 100) * 21}`).join(' ')} />
+        </svg>}
       </div>
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
       {challenge && !challenge.done && <div className="chester-challenge" role="status"><b>CHALLENGE: {challenge.label}</b><span>{challenge.n}/{challenge.target}</span></div>}
