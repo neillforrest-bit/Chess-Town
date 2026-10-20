@@ -2867,6 +2867,12 @@ body { overscroll-behavior-y: none; touch-action: pan-x pan-y; }
 .battle-wildcards{width:min(100vw - 1rem,600px);padding:.4rem .5rem .5rem;border-radius:12px;border:1px solid rgba(255,216,77,.35);background:linear-gradient(180deg,rgba(255,216,77,.07),rgba(255,216,77,.02));box-shadow:0 0 18px rgba(255,216,77,.12)}
 .battle-wildcards__label{display:block;margin-bottom:.35rem;color:#ffd84d;font:900 .62rem/1 Arial,sans-serif;letter-spacing:3px;text-align:center}
 .battle-wildcards__row{display:flex;gap:.5rem;justify-content:center}
+/* BUILD 163: wild cards must never sit below the fold - pin them to the viewport
+   bottom inside the scrollable shell, and shrink the board on short screens so the
+   whole battle stack fits without scrolling. */
+.battle-wildcards{position:sticky;bottom:calc(.4rem + env(safe-area-inset-bottom));z-index:35;background:#050708;padding-top:.2rem}
+@media (max-height:760px){.battle-board{width:min(100vw - 1rem,600px,46dvh)}}
+@media (max-height:640px){.battle-board{width:min(100vw - 1rem,600px,42dvh)}}
 .battle-btn--wild{flex:1;max-width:11rem;padding:.95rem .6rem;font-size:1rem;border-radius:12px;border-width:2px;box-shadow:0 0 14px rgba(255,216,77,.18);transition:transform .12s ease}
 .battle-btn--wild:not(:disabled):active{transform:scale(1.12)}
 .battle-btn--wild{border:1px dashed rgba(255,216,77,.55);background:rgba(255,216,77,.08);color:#ffd84d}
