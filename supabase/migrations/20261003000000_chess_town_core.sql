@@ -116,3 +116,10 @@ create policy "dossier_insert_own" on public.player_dossier
 create policy "dossier_update_own" on public.player_dossier
   for update to authenticated using (player_id = (select auth.uid())) with check (player_id = (select auth.uid()));
 -- No delete policies on purpose (spec asks for select/insert/update only).
+
+-- 6. EXPLICIT TABLE GRANTS (Supabase 30 Oct 2026 change: new public-schema tables no longer get automatic Data API grants).
+-- These match the access the default grants provided when the tables were created, so they are no-ops on the existing DB
+-- and keep any recreation / db reset working. Client access is anon key + user JWT: authenticated role only on these tables.
+grant select, insert, update on public.profiles to authenticated;
+grant select, insert, update on public.games to authenticated;
+grant select, insert, update on public.player_dossier to authenticated;  -- bump_dossier is SECURITY INVOKER: callers need these

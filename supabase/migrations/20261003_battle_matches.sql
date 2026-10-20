@@ -12,3 +12,7 @@ drop policy if exists "battle_matches_update" on public.battle_matches;
 create policy "battle_matches_select" on public.battle_matches for select to anon, authenticated using (true);
 create policy "battle_matches_insert" on public.battle_matches for insert to anon, authenticated with check (true);
 create policy "battle_matches_update" on public.battle_matches for update to anon, authenticated using (true) with check (true);
+
+-- Explicit grants (Supabase 30 Oct 2026 change): battle page runs in the browser on the anon key, so anon needs in too.
+-- Mirrors the RLS policies above (select/insert/update to anon, authenticated; no delete anywhere).
+grant select, insert, update on public.battle_matches to anon, authenticated;

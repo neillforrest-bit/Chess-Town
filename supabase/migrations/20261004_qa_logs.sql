@@ -19,3 +19,6 @@ drop policy if exists "qa_logs_insert_own" on public.qa_logs;
 create policy "qa_logs_select_own" on public.qa_logs for select to authenticated using (auth.uid() = player_id);
 create policy "qa_logs_insert_own" on public.qa_logs for insert to authenticated with check (auth.uid() = player_id);
 create index if not exists qa_logs_created_at_idx on public.qa_logs (created_at desc);
+
+-- Explicit grants (Supabase 30 Oct 2026 change): qaActions inserts via the cookie SSR client (authenticated role).
+grant select, insert on public.qa_logs to authenticated;
