@@ -3136,3 +3136,16 @@ a.battle-btn{text-decoration:none}
   .chester-taunt{width:28px!important;height:28px!important}
   .chester-spark{height:10px}
 }
+
+/* BUILD 164d: real shrink (layout height, not transform) + tighter gaps */
+@media (max-width:860px){
+  .chester-hud{min-height:34px!important;transform:none!important;width:100%!important}
+  .chester-hud .chester-menu-btn{padding:3px 8px!important;font-size:.66rem!important;min-height:0!important}
+  .chester-hud .chester-menu-btn__pill{padding:1px 6px!important;font-size:.58rem!important}
+  .chester-hud .chester-matchbar{transform:scale(.9);transform-origin:right center}
+  .chester-game{gap:.2rem!important}
+  .chester-game__board{gap:.2rem!important}
+  .fighthud__name{font-size:.95rem!important}
+  .fighthud__bar{height:16px!important}
+  .chester-board-frame{width:min(100cqw,calc(100cqh - 370px))!important}
+}
