@@ -3167,3 +3167,8 @@ a.battle-btn{text-decoration:none}
   .hero-jail-row .piece-jail{height:1.2rem!important}
   .chester-board-frame{width:min(100cqw,calc(100cqh - 382px))!important}
 }
+
+/* BUILD 164g: compound selector beats the old 50dvh board pin */
+@media (max-width:860px){
+  .chester-game__board .chester-board-frame{width:min(100cqw,600px,calc(100dvh - 327px))!important}
+}
