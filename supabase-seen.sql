@@ -17,3 +17,9 @@ begin
     updated_at = now();
 end $$;
 revoke all on function public.cinesync_seen_add(text, text, integer[]) from public, anon, authenticated;
+
+-- Explicit grants (Supabase 30 Oct 2026 change: automatic Data API grants stop for new/recreated tables).
+-- Server-only table: the engine reads and writes it with the service role (see src/lib/engine.ts). No anon/authenticated
+-- access is granted - RLS has no policies for them, so this stays server-only by design.
+grant select, insert, update on public.cinesync_seen to service_role;
+grant execute on function public.cinesync_seen_add(text, text, integer[]) to service_role;
