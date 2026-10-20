@@ -3089,3 +3089,35 @@ a.battle-btn{text-decoration:none}
 .bp-line small { font-weight:900; letter-spacing:.1em; font-size:.6rem; }
 .bp-line span { color:#e8eaf2; font-size:.72rem; line-height:1.22; font-style:italic; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 @media (hover:none) { .bp-drawer { opacity:.85; } }
+
+/* BUILD 164: commentary-first phone layout - sized for real Safari chrome (usable ~560px) */
+@media (max-width:860px){
+  .chester-hud{min-height:32px!important;transform:scale(.92);transform-origin:left center;width:109%}
+  .fighthud{gap:2px!important;padding-bottom:2px!important}
+  .fighthud__name{font-size:1.05rem!important}
+  .fighthud__bar{height:20px!important;border-width:2px!important;border-radius:8px!important}
+  .fighthud__pct{font-size:.85rem!important}
+  .fighthud__caption{display:none!important}
+  .play-chester__acc{flex-direction:row;flex-wrap:wrap;gap:0 .5rem;margin-top:.15rem}
+  .play-chester__acc .battle-acc__caption{display:none!important}
+  .play-chester__acc .battle-acc{flex:1 1 44%;width:auto;gap:.3rem}
+  .battle-acc__label,.battle-acc__pct{font-size:.6rem!important}
+  .chester-spark{flex:1 1 100%;height:12px}
+  .chester-board-frame{width:min(100cqw,calc(100cqh - 310px))!important}
+  .hero-jail-row{gap:4px!important}
+  .hero-jail-row .piece-jail{height:1.75rem!important;min-height:0!important}
+  .chester-bottom{flex:0 0 auto!important;justify-content:flex-start!important;gap:.3rem!important}
+  .chester-teleprompter--tappable{flex:0 0 auto;width:100cqw;max-height:102px;display:flex;flex-direction:column;cursor:pointer}
+  .chester-teleprompter__head{display:flex;align-items:center;gap:.4rem}
+  .chester-teleprompter__expand{margin-left:auto;color:#67e8f9;font:900 .55rem/1 Arial,sans-serif;letter-spacing:1.5px}
+  .chester-teleprompter__body{overflow-y:auto;max-height:74px}
+  .chester-console__pill{min-height:38px!important;padding:.3rem .55rem!important}
+  .chester-taunt{width:30px!important;height:30px!important;font-size:.92rem!important}
+}
+.chester-comm-modal{position:fixed;inset:0;z-index:1400;display:grid;place-items:end center;background:rgba(0,0,0,.74)}
+.chester-comm-modal__card{width:100%;max-width:600px;max-height:82dvh;background:#07090a;border-top:2px solid var(--arena-cyan);border-radius:14px 14px 0 0;display:flex;flex-direction:column;padding-bottom:calc(1rem + env(safe-area-inset-bottom))}
+.chester-comm-modal__card header{display:flex;justify-content:space-between;align-items:center;padding:.8rem 1rem .5rem;color:#ffd84d;font:900 .78rem/1 Arial,sans-serif;letter-spacing:2px}
+.chester-comm-modal__card header button{width:2rem;height:2rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;background:transparent;font-size:1.1rem;cursor:pointer}
+.chester-comm-modal__log{overflow-y:auto;padding:0 1rem;display:flex;flex-direction:column;gap:.55rem}
+.chester-comm-modal__log p{margin:0;padding:.5rem .7rem;border-left:2px solid rgba(255,216,77,.35);background:rgba(255,216,77,.05);border-radius:0 8px 8px 0;color:#e8f6ff;font:.8rem/1.45 Arial,sans-serif}
+.chester-comm-modal__log p.is-latest{border-color:#ffd84d;background:rgba(255,216,77,.12)}
