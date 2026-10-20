@@ -3121,3 +3121,6 @@ a.battle-btn{text-decoration:none}
 .chester-comm-modal__log{overflow-y:auto;padding:0 1rem;display:flex;flex-direction:column;gap:.55rem}
 .chester-comm-modal__log p{margin:0;padding:.5rem .7rem;border-left:2px solid rgba(255,216,77,.35);background:rgba(255,216,77,.05);border-radius:0 8px 8px 0;color:#e8f6ff;font:.8rem/1.45 Arial,sans-serif}
 .chester-comm-modal__log p.is-latest{border-color:#ffd84d;background:rgba(255,216,77,.12)}
+
+/* BUILD 164b: challenge chip joins the flow - no more overlapping the names row */
+@media (max-width:860px){.chester-challenge{position:static!important;align-self:flex-start;margin:2px 0 0 2px;pointer-events:none}}
