@@ -49,6 +49,6 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const msg = String((e as Error)?.message || e);
     console.error('[chester-commentary]', msg.slice(0, 200));
-    return NextResponse.json({ error: /402|credit|quota|billing/i.test(msg) ? 'no-credit' : 'error' }, { status: 502 });
+    return NextResponse.json({ error: /402|credit|quota|billing/i.test(msg) ? 'no-credit' : 'error', detail: msg.replace(/AIza[\w-]+/g, '[key]').slice(0, 300) }, { status: 502 });
   }
 }
