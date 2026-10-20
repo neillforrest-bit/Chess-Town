@@ -3180,3 +3180,6 @@ a.battle-btn{text-decoration:none}
   .chester-teleprompter__body{max-height:44px}
   .chester-game__board{padding-bottom:calc(24px + env(safe-area-inset-bottom))!important}
 }
+
+/* BUILD 164i: pill sublabels clip in single-line mode - drop them on phones */
+@media (max-width:860px){.chester-console__pill small{display:none!important}}
