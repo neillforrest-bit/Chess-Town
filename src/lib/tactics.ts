@@ -75,14 +75,14 @@ export function radarForUserMove(fenBefore: string, fenAfter: string, bestSan: s
 }
 
 /** Chester-voiced one-liners from a radar result. Dry, specific, one breath. */
-export function radarLines(r: Radar, playedSan: string): string[] {
+export function radarLines(r: Radar, playedSan: string, weakMove = false): string[] {
   const lines: string[] = [];
   if (r.missedMate) lines.push(`You had ${r.missedMate} here. The board was begging and you looked away.`);
   if (r.missedFork) lines.push(`The move was ${r.missedFork}. That is how games are won.`);
   if (!r.missedMate && !r.missedFork && r.wonCapture && r.betterWas) lines.push(`${r.betterWas} was the move - ${r.wonCapture}, free of charge.`);
   const h = r.hanging[0];
   if (h) lines.push(`Housekeeping: your ${h.piece} on ${h.square} is hanging. Nothing defends it.`);
-  if (!lines.length && r.betterWas && r.betterWas !== playedSan) lines.push(`The engine preferred ${r.betterWas}. Worth a look.`);
+  if (!lines.length && weakMove && r.betterWas && r.betterWas !== playedSan) lines.push(`The engine preferred ${r.betterWas}. Worth a look.`);
   return lines.slice(0, 2);
 }
 
