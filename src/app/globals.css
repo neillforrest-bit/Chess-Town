@@ -3149,3 +3149,10 @@ a.battle-btn{text-decoration:none}
   .fighthud__bar{height:16px!important}
   .chester-board-frame{width:min(100cqw,calc(100cqh - 370px))!important}
 }
+
+/* BUILD 164e: fold the console grade row and slim jails on phones */
+@media (max-width:860px){
+  .chester-console__grade{display:none!important}
+  .hero-jail-row .piece-jail{height:1.25rem!important}
+  .hero-jail-row .piece-jail span{font-size:.45rem!important}
+}
