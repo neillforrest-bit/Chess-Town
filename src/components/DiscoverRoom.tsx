@@ -64,15 +64,20 @@ export default function DiscoverRoom() {
     for (const m of cl.slice(0, 7)) { if (!seen.has(m.id)) { seen.add(m.id); pool.push(m); } }
     // TMDB deep fetch: low floors, foreign allowed, 1960+
     const gids = docMode ? ['Documentary'] : genres.filter((g) => !g.startsWith('docs')).map((g) => GID_OF[g] || g);
-    try {
-      const r = await fetch('/api/discover', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'deep', cons: { ig: gids, xg: [], rt: 'any', era: 'any' }, sl: [50, 50, 50], seed, n: 40 }) });
-      const d = (await r.json()) as { movies?: FM[] };
-      let fresh = (d.movies || []).filter((m) => m && m.id && m.p && m.r >= 6.9 && m.pop >= 100 && !seen.has(m.id) && ((m.ol && m.ol !== 'en') || m.y <= YR - 2) && m.pop <= 5000 && (docMode || !m.g.includes('Documentary'))); // foreign any year; missing ol = English (route omits it); pop ceiling: too famous is not a discovery, English must be 2+ yrs old - else recent blockbusters pose as deep cuts
-      if (docMode) { const re = cats.length ? SHELF_KW[cats[0]] : null; fresh = fresh.filter((m) => m.g.includes('Documentary') && (!re || re.test(m.t + ' ' + m.o))); }
-      fresh.sort((a, b) => obscurity(b) - obscurity(a));
-      registerExtra(fresh);
-      for (const m of fresh.slice(0, 7)) { seen.add(m.id); pool.push(m); }
-    } catch { /* catalogue-only is still a full shelf */ }
+    // TMDB flakes intermittently (upstream rate limits / slow calls get skipped server-side and the route returns an empty 200),
+    // and most genres have zero local-catalogue fallback films - so retry with fresh seeds while the shelf is thin. Free key, no new spend.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const r = await fetch('/api/discover', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'deep', cons: { ig: gids, xg: [], rt: 'any', era: 'any' }, sl: [50, 50, 50], seed: seed + attempt * 7919, n: 40 }) });
+        const d = (await r.json()) as { movies?: FM[] };
+        let fresh = (d.movies || []).filter((m) => m && m.id && m.p && m.r >= 6.9 && m.pop >= 100 && !seen.has(m.id) && ((m.ol && m.ol !== 'en') || m.y <= YR - 2) && m.pop <= 5000 && (docMode || !m.g.includes('Documentary'))); // foreign any year; missing ol = English (route omits it); pop ceiling: too famous is not a discovery, English must be 2+ yrs old - else recent blockbusters pose as deep cuts
+        if (docMode) { const re = cats.length ? SHELF_KW[cats[0]] : null; fresh = fresh.filter((m) => m.g.includes('Documentary') && (!re || re.test(m.t + ' ' + m.o))); }
+        fresh.sort((a, b) => obscurity(b) - obscurity(a));
+        registerExtra(fresh);
+        for (const m of fresh.slice(0, 7)) { seen.add(m.id); pool.push(m); }
+      } catch { /* catalogue-only is still a full shelf */ }
+      if (pool.length >= 3) break; // shelf healthy - no retry needed
+    }
     // interleave so neither source clumps, cap 12
     const mix = pool.slice(0, 12);
     setShelf(mix); setSi(0); setKept([]); setFinalists([]); setWinner(null); setWatch(null);
