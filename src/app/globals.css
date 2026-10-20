@@ -3183,3 +3183,59 @@ a.battle-btn{text-decoration:none}
 
 /* BUILD 164i: pill sublabels clip in single-line mode - drop them on phones */
 @media (max-width:860px){.chester-console__pill small{display:none!important}}
+
+/* ===== BUILD 165 (PRD V2): reactive Chester HUD, Why Engine card, inline pills, arrows, chat sheet, check/mate ===== */
+.chester-hud { transition: border-color .2s, background .2s, box-shadow .2s; }
+.chester-teleprompter.chester-hud { flex: 1 1 auto; min-height: 118px; height: auto !important; max-height: none; }
+.chester-hud--brilliant, .chester-hud--strong { background: rgba(2,44,34,.92) !important; border: 2px solid #34d399 !important; box-shadow: 0 0 22px rgba(16,185,129,.4); animation: hudPop .25s ease-out; }
+.chester-hud--solid { background: rgba(8,47,56,.9) !important; border: 2px solid rgba(34,211,238,.8) !important; box-shadow: 0 0 16px rgba(34,211,238,.25); }
+.chester-hud--shaky { background: rgba(69,26,3,.92) !important; border: 2px solid #fbbf24 !important; box-shadow: 0 0 22px rgba(245,158,11,.4); animation: hudFlash .6s ease-out; }
+.chester-hud--blunder { background: rgba(76,5,25,.95) !important; border: 2px solid #f43f5e !important; box-shadow: 0 0 28px rgba(244,63,94,.6); animation: hudShake .3s ease-out; }
+.chester-hud--idle { background: rgba(15,23,42,.9) !important; border: 1px solid rgba(100,116,139,.8) !important; }
+@keyframes hudPop { 0% { transform: scale(1); } 50% { transform: scale(1.015); } 100% { transform: scale(1); } }
+@keyframes hudFlash { 0%,100% { box-shadow: 0 0 6px rgba(245,158,11,.2); } 25%,75% { box-shadow: 0 0 30px rgba(245,158,11,.8); } }
+@keyframes hudShake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+.chester-hud .chester-teleprompter__body { max-height: none; overflow-y: auto; padding: .3rem .6rem; }
+.chester-why { display: flex; flex-direction: column; gap: .3rem; }
+.chester-why__head { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem; }
+.chester-why__san { background: rgba(15,23,42,.9); border: 1px solid rgba(148,163,184,.5); border-radius: 999px; padding: .05rem .5rem; font-size: .75rem; font-weight: 800; color: #f8fafc; }
+.chester-why__grade { font-size: .75rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fff; }
+.chester-why__headline { font-size: .72rem; letter-spacing: .08em; color: #fde68a; text-transform: uppercase; }
+.chester-why__row { margin: 0; font-size: .9rem; line-height: 1.32; color: #f1f5f9; font-weight: 500; }
+.chester-why__row--eng { color: #a5f3fc; }
+.chester-why__hint { margin: .3rem 0 0; padding: .3rem .5rem; border-radius: 8px; background: rgba(34,211,238,.14); border: 1px solid rgba(34,211,238,.5); color: #e0f7fa; font-size: .85rem; }
+.chester-hud-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; padding: .25rem .5rem .4rem; min-height: 32px; }
+.chester-pill { border: 1px solid rgba(148,163,184,.6); background: rgba(15,23,42,.85); color: #f1f5f9; border-radius: 999px; padding: .28rem .7rem; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.chester-pill--primary { background: #fbbf24; color: #1c1917; border-color: #fbbf24; }
+.chester-comm-modal__log .chester-why { padding: .55rem .65rem; margin-bottom: .55rem; border-radius: 10px; border: 1px solid rgba(148,163,184,.35); background: rgba(15,23,42,.7); }
+.chester-comm-modal__log .chester-why--blunder { border-color: #f43f5e; } .chester-comm-modal__log .chester-why--shaky { border-color: #fbbf24; }
+.chester-comm-modal__log .chester-why--strong, .chester-comm-modal__log .chester-why--brilliant { border-color: #34d399; } .chester-comm-modal__log .chester-why--solid { border-color: rgba(34,211,238,.7); }
+.chester-comm-modal__log .chester-why.is-latest { box-shadow: 0 0 0 1px rgba(255,255,255,.25); }
+.chester-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+.chester-arrow { stroke-width: 14; stroke-linecap: round; opacity: .92; }
+.chester-arrow--cyan { stroke: #22d3ee; filter: drop-shadow(0 0 8px #22d3ee); }
+.chester-arrow--red { stroke: #f43f5e; stroke-dasharray: 22 14; filter: drop-shadow(0 0 6px #f43f5e); }
+.chester-ring { fill: none; stroke: #f43f5e; stroke-width: 6; animation: ringPulse 1s ease-in-out infinite; }
+@keyframes ringPulse { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+.chester-king-aura { fill: rgba(225,29,72,.55); stroke: #f43f5e; stroke-width: 8; animation: ringPulse .8s ease-in-out infinite; }
+.chester-check-banner { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 30; background: #e11d48; color: #fff; font-weight: 900; letter-spacing: .15em; padding: .15rem .9rem; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,.5); animation: bannerBounce .8s ease-in-out infinite; pointer-events: none; }
+@keyframes bannerBounce { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -4px); } }
+.chester-mate-ribbon { position: absolute; left: 0; right: 0; top: 40%; z-index: 30; text-align: center; font-weight: 900; letter-spacing: .08em; padding: .5rem; color: #fff; background: rgba(15,23,42,.82); border-block: 2px solid #fbbf24; animation: ribbonIn .5s ease-out; pointer-events: none; }
+.chester-mate-ribbon--loss { border-color: #f43f5e; }
+@keyframes ribbonIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.chester-turning { position: absolute; left: 6%; right: 6%; bottom: 6%; z-index: 40; background: rgba(2,6,23,.96); border: 2px solid #fbbf24; border-radius: 14px; padding: .7rem .8rem; color: #f1f5f9; display: flex; flex-direction: column; gap: .35rem; }
+.chester-turning p { margin: 0; font-size: .9rem; line-height: 1.3; }
+.chester-chatsheet { position: fixed; left: 0; right: 0; bottom: 0; top: 50dvh; z-index: 80; display: flex; flex-direction: column; background: #050b14; border-top: 2px solid #22d3ee; box-shadow: 0 -8px 24px rgba(0,0,0,.6); }
+.chester-chatsheet header { display: flex; justify-content: space-between; align-items: center; padding: .4rem .75rem; color: #22d3ee; font-size: .8rem; letter-spacing: .1em; }
+.chester-chatsheet header button { background: transparent; border: 1px solid #f43f5e; color: #fff; border-radius: 8px; width: 32px; height: 28px; font-size: 1.1rem; }
+.chester-chatsheet__msgs { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: .2rem .75rem; display: flex; flex-direction: column; gap: .4rem; }
+.chester-chatsheet__hint { margin: 0; color: #94a3b8; font-size: .85rem; }
+.chester-chatsheet__msg { max-width: 88%; padding: .4rem .6rem; border-radius: 10px; font-size: .92rem; line-height: 1.32; }
+.chester-chatsheet__msg--you { align-self: flex-end; background: #083344; color: #e0f7fa; }
+.chester-chatsheet__msg--chester { align-self: flex-start; background: #2a0f1d; color: #f8e8ee; border: 1px solid rgba(244,63,94,.4); }
+.chester-chatsheet__chips { display: flex; gap: .35rem; padding: .25rem .75rem; overflow-x: auto; white-space: nowrap; }
+.chester-chatsheet__form { display: flex; gap: .4rem; padding: .3rem .75rem calc(.5rem + env(safe-area-inset-bottom)); }
+.chester-chatsheet__form input { flex: 1; min-width: 0; background: #000; border: 1px solid #334155; border-radius: 8px; color: #fff; padding: .45rem .6rem; font-size: 16px; }
+.chester-chatsheet__form button { background: #be123c; color: #fff; border: 0; border-radius: 8px; padding: 0 .9rem; font-weight: 800; }
+.chester-movechip { background: rgba(34,211,238,.18); color: #67e8f9; border: 1px solid rgba(34,211,238,.6); border-radius: 6px; padding: 0 .3rem; font-weight: 800; font-family: ui-monospace, monospace; cursor: pointer; }
+@media (min-width: 1024px) { .chester-chatsheet { left: auto; width: 38%; top: 0; } }

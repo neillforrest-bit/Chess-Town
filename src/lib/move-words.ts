@@ -6,13 +6,9 @@ import { Chess } from 'chess.js';
 
 const PIECE_NAMES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 
+// BUILD 165: exact squares, never vague regions ("knight to the kingside" was a banned broken phrase).
 function regionOf(square: string): string {
-  // File-based geography: a-c queenside, d-e centre, f-h kingside. Reads true
-  // on the back ranks too (a rook landing on d1 is centralising, not kingside).
-  const file = square.charCodeAt(0) - 97;
-  if (file <= 2) return 'the queenside';
-  if (file <= 4) return 'the centre';
-  return 'the kingside';
+  return square;
 }
 
 export function describeMove(fenBefore: string, moveUciOrSan: string): string | null {
@@ -59,7 +55,7 @@ export function describeMove(fenBefore: string, moveUciOrSan: string): string | 
       if (enemyBackRank) base = `${name} to the enemy back rank`;
       else if (seventhRank) base = `${name} to the seventh rank`;
       else if (mv.piece === 'q' && diagonal) base = `queen along the diagonal to ${regionOf(mv.to)}`;
-      else if (openFile) base = `${name} down the open ${regionOf(mv.to).replace('the ', '')} file`;
+      else if (openFile) base = `${name} down the open ${mv.to[0]}-file on ${mv.to}`;
       else base = `${name} to ${regionOf(mv.to)}`;
     } else if (mv.piece === 'n') {
       base = `knight to ${regionOf(mv.to)}`;
@@ -180,7 +176,7 @@ export function explainEngineChoice(fenBefore: string, bestMove: string): string
     const homeRank = mv.color === 'w' ? '1' : '8';
     if (!purposes.length && (mv.piece === 'n' || mv.piece === 'b') && mv.from[1] === homeRank) purposes.push(`develops the ${pieceName} toward the action`);
     if (!purposes.length && mv.piece === 'p' && (mv.to[0] === 'd' || mv.to[0] === 'e') && (mv.to[1] === '4' || mv.to[1] === '5')) purposes.push(`plants the ${mv.to[0] === 'e' ? "king's" : "queen's"} pawn in the centre`);
-    if (!purposes.length && (mv.piece === 'r' || mv.piece === 'q') && mv.from[0] !== mv.to[0] && isOpenFile(after, mv.to.charCodeAt(0) - 97)) purposes.push(`seizes the open file on ${regionOf(mv.to)}`);
+    if (!purposes.length && (mv.piece === 'r' || mv.piece === 'q') && mv.from[0] !== mv.to[0] && isOpenFile(after, mv.to.charCodeAt(0) - 97)) purposes.push(`seizes the open ${mv.to[0]}-file on ${mv.to}`);
     if (!purposes.length && mv.piece === 'r' && ((mv.color === 'w' && mv.to[1] === '7') || (mv.color === 'b' && mv.to[1] === '2'))) purposes.push('plants the rook on the seventh rank - horrible for their pawns');
     if (!purposes.length && mv.piece === 'k') purposes.push('activates the king, which matters as the board empties');
     if (!purposes.length) purposes.push('keeps every piece guarded and the pressure on');

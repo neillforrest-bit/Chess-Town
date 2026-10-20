@@ -28,6 +28,7 @@ import { Chess } from 'chess.js';
 import { direct, postGamePrompt, parsePostGame, localScouting } from '@/lib/chester-director';
 import { BlueprintProvider, useBlueprint } from '@/lib/blueprint';
 import { radarForUserMove, radarLines, buildLocalDebrief } from '@/lib/tactics';
+import { buildWhyCard, bestInfo, hintFor, chatReply, formatSanToHuman, gradeIcon, isBanned, resetAnalyzerMemory, type WhyCard } from '@/lib/chester-analyzer';
 import { ARMORY } from '@/lib/armory';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
@@ -126,6 +127,30 @@ function PlayChesterGame() {
   const [skinUnlocked, setSkinUnlocked] = useState<string | null>(null);
   const [skinNow, setSkinNow] = useState<string>(() => { try { return localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } });
   const [commOpen, setCommOpen] = useState(false);
+  // BUILD 165 (PRD V2): structured Why Engine card, arrows, hint ladder, check/mate cinematics. All hooks live above the start-screen return.
+  const [whyCard, setWhyCard] = useState<WhyCard | null>(null);
+  const cardsRef = useRef<WhyCard[]>([]);
+  const [arrowsOn, setArrowsOn] = useState(false);
+  const [chipArrow, setChipArrow] = useState<{ from: string; to: string } | null>(null);
+  const [hintStage, setHintStage] = useState<0 | 1 | 2 | 3>(0);
+  const liveRef = useRef<{ fen: string; bestSan: string | null; bestUci: string | null }>({ fen: '', bestSan: null, bestUci: null });
+  const [liveFen, setLiveFen] = useState('');
+  const [chatTop, setChatTop] = useState(0);
+  const [mateStage, setMateStage] = useState<0 | 1 | 2>(0);
+  const posState = (() => { try { if (!liveFen) return { check: false, mate: false, side: 'w', kingSq: '' }; const c = new Chess(liveFen); let kingSq = ''; if (c.inCheck()) { for (const row of c.board()) for (const q of row) if (q && q.type === 'k' && q.color === c.turn()) kingSq = q.square; } return { check: c.inCheck(), mate: c.isCheckmate(), side: c.turn(), kingSq }; } catch { return { check: false, mate: false, side: 'w', kingSq: '' }; } })();
+  const inCheckSide = posState.check ? posState.side : null;
+  const mateNow = posState.mate ? { you: posState.side === 'b' } : null;
+  const mateKey = mateNow ? (mateNow.you ? 'w' : 'l') + liveFen : '';
+  useEffect(() => { setMateStage(0); if (!mateKey) return; setMateStage(1); try { playSfx('select'); } catch { /* ignore */ } const t = window.setTimeout(() => setMateStage(2), 1100); return () => window.clearTimeout(t); }, [mateKey]);
+  const turning = (() => { let best: WhyCard | null = null; for (const c of cardsRef.current) if (c.cp != null && c.cp >= 120 && (!best || (c.cp || 0) > (best.cp || 0))) best = c; return best; })();
+  const hintInfo: WhyCard | null = (() => { const l = liveRef.current; if (!l.fen || !(l.bestSan || l.bestUci)) return null; const b = bestInfo(l.fen, l.bestSan || l.bestUci); return { ply: 0, moveNo: 0, san: '', grade: 'IDLE', cp: null, headlineBadge: '', whatHappenedLine: '', engineBlueprintLine: '', boardOverlayArrows: [], highlightedSquares: [], contextualChatChips: ['', '', ''], engineBestSan: b.san, engineBestUci: b.uci, hintMotif: b.motif, hintPiece: b.piece, hintSquare: b.from, fenBefore: l.fen, fenAfter: l.fen }; })();
+  useEffect(() => {
+    const onLive = (e: Event) => { const d = (e as CustomEvent<{ fen?: string; bestMove?: { uci?: string | null; san?: string | null } }>).detail; if (!d?.fen) return; liveRef.current = { fen: d.fen, bestSan: d.bestMove?.san || null, bestUci: d.bestMove?.uci || null }; setLiveFen(d.fen); };
+    window.addEventListener('engine-evaluation', onLive); return () => window.removeEventListener('engine-evaluation', onLive);
+  }, []);
+  useEffect(() => { setHintStage(0); setChipArrow(null); }, [liveFen]);
+  useEffect(() => { if (!arrowsOn) return; const t = window.setTimeout(() => setArrowsOn(false), 6000); return () => window.clearTimeout(t); }, [arrowsOn]);
+  useEffect(() => { if (!chipArrow) return; const t = window.setTimeout(() => setChipArrow(null), 4500); return () => window.clearTimeout(t); }, [chipArrow]);
   const commentaryRef = useRef<string[]>([]); // BUILD 164: filled from the coach handler (hooks cannot live past the start-screen return)
   const [drill] = useState<{ hanging: number; missed: number; drill: string } | null>(() => { try { const d = JSON.parse(localStorage.getItem('ct-drill') || 'null'); return d && d.drill ? d : null; } catch { return null; } });
   const setChal = (c: Challenge | null) => { chalRef.current = c; setChallenge(c ? { ...c } : null); };
@@ -220,7 +245,7 @@ function PlayChesterGame() {
   const [shake, setShake] = useState(false);
   const [freeze, setFreeze] = useState<{ tone: 'green' | 'red'; text: string; banter: string; strategy: string; pawns: number; betterPhrase: string | null; best: { from: string; to: string } | null } | null>(null);
   const [banter, setBanterRaw] = useState('');
-  const setBanter = (v: string) => { setBanterRaw(v); if (v) { const t = `CHESTER: ${v}`; const log = commentaryRef.current; if (log[log.length - 1] !== t) commentaryRef.current = [...log.slice(-59), t]; } };
+  const setBanter = (v0: string) => { const v = isBanned(v0) ? '' : v0; setBanterRaw(v); if (v) { const t = `CHESTER: ${v}`; const log = commentaryRef.current; if (log[log.length - 1] !== t) commentaryRef.current = [...log.slice(-59), t]; } };
   // BUILD 153: live accuracy rows (same chess.com-style curve as Battle Mode).
   const accRef = useRef<{ w: { loss: number; n: number }; b: { loss: number; n: number } }>({ w: { loss: 0, n: 0 }, b: { loss: 0, n: 0 } });
   const radarTally = useRef({ hanging: 0, missed: 0 }); // BUILD 163 debrief themes
@@ -305,6 +330,7 @@ function PlayChesterGame() {
   const [lessonStep, setLessonStep] = useState(0);
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   const [chatOpen, setChatOpen] = useState(false);
+  useEffect(() => { if (!chatOpen) return; const b = document.querySelector('.chester-board-frame'); if (b) setChatTop(Math.round(b.getBoundingClientRect().bottom) + 6); }, [chatOpen]);
   const [heroTipOpen, setHeroTipOpen] = useState(false);
   const dismissHeroTip = () => { setHeroTipOpen(false); try { localStorage.setItem('ct-hero-tip-seen', '1'); } catch {} };
   useEffect(() => {
@@ -447,7 +473,7 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) { const mv = detail.ply % 2 === 1 ? 'w' : 'b'; const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); bumpAcc(mv, detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : accPointsFromDelta(detail.evalDelta)); } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); } };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured }); setWhyCard(wc); cardsRef.current = [...cardsRef.current.slice(-59), wc]; if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '❌' : '✅'} ${j.whatHappenedLine}`, engineBlueprintLine: `🤖 ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) { const mv = detail.ply % 2 === 1 ? 'w' : 'b'; const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); bumpAcc(mv, detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : accPointsFromDelta(detail.evalDelta)); } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); } };
     const aiGraded = (event: Event) => { const d = (event as CustomEvent<{ evalDelta: number | null }>).detail; if (d && d.evalDelta != null) { bumpAcc('b', accPointsFromDelta(d.evalDelta)); if (d.evalDelta >= 250) fireReact('😬'); } if (bossRef.current.on) setBossStrike(Date.now()); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
@@ -594,12 +620,20 @@ function PlayChesterGame() {
     const lastMove = moveTrail[moveTrail.length - 1];
     const fallback = () => chesterOfflineChat(message, { persona: difficulty, fen: lastFen, lastMove: lastMove?.move, lastMovePhrase, classification: lastMove?.classification, bestMove: lastBest, bestMovePhrase: lastBestPhrase, capturedCount: capturedPieces.length, historyCount: history.length });
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. You are chatting mid-game with your student. Live board FEN: ${lastFen}. Moves so far: ${moveTrail.map((m) => m.move).join(' ') || 'none yet'}. Last graded student move: ${lastMove ? `${lastMove.move} (${lastMove.classification || 'ungraded'})` : 'none'}. Engine-preferred idea: ${lastBest || 'unknown'}. Answer the student directly in at most 3 sentences. Be funny AND educational: every joke carries a chess lesson, every lesson lands a joke. Use only the FEN and record above for board facts - never invent pieces, squares, or lines. Plain English, no centipawns, no engine jargon.`;
+    const deterministic = () => chatReply(message, whyCard, liveRef.current.fen ? { fen: liveRef.current.fen, bestSan: liveRef.current.bestSan } : null);
+    if (!geminiTierOn()) { // BUILD 165: deterministic analyzer is the default (0p); Gemini tier only when this flag is on AND credit exists
+      window.setTimeout(() => { setChatMessages([...history, { role: 'chester', text: deterministic(), kind: 'chat' }]); setChatBusy(false); }, 250);
+      return;
+    }
     try {
-      const reply = await askChesterChat(JSON.stringify({ type: 'chat', message, context, conversationHistory: history.slice(-8).map((m) => ({ role: m.role, text: m.text })) }));
-      const text = reply && !/messenger|delayed|unavailable/i.test(reply) ? reply : fallback();
+      const lv = liveRef.current; const facts = { fen: lv.fen || lastFen, engineBestSan: lv.bestSan, lastMove: whyCard ? { san: whyCard.san, grade: whyCard.grade, cp: whyCard.cp, said: whyCard.whatHappenedLine, engine: whyCard.engineBlueprintLine } : null, recentMoves: moveTrail.slice(-6).map((m) => m.move) };
+      const r = await fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { message }, facts }) });
+      const j = (await r.json()) as { reply?: string; usage?: { input: number; output: number } };
+      if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number; kind?: string }[] }; (w.__chesterUsage ||= []).push({ ...j.usage, kind: 'chat' }); }
+      const text = j.reply && !isBanned(j.reply) ? j.reply : deterministic();
       setChatMessages([...history, { role: 'chester', text, kind: 'chat' }]);
     } catch {
-      setChatMessages([...history, { role: 'chester', text: fallback(), kind: 'chat' }]);
+      setChatMessages([...history, { role: 'chester', text: deterministic(), kind: 'chat' }]);
     } finally {
       setChatBusy(false);
     }
@@ -779,11 +813,23 @@ function PlayChesterGame() {
           );
         })()}
         {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
+        <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
+        {inCheckSide && !mateNow && <div className="chester-check-banner" role="status">⚠️ CHECK!</div>}
+        {mateNow && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔️ CHECKMATE - YOU WIN!' : '🛡️ CHECKMATE - CHESTER WINS!'}</div>}
+        {mateStage === 2 && mateNow && <div className="chester-turning" role="dialog" aria-label="Match debrief">
+          <b>{mateNow.you ? '🏆 WELL PLAYED' : 'CRITICAL TURNING POINT'}</b>
+          {mateNow.you ? <p>{cardsRef.current.filter((c) => c.grade === 'BRILLIANT' || c.grade === 'STRONG').length} engine-grade moves. Chester wants a rematch.</p>
+            : turning ? <p>Move {turning.moveNo}: {turning.san} cost {(turning.cp! / 100).toFixed(1)} pawns. {turning.engineBlueprintLine.replace(/^🤖\s*/, '')}</p> : <p>No single big mistake. It was a slow squeeze: take the engine-grade move more often.</p>}
+          <div className="chester-hud-actions">
+            {!mateNow.you && turning && <button type="button" className="chester-pill chester-pill--primary" onClick={() => { setMateStage(0); window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode, fen: turning.fenBefore } })); }}>🔄 Replay from turning point</button>}
+            <button type="button" className="chester-pill" onClick={() => setMateStage(0)}>Close</button>
+          </div>
+        </div>}
         {!freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : 'CHESTER'}</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
-      <div className="chester-teleprompter chester-teleprompter--tappable" role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
+      <div className={`chester-teleprompter chester-teleprompter--tappable${whyCard && !isThinking && !calculating ? ` chester-hud chester-hud--${whyCard.grade.toLowerCase()}` : ' chester-hud chester-hud--idle'}`} key={whyCard ? `hud-${whyCard.ply}-${whyCard.grade}` : 'hud-idle'} role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
         <div className="chester-teleprompter__head">
           <i className="chester-teleprompter__beacon" aria-hidden="true" />
           <span>CHESTER SAYS</span><span className="chester-teleprompter__expand" aria-hidden="true">⤢ TAP TO READ</span>
@@ -795,20 +841,22 @@ function PlayChesterGame() {
           }} />}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          {freeze
-            ? <div className={`chester-freezebox chester-freezebox--${freeze.tone}`} role="alertdialog" aria-label={freeze.tone === 'green' ? 'Brilliant move' : 'Costly move'}>
-                <b>{freeze.tone === 'green' ? 'GREEN LIGHT' : 'FROZEN'} · {freeze.strategy}{freeze.pawns ? ` · about ${freeze.pawns} ${freeze.pawns === 1 ? 'pawn' : 'pawns'} lost` : ''}</b>
-                <p>{freeze.text}</p>
-                <em>{freeze.banter}</em>
-                <div className="chester-freezebox__actions">
-                  {freeze.tone === 'red'
-                    ? <><button type="button" className="chester-freezebox__primary" onClick={rewindAndRetry}>REWIND &amp; RETRY</button><button type="button" className="chester-freezebox__ghost" onClick={acceptConsequences}>ACCEPT CONSEQUENCES</button></>
-                    : <button type="button" className="chester-freezebox__primary" onClick={releaseFreeze}>CONTINUE</button>}
-                </div>
-              </div>
-            : isThinking || calculating
+          {isThinking || calculating
             ? <p className="chester-teleprompter__calculating">{deepThought ? 'CHESTER IS DEEP IN THOUGHT' : 'CHESTER IS CALCULATING'}<span className="chester-teleprompter__cursor">▮</span></p>
-            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachBullets ? (teleprompterLlm && coachPrompt && teleprompterLlm.key === `${coachPrompt.ply}-${coachPrompt.move}` ? teleprompterLlm.text : [coachBullets.reaction, coachBullets.why, !coachBullets.gradeGood ? coachBullets.risk : null].filter(Boolean).join(' ')) : coachPrompt ? coachReply : lesson.body}</p>}
+            : whyCard
+            ? <div className="chester-why" key={`${whyCard.ply}-${whyCard.san}`}>
+                <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
+                <p className="chester-why__row">{whyCard.whatHappenedLine}</p>
+                <p className="chester-why__row chester-why__row--eng">{whyCard.engineBlueprintLine}</p>
+              </div>
+            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt && coachReply ? coachReply : lesson.body || 'Make a move. I will grade it here, in plain English, with the exact squares.'}</p>}
+          {hintStage > 0 && <p className="chester-why__hint" aria-live="polite">💡 HINT {hintStage}/3 - {hintFor(hintInfo, hintStage as 1 | 2 | 3)}</p>}
+        </div>
+        <div className="chester-hud-actions" role="group" aria-label="Chester actions">
+          {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}>⏪ Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
+          {freeze?.tone === 'green' && <button type="button" className="chester-pill chester-pill--primary" onClick={releaseFreeze}>Continue ▸</button>}
+          {whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
+          {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, whyCard.contextualChatChips[0]); }}>💬 Ask why</button>}
         </div>
       </div>
       <div className="hero-jail-row" aria-label="Captured pieces">
@@ -827,7 +875,7 @@ function PlayChesterGame() {
           </div>
         </div>
         <div className="chester-console__lifelines">
-          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (!helpRemaining || isThinking || isBossFight) return; help(); setHintOpen(true); }} disabled={!helpRemaining || isThinking || isBossFight} title={isBossFight ? 'No hints in a boss fight' : undefined} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT</b><small>{helpRemaining} LEFT</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (isThinking || isBossFight) return; if (hintStage === 0) { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); setHintStage(1); } else if (hintStage < 3) setHintStage((hintStage + 1) as 1 | 2 | 3); if (hintStage + 1 === 3 || hintStage === 3) setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); }} disabled={!helpRemaining || isThinking || isBossFight} title={isBossFight ? 'No hints in a boss fight' : undefined} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{helpRemaining} LEFT</small></button>
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
           <div className="chester-taunts" role="group" aria-label="Taunt Chester">
             {['😏', '😤', '🤯', '💪'].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
@@ -842,7 +890,11 @@ function PlayChesterGame() {
       <div className="chester-comm-modal__card" onClick={(e) => e.stopPropagation()}>
         <header><b>CHESTER SAYS · THIS GAME</b><button type="button" onClick={() => setCommOpen(false)} aria-label="Close">×</button></header>
         <div className="chester-comm-modal__log">
-          {commentaryRef.current.length ? commentaryRef.current.map((line, i) => <p key={i} className={i === commentaryRef.current.length - 1 ? 'is-latest' : ''}>{line}</p>) : <p>Make a move and Chester starts talking.</p>}
+          {cardsRef.current.length ? cardsRef.current.map((c, i) => <div key={`${c.ply}-${i}`} className={`chester-why chester-why--${c.grade.toLowerCase()} ${i === cardsRef.current.length - 1 ? 'is-latest' : ''}`}>
+            <div className="chester-why__head"><span className="chester-why__san">{c.moveNo}. {c.san}</span><span className="chester-why__grade">{gradeIcon(c.grade)} {c.grade}{c.cp != null && c.grade !== 'STRONG' && c.grade !== 'BRILLIANT' ? ` (-${(c.cp / 100).toFixed(1)})` : ''}</span><b className="chester-why__headline">{c.headlineBadge}</b></div>
+            <p className="chester-why__row">{c.whatHappenedLine}</p>
+            <p className="chester-why__row chester-why__row--eng">{c.engineBlueprintLine}</p>
+          </div>) : <p>Make a move and Chester starts talking.</p>}
         </div>
       </div>
     </div>}
@@ -850,15 +902,15 @@ function PlayChesterGame() {
       <span>TONIGHT’S TRAINING ROUTE</span><h2>LEARN WHILE YOU PLAY</h2><p>Chester’s notes arrive beside the live board. No pop-ups, no dismissing, no break in the game.</p>
       <ol>{LESSONS.map((item, index) => <li key={item.title} className={index === lessonStep ? 'is-active' : index < lessonStep ? 'is-done' : ''}><i>{index < lessonStep ? '✓' : index + 1}</i><span>{item.title}</span></li>)}</ol>
     </aside>
-    {chatOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Chat with Chester">
-      <div className="chess-game-sheet__backdrop" onClick={() => setChatOpen(false)} />
-      <section className="chess-game-sheet__content">
-        <header><b>CHAT WITH CHESTER</b><button type="button" onClick={() => setChatOpen(false)} aria-label="Close">×</button></header>
-        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.6rem 0.75rem 0', flexWrap: 'wrap' }}>
-          {['What could I have done better?', 'Why was my move shaky?', 'What should I play now?', 'Teach me a tactic'].map((q) => <button key={q} type="button" className="chester-chat-chip" onClick={(e) => { void sendChat(e as unknown as React.FormEvent, q); }}>{q}</button>)}
-        </div>
-        <ChesterChatOverlay chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} onSendMessage={sendChat} isThinking={chatBusy} chatError={chatError} isMobile defaultExpanded />
-      </section>
+    {chatOpen && <div className="chester-chatsheet" style={chatTop ? { top: chatTop } : undefined} role="dialog" aria-label="Chat with Chester">
+      <header><b>CHAT WITH CHESTER</b><button type="button" onClick={() => setChatOpen(false)} aria-label="Close">×</button></header>
+      <div className="chester-chatsheet__msgs" ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}>
+        {chatMessages.length === 0 && <p className="chester-chatsheet__hint">Ask about your last move, a threat, or what to play. Tap a move I mention to see it on the board.</p>}
+        {chatMessages.map((m, i) => <div key={i} className={`chester-chatsheet__msg chester-chatsheet__msg--${m.role === 'user' ? 'you' : 'chester'}`}>{m.role === 'user' ? m.text : <MoveChipText text={m.text} onChip={(san) => { try { const c = new Chess(liveRef.current.fen || lastFen); const mv = (c.moves({ verbose: true }) as { san: string; from: string; to: string }[]).find((x) => x.san.replace(/[+#]/g, '') === san.replace(/[+#]/g, '')); if (mv) setChipArrow({ from: mv.from, to: mv.to }); } catch { /* ignore */ } }} />}</div>)}
+        {chatBusy && <div className="chester-chatsheet__msg chester-chatsheet__msg--chester">…</div>}
+      </div>
+      <div className="chester-chatsheet__chips">{(whyCard ? whyCard.contextualChatChips : ['Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"]).map((q) => <button key={q} type="button" className="chester-chat-chip" onClick={(e) => { void sendChat(e as unknown as React.FormEvent, q); }}>{q}</button>)}</div>
+      <form className="chester-chatsheet__form" onSubmit={(e) => { void sendChat(e); }}><input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Message Chester..." aria-label="Message Chester" /><button type="submit" disabled={chatBusy}>Send</button></form>
     </div>}
     {hintOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Hint from Chester">
       <div className="chess-game-sheet__backdrop" onClick={() => setHintOpen(false)} />
@@ -958,6 +1010,28 @@ function FreezeSpotlight({ from, to }: { from: string; to: string }) {
   return <svg className="chester-spotlight" viewBox="0 0 796 796" role="img" aria-label={`Best move: ${from} to ${to}`}>
     <path className="chester-spotlight__dim" fillRule="evenodd" d={`M0 0h796v796H0Z ${hole(from)} ${hole(to)}`} />
     {[from, to].map((sq) => { const [x, y] = cell(sq); return <rect key={sq} x={x + 3} y={y + 3} width={86} height={86} rx={8} className="chester-spotlight__ring" fill="none" />; })}
+  </svg>;
+}
+
+// BUILD 165: Gemini tier is ON only for Vercel PREVIEW hosts (hostname contains "-git-") and never in production; any failure keeps the deterministic card.
+function geminiTierOn(): boolean { try { return typeof location !== 'undefined' && /-git-/.test(location.hostname) && localStorage.getItem('ct-no-gemini') !== '1'; } catch { return false; } }
+
+function MoveChipText({ text, onChip }: { text: string; onChip: (san: string) => void }) {
+  const parts = text.split(/(\bO-O(?:-O)?[+#]?|\b[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)/g);
+  return <>{parts.map((p, i) => (i % 2 === 1 && /[a-h][1-8]|O-O/.test(p) && (p.length >= 3 || /^[a-h][1-8]$/.test(p) === false) && /^(O-O|[KQRBN]|[a-h]x)/.test(p) ? <button key={i} type="button" className="chester-movechip" onClick={() => onChip(p)}>{p}</button> : p))}</>;
+}
+
+function ArrowOverlay({ arrows, rings, kingSq, mate }: { arrows: { from: string; to: string; intent: 'ENGINE_BEST' | 'OPPONENT_THREAT' | 'PLAYER_MISTAKE' }[]; rings: string[]; kingSq: string; mate: boolean }) {
+  const ctr = (sq: string) => { const c = sq.charCodeAt(0) - 97; const r = 8 - Number(sq[1]); return [30 + c * 92 + 46, 30 + r * 92 + 46] as const; };
+  if (!arrows.length && !rings.length && !kingSq) return null;
+  return <svg className="chester-arrows" viewBox="0 0 796 796" aria-hidden="true">
+    <defs>
+      <marker id="ca-cyan" markerWidth="6" markerHeight="6" refX="4.2" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#22d3ee" /></marker>
+      <marker id="ca-red" markerWidth="6" markerHeight="6" refX="4.2" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#f43f5e" /></marker>
+    </defs>
+    {kingSq && (() => { const [x, y] = ctr(kingSq); return <g><rect className="chester-king-aura" x={x - 46} y={y - 46} width={92} height={92} rx={10} /><text x={x} y={y + 14} textAnchor="middle" fontSize="44">{mate ? '👑' : ''}</text></g>; })()}
+    {rings.map((sq) => { const [x, y] = ctr(sq); return <circle key={sq} className="chester-ring" cx={x} cy={y} r={44} />; })}
+    {arrows.map((a, i) => { const [x1, y1] = ctr(a.from); const [x2, y2] = ctr(a.to); const cyan = a.intent === 'ENGINE_BEST'; return <line key={i} className={cyan ? 'chester-arrow chester-arrow--cyan' : 'chester-arrow chester-arrow--red'} x1={x1} y1={y1} x2={x2} y2={y2} markerEnd={`url(#${cyan ? 'ca-cyan' : 'ca-red'})`} />; })}
   </svg>;
 }
 

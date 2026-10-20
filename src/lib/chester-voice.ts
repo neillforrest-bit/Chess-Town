@@ -673,8 +673,8 @@ const REACTIONS: Record<string, string[]> = {
   MISTAKE: [
     'ouch - but I love the courage. Read the risk below.',
     'bold swing! this one had a bill attached.',
-    'that one stings a little - your idea was fun though.',
-    'ambitious! the engine found a crack in it.',
+    'that cost you something - but the idea was brave.',
+    'bold try - there was a sharper square for it.',
   ],
   BLUNDER: [
     'yikes - deep breath. Comebacks love exactly this moment.',
