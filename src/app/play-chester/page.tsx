@@ -125,6 +125,7 @@ function PlayChesterGame() {
   const chalRef = useRef<Challenge | null>(null);
   const [skinUnlocked, setSkinUnlocked] = useState<string | null>(null);
   const [skinNow, setSkinNow] = useState<string>(() => { try { return localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } });
+  const [drill] = useState<{ hanging: number; missed: number; drill: string } | null>(() => { try { const d = JSON.parse(localStorage.getItem('ct-drill') || 'null'); return d && d.drill ? d : null; } catch { return null; } });
   const setChal = (c: Challenge | null) => { chalRef.current = c; setChallenge(c ? { ...c } : null); };
   const startChallenge = () => {
     const games = (() => { try { return getProfile().games.chester.played; } catch { return 0; } })();
@@ -566,6 +567,9 @@ function PlayChesterGame() {
     // only overrides if it ever answers again.
     const local = buildLocalDebrief(report.gradeHistory, phraseMap, radarTally.current);
     setReview(local.review); setReviewLoading(false);
+    // BUILD 163: drill of the day - carry the debrief's fix into the start screen, then reset tallies.
+    try { localStorage.setItem('ct-drill', JSON.stringify({ ts: Date.now(), hanging: radarTally.current.hanging, missed: radarTally.current.missed, drill: (local.scouting[2] || '').replace('One adjustment: ', '') })); } catch { /* private mode */ }
+    radarTally.current = { hanging: 0, missed: 0 };
     const file = loadPlayerFile();
     setScouting([...local.scouting, ...localScouting(file)]);
     const a = analyse(file);
@@ -645,6 +649,7 @@ function PlayChesterGame() {
 
   if (!started) return <main className="chester-start-screen">
     <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
+      {!isFriendMode && drill && <p className="chester-drill">🎯 TODAY'S DRILL: {drill.drill}{drill.hanging ? ` Last game: ${drill.hanging} loose piece${drill.hanging === 1 ? '' : 's'} left hanging.` : drill.missed ? ` Last game: ${drill.missed} winning tactic${drill.missed === 1 ? '' : 's'} missed.` : ''}</p>}
       {!isFriendMode && ladder.lastLevel && <p className="chester-remembers">🧠 CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
       {introOpen && !started && (
         <div className="road-intro" role="dialog" aria-modal="true" aria-label="Chester">
