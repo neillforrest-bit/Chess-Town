@@ -3299,3 +3299,13 @@ a.battle-btn{text-decoration:none}
 /* BUILD 167e: the badge line ("COSTLY MISTAKE") is redundant with the grade chip; drop it so all rows fit */
 .chester-game .chester-teleprompter .chester-why__headline { display: none !important; }
 .chester-game .chester-teleprompter .chester-why { justify-content: flex-start !important; }
+/* BUILD 167f: captured pieces ride the names row; challenge chip rides the accuracy caption row; board gets the freed ~36px */
+.chester-game .hero-jail-row { height: 0 !important; margin: 0 !important; padding: 0 56px 0 40px !important; position: relative; z-index: 3; pointer-events: none; display: flex !important; justify-content: space-between; gap: 6px; top: 3px; }
+.chester-game .hero-jail-row .capture-strip { height: 16px !important; min-height: 0 !important; padding: 0 4px !important; background: transparent !important; border: none !important; box-shadow: none !important; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.chester-game .hero-jail-row .capture-strip > span { display: none !important; }
+.chester-game .hero-jail-row .capture-strip em { display: none !important; }
+.chester-game .hero-jail-row .capture-strip img { height: 15px !important; width: 15px !important; }
+.chester-game .acc2__cap { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.chester-game .acc2__cap .chester-challenge { position: static !important; display: inline-flex !important; height: auto !important; padding: 0 6px !important; border: 1px solid #ffd84d; border-radius: 999px; background: rgba(255,216,77,.1); color: #ffd84d; font: 900 .5rem/12px Arial, sans-serif !important; letter-spacing: .04em; gap: 4px; max-width: 62%; overflow: hidden; white-space: nowrap; }
+.chester-game .acc2__cap .chester-challenge * { font-size: inherit !important; line-height: 12px !important; font-style: normal; }
+.chester-game .chester-game__board .chester-board-frame, .chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 316px)) !important; }

@@ -775,11 +775,13 @@ function PlayChesterGame() {
       </div>}
       {clockBar}
       {flagBanner}
+      <div className="hero-jail-row" aria-label="Captured pieces">
+        <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
+        <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
+      </div>
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
-      <LiveAccuracy rows={(['w', 'b'] as const).map((c) => { const a = accuracy[c]; return { label: c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : 'CHESTER'), side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }; })} />
+      <LiveAccuracy extra={challenge ? <span className={`chester-challenge${challenge.done ? ' is-done' : ''}`} role="status"><b>{challenge.done ? '✓ CHALLENGE · +150' : `CHALLENGE: ${challenge.label}`}</b>{!challenge.done && <i>{challenge.n}/{challenge.target}</i>}</span> : undefined} rows={(['w', 'b'] as const).map((c) => { const a = accuracy[c]; return { label: c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : 'CHESTER'), side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }; })} />
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
-      {challenge && !challenge.done && <div className="chester-challenge" role="status"><b>CHALLENGE: {challenge.label}</b><span>{challenge.n}/{challenge.target}</span></div>}
-      {challenge?.done && <div className="chester-challenge is-done" role="status"><b>✓ CHALLENGE COMPLETE · +150 PTS</b></div>}
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {bp.line && bp.opening && <div className="bp-line" style={{ borderColor: bp.opening.color }}>
           <small style={{ color: bp.line.kind === 'abort' ? '#f59e0b' : bp.opening.color }}>{bp.line.kind === 'abort' ? '⚠ BLUEPRINT ABORTED' : bp.line.kind === 'handoff' ? '★ BLUEPRINT COMPLETE' : `BLUEPRINT · ${bp.opening.name.toUpperCase()} · ${Math.min(bp.line.step + 1, bp.line.total)}/${bp.line.total}`}</small>
@@ -845,10 +847,6 @@ function PlayChesterGame() {
           {whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
           {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, whyCard.contextualChatChips[0]); }}>💬 Ask why</button>}
         </div>
-      </div>
-      <div className="hero-jail-row" aria-label="Captured pieces">
-        <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
-        <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
       </div>
 
       <div className="chester-bottom">
