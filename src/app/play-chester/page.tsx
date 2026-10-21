@@ -757,7 +757,7 @@ function PlayChesterGame() {
     const next = Math.max(0, Math.min(total - 1, cur + d));
     window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: next } }));
   };
-  return <main className={`chester-game${boss ? ` boss-${boss.name.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}`} aria-label="Play Chester guided game">
+  return <main data-challenge={challenge && !challenge.done ? '1' : '0'} className={`chester-game${boss ? ` boss-${boss.name.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}`} aria-label="Play Chester guided game">
     {bossStrike > 0 && <div key={bossStrike} className="boss-strike" aria-hidden="true" />}
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-hud">

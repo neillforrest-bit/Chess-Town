@@ -3276,3 +3276,11 @@ a.battle-btn{text-decoration:none}
 .chester-game .chester-teleprompter .chester-hud-actions { min-height: 0 !important; height: auto !important; flex: 0 0 auto; padding: 0 !important; margin: 2px 0 0 !important; }
 .chester-game .chester-teleprompter .chester-hud-actions:empty { display: none !important; }
 .chester-game .chester-teleprompter .chester-teleprompter__body { flex: 1 1 auto !important; min-height: 0 !important; }
+/* BUILD 167b: pills live in the Chester header row (reclaims ~42px for the card); challenge strip is one fixed 16px line and the board budget accounts for it */
+.chester-game .chester-teleprompter { position: relative; }
+.chester-game .chester-teleprompter .chester-hud-actions:not(:empty) { position: absolute !important; top: 1px; right: 6px; margin: 0 !important; gap: .25rem !important; z-index: 3; flex-wrap: nowrap !important; }
+.chester-game .chester-teleprompter .chester-hud-actions .chester-pill { padding: 2px 8px !important; font-size: .62rem !important; min-height: 0 !important; height: 20px !important; line-height: 1 !important; white-space: nowrap; }
+.chester-game .chester-teleprompter .chester-teleprompter__expand { display: none !important; }
+.chester-game .chester-teleprompter .chester-teleprompter__head { justify-content: flex-start !important; }
+.chester-game .chester-challenge { height: 16px !important; line-height: 16px !important; white-space: nowrap; overflow: hidden; display: flex !important; justify-content: center; gap: 6px; }
+.chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 336px)) !important; }
