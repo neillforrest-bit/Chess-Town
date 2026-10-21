@@ -3271,3 +3271,5 @@ a.battle-btn{text-decoration:none}
 .chester-game .chester-teleprompter .chester-teleprompter__body { overflow-y: auto; max-height: none; }
 .chester-game .chester-console { padding: .25rem .4rem !important; gap: .35rem !important; }
 .chester-game .capture-strip { height: 22px !important; }
+.chester-game .chester-teleprompter .chester-teleprompter__body { justify-content: flex-start !important; align-content: flex-start !important; font-size: .9rem !important; line-height: 1.28 !important; padding-top: 2px !important; }
+.chester-game .chester-teleprompter .chester-teleprompter__body p, .chester-game .chester-teleprompter .chester-teleprompter__body span { font-size: inherit; }
