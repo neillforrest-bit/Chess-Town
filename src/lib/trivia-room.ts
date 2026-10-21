@@ -65,6 +65,8 @@ export async function fetchQuestion(categoryId: number): Promise<TriviaQuestion>
       return { category: decodeHtml(source.category), question: decodeHtml(source.question), correctAnswer, answers: shuffle([correctAnswer, ...source.incorrect_answers.map(decodeHtml)]) };
     } catch { /* retry below */ }
   }
+  // Online quiz service unreachable: fall back to a house question so the game never stalls.
+  for (const c of shuffle([...LOCAL_CATEGORIES])) { const src = pickLocalQuestion(c.id); if (src) return { category: c.name, question: src.question, correctAnswer: src.correct, answers: shuffle([src.correct, ...src.wrong]) }; }
   throw new Error('The quizmaster is overwhelmed - lock your categories again in a moment');
 }
 

@@ -11,7 +11,7 @@ export const GAMES: GameEntry[] = [
     blurb: { single: 'A coached game against Chester.', road: '15 levels, 5 named bosses, one Joseph.', battle: 'Live arena against a friend.' } },
   { id: 'checkers', name: 'Checkers', icon: '🔴', accent: '#f87171', single: '/play-checkers?mode=chester', road: '/road/checkers', battle: '/play-checkers?mode=battle',
     blurb: { single: 'Forced jumps, kings, trash talk.', road: 'Climb the board, beat the bosses.', battle: 'Invite link, phone to phone.' } },
-  { id: 'trivia', name: 'Pub Trivia', icon: '🍻', accent: '#22d3ee', single: '/trivia-brawl', road: '/road/trivia', battle: '/trivia-brawl',
+  { id: 'trivia', name: 'Pub Trivia', icon: '🍻', accent: '#22d3ee', single: '/trivia-brawl', road: '/road/trivia', battle: '/trivia-brawl?host=1',
     blurb: { single: 'Pub quiz vs Chester.', road: '15 rounds, 5 pub bosses, one Landlord.', battle: 'Quiz a friend by link.' } },
   { id: 'movie', name: 'Movie Night', icon: '🎬', accent: '#fbbf24', single: CINESYNC_URL, external: true,
     blurb: { single: 'CineSync: find a film you both want.', road: 'Coming soon.', battle: 'Coming soon.' } },

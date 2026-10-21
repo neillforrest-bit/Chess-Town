@@ -109,9 +109,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     setMatchId(id);
     window.history.replaceState(null, '', `/trivia-brawl?match=${id}&role=${role}`);
     void (async () => {
-      const categoryResponse = await fetch('https://opentdb.com/api_category.php');
-      const categoryPayload = await categoryResponse.json() as { trivia_categories?: Category[] };
-      if (!cancelled) setCategories([...LOCAL_CATEGORIES, ...(categoryPayload.trivia_categories || [])]);
+      // The pub table must open even if the online quiz service is slow or down: local categories first, online ones merged in later.
+      setCategories(LOCAL_CATEGORIES);
+      void fetch('https://opentdb.com/api_category.php', { signal: AbortSignal.timeout(5000) }).then((r) => r.json()).then((d: { trivia_categories?: Category[] }) => { if (!cancelled && d.trivia_categories?.length) setCategories([...LOCAL_CATEGORIES, ...d.trivia_categories]); }).catch(() => undefined);
       const { default: Peer } = await import('peerjs');
       if (cancelled) return;
       let hosting = role === 'p1';
@@ -335,10 +335,11 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
 
   useEffect(() => {
     window.history.replaceState(null, '', road ? '/trivia-brawl?road=1' : '/trivia-brawl?solo=1');
-    void fetch('https://opentdb.com/api_category.php')
+    setCategories(LOCAL_CATEGORIES);
+    void fetch('https://opentdb.com/api_category.php', { signal: AbortSignal.timeout(5000) })
       .then((r) => r.json())
-      .then((data: { trivia_categories?: Category[] }) => setCategories([...LOCAL_CATEGORIES, ...(data.trivia_categories || [])]))
-      .catch(() => setError('Could not load the pub ledger. Check your connection.'));
+      .then((data: { trivia_categories?: Category[] }) => { if (data.trivia_categories?.length) setCategories([...LOCAL_CATEGORIES, ...data.trivia_categories]); })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => { if (phase !== 'finished' || !roadLv) return; if (score.you > score.chester) { if (roadLv < TRV_ROAD_MAX) setTrvRoad(roadLv + 1); setRoadNote(roadLv < TRV_ROAD_MAX ? `Level ${roadLv} cleared. Next: level ${roadLv + 1}.` : 'THE LANDLORD IS BEATEN. The pub is yours.'); } else setRoadNote('Not this time. Same level, go again.'); }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -351,10 +352,13 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
       if (!source) throw new Error('That category is still being written on beer mats.');
       return { category: LOCAL_CATEGORIES.find((c) => c.id === categoryId)?.name || 'House Special', question: source.question, correctAnswer: source.correct, answers: shuffled([source.correct, ...source.wrong]), chesterCorrect: Math.random() < chesterAcc };
     }
-    const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store' });
-    const payload = await response.json() as { response_code: number; results: Array<{ category: string; question: string; correct_answer: string; incorrect_answers: string[] }> };
-    const source = payload.results[0];
-    if (payload.response_code !== 0 || !source) throw new Error('The pub ran dry of questions for that category.');
+    let payload: { response_code: number; results: Array<{ category: string; question: string; correct_answer: string; incorrect_answers: string[] }> };
+    try {
+      const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store', signal: AbortSignal.timeout(6000) });
+      payload = await response.json();
+    } catch { return fetchSoloQuestion(shuffled(LOCAL_CATEGORIES)[0].id); }
+    const source = payload.results?.[0];
+    if (payload.response_code !== 0 || !source) return fetchSoloQuestion(shuffled(LOCAL_CATEGORIES)[0].id);
     const correctAnswer = decodeHtmlClient(source.correct_answer);
     const wrongPool = source.incorrect_answers.map(decodeHtmlClient);
     // Chester answers 72% correct; when wrong he picks a random wrong option.
@@ -454,7 +458,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
 
   useEffect(() => {
     window.history.replaceState(null, '', '/trivia-brawl?pass=1');
-    void fetch('https://opentdb.com/api_category.php').then((r) => r.json())
+    void fetch('https://opentdb.com/api_category.php', { signal: AbortSignal.timeout(5000) }).then((r) => r.json())
       .then((data: { trivia_categories?: Category[] }) => setCategories([...LOCAL_CATEGORIES, ...(data.trivia_categories || [])]))
       .catch(() => undefined);
   }, []);
@@ -581,6 +585,8 @@ export default function TriviaBrawlPage() {
       setView('brawl');
     } else if (params.get('solo') === '1') {
       setView('solo');
+    } else if (params.get('host') === '1') {
+      setMatch(makeMatchId()); setRole('p1'); setView('brawl');
     } else if (params.get('road') === '1') {
       setView('road');
     } else if (params.get('pass') === '1') {
