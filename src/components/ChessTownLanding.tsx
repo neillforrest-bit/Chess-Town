@@ -114,6 +114,7 @@ export default function ChessTownLanding() {
       </Link>)}
     </nav>
 
+    <style>{`@media (max-height:700px){.town-night--doors .town-greet{display:none}.town-night--doors .town-door span{display:none}.town-night--doors .town-door{padding:.45rem .8rem}}`}</style>
     <div className="town-live"><i /> THE TOWN IS OPEN - FREE TO PLAY</div>
   </main>;
 }
