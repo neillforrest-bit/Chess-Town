@@ -3296,3 +3296,6 @@ a.battle-btn{text-decoration:none}
 .chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 352px)) !important; }
 .chester-game .chester-teleprompter.chester-hud { min-height: 124px !important; }
 .chester-game .chester-teleprompter .chester-why__row { font-size: .8rem !important; line-height: 1.22 !important; }
+/* BUILD 167e: the badge line ("COSTLY MISTAKE") is redundant with the grade chip; drop it so all rows fit */
+.chester-game .chester-teleprompter .chester-why__headline { display: none !important; }
+.chester-game .chester-teleprompter .chester-why { justify-content: flex-start !important; }
