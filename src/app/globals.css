@@ -3284,3 +3284,10 @@ a.battle-btn{text-decoration:none}
 .chester-game .chester-teleprompter .chester-teleprompter__head { justify-content: flex-start !important; }
 .chester-game .chester-challenge { height: 16px !important; line-height: 16px !important; white-space: nowrap; overflow: hidden; display: flex !important; justify-content: center; gap: 6px; }
 .chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 336px)) !important; }
+/* BUILD 167c */
+.chester-game .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 328px)) !important; }
+.chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 346px)) !important; }
+.chester-game .chester-challenge, .chester-game .chester-challenge * { font-size: .56rem !important; line-height: 16px !important; letter-spacing: .04em; }
+.chester-game .chester-teleprompter .chester-teleprompter__head { width: 45% !important; margin: 0 !important; border-bottom: none !important; padding-left: 8px !important; }
+.chester-game .chester-teleprompter .chester-why, .chester-game .chester-teleprompter .chester-why * { font-size: .82rem !important; line-height: 1.25 !important; }
+.chester-game .chester-teleprompter .chester-why { gap: 2px !important; }
