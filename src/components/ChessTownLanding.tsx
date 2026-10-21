@@ -5,20 +5,20 @@ import { useEffect, useState } from 'react';
 import { getProfile } from '@/lib/profile';
 import { getRating, rankFor, getLadder, LADDER_LABELS, WEAKNESS_HOMEWORK, type LadderState } from '@/lib/rating';
 
-const doors = [
-  { href: '/play-chester', icon: '♞', title: 'PLAY CHESTER', copy: 'A guided game with a coach who explains every move.', accent: '#4ade80', first: true },
-  { href: '/play-chester?road=1', icon: '👑', title: 'ROAD TO JOSEPH', copy: 'Adventure map: beat the bosses, dethrone the Big Boss.', accent: '#ffb800', top: true },
-  { href: '/battle', icon: '⚔️', title: 'BATTLE MODE', copy: 'Walk out of the tunnel against a friend: live arena, crowd swings, one timeout, Chester in your corner.', accent: '#ffd84d' },
-  { href: '/play-checkers?mode=chester', icon: '🔴', title: 'CHECKERS: PLAY CHESTER', copy: 'Forced jumps, kings and a coach who trash-talks. Four levels.', accent: '#f87171' },
-  { href: '/play-checkers?mode=battle', icon: '⚔️', title: 'CHECKERS BATTLE', copy: 'Make an invite link, send it to a friend, play live phone to phone.', accent: '#fb923c' },
-  // BUILD 116 (his 7:53 steering): arcade door hidden for now - the games stay built, restore this line when he wants it back.
-  // { href: '/arcade', icon: '🕹️', title: "CHESTER'S ARCADE", copy: 'Chessdle, Pawn Wars, Mate Sprint. Fast and loud.', accent: '#ff4eb1' },
-  { href: '/training', icon: '♝', title: 'LESSONS', copy: 'Nine short coached drills. Learn by playing.', accent: '#b8a2ff' },
-  { href: '/trivia-brawl', icon: '🍻', title: 'TRIVIA', copy: 'Pub trivia vs Chester, a friend by link, or one phone.', accent: '#22d3ee' },
-  { href: '/learn', icon: '📈', title: 'MY LEARNING', copy: 'Where you slip, in your own games, and how to fix it.', accent: '#22d3ee' },
-  { href: '/puzzle-mill', icon: '🏭', title: 'FIX MY MISTAKES', copy: 'Puzzles made from your own slips.', accent: '#f43f7a' },
-  { href: '/daily-challenge', icon: '☀️', title: 'DAILY PUZZLE', copy: 'One puzzle a day. Keep the streak.', accent: '#4ade80' },
+import { DOORS } from '@/games/registry';
+import { getRoadLevel, ROAD_MAX, bossFor, isBossLevel } from '@/lib/road';
+
+const doors = DOORS.map((d) => ({ ...d, first: d.id === 'play', top: d.id === 'road' }));
+const OPENINGS = [
+  { name: 'Italian Game', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4', why: 'Quick development and an early eye on f7.' },
+  { name: 'Queen\u2019s Gambit', moves: '1.d4 d5 2.c4', why: 'Offer a pawn, take the centre.' },
+  { name: 'London System', moves: '1.d4 d5 2.Bf4', why: 'A solid setup you can play against almost anything.' },
+  { name: 'Sicilian Defence', moves: '1.e4 c5', why: 'Fight for the centre from the side.' },
+  { name: 'Ruy Lopez', moves: '1.e4 e5 2.Nf3 Nc6 3.Bb5', why: 'Pressure the knight that guards e5.' },
+  { name: 'French Defence', moves: '1.e4 e6 2.d4 d5', why: 'Solid pawn chain, counter-punch later.' },
+  { name: 'Caro-Kann', moves: '1.e4 c6 2.d4 d5', why: 'Rock solid and hard to beat.' },
 ];
+const openingToday = () => OPENINGS[Math.floor(Date.now() / 86400000) % OPENINGS.length];
 
 export default function ChessTownLanding() {
   const [returning, setReturning] = useState(false);
@@ -26,6 +26,8 @@ export default function ChessTownLanding() {
   const [lineIndex, setLineIndex] = useState(0);
   const [rank, setRank] = useState<{ name: string; icon: string; points: number } | null>(null);
   const [ladder, setLadder] = useState<LadderState | null>(null);
+  const [roadLevel, setRoadLevel] = useState(1);
+  const [tip, setTip] = useState('');
 
   useEffect(() => {
     try {
@@ -37,6 +39,8 @@ export default function ChessTownLanding() {
       if (rating.points > 0) { const r = rankFor(rating.points); setRank({ name: r.name, icon: r.icon, points: rating.points }); }
       const ladderState = getLadder();
       if (ladderState.updatedAt) setLadder(ladderState);
+      setRoadLevel(getRoadLevel());
+      if (ladderState.lastFocus) setTip(ladderState.lastFocus);
     } catch { /* private browsing */ }
   }, []);
 
@@ -85,6 +89,22 @@ export default function ChessTownLanding() {
       {rank && <Link href="/play-chester?road=1" className="town-rank">{rank.icon} {rank.name} · {rank.points} PTS</Link>}
       {ladder && <Link href="/play-chester" className="town-rank town-rank--ladder">{ladder.grandChester ? '👑 GRAND CHESTER' : `♞ ${LADDER_LABELS[['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][ladder.unlocked]] || 'ROOKIE'} · RUNG ${ladder.unlocked + 1}/4`}</Link>}
     </header>
+
+
+    {returning
+      ? <section className="town-continue" aria-label="Where you left off" style={{ width: 'min(620px,100%)', padding: '0 .8rem', boxSizing: 'border-box', margin: '0 0 .5rem', position: 'relative', zIndex: 2 }}>
+          <div style={{ border: '1.5px solid rgba(255,184,0,.4)', borderRadius: 12, padding: '.6rem .8rem', background: 'rgba(10,8,14,.94)', display: 'grid', gap: '.35rem', fontSize: '.85rem', lineHeight: 1.35 }}>
+            <b style={{ color: '#ffb800', letterSpacing: '.08em', fontSize: '.72rem' }}>WHERE YOU LEFT OFF</b>
+            <span>👑 Road to Joseph: level {roadLevel} of {ROAD_MAX}{isBossLevel(roadLevel) ? ` - boss fight vs ${bossFor(roadLevel)?.name}` : ''}.</span>
+            {tip ? <span>💡 Chester&rsquo;s tip you&rsquo;re working on: {tip}</span> : <span>💡 No tip yet. Play a game and Chester will give you one.</span>}
+            <span>♟ Today&rsquo;s opening: <b>{openingToday().name}</b> ({openingToday().moves}). {openingToday().why} <Link href="/play-chester" style={{ color: '#4ade80' }}>Try it</Link></span>
+          </div>
+        </section>
+      : <section aria-label="Welcome" style={{ width: 'min(620px,100%)', padding: '0 .8rem', boxSizing: 'border-box', margin: '0 0 .5rem', position: 'relative', zIndex: 2, fontSize: '.85rem', lineHeight: 1.4 }}>
+          <div style={{ border: '1.5px solid rgba(74,222,128,.4)', borderRadius: 12, padding: '.6rem .8rem', background: 'rgba(10,8,14,.94)' }}>
+            <b style={{ color: '#4ade80', letterSpacing: '.08em', fontSize: '.72rem' }}>NEW HERE?</b><br />Start with <b>PLAY CHESTER</b>. Pick a game, Chester coaches you in plain words. When you are ready, the <b>ROAD TO JOSEPH</b> is the long adventure.
+          </div>
+        </section>}
 
     <nav className="town-doors" aria-label="Chesterville destinations">
       {doors.map((door) => <Link href={door.href} key={door.title} className={`town-door ${door.first ? 'town-door--first' : ''} ${(door as { top?: boolean }).top ? 'town-door--top' : ''}`} style={{ '--card-accent': door.accent } as React.CSSProperties}>
