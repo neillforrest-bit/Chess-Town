@@ -3291,3 +3291,8 @@ a.battle-btn{text-decoration:none}
 .chester-game .chester-teleprompter .chester-teleprompter__head { width: 45% !important; margin: 0 !important; border-bottom: none !important; padding-left: 8px !important; }
 .chester-game .chester-teleprompter .chester-why, .chester-game .chester-teleprompter .chester-why * { font-size: .82rem !important; line-height: 1.25 !important; }
 .chester-game .chester-teleprompter .chester-why { gap: 2px !important; }
+/* BUILD 167d */
+.chester-game .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 332px)) !important; }
+.chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 352px)) !important; }
+.chester-game .chester-teleprompter.chester-hud { min-height: 124px !important; }
+.chester-game .chester-teleprompter .chester-why__row { font-size: .8rem !important; line-height: 1.22 !important; }

@@ -149,7 +149,7 @@ function PlayChesterGame() {
     window.addEventListener('engine-evaluation', onLive); return () => window.removeEventListener('engine-evaluation', onLive);
   }, []);
   useEffect(() => { setHintStage(0); setChipArrow(null); }, [liveFen]);
-  useEffect(() => { const id = window.requestAnimationFrame(() => { const el = document.querySelector('.chester-teleprompter__body'); if (el) (el as HTMLElement).scrollTop = 0; }); return () => window.cancelAnimationFrame(id); }, [whyCard, hintStage]);
+  useEffect(() => { const up = () => { const el = document.querySelector('.chester-teleprompter__body'); if (el) (el as HTMLElement).scrollTop = 0; }; const t1 = window.setTimeout(up, 60); const t2 = window.setTimeout(up, 350); const t3 = window.setTimeout(up, 1200); up(); return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3); }; }, [whyCard, hintStage]);
   useEffect(() => { if (!arrowsOn) return; const t = window.setTimeout(() => setArrowsOn(false), 6000); return () => window.clearTimeout(t); }, [arrowsOn]);
   useEffect(() => { if (!chipArrow) return; const t = window.setTimeout(() => setChipArrow(null), 4500); return () => window.clearTimeout(t); }, [chipArrow]);
   const commentaryRef = useRef<string[]>([]); // BUILD 164: filled from the coach handler (hooks cannot live past the start-screen return)
