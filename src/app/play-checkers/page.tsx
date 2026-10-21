@@ -2,7 +2,8 @@
 // BUILD 166: checkers vs Chester / vs a friend (pass-and-play). Raw skeleton, flagged untested until verified live.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PEER_CONFIG } from '@/lib/p2p';
-import { initial, legalMoves, apply, other, count, chooseMove, gradeMove, moveText, boardKey, sqName, type Board, type CMove, type Side, type Grade } from '@/lib/checkers';
+import { initial, legalMoves, apply, other, count, chooseMove, chooseRoadMove, gradeMove, moveText, boardKey, sqName, type Board, type CMove, type Side, type Grade } from '@/lib/checkers';
+import { CK_DEPTH, CK_SLIP, CK_ROAD_MAX, getCkRoad, setCkRoad } from '@/games/checkers/road';
 
 type Mode = 'chester' | 'friend' | 'duel';
 type Level = 'BEGINNER' | 'CASUAL' | 'CLUB' | 'SHARP';
@@ -34,6 +35,8 @@ export default function PlayCheckers() {
   const [started, setStarted] = useState(false);
   const [mode, setMode] = useState<Mode>('chester');
   const [level, setLevel] = useState<Level>('CASUAL');
+  const [roadNote, setRoadNote] = useState('');
+  const [roadLv, setRoadLv] = useState<number | null>(null);
   const [bd, setBd] = useState<Board>(initial());
   const [ids, setIds] = useState<number[]>(() => initial().map((p, i) => (p === '.' ? -1 : i)));
   const [turn, setTurn] = useState<Side>('r');
@@ -120,13 +123,13 @@ export default function PlayCheckers() {
   useEffect(() => {
     if (!started || mode !== 'chester' || turn !== 'b' || over || busy) return;
     const t = setTimeout(async () => {
-      const m = chooseMove(bdRef.current, 'b', level); if (!m) return;
+      const m = roadLv ? chooseRoadMove(bdRef.current, 'b', CK_DEPTH[roadLv - 1], CK_SLIP[roadLv - 1]) : chooseMove(bdRef.current, 'b', level); if (!m) return;
       const lg = lastGrade.current; const after = await play(m, 'b', bdRef.current); void after;
       const line = m.crown ? pick('crown', seed.current++) : m.caps.length >= 3 ? pick('combo3', seed.current++) : m.caps.length >= 2 ? pick('combo2', seed.current++) : m.caps.length ? pick('capture', seed.current++) : (lg === 'STRONG' || lg === 'BRILLIANT') ? pick('clap', seed.current++) : '';
       if (line) setHud((h) => ({ ...h, l2: `😈 Chester: ${line}` }));
     }, 650);
     return () => clearTimeout(t);
-  }, [started, mode, turn, over, busy, level, play]);
+  }, [started, mode, turn, over, busy, level, roadLv, play]);
 
   const tap = (i: number) => {
     if (busy || over || !mine(turn)) return;
@@ -148,7 +151,9 @@ export default function PlayCheckers() {
   const shareInvite = async () => { if (!invite) return; try { if (navigator.share) await navigator.share({ title: 'Checkers battle', text: 'Battle me at checkers on Chess-Town', url: invite.url }); else await copyInvite(); } catch { /* cancelled */ } };
 
   const [duelRoom, setDuelRoom] = useState<{ room: string; host: boolean } | null>(null);
-  useEffect(() => { const q = new URLSearchParams(window.location.search); const room = (q.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24); if (q.get('mode') === 'duel' && room) { const host = q.get('host') === '1'; setMode('duel'); setMySide(host ? 'r' : 'b'); setDuelRoom({ room, host }); setStarted(true); } else if (q.get('mode') === 'chester') { setMode('chester'); const st = q.get('stage'); if (st === 'jump' || st === 'crown') { const e: Board = Array(64).fill('.'); if (st === 'jump') { e[7 * 8 + 0] = 'r'; e[6 * 8 + 1] = 'b'; e[4 * 8 + 3] = 'b'; e[1 * 8 + 6] = 'b'; e[0 * 8 + 1] = 'b'; } else { e[1 * 8 + 2] = 'r'; e[7 * 8 + 6] = 'r'; e[0 * 8 + 5] = 'b'; e[6 * 8 + 3] = 'b'; } setBd(e); setIds(e.map((p2, i) => (p2 === '.' ? -1 : i))); setStarted(true); } } else if (q.get('mode') === 'battle') { setMode('duel'); makeInvite(); } }, []);
+  useEffect(() => { const q = new URLSearchParams(window.location.search); const room = (q.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24); if (q.get('mode') === 'duel' && room) { const host = q.get('host') === '1'; setMode('duel'); setMySide(host ? 'r' : 'b'); setDuelRoom({ room, host }); setStarted(true); } else if (q.get('mode') === 'chester') { setMode('chester'); const st = q.get('stage'); if (st === 'jump' || st === 'crown') { const e: Board = Array(64).fill('.'); if (st === 'jump') { e[7 * 8 + 0] = 'r'; e[6 * 8 + 1] = 'b'; e[4 * 8 + 3] = 'b'; e[1 * 8 + 6] = 'b'; e[0 * 8 + 1] = 'b'; } else { e[1 * 8 + 2] = 'r'; e[7 * 8 + 6] = 'r'; e[0 * 8 + 5] = 'b'; e[6 * 8 + 3] = 'b'; } setBd(e); setIds(e.map((p2, i) => (p2 === '.' ? -1 : i))); setStarted(true); } } else if (q.get('mode') === 'battle') { setMode('duel'); makeInvite(); } else if (q.get('road') === '1') { setMode('chester'); setRoadLv(getCkRoad()); setStarted(true); } }, []);
+  const advanced = useRef(false);
+  useEffect(() => { if (!over || !roadLv || advanced.current) return; advanced.current = true; if (/^Red wins/.test(over) && roadLv < CK_ROAD_MAX) { setCkRoad(roadLv + 1); setRoadNote(`Level ${roadLv} cleared. Next: level ${roadLv + 1}.`); } else if (/^Red wins/.test(over)) setRoadNote('KING HENRY IS DEFEATED. You rule the board.'); else setRoadNote('Not this time. Same level, go again.'); }, [over, roadLv]);
   useEffect(() => {
     if (!duelRoom) return;
     let dead = false; const timers: ReturnType<typeof setTimeout>[] = [];
@@ -215,7 +220,7 @@ export default function PlayCheckers() {
         {ghost && <p className="ck-ghosttip">🔍 Preview: tap the highlighted square again to confirm.</p>}
         <div className="ck-pills">{mode !== 'duel' && <button onClick={askHint}>💡 Hint</button>}<button onClick={() => { if (mode === 'duel') { try { connRef.current?.send({ type: 'reset' }); } catch {} } reset(); }}>🔄 Rematch</button><button onClick={() => { if (mode === 'duel') window.location.href = '/play-checkers'; else setStarted(false); }}>🏠 Menu</button>{forced && mine(turn) && !over && <span className="ck-forced">⚠️ Jump is forced</span>}</div>
       </section>
-      {over && <div className="ck-over"><div><h2>{over}</h2><p>{plies} plies played.</p><button onClick={reset}>Rematch</button> <button onClick={() => setStarted(false)}>Menu</button></div></div>}
+      {over && <div className="ck-over"><div><h2>{over}</h2><p>{plies} plies played.</p>{roadLv ? <><p>{roadNote}</p><a className="ck-go" href="/road/checkers" style={{ display: 'inline-block', textDecoration: 'none' }}>BACK TO THE MAP</a></> : <><button onClick={() => { advanced.current = false; reset(); }}>Rematch</button> <button onClick={() => setStarted(false)}>Menu</button></>}</div></div>}
     </main>
   );
 }

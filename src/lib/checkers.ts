@@ -90,3 +90,10 @@ export function gradeMove(before: Board, s: Side, m: CMove): { grade: Grade; los
 export const sqName = (i: number) => 'abcdefgh'[i & 7] + (8 - (i >> 3));
 export const moveText = (m: CMove) => m.path.map(sqName).join(m.caps.length ? 'x' : '-');
 export const boardKey = (b: Board, t: Side) => b.join('') + t;
+
+/** Road to King Henry: depth ramps with the level and a slip chance picks a lesser move. depth/slip come from games/checkers/road.ts. */
+export function chooseRoadMove(b: Board, s: Side, depth: number, slip: number): CMove | null {
+  const sc = scoreMoves(b, s, Math.max(1, depth)); if (!sc.length) return null;
+  if (slip > 0 && sc.length > 1 && Math.random() < slip) return sc[1 + Math.floor(Math.random() * Math.min(2, sc.length - 1))].m;
+  const top = sc.filter((x) => x.v >= sc[0].v - 0.01); return top[Math.floor(Math.random() * top.length)].m;
+}

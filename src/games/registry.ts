@@ -9,7 +9,7 @@ export const CINESYNC_URL = 'https://chess-town-git-movie-night-neillo.vercel.ap
 export const GAMES: GameEntry[] = [
   { id: 'chess', name: 'Chess', icon: '♞', accent: '#4ade80', single: '/play-chester', road: '/road/chess', battle: '/battle',
     blurb: { single: 'A coached game against Chester.', road: '15 levels, 5 named bosses, one Joseph.', battle: 'Live arena against a friend.' } },
-  { id: 'checkers', name: 'Checkers', icon: '🔴', accent: '#f87171', single: '/play-checkers?mode=chester', battle: '/play-checkers?mode=battle',
+  { id: 'checkers', name: 'Checkers', icon: '🔴', accent: '#f87171', single: '/play-checkers?mode=chester', road: '/road/checkers', battle: '/play-checkers?mode=battle',
     blurb: { single: 'Forced jumps, kings, trash talk.', road: 'Climb the board, beat the bosses.', battle: 'Invite link, phone to phone.' } },
   { id: 'trivia', name: 'Pub Trivia', icon: '🍻', accent: '#22d3ee', single: '/trivia-brawl', battle: '/trivia-brawl',
     blurb: { single: 'Pub quiz vs Chester.', road: 'Coming soon.', battle: 'Quiz a friend by link.' } },
