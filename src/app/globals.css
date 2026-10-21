@@ -3239,3 +3239,6 @@ a.battle-btn{text-decoration:none}
 .chester-chatsheet__form button { background: #be123c; color: #fff; border: 0; border-radius: 8px; padding: 0 .9rem; font-weight: 800; }
 .chester-movechip { background: rgba(34,211,238,.18); color: #67e8f9; border: 1px solid rgba(34,211,238,.6); border-radius: 6px; padding: 0 .3rem; font-weight: 800; font-family: ui-monospace, monospace; cursor: pointer; }
 @media (min-width: 1024px) { .chester-chatsheet { left: auto; width: 38%; top: 0; } }
+/* BUILD 165 fix (his iPad bug): legacy .chester-board-frame>div{width/height:100%!important} stretched the CHECK banner into a board-sized crimson circle. */
+.chester-board-frame > div.chester-check-banner, .chester-board-frame > div.chester-mate-ribbon, .chester-board-frame > div.chester-turning { width: auto !important; height: auto !important; }
+.chester-board-frame > div.chester-check-banner { max-width: 70%; white-space: nowrap; font-size: .8rem; }
