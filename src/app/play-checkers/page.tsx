@@ -220,7 +220,7 @@ export default function PlayCheckers() {
         {ghost && <p className="ck-ghosttip">🔍 Preview: tap the highlighted square again to confirm.</p>}
         <div className="ck-pills">{mode !== 'duel' && <button onClick={askHint}>💡 Hint</button>}<button onClick={() => { if (mode === 'duel') { try { connRef.current?.send({ type: 'reset' }); } catch {} } reset(); }}>🔄 Rematch</button><button onClick={() => { if (mode === 'duel') window.location.href = '/play-checkers'; else setStarted(false); }}>🏠 Menu</button>{forced && mine(turn) && !over && <span className="ck-forced">⚠️ Jump is forced</span>}</div>
       </section>
-      {over && <div className="ck-over"><div><h2>{over}</h2><p>{plies} plies played.</p>{roadLv ? <><p>{roadNote}</p><a className="ck-go" href="/road/checkers" style={{ display: 'inline-block', textDecoration: 'none' }}>BACK TO THE MAP</a></> : <><button onClick={() => { advanced.current = false; reset(); }}>Rematch</button> <button onClick={() => setStarted(false)}>Menu</button></>}</div></div>}
+      {over && <div className="ck-over"><div><h2>{over}</h2><p>{plies} plies played.</p>{roadLv ? <><p>{roadNote}</p><a className="ck-go" href="/road/checkers" style={{ display: 'inline-block', textDecoration: 'none', color: '#04120a' }}>BACK TO THE MAP</a></> : <><button onClick={() => { advanced.current = false; reset(); }}>Rematch</button> <button onClick={() => setStarted(false)}>Menu</button></>}</div></div>}
     </main>
   );
 }
