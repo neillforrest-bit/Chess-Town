@@ -148,7 +148,7 @@ export default function PlayCheckers() {
   const shareInvite = async () => { if (!invite) return; try { if (navigator.share) await navigator.share({ title: 'Checkers battle', text: 'Battle me at checkers on Chess-Town', url: invite.url }); else await copyInvite(); } catch { /* cancelled */ } };
 
   const [duelRoom, setDuelRoom] = useState<{ room: string; host: boolean } | null>(null);
-  useEffect(() => { const q = new URLSearchParams(window.location.search); const room = (q.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24); if (q.get('mode') === 'duel' && room) { const host = q.get('host') === '1'; setMode('duel'); setMySide(host ? 'r' : 'b'); setDuelRoom({ room, host }); setStarted(true); } else if (q.get('mode') === 'chester') { setMode('chester'); } else if (q.get('mode') === 'battle') { setMode('duel'); } }, []);
+  useEffect(() => { const q = new URLSearchParams(window.location.search); const room = (q.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24); if (q.get('mode') === 'duel' && room) { const host = q.get('host') === '1'; setMode('duel'); setMySide(host ? 'r' : 'b'); setDuelRoom({ room, host }); setStarted(true); } else if (q.get('mode') === 'chester') { setMode('chester'); } else if (q.get('mode') === 'battle') { setMode('duel'); makeInvite(); } }, []);
   useEffect(() => {
     if (!duelRoom) return;
     let dead = false; const timers: ReturnType<typeof setTimeout>[] = [];
