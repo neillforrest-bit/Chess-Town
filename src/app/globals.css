@@ -3294,7 +3294,7 @@ a.battle-btn{text-decoration:none}
 /* BUILD 167d */
 .chester-game .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 332px)) !important; }
 .chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 352px)) !important; }
-.chester-game .chester-teleprompter.chester-hud { min-height: 124px !important; }
+.chester-game .chester-teleprompter.chester-hud { min-height: 130px !important; }
 .chester-game .chester-teleprompter .chester-why__row { font-size: .8rem !important; line-height: 1.22 !important; }
 /* BUILD 167e: the badge line ("COSTLY MISTAKE") is redundant with the grade chip; drop it so all rows fit */
 .chester-game .chester-teleprompter .chester-why__headline { display: none !important; }
@@ -3308,4 +3308,4 @@ a.battle-btn{text-decoration:none}
 .chester-game .acc2__cap { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .chester-game .acc2__cap .chester-challenge { position: static !important; display: inline-flex !important; height: auto !important; padding: 0 6px !important; border: 1px solid #ffd84d; border-radius: 999px; background: rgba(255,216,77,.1); color: #ffd84d; font: 900 .5rem/12px Arial, sans-serif !important; letter-spacing: .04em; gap: 4px; max-width: 62%; overflow: hidden; white-space: nowrap; }
 .chester-game .acc2__cap .chester-challenge * { font-size: inherit !important; line-height: 12px !important; font-style: normal; }
-.chester-game .chester-game__board .chester-board-frame, .chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 316px)) !important; }
+.chester-game .chester-game__board .chester-board-frame, .chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 328px)) !important; }
