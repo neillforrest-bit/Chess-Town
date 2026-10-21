@@ -4,7 +4,8 @@ import { GAMES, type Door } from '@/games/registry';
 
 const TITLES: Record<Door, string> = { play: 'PLAY CHESTER', road: 'ROAD TO JOSEPH', battle: 'BATTLE MODE' };
 export default function GameHub({ door, extras }: { door: Door; extras?: { href: string; icon: string; title: string; copy: string }[] }) {
-  const items = GAMES.map((g) => ({ g, href: g[door], copy: g.blurb[door] }));
+  const key = door === 'play' ? 'single' : door;
+  const items = GAMES.map((g) => ({ g, href: g[key], copy: g.blurb[key] }));
   return <main className="town-night town-night--doors">
     <header className="town-masthead town-masthead--compact"><h1>{TITLES[door]}</h1><Link href="/" className="town-rank">← Chesterville</Link></header>
     <nav className="town-doors" aria-label={TITLES[door]}>
