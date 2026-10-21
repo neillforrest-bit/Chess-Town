@@ -247,5 +247,5 @@ const CSS = `
 .ck-shake{animation:cksh .45s}@keyframes cksh{20%{transform:translate(-5px,3px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-4px,-2px)}80%{transform:translate(3px,3px)}}
 .ck-pc.dead::after{content:'';position:absolute;inset:0;border-radius:50%;border:3px solid #fde68a;animation:ckr .35s forwards}@keyframes ckr{from{transform:scale(.5);opacity:1}to{transform:scale(2.2);opacity:0}}
 .ck-over{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50;text-align:center}.ck-over>div{background:#111c33;border:2px solid #22d3ee;border-radius:16px;padding:22px}
-@media (orientation:landscape) and (min-width:700px){.ck-root{flex-direction:row;flex-wrap:wrap;justify-content:center;align-content:center}.ck-board,.ck-head,.ck-tug{width:min(calc(100dvh - 170px),60vw)}.ck-hud{width:min(34vw,380px);flex:none;max-height:calc(100dvh - 120px)}}
+@media (orientation:landscape) and (min-width:700px){.ck-root{flex-direction:row;flex-wrap:wrap;justify-content:center;align-content:center}.ck-board,.ck-head,.ck-tug{width:min(calc(100dvh - 250px),60vw)}.ck-hud{width:min(34vw,380px);flex:none;max-height:calc(100dvh - 120px)}}
 `;
