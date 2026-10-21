@@ -8,6 +8,7 @@ import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import MatchCountdown from '@/components/MatchCountdown';
 import { ChesterAvatar } from '@/components/ChesterUI';
+import { LiveAccuracy } from '@/components/CapturedPieceJails';
 import { direct } from '@/lib/chester-director';
 import { buzz, playSfx } from '@/lib/sounds';
 import { winOddsPct, accPoints } from '@/lib/chester-voice';
@@ -635,15 +636,7 @@ export default function BattlePage() {
         <span>{banter && <><b>{banter.color === 'w' ? 'WHITE' : 'BLACK'} · CHESTER</b> {banter.text}</>}{edu && <small className="battle-commentary__edu">{edu.text}</small>}</span>
       </div>}
     </div>
-    {!zen && <><div className="battle-acc__caption">LIVE ACCURACY</div>
-    {([['w', 'WHITE', accuracy.w], ['b', 'BLACK', accuracy.b]] as const).map(([c, label, a]) => {
-      const pct = a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8));
-      return <div key={c} className="battle-acc" aria-label={`${label} accuracy ${pct} percent`}>
-        <span className="battle-acc__label">{label}</span>
-        <div className="battle-acc__scale"><i style={{ left: `${pct}%` }} /></div>
-        <span className="battle-acc__pct">{pct}%</span>
-      </div>;
-    })}</>}
+    {!zen && <LiveAccuracy rows={([['w', 'WHITE', accuracy.w], ['b', 'BLACK', accuracy.b]] as const).map(([c, label, a]) => ({ label, side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }))} />}
     <div className={`battle-clock${running && mine <= 30000 && mine > 0 ? ' battle-clock--clutch' : ''}`} data-active={running && turn === myColor}><span>FORREST 🌲</span><b>{running && mine <= 30000 && mine > 0 ? fmtT(mine) : fmt(mine)}</b></div>
     {over ? <>
       <p className="battle-sub battle-outcome">{outcome}</p>

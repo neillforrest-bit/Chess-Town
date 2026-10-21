@@ -167,3 +167,19 @@ export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER
     </div>
   );
 }
+
+// BUILD 167: layered LIVE MOVE ACCURACY bars. Both bars start at the same left edge so the longer one is plainly the more accurate player.
+export function LiveAccuracy({ rows }: { rows: { label: string; pct: number; side: 'you' | 'opp' }[] }) {
+  return (
+    <div className="acc2" role="group" aria-label="Live move accuracy">
+      <div className="acc2__cap">MOVE ACCURACY · LIVE</div>
+      {rows.map((r) => (
+        <div key={r.label} className="acc2__row" aria-label={`${r.label} move accuracy ${r.pct} percent`}>
+          <span className={`acc2__name acc2__name--${r.side}`}>{r.label}</span>
+          <div className="acc2__track"><i className={`acc2__fill acc2__fill--${r.side}`} style={{ width: `${r.pct}%` }} /></div>
+          <span className="acc2__pct">{r.pct}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -8,7 +8,7 @@ import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat, chesterUsageByReply } from '@/app/actions';
 import { GEMINI_MODEL } from '@/lib/gemini-model';
 import QAFlagButton from '@/components/QAFlagButton';
-import { CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { CaptureStrip, HeroScoreboard, LiveAccuracy, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { buildGameRecord, recordGameToFile } from '@/lib/player-file';
 import { getProfile, saveProfile } from '@/lib/profile';
 import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
@@ -761,7 +761,7 @@ function PlayChesterGame() {
     {bossStrike > 0 && <div key={bossStrike} className="boss-strike" aria-hidden="true" />}
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-hud">
-      <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b><span className="chester-menu-btn__pill">MATCH</span></button>
+      <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b></button>
       <div className="chester-matchbar chester-matchbar--hud">
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
@@ -775,21 +775,7 @@ function PlayChesterGame() {
       {clockBar}
       {flagBanner}
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
-      <div className="play-chester__acc">
-        <div className="battle-acc__caption">LIVE ACCURACY</div>
-        {(['w', 'b'] as const).map((c) => {
-          const a = accuracy[c]; const label = c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : 'CHESTER');
-          const pct = a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8));
-          return <div key={c} className="battle-acc" aria-label={`${label} accuracy ${pct} percent`}>
-            <span className="battle-acc__label">{label}</span>
-            <div className="battle-acc__scale"><i style={{ left: `${pct}%` }} /></div>
-            <span className="battle-acc__pct">{pct}%</span>
-          </div>;
-        })}
-        {accSeries.length > 1 && <svg className="chester-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-label="Your move-by-move accuracy">
-          <polyline fill="none" stroke="#ffd84d" strokeWidth="1.8" strokeLinejoin="round" points={accSeries.map((pt, i) => `${(i / (accSeries.length - 1)) * 100},${23 - (pt / 100) * 21}`).join(' ')} />
-        </svg>}
-      </div>
+      <LiveAccuracy rows={(['w', 'b'] as const).map((c) => { const a = accuracy[c]; return { label: c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : 'CHESTER'), side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }; })} />
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
       {challenge && !challenge.done && <div className="chester-challenge" role="status"><b>CHALLENGE: {challenge.label}</b><span>{challenge.n}/{challenge.target}</span></div>}
       {challenge?.done && <div className="chester-challenge is-done" role="status"><b>✓ CHALLENGE COMPLETE · +150 PTS</b></div>}
