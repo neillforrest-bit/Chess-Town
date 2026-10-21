@@ -37,7 +37,7 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
           <button aria-label={`Level ${n}${b ? ` boss ${BOSS_ROSTER[n]?.name}` : ''}${now ? ', you are here' : ''}`} onClick={() => setSel(n)} style={{ width: size, height: size, borderRadius: b ? 14 : '50%', border: `3px solid ${now ? '#fff' : b ? '#ffb800' : '#fde68a'}`, background: done ? '#16a34a' : now ? '#ef4444' : b ? '#3a2a10' : '#1f2937', color: '#fff', fontSize: b ? 26 : 15, fontWeight: 800, opacity: locked ? .7 : 1, boxShadow: now ? '0 0 0 4px rgba(255,255,255,.35)' : 'none', cursor: 'pointer', padding: 0 }}>
             {done ? '✓' : b ? BOSS_ROSTER[n].icon : n}</button>
           {b && <div style={{ position: 'absolute', top: size + 2, left: -30, width: size + 60, textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#ffd84d', textShadow: '0 1px 3px #000' }}>{BOSS_ROSTER[n]?.name}</div>}
-          {now && <div style={{ position: 'absolute', top: -22, left: size / 2 - 38, width: 76, textAlign: 'center', fontSize: 10, fontWeight: 800, background: '#fff', color: '#111', borderRadius: 8, padding: '1px 0' }}>♞ YOU ARE HERE</div>}
+          {now && <div style={{ position: 'absolute', top: size / 2 - 10, ...(p.x > 170 ? { right: size + 6 } : { left: size + 6 }), width: 76, textAlign: 'center', fontSize: 10, fontWeight: 800, background: '#fff', color: '#111', borderRadius: 8, padding: '1px 0' }}>♞ YOU ARE HERE</div>}
         </div>; })}
     </div>
     <aside style={{ position: 'fixed', left: 0, right: 0, bottom: 0, padding: '10px 14px calc(10px + env(safe-area-inset-bottom))', background: 'rgba(11,10,18,.97)', borderTop: '2px solid #ffb800', display: 'grid', gap: 4 }}>

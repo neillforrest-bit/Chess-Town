@@ -798,6 +798,7 @@ function PlayChesterGame() {
               <p>{sub}</p>
               {skinUnlocked && <p className="road-victory__skin">🏆 SKIN UNLOCKED: {skinUnlocked} — wear it from ☰ MENU → BOARD SKIN.</p>}
               <button type="button" className="road-victory__next" onClick={handleNextLevel}>{finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
+              <a href="/road/chess" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8 }}>BACK TO THE MAP</a>
             </div>
           );
         })()}

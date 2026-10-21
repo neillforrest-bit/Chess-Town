@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { TRIVIA_ACC, getTrvRoad, setTrvRoad, TRV_ROAD_MAX } from '@/games/trivia/road';
 import Link from 'next/link';
 import { ChesterTeleprompter } from '@/components/ChesterUI';
 import { applyRoomAction, createRoom, fetchQuestion, serializeRoom, type TriviaRoom, type TriviaQuestion } from '@/lib/trivia-room';
@@ -317,7 +318,10 @@ const SOLO_LINES = {
   draw: 'A dead heat! The pub demands a tiebreaker next time.',
 };
 
-function SoloBrawl({ onExit }: { onExit: () => void }) {
+function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolean }) {
+  const [roadLv] = useState<number | null>(() => (road && typeof window !== 'undefined' ? getTrvRoad() : null));
+  const [roadNote, setRoadNote] = useState('');
+  const chesterAcc = roadLv ? TRIVIA_ACC[roadLv - 1] : 0.72;
   const [categories, setCategories] = useState<Category[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
   const [phase, setPhase] = useState<'draft' | 'question' | 'reveal' | 'finished'>('draft');
@@ -330,12 +334,14 @@ function SoloBrawl({ onExit }: { onExit: () => void }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    window.history.replaceState(null, '', '/trivia-brawl?solo=1');
+    window.history.replaceState(null, '', road ? '/trivia-brawl?road=1' : '/trivia-brawl?solo=1');
     void fetch('https://opentdb.com/api_category.php')
       .then((r) => r.json())
       .then((data: { trivia_categories?: Category[] }) => setCategories([...LOCAL_CATEGORIES, ...(data.trivia_categories || [])]))
       .catch(() => setError('Could not load the pub ledger. Check your connection.'));
   }, []);
+
+  useEffect(() => { if (phase !== 'finished' || !roadLv) return; if (score.you > score.chester) { if (roadLv < TRV_ROAD_MAX) setTrvRoad(roadLv + 1); setRoadNote(roadLv < TRV_ROAD_MAX ? `Level ${roadLv} cleared. Next: level ${roadLv + 1}.` : 'THE LANDLORD IS BEATEN. The pub is yours.'); } else setRoadNote('Not this time. Same level, go again.'); }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (id: number) => setPicked((current) => current.includes(id) ? current.filter((c) => c !== id) : current.length < 3 ? [...current, id] : current);
 
@@ -343,7 +349,7 @@ function SoloBrawl({ onExit }: { onExit: () => void }) {
     if (categoryId < 0) {
       const source = pickLocalQuestion(categoryId);
       if (!source) throw new Error('That category is still being written on beer mats.');
-      return { category: LOCAL_CATEGORIES.find((c) => c.id === categoryId)?.name || 'House Special', question: source.question, correctAnswer: source.correct, answers: shuffled([source.correct, ...source.wrong]), chesterCorrect: Math.random() < 0.72 };
+      return { category: LOCAL_CATEGORIES.find((c) => c.id === categoryId)?.name || 'House Special', question: source.question, correctAnswer: source.correct, answers: shuffled([source.correct, ...source.wrong]), chesterCorrect: Math.random() < chesterAcc };
     }
     const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store' });
     const payload = await response.json() as { response_code: number; results: Array<{ category: string; question: string; correct_answer: string; incorrect_answers: string[] }> };
@@ -352,7 +358,7 @@ function SoloBrawl({ onExit }: { onExit: () => void }) {
     const correctAnswer = decodeHtmlClient(source.correct_answer);
     const wrongPool = source.incorrect_answers.map(decodeHtmlClient);
     // Chester answers 72% correct; when wrong he picks a random wrong option.
-    const chesterCorrect = Math.random() < 0.72;
+    const chesterCorrect = Math.random() < chesterAcc;
     return { category: decodeHtmlClient(source.category), question: decodeHtmlClient(source.question), correctAnswer, answers: shuffled([correctAnswer, ...wrongPool]), chesterCorrect };
   };
 
@@ -421,7 +427,9 @@ function SoloBrawl({ onExit }: { onExit: () => void }) {
     </section>}
     {phase === 'finished' && <section className="trivia-brawl-question"><h2>{score.you} - {score.chester}</h2>
       <p>{score.you > score.chester ? 'You take the tab. Chester is already plotting the rematch.' : score.you < score.chester ? 'Chester takes it. The ledger remembers.' : 'Dead heat. The pub wants a tiebreaker.'}</p>
-      <button className="trivia-brawl-primary" onClick={() => { setPhase('draft'); setPicked([]); setRound(0); setScore({ you: 0, chester: 0 }); setQuestion(null); setHostLine(SOLO_LINES.draft); }}>RUN IT BACK</button>
+      {roadLv && <p>{roadNote}</p>}
+      {roadLv && <a className="trivia-brawl-primary" href="/road/trivia" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>BACK TO THE MAP</a>}
+      {!roadLv && <button className="trivia-brawl-primary" onClick={() => { setPhase('draft'); setPicked([]); setRound(0); setScore({ you: 0, chester: 0 }); setQuestion(null); setHostLine(SOLO_LINES.draft); }}>RUN IT BACK</button>}
     </section>}
   </main>;
 }
@@ -559,7 +567,7 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
 function makeMatchId(): string { return Math.random().toString(36).slice(2, 10); }
 
 export default function TriviaBrawlPage() {
-  const [view, setView] = useState<'lobby' | 'brawl' | 'solo' | 'pass'>('lobby');
+  const [view, setView] = useState<'lobby' | 'brawl' | 'solo' | 'pass' | 'road'>('lobby');
   const [match, setMatch] = useState('');
   const [role, setRole] = useState<Player>('p1');
   const [ready, setReady] = useState(false);
@@ -573,6 +581,8 @@ export default function TriviaBrawlPage() {
       setView('brawl');
     } else if (params.get('solo') === '1') {
       setView('solo');
+    } else if (params.get('road') === '1') {
+      setView('road');
     } else if (params.get('pass') === '1') {
       setView('pass');
     }
@@ -581,6 +591,7 @@ export default function TriviaBrawlPage() {
 
   if (!ready) return <main className="trivia-brawl-page" />;
   if (view === 'solo') return <SoloBrawl onExit={() => { window.history.replaceState(null, '', '/trivia-brawl'); setView('lobby'); }} />;
+  if (view === 'road') return <SoloBrawl road onExit={() => { window.location.href = '/road/trivia'; }} />;
   if (view === 'pass') return <PassAndPlay onExit={() => { window.history.replaceState(null, '', '/trivia-brawl'); setView('lobby'); }} />;
   if (view === 'brawl') return <BrawlGame matchId={match} role={role} />;
   return <TriviaLobby
