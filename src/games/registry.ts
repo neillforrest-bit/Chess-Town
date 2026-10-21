@@ -7,7 +7,7 @@ export type GameEntry = {
 };
 export const CINESYNC_URL = 'https://chess-town-git-movie-night-neillo.vercel.app';
 export const GAMES: GameEntry[] = [
-  { id: 'chess', name: 'Chess', icon: '♞', accent: '#4ade80', single: '/play-chester', road: '/play-chester?road=1', battle: '/battle',
+  { id: 'chess', name: 'Chess', icon: '♞', accent: '#4ade80', single: '/play-chester', road: '/road/chess', battle: '/battle',
     blurb: { single: 'A coached game against Chester.', road: '15 levels, 5 named bosses, one Joseph.', battle: 'Live arena against a friend.' } },
   { id: 'checkers', name: 'Checkers', icon: '🔴', accent: '#f87171', single: '/play-checkers?mode=chester', battle: '/play-checkers?mode=battle',
     blurb: { single: 'Forced jumps, kings, trash talk.', road: 'Climb the board, beat the bosses.', battle: 'Invite link, phone to phone.' } },
