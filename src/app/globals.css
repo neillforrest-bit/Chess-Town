@@ -3242,3 +3242,4 @@ a.battle-btn{text-decoration:none}
 /* BUILD 165 fix (his iPad bug): legacy .chester-board-frame>div{width/height:100%!important} stretched the CHECK banner into a board-sized crimson circle. */
 .chester-board-frame > div.chester-check-banner, .chester-board-frame > div.chester-mate-ribbon, .chester-board-frame > div.chester-turning { width: auto !important; height: auto !important; }
 .chester-board-frame > div.chester-check-banner { max-width: 70%; white-space: nowrap; font-size: .8rem; }
+.chester-board-frame > div.chester-check-banner { top: 4px !important; }
