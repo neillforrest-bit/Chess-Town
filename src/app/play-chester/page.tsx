@@ -803,18 +803,18 @@ function PlayChesterGame() {
           const bossName = bossFor(roadLevel)?.name || 'THE BOSS';
           const rw = rushActive && rushMsg?.kind === 'win' ? rushMsg : null;
           const title = rw ? (rw.complete ? 'BOSS RUSH COMPLETE.' : `${bossName.toUpperCase()} DOWN.`) : finalWin ? 'JOSEPH DETHRONED.' : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
-          const sub = rw ? (rw.complete ? '🏆 Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next up: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. Lose once and the run resets.`) : finalWin ? 'You beat the Final Mastermind. The Road to Joseph is complete.' : victoryState === 'boss_defeated' ? 'Joseph felt that. Keep climbing.' : 'The ladder gets steeper.';
+          const sub = rw ? (rw.complete ? '🏆 Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. One loss resets the run.`) : finalWin ? 'You beat the Final Mastermind. The Road to Joseph is complete.' : victoryState === 'boss_defeated' ? 'Joseph felt that. Keep climbing.' : 'The ladder gets steeper.';
           return (
             <div className={`road-victory road-victory--${victoryState}`} role="dialog" aria-live="polite">
               <h2>{title}</h2>
-              <p>{sub}</p>
+              <p style={{ maxWidth: '100%', overflowWrap: 'anywhere', padding: '0 8px', boxSizing: 'border-box' }}>{sub}</p>
               {skinUnlocked && <p className="road-victory__skin">🏆 SKIN UNLOCKED: {skinUnlocked} — wear it from ☰ MENU → BOARD SKIN.</p>}
               <button type="button" className="road-victory__next" onClick={handleNextLevel}>{rw ? (rw.complete ? 'SEE MY TROPHY' : 'NEXT BOSS') : finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
-              <a href="/road/chess" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8 }}>BACK TO THE MAP</a>
+              <a href="/road/chess" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8, boxSizing: 'border-box', maxWidth: '100%' }}>BACK TO THE MAP</a>
             </div>
           );
         })()}
-        {rushActive && rushMsg?.kind === 'loss' && victoryState === 'none' && <div className="road-victory road-victory--cleared" role="dialog" aria-live="polite">
+        {rushActive && rushMsg?.kind === 'loss' && victoryState === 'none' && <div className="road-victory road-victory--cleared" role="dialog" aria-live="polite" style={{ position: 'fixed', left: 12, right: 12, bottom: 24, top: 'auto', width: 'auto', zIndex: 99999, boxSizing: 'border-box' }}>
           <h2>RUSH RESET.</h2>
           <p>That boss won this round, so the run starts again from the first boss. Quick tip: check what you leave undefended before each move.</p>
           <a href="/boss-rush" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>TRY THE RUSH AGAIN</a>
