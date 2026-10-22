@@ -13,6 +13,7 @@ function regionOf(square: string): string {
 
 export function describeMove(fenBefore: string, moveUciOrSan: string): string | null {
   if (!fenBefore || !moveUciOrSan) return null;
+  { const plain = plainMoveNoun(fenBefore, moveUciOrSan); if (plain) return plain; }
   try {
     const chess = new Chess(fenBefore);
     const legal = chess.moves({ verbose: true }) as any[];
@@ -152,6 +153,7 @@ export function sameMove(fenBefore: string, a: string | null | undefined, b: str
 
 export function explainEngineChoice(fenBefore: string, bestMove: string): string | null {
   if (!fenBefore || !bestMove) return null;
+  { const plain = plainSuggestion(fenBefore, bestMove); if (plain) return plain; }
   try {
     const chess = new Chess(fenBefore);
     const legal = chess.moves({ verbose: true }) as any[];
@@ -196,4 +198,91 @@ export function explainEngineChoice(fenBefore: string, bestMove: string): string
   } catch {
     return null;
   }
+}
+
+
+// Batch 173: plain-English move talk for new players. Piece + from-square + to-square + the why. No SAN.
+function findMove(fenBefore: string, m: string): any | null {
+  try {
+    const legal = new Chess(fenBefore).moves({ verbose: true }) as any[];
+    return legal.find((x) => x.san === m) || legal.find((x) => `${x.from}${x.to}${x.promotion || ''}` === m) || legal.find((x) => x.lan === m) || null;
+  } catch { return null; }
+}
+
+/** "the knight from d3 to c5" - reads after "You played" / "my pick was". */
+export function plainMoveNoun(fenBefore: string, m: string): string | null {
+  const mv = findMove(fenBefore, m);
+  if (!mv) return null;
+  const flags: string = mv.flags || '';
+  if (flags.includes('k')) return 'castling kingside';
+  if (flags.includes('q') && mv.piece === 'k') return 'castling queenside';
+  const name = PIECE_NAMES[mv.piece];
+  const tail = mv.captured ? `, taking the ${PIECE_NAMES[mv.captured]}` : '';
+  const san: string = mv.san || '';
+  const sfx = san.includes('#') ? ' - checkmate' : san.includes('+') ? ', giving check' : '';
+  if (mv.promotion) return `the pawn from ${mv.from} to ${mv.to}, promoting to a ${PIECE_NAMES[mv.promotion]}${sfx}`;
+  return `the ${name} from ${mv.from} to ${mv.to}${tail}${sfx}`;
+}
+
+/** The "why" as a clause that follows "to ...": e.g. "put pressure on the queen and protect your pawn". */
+export function plainWhy(fenBefore: string, m: string): string {
+  const mv = findMove(fenBefore, m);
+  if (!mv) return 'keep your pieces safe';
+  try {
+    const flags: string = mv.flags || '';
+    const enemy = mv.color === 'w' ? 'b' : 'w';
+    const before = new Chess(fenBefore);
+    const after = new Chess(fenBefore);
+    after.move(mv.san);
+    const san: string = mv.san || '';
+    const name = PIECE_NAMES[mv.piece];
+    const why: string[] = [];
+    if (san.includes('#')) return 'checkmate the king - game over';
+    if (flags.includes('k') || flags.includes('q')) return 'tuck your king away safely and wake up your rook';
+    if (mv.captured) why.push(`win their ${PIECE_NAMES[mv.captured]}`);
+    if (mv.promotion) why.push('turn your pawn into a new queen');
+    if (san.includes('+')) why.push('check the king so they have to answer');
+    if (before.isAttacked(mv.from, enemy) && mv.piece !== 'k' && !mv.captured) why.push(`save your ${name}, which was under attack`);
+    // what the moved piece now attacks (valuable enemy pieces), via a null-move style probe
+    const val: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
+    const pressured: string[] = [];
+    try {
+      const probe = new Chess(after.fen().replace(/ (w|b) /, ` ${mv.color} `).replace(/ [-a-h1-8]+ \d+ \d+$/, ' - 0 1'));
+      const hits = (probe.moves({ verbose: true }) as any[]).filter((x) => x.from === mv.to && x.captured && x.captured !== 'k');
+      for (const h of hits) if (val[h.captured] >= 3 || val[h.captured] > val[mv.piece]) { const label = `the ${PIECE_NAMES[h.captured]} on ${h.to}`; if (!pressured.includes(label)) pressured.push(label); }
+    } catch { /* ignore */ }
+    if (!mv.captured && pressured.length) why.push(`put pressure on ${pressured.slice(0, 2).join(' and ')}`);
+    // protects a friendly pawn/piece?
+    try {
+      const probe2 = new Chess(after.fen().replace(/ (w|b) /, ` ${mv.color} `).replace(/ [-a-h1-8]+ \d+ \d+$/, ' - 0 1'));
+      const guarded: string[] = [];
+      for (const row of after.board()) for (const sq of row as any[]) {
+        if (!sq || sq.color !== mv.color || sq.square === mv.to || sq.type === 'k') continue;
+        if (before.isAttacked(sq.square, enemy) && !after.isAttacked(sq.square, enemy)) guarded.push(`your ${PIECE_NAMES[sq.type]} on ${sq.square}`);
+      }
+      void probe2;
+      if (guarded.length) why.push(`protect ${guarded.slice(0, 2).join(' and ')}`);
+    } catch { /* ignore */ }
+    if (!why.length) {
+      const homeRank = mv.color === 'w' ? '1' : '8';
+      if ((mv.piece === 'n' || mv.piece === 'b') && mv.from[1] === homeRank) why.push(`bring your ${name} into the game`);
+      else if (mv.piece === 'p' && 'de'.includes(mv.to[0]) && '45'.includes(mv.to[1])) why.push('grab space in the centre');
+      else if ((mv.piece === 'r' || mv.piece === 'q') && isOpenFile(after, mv.to.charCodeAt(0) - 97)) why.push(`use the open ${mv.to[0]}-file`);
+      else if (mv.piece === 'k') why.push('make your king more useful now the board is emptier');
+      else why.push(`give your ${name} a better square`);
+    }
+    return why.slice(0, 3).join(' and ');
+  } catch { return 'keep your pieces safe'; }
+}
+
+/** Imperative suggestion: "move the knight on d3 to c5 to put pressure on the queen". */
+export function plainSuggestion(fenBefore: string, m: string): string | null {
+  const mv = findMove(fenBefore, m);
+  if (!mv) return null;
+  const flags: string = mv.flags || '';
+  const why = plainWhy(fenBefore, m);
+  if (flags.includes('k')) return `castle kingside to ${why}`;
+  if (flags.includes('q') && mv.piece === 'k') return `castle queenside to ${why}`;
+  const name = PIECE_NAMES[mv.piece];
+  return `move the ${name} on ${mv.from} to ${mv.to} to ${why}`;
 }

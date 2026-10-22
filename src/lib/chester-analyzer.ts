@@ -3,6 +3,7 @@
 // same schema later (flag), but this path is the default and the guaranteed fallback so the HUD is never blank.
 import { Chess } from 'chess.js';
 import { hangingPieces } from './tactics';
+import { plainMoveNoun, plainSuggestion } from './move-words';
 
 export type MoveGrade = 'BRILLIANT' | 'STRONG' | 'SOLID' | 'SHAKY' | 'BLUNDER' | 'IDLE';
 export type ArrowIntent = 'ENGINE_BEST' | 'OPPONENT_THREAT' | 'PLAYER_MISTAKE';
@@ -23,6 +24,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** PRD FR-3.2: strict move-to-English. Always exact squares, SAN in brackets. Never "to the kingside". */
 export function formatSanToHuman(fenBefore: string, moveSanOrUci: string): string {
   try {
+    { const plain = plainMoveNoun(fenBefore, moveSanOrUci); if (plain) return plain; }
     const c = new Chess(fenBefore);
     const legal = c.moves({ verbose: true }) as any[];
     const m = legal.find((x) => x.san === moveSanOrUci) || legal.find((x) => `${x.from}${x.to}${x.promotion || ''}` === moveSanOrUci) || legal.find((x) => x.lan === moveSanOrUci);
@@ -128,8 +130,8 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
 
   const eng = inp.bestSan
     ? (!good || grade === 'SOLID')
-      ? `🤖 Engine pick (${inp.bestSan}): ${best.text ? cap(best.text) : 'it keeps your pieces safer and the initiative with you'}.`
-      : `🤖 ${grade === 'BRILLIANT' ? 'Engine agrees' : 'Engine pick matches'} (${inp.bestSan}): ${best.text ? cap(best.text) : 'nothing better on the board'}.`
+      ? `🤖 Better: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
+      : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'} - it was a good way to ${(plainSuggestion(inp.fenBefore, inp.bestSan) || 'play it').replace(/^move the .*? to ([a-h][1-8]) to /, '').replace(/^castle (king|queen)side to /, 'castle to ')}.`
     : '🤖 Engine line loading - the move above is graded on the board facts.';
 
   const arrows: WhyCard['boardOverlayArrows'] = [];
@@ -156,7 +158,7 @@ export function hintFor(card: WhyCard | null, stage: 1 | 2 | 3): string {
   if (!card || !card.engineBestUci) return 'Check which of your pieces is attacked and unprotected, then look for a safe, active move.';
   if (stage === 1) return `Look at your ${card.hintPiece || 'piece'} on ${card.hintSquare} - it can do much more work from a better square.`;
   if (stage === 2) return `Look for ${card.hintMotif}.`;
-  return `Play ${formatSanToHuman(card.fenBefore, card.engineBestSan || card.engineBestUci)}.`;
+  return `Try this: ${plainSuggestion(card.fenBefore, card.engineBestSan || card.engineBestUci) || formatSanToHuman(card.fenBefore, card.engineBestSan || card.engineBestUci)}.`;
 }
 
 export const BANNED_PHRASES = ['ambitious! the engine found a crack', 'that one stings a little', 'to the kingside', 'to the queenside'];
@@ -175,7 +177,7 @@ export function bestInfo(fen: string, best: string | null | undefined): { san: s
 export function chatReply(message: string, card: WhyCard | null, live: { fen: string; bestSan: string | null } | null): string {
   const q = message.toLowerCase();
   const eng = live?.bestSan && live.fen ? bestInfo(live.fen, live.bestSan) : null;
-  const engLine = eng?.san ? `My pick here is ${formatSanToHuman(live!.fen, eng.san)}${eng.text ? ` - it ${eng.text}` : ''}.` : '';
+  const engLine = eng?.san ? `My pick here: ${plainSuggestion(live!.fen, eng.san) || formatSanToHuman(live!.fen, eng.san)}.` : '';
   let und: string[] = [];
   try { if (live?.fen) { const c = new Chess(live.fen); const mine = c.turn(); und = hangingPieces(c, mine).map((h) => `${h.piece} on ${h.square}`); } } catch { /* ignore */ }
   if (/undefended|loose|hanging/.test(q)) return und.length ? `Yes: your ${und.join(' and your ')} ${und.length > 1 ? 'are' : 'is'} attacked with no defender. Fix that before anything fancy.` : 'Nothing of yours is hanging right now. Every attacked piece has a defender.';

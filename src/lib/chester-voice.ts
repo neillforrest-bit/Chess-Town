@@ -760,7 +760,7 @@ export function buildCoachBullets(input: WhyLessonInput): CoachBullets {
   const engineChoice = input.fenBefore && input.bestMove ? explainEngineChoice(input.fenBefore, input.bestMove) : null;
   const playedBest = input.bestMove && input.move ? sameMove(input.fenBefore || '', input.bestMove, input.move) : input.bestMovePhrase === input.movePhrase;
   const wwcd = !playedBest && engineChoice
-    ? `best was ${engineChoice}.`
+    ? `best was to ${engineChoice}.`
     : !playedBest && input.bestMovePhrase
       ? `the engine preferred ${input.bestMovePhrase}.`
       : good

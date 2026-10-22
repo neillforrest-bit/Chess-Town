@@ -6,7 +6,7 @@ import { hesitationMs } from '@/lib/chester-director';
 import { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import { Chess } from 'chess.js';
-import { describeMove } from '@/lib/move-words';
+import { describeMove, explainEngineChoice } from '@/lib/move-words';
 import { applyMaterialReality,  detectOpeningPrinciple, detectPlannedExchange, detectTraps, type OpeningPrinciple, type PlannedExchange } from '@/lib/coaching-core';
 import { disposeStockfishClient, getStockfishClient } from '@/lib/stockfish';
 import { checkChaosTriggers } from '@/lib/ChaosEngine';
@@ -1836,7 +1836,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (!phrase) return; // never show a hint that is not legal in this position
               gameRef.current.coachSuggestion = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
               renderBoard?.();
-              window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: uci, bestMovePhrase: phrase, continuation: analysis.pv || [], evaluation: analysis.mate ?? analysis.score ?? null } }));
+              window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: uci, bestMovePhrase: explainEngineChoice(fen, uci) || phrase, continuation: analysis.pv || [], evaluation: analysis.mate ?? analysis.score ?? null } }));
             }).catch(() => {
               window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: null } }));
             });

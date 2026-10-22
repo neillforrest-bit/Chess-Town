@@ -50,6 +50,9 @@ const PRESETS: Record<ChesterDifficulty, { skill: number; elo: number; depth: nu
 // strong analyst - a hint can never come back graded as a bad move.
 export const ANALYST_PRESET: ChesterDifficulty = 'EXPERT';
 export const ANALYST_DEPTH = 12;
+// Batch 173: wall-clock caps so move feedback lands fast on slow phones (depth stays the target, time is the ceiling).
+const GRADE_CAP_MS = 900;
+const DEEP_CAP_MS = 2200;
 
 type AnalysisLine = { score: number | null; mate: number | null; pv: string[] };
 type Analysis = { score: number | null; mate: number | null; pv: string[]; bestMove: string | null; lines: Record<number, AnalysisLine> };
@@ -113,7 +116,7 @@ export class StockfishClient {
     return result;
   }
 
-  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number, limitStrength = true, multiPv = 1, road?: { elo: number | null; skill?: number; movetime?: number }): Promise<Analysis> {
+  private async analyze(fen: string, difficulty: ChesterDifficulty, depthOverride?: number, limitStrength = true, multiPv = 1, road?: { elo: number | null; skill?: number; movetime?: number }, capMs?: number): Promise<Analysis> {
     return this.enqueue(async () => {
       await this.initialize();
       const worker = this.worker;
@@ -171,14 +174,14 @@ export class StockfishClient {
         // reset explicitly on every run, or a grading call's MultiPV 2 leaks into play strength.
         worker.postMessage(`setoption name MultiPV value ${multiPv}`);
         worker.postMessage(`position fen ${fen}`);
-        worker.postMessage(road?.movetime ? `go depth ${depthOverride ?? preset.depth} movetime ${road.movetime}` : `go depth ${depthOverride ?? preset.depth}`);
+        worker.postMessage(road?.movetime ? `go depth ${depthOverride ?? preset.depth} movetime ${road.movetime}` : capMs ? `go depth ${depthOverride ?? preset.depth} movetime ${capMs}` : `go depth ${depthOverride ?? preset.depth}`);
       });
     });
   }
 
   async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty }): Promise<EngineTelemetry> {
     void input.difficulty; // grading always runs at analyst strength for verdict integrity
-    let before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2);
+    let before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2, undefined, GRADE_CAP_MS);
     // Loss is computed inside ONE search whenever possible, so two independent searches can
     // never disagree a good move into a bad grade (cross-search noise lesson). The played
     // move equal to the engine's first choice is loss 0 by definition; when it is the
@@ -208,7 +211,7 @@ export class StockfishClient {
       afterScore = playedLine.score;
       afterMate = playedLine.mate;
     } else {
-      const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH, false);
+      const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH, false, 1, undefined, GRADE_CAP_MS);
       // Stockfish reports scores relative to the SIDE TO MOVE. Before a move and after it the
       // side to move flips, so the centipawn loss of the played move is before + after
       // (same formula for both colours).
@@ -237,7 +240,7 @@ export class StockfishClient {
     // thinking state meanwhile.
     if ((classification === 'MISTAKE' || classification === 'BLUNDER') && before.mate === null) {
       try {
-        const deep = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 2);
+        const deep = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 2, undefined, DEEP_CAP_MS);
         const deepBest = deep.bestMove === input.uci;
         const deepSecond = deep.lines[2];
         const deepLine: AnalysisLine | null = deepBest
