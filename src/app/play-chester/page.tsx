@@ -17,6 +17,7 @@ import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct, accPoints, accPointsFromDelta } from '@/lib/chester-voice';
 import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
+import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
 import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
@@ -76,6 +77,7 @@ function PlayChesterGame() {
   const [roadLevel, setRoadLevelState] = useState(1);
   const rushActive = roadActive && searchParams.get('rush') === '1';
   useEffect(() => { if (roadActive) setRoadLevelState(rushActive ? RUSH_LEVELS[getRush().step] : getRoadLevel()); }, [roadActive, rushActive]);
+  const [rushMsg, setRushMsg] = useState<{ kind: 'win'; step: number; complete: boolean } | { kind: 'loss' } | null>(null);
   const [victoryState, setVictoryState] = useState<'none' | 'cleared' | 'boss_defeated'>('none');
   const [introOpen, setIntroOpen] = useState(false);
   useEffect(() => { if (roadActive) setIntroOpen(true); }, [roadActive]);
@@ -457,6 +459,7 @@ function PlayChesterGame() {
     const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const gameReport = (event: Event) => {
       const detail = (event as CustomEvent<GameReport>).detail;
+      if (!isFriendMode) bumpPlayStreak();
       setReport(detail); setReportOpen(true);
       if (!isFriendMode) {
         const result = /1-0\s*$/.test(detail.pgn || '') ? 'win' : /0-1\s*$/.test(detail.pgn || '') ? 'loss' : 'draw';
@@ -466,7 +469,7 @@ function PlayChesterGame() {
         setLadder(recordLadderGame({ level: difficulty, result, grade: detail.grade, focus: habit.focus, weakness: habit.key }));
       }
       if (roadRef.current.active && !isFriendMode && new URLSearchParams(window.location.search).get('rush') === '1' && detail.pgn) {
-        if (/1-0\s*$/.test(detail.pgn)) { const r = rushWin(); setVictoryState('boss_defeated'); if (r.complete) { try { burstConfetti(); } catch { /* */ } } } else rushLoss();
+        if (/1-0\s*$/.test(detail.pgn)) { const r = rushWin(); setRushMsg({ kind: 'win', step: r.step, complete: r.complete }); setVictoryState('boss_defeated'); if (r.complete) { try { burstConfetti(); } catch { /* */ } } } else { rushLoss(); setRushMsg({ kind: 'loss' }); }
       } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(ROAD_MAX, lv + 1)); try { window.localStorage.setItem('ct-road-level-v1-seen', String(Math.min(ROAD_MAX, lv + 1))); } catch { /* */ } setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); if (isBossLevel(lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
@@ -798,18 +801,24 @@ function PlayChesterGame() {
         {victoryState !== 'none' && (() => {
           const finalWin = roadLevel >= ROAD_MAX;
           const bossName = bossFor(roadLevel)?.name || 'THE BOSS';
-          const title = finalWin ? 'JOSEPH DETHRONED.' : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
-          const sub = finalWin ? 'You beat the Final Mastermind. The Road to Joseph is complete.' : victoryState === 'boss_defeated' ? 'Joseph felt that. Keep climbing.' : 'The ladder gets steeper.';
+          const rw = rushActive && rushMsg?.kind === 'win' ? rushMsg : null;
+          const title = rw ? (rw.complete ? 'BOSS RUSH COMPLETE.' : `${bossName.toUpperCase()} DOWN.`) : finalWin ? 'JOSEPH DETHRONED.' : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
+          const sub = rw ? (rw.complete ? '🏆 Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next up: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. Lose once and the run resets.`) : finalWin ? 'You beat the Final Mastermind. The Road to Joseph is complete.' : victoryState === 'boss_defeated' ? 'Joseph felt that. Keep climbing.' : 'The ladder gets steeper.';
           return (
             <div className={`road-victory road-victory--${victoryState}`} role="dialog" aria-live="polite">
               <h2>{title}</h2>
               <p>{sub}</p>
               {skinUnlocked && <p className="road-victory__skin">🏆 SKIN UNLOCKED: {skinUnlocked} — wear it from ☰ MENU → BOARD SKIN.</p>}
-              <button type="button" className="road-victory__next" onClick={handleNextLevel}>{finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
+              <button type="button" className="road-victory__next" onClick={handleNextLevel}>{rw ? (rw.complete ? 'SEE MY TROPHY' : 'NEXT BOSS') : finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
               <a href="/road/chess" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8 }}>BACK TO THE MAP</a>
             </div>
           );
         })()}
+        {rushActive && rushMsg?.kind === 'loss' && victoryState === 'none' && <div className="road-victory road-victory--cleared" role="dialog" aria-live="polite">
+          <h2>RUSH RESET.</h2>
+          <p>That boss won this round, so the run starts again from the first boss. Quick tip: check what you leave undefended before each move.</p>
+          <a href="/boss-rush" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>TRY THE RUSH AGAIN</a>
+        </div>}
         {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
         <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
         {inCheckSide && !mateNow && <div className="chester-check-banner" role="status">⚠️ CHECK!</div>}

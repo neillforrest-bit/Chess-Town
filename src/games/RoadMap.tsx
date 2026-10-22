@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { getChessdleState, chessdleDay } from '@/lib/chessdle';
+import { getPlayStreak } from '@/lib/streak';
 import { getRush, RUSH_LEVELS } from '@/lib/boss-rush';
 
 
@@ -18,10 +19,11 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   const [sel, setSel] = useState<number | null>(null);
   const [daily, setDaily] = useState<{ streak: number; done: boolean } | null>(null);
   const [rush, setRush] = useState<{ step: number; done: boolean } | null>(null);
+  const [flame, setFlame] = useState<{ streak: number; playedToday: boolean }>({ streak: 0, playedToday: false });
   const [up, setUp] = useState<{ lvl: number; boss: RoadBossCfg | null } | null>(null);
   const nowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const n = getRoadLevel(); setLvl(n);
+    const n = getRoadLevel(); setLvl(n); try { setFlame(getPlayStreak()); } catch { /* */ }
     if (cfg.dailyHref) { try { const st = getChessdleState(chessdleDay()); setDaily({ streak: st.streak, done: !!st.result }); const r = getRush(); setRush({ step: r.step, done: r.done }); } catch { /* ignore */ } }
     try {
       const k = `${cfg.storageKey}-seen`; const raw = window.localStorage.getItem(k); const seen = raw === null ? n : parseInt(raw, 10) || n;
@@ -43,7 +45,7 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   return <main style={{ minHeight: '100dvh', background: '#0b0a12', color: '#f4eefb', fontFamily: 'system-ui,sans-serif', paddingBottom: 190 }}>
 
     <div aria-label="Progress summary" style={{ position: 'sticky', top: 64, zIndex: 20, margin: '0 10px', padding: '6px 10px', borderRadius: 12, background: 'rgba(18,15,34,.96)', border: '1px solid #3b2f66', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <b style={{ whiteSpace: 'nowrap' }}>Lv {lvl}/{ROAD_MAX}</b>
+      <b style={{ whiteSpace: 'nowrap' }}>Lv {lvl}/{ROAD_MAX}</b>{flame.streak > 0 && <span title="Play streak" style={{ whiteSpace: 'nowrap', opacity: flame.playedToday ? 1 : .6 }}>🔥{flame.streak}</span>}
       <span style={{ flex: 1, height: 6, borderRadius: 6, background: '#2a2347', overflow: 'hidden' }}><span style={{ display: 'block', width: `${overallPct}%`, height: '100%', background: 'linear-gradient(90deg,#34d399,#ffd84d)' }} /></span>
       <span style={{ whiteSpace: 'nowrap', color: '#ffd84d', fontWeight: 700 }}>{nextBossLvl === null ? 'Road complete' : `${BOSS_ROSTER[nextBossLvl].icon} ${toBoss === 0 ? 'boss next' : `${toBoss} to boss`}`}</span>
     </div>
@@ -56,7 +58,7 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
       <style>{`.ct-boss-now{animation:ctPulse 1.6s infinite}@keyframes ctPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,216,77,.55)}50%{box-shadow:0 0 0 9px rgba(255,216,77,0)}}@keyframes ctPop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}`}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12 }}>
         <b style={{ fontSize: 15 }}>Level {lvl}<span style={{ opacity: .6, fontWeight: 400 }}> / {ROAD_MAX}</span></b>
-        <span style={{ opacity: .8 }}>{overallPct}% of the road</span>
+        <span style={{ opacity: .8 }}>{flame.streak > 0 ? `🔥 ${flame.streak} day streak${flame.playedToday ? '' : ' - play today to keep it'} · ` : ''}{overallPct}% of the road</span>
       </div>
       <div style={{ marginTop: 6, height: 8, borderRadius: 6, background: '#2a2347', overflow: 'hidden' }}><div style={{ width: `${overallPct}%`, height: '100%', background: 'linear-gradient(90deg,#34d399,#ffd84d)' }} /></div>
       {nextBossLvl !== null ? <div style={{ marginTop: 8, fontSize: 12 }}>
