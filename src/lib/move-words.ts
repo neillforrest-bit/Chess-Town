@@ -269,7 +269,21 @@ export function plainWhy(fenBefore: string, m: string): string {
       else if (mv.piece === 'p' && 'de'.includes(mv.to[0]) && '45'.includes(mv.to[1])) why.push('grab space in the centre');
       else if ((mv.piece === 'r' || mv.piece === 'q') && isOpenFile(after, mv.to.charCodeAt(0) - 97)) why.push(`use the open ${mv.to[0]}-file`);
       else if (mv.piece === 'k') why.push('make your king more useful now the board is emptier');
-      else why.push(`give your ${name} a better square`);
+      else {
+        // quiet move: say something concrete about the piece's new reach
+        let reach = 0, reachBefore = 0;
+        try {
+          const flip = (c: Chess) => new Chess(c.fen().replace(/ (w|b) /, ` ${mv.color} `).replace(/ [-a-h1-8]+ \d+ \d+$/, ' - 0 1'));
+          reach = (flip(after).moves({ verbose: true }) as any[]).filter((x) => x.from === mv.to).length;
+          reachBefore = (flip(before).moves({ verbose: true }) as any[]).filter((x) => x.from === mv.from).length;
+        } catch { /* ignore */ }
+        const home = mv.color === 'w' ? '1' : '8';
+        if (mv.piece === 'p' && mv.from[1] === (mv.color === 'w' ? '2' : '7') && 'bcdefg'.includes(mv.from[0])) why.push('open a path for the pieces behind it');
+        else if (mv.piece === 'p') why.push(mv.from[0] === mv.to[0] ? 'gain space and free up your pieces' : 'change the pawn structure and open a line');
+        else if (reach > reachBefore + 1) why.push(`let your ${name} reach ${reach} squares instead of ${reachBefore}`);
+        else if (mv.from[1] === home) why.push(`get your ${name} off the back rank`);
+        else why.push(`reposition your ${name} to a more useful square`);
+      }
     }
     return why.slice(0, 3).join(' and ');
   } catch { return 'keep your pieces safe'; }

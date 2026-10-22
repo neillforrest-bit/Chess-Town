@@ -1033,6 +1033,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               // the card grades moves the way the engine saw them, not the shallow guess.
               const playerEntry = gameRef.current.playerQualities.find((entry: any) => entry.ply === movePly && entry.move === move.san);
               if (playerEntry) playerEntry.label = quality.label;
+              { const ge = gameRef.current.gradeHistory.find((entry: any) => entry.ply === movePly && entry.move === move.san); if (ge && telemetry?.bestMove) ge.bestMove = telemetry.bestMove; }
               const movePhrase = describeMove(fenBeforeMove, move.san);
               const bestMovePhrase = telemetry?.bestMove ? describeMove(fenBeforeMove, telemetry.bestMove) : null;
               const topGrade = quality.label === 'BRILLIANT' || quality.label === 'BEST' || quality.label === 'GREAT';

@@ -9,7 +9,7 @@ const LINES: Record<number, string> = {
 };
 const ICON: Record<number, string> = { 3: '♟', 6: '♞', 9: '♝', 12: '♛', 15: '♚' };
 export const CHESS_ROAD: RoadCfg = {
-  title: 'ROAD TO JOSEPH', narrative: 'Beat Joseph and you are ready to be a grandmaster.', max: ROAD_MAX, storageKey: 'ct-road-level-v1', playHref: '/play-chester?road=1',
+  title: 'ROAD TO JOSEPH', narrative: 'Beat Joseph and you are ready to be a grandmaster.', max: ROAD_MAX, storageKey: 'ct-road-level-v1', playHref: '/play-chester?road=1', dailyHref: '/chessdle',
   zones: [
     { from: 1, name: 'PAWN MEADOW', bg: 'linear-gradient(180deg,#1f4d2b,#2f6b3a)', tag: 'Where every legend starts.' },
     { from: 4, name: 'KNIGHT FOREST', bg: 'linear-gradient(180deg,#143524,#1b3d3a)', tag: 'The trees watch your every move.' },

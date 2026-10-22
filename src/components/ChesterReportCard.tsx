@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { phrasesFromPgn } from '@/lib/move-words';
+import { phrasesFromPgn, fenBeforePly, describeMove, explainEngineChoice } from '@/lib/move-words';
 import { weakestHabit, getVerdictMemory, recordVerdictMemory, getLadder } from '@/lib/rating';
 import VerdictShare from './VerdictShare';
 
@@ -11,6 +11,7 @@ export type GradedMove = {
   ply: number;
   grade: 'A' | 'B' | 'C' | 'F';
   centipawnLoss: number | null;
+  bestMove?: string | null;
 };
 
 type Habits = { castled?: boolean; developed?: boolean; blunders?: number };
@@ -153,6 +154,17 @@ export default function ChesterReportCard({
   const promoReady = promoDone === promoChecks.length;
 
   const bestPhrase = best ? phrases.get(best.ply) || null : null;
+  // Batch 174 (coach moments): up to 3 turning points, plain English, from the player's biggest losses.
+  const turning = useMemo(() => {
+    if (!pgn) return [] as { n: number; played: string; better: string | null }[];
+    return mine.filter((g) => (g.centipawnLoss ?? 0) >= 100).sort((a, b) => (b.centipawnLoss ?? 0) - (a.centipawnLoss ?? 0)).slice(0, 3).sort((a, b) => a.ply - b.ply).map((g) => {
+      const fen = fenBeforePly(pgn, g.ply);
+      if (!fen) return null;
+      const played = describeMove(fen, g.move);
+      if (!played) return null;
+      return { n: Math.ceil(g.ply / 2), played, better: g.bestMove ? explainEngineChoice(fen, g.bestMove) : null };
+    }).filter(Boolean) as { n: number; played: string; better: string | null }[];
+  }, [pgn, grades]);
   const worstPhrase = worst ? phrases.get(worst.ply) || null : null;
   const canRetry = Boolean(onRetry && worst && (worst.centipawnLoss ?? 0) >= 150 && pgn);
 
@@ -199,6 +211,11 @@ export default function ChesterReportCard({
         <b>🩹 THE LEAK</b>
         <p>{habit.reason.charAt(0).toUpperCase() + habit.reason.slice(1)}.{worst && (worst.centipawnLoss ?? 0) >= 250 && worstPhrase ? ` The swing of the game: ${worstPhrase}.` : ''}</p>
       </div>
+
+      {turning.length > 0 && <div className="chester-report-card__moment">
+        <b>🔎 YOUR {turning.length} TURNING POINT{turning.length > 1 ? 'S' : ''}</b>
+        {turning.map((t) => <p key={t.n}><b>Move {t.n}:</b> you played {t.played}.{t.better ? ` Try this instead: ${t.better}.` : ''}</p>)}
+      </div>}
 
       <div className="chester-report-card__focus">
         <b>🎯 NEXT GAME'S MISSION</b>

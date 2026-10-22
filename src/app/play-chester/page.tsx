@@ -17,6 +17,7 @@ import MatchCountdown from '@/components/MatchCountdown';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct, accPoints, accPointsFromDelta } from '@/lib/chester-voice';
 import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
+import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
 import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
@@ -73,7 +74,8 @@ function PlayChesterGame() {
   useEffect(() => { setLadder(getLadder()); }, []);
   // Road to Joseph: 15 levels, every 3rd is a boss fight (exam mode).
   const [roadLevel, setRoadLevelState] = useState(1);
-  useEffect(() => { if (roadActive) setRoadLevelState(getRoadLevel()); }, [roadActive]);
+  const rushActive = roadActive && searchParams.get('rush') === '1';
+  useEffect(() => { if (roadActive) setRoadLevelState(rushActive ? RUSH_LEVELS[getRush().step] : getRoadLevel()); }, [roadActive, rushActive]);
   const [victoryState, setVictoryState] = useState<'none' | 'cleared' | 'boss_defeated'>('none');
   const [introOpen, setIntroOpen] = useState(false);
   useEffect(() => { if (roadActive) setIntroOpen(true); }, [roadActive]);
@@ -261,6 +263,7 @@ function PlayChesterGame() {
   const acceptConsequences = () => { (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
   const handleNextLevel = () => {
     const atTop = roadLevel >= ROAD_MAX;
+    if (rushActive) { window.location.href = '/boss-rush'; return; }
     const next = atTop ? 1 : roadLevel + 1; // beating Joseph restarts the climb at level 1
     setRoadLevel(next); setRoadLevelState(next);
     setVictoryState('none'); setReport(null); setReportOpen(false); setScrubIdx(null); setMatchOver(false); setCoachPrompt(null); setCoachReply(''); setFreeze(null); setBanter(''); setCapturedPieces([]);
@@ -462,7 +465,9 @@ function PlayChesterGame() {
         const habit = weakestHabit(detail, myMoves.filter((entry) => entry.grade === 'F').length);
         setLadder(recordLadderGame({ level: difficulty, result, grade: detail.grade, focus: habit.focus, weakness: habit.key }));
       }
-      if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(ROAD_MAX, lv + 1)); setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); if (isBossLevel(lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
+      if (roadRef.current.active && !isFriendMode && new URLSearchParams(window.location.search).get('rush') === '1' && detail.pgn) {
+        if (/1-0\s*$/.test(detail.pgn)) { const r = rushWin(); setVictoryState('boss_defeated'); if (r.complete) { try { burstConfetti(); } catch { /* */ } } } else rushLoss();
+      } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(ROAD_MAX, lv + 1)); try { window.localStorage.setItem('ct-road-level-v1-seen', String(Math.min(ROAD_MAX, lv + 1))); } catch { /* */ } setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); if (isBossLevel(lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);

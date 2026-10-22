@@ -1,11 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { getChessdleState, chessdleDay } from '@/lib/chessdle';
+import { getRush, RUSH_LEVELS } from '@/lib/boss-rush';
 
 
 export type RoadZone = { from: number; name: string; bg: string; tag: string };
 export type RoadBossCfg = { name: string; archetype: string; line: string; icon: string };
-export type RoadCfg = { title: string; narrative: string; max: number; storageKey: string; zones: RoadZone[]; bosses: Record<number, RoadBossCfg>; playHref: string; strength: (n: number) => string };
+export type RoadCfg = { title: string; narrative: string; max: number; storageKey: string; zones: RoadZone[]; bosses: Record<number, RoadBossCfg>; playHref: string; dailyHref?: string; strength: (n: number) => string };
 const ROW = 92, W = 340;
 export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   const ROAD_MAX = cfg.max, ZONES = cfg.zones, BOSS_ROSTER = cfg.bosses;
@@ -14,10 +16,13 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   const pos = (n: number) => ({ x: 170 + Math.sin((n - 1) * 1.15) * 110, y: (ROAD_MAX - n) * ROW + 70 });
   const [lvl, setLvl] = useState(1);
   const [sel, setSel] = useState<number | null>(null);
+  const [daily, setDaily] = useState<{ streak: number; done: boolean } | null>(null);
+  const [rush, setRush] = useState<{ step: number; done: boolean } | null>(null);
   const [up, setUp] = useState<{ lvl: number; boss: RoadBossCfg | null } | null>(null);
   const nowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const n = getRoadLevel(); setLvl(n);
+    if (cfg.dailyHref) { try { const st = getChessdleState(chessdleDay()); setDaily({ streak: st.streak, done: !!st.result }); const r = getRush(); setRush({ step: r.step, done: r.done }); } catch { /* ignore */ } }
     try {
       const k = `${cfg.storageKey}-seen`; const raw = window.localStorage.getItem(k); const seen = raw === null ? n : parseInt(raw, 10) || n;
       if (n > seen) { const beaten = Object.keys(BOSS_ROSTER).map(Number).filter((b) => b >= seen && b < n).pop(); setUp({ lvl: n, boss: beaten ? BOSS_ROSTER[beaten] : null }); }
@@ -58,6 +63,10 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
         <b style={{ color: '#ffd84d' }}>{BOSS_ROSTER[nextBossLvl].icon} {BOSS_ROSTER[nextBossLvl].name}</b>{toBoss === 0 ? ' is next. Time to fight.' : ` in ${toBoss} level${toBoss === 1 ? '' : 's'}`}
         <div style={{ marginTop: 4, height: 6, borderRadius: 6, background: '#2a2347', overflow: 'hidden' }}><div style={{ width: `${segPct}%`, height: '100%', background: '#ef4444' }} /></div>
       </div> : <div style={{ marginTop: 8, fontSize: 12, color: '#ffd84d' }}>Every boss is down. Road complete.</div>}
+      {cfg.dailyHref && daily && <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+        <Link href={cfg.dailyHref} style={{ flex: 1, textDecoration: 'none', color: '#f4eefb', background: '#241d3d', borderRadius: 10, padding: '8px 10px', fontSize: 12 }}>🟩 <b>Daily Chessdle</b><br /><span style={{ opacity: .8 }}>{daily.done ? `Done today · ${daily.streak} day streak` : `Not played yet · ${daily.streak} day streak`}</span></Link>
+        <Link href="/boss-rush" style={{ flex: 1, textDecoration: 'none', color: '#f4eefb', background: '#3a1420', borderRadius: 10, padding: '8px 10px', fontSize: 12 }}>⚔️ <b>Weekly Boss Rush</b><br /><span style={{ opacity: .8 }}>{rush?.done ? 'Trophy won this week' : `${rush?.step ?? 0} of ${RUSH_LEVELS.length} bosses down`}</span></Link>
+      </div>}
       <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center' }} aria-label="Boss badges">
         {bossLevels.map((b) => { const beaten = b < lvl; return <span key={b} title={BOSS_ROSTER[b].name} style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontSize: 18, background: beaten ? 'linear-gradient(135deg,#ffd84d,#f59e0b)' : '#241d3d', color: beaten ? '#2b1b00' : '#6b6288', border: b === nextBossLvl ? '2px solid #ef4444' : '2px solid transparent', filter: beaten ? 'none' : 'grayscale(1)' }}>{BOSS_ROSTER[b].icon}</span>; })}
       </div>
