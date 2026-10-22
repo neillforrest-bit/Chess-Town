@@ -810,14 +810,14 @@ function PlayChesterGame() {
               <p style={{ maxWidth: '100%', overflowWrap: 'anywhere', padding: '0 8px', boxSizing: 'border-box' }}>{sub}</p>
               {skinUnlocked && <p className="road-victory__skin">🏆 SKIN UNLOCKED: {skinUnlocked} — wear it from ☰ MENU → BOARD SKIN.</p>}
               <button type="button" className="road-victory__next" onClick={handleNextLevel}>{rw ? (rw.complete ? 'SEE MY TROPHY' : 'NEXT BOSS') : finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
-              <a href="/road/chess" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8, boxSizing: 'border-box', maxWidth: '100%' }}>BACK TO THE MAP</a>
+              <a href="/road/chess" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', margin: '8px auto 0', boxSizing: 'border-box', width: 'min(100%, 240px)' }}>BACK TO THE MAP</a>
             </div>
           );
         })()}
-        {rushActive && rushMsg?.kind === 'loss' && victoryState === 'none' && <div className="road-victory road-victory--cleared" role="dialog" aria-live="polite" style={{ position: 'fixed', left: 12, right: 12, bottom: 24, top: 'auto', width: 'auto', zIndex: 99999, boxSizing: 'border-box' }}>
+        {rushActive && rushMsg?.kind === 'loss' && victoryState === 'none' && <div className="road-victory road-victory--cleared" role="dialog" aria-live="polite" style={{ position: 'fixed', left: 12, right: 12, bottom: 24, top: 'auto', width: 'auto', zIndex: 99999, boxSizing: 'border-box', background: 'linear-gradient(180deg,#2a0f1d,#14080f)', border: '2px solid #f43f5e', borderRadius: 16, padding: '16px 14px' }}>
           <h2>RUSH RESET.</h2>
           <p>That boss won this round, so the run starts again from the first boss. Quick tip: check what you leave undefended before each move.</p>
-          <a href="/boss-rush" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>TRY THE RUSH AGAIN</a>
+          <a href="/boss-rush" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', margin: '8px auto 0', boxSizing: 'border-box', width: 'min(100%, 260px)' }}>TRY THE RUSH AGAIN</a>
         </div>}
         {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
         <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
