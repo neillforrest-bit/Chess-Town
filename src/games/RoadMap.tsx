@@ -36,6 +36,12 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   const overallPct = Math.round(((lvl - 1) / ROAD_MAX) * 100);
   const boss = BOSS_ROSTER[shown];
   return <main style={{ minHeight: '100dvh', background: '#0b0a12', color: '#f4eefb', fontFamily: 'system-ui,sans-serif', paddingBottom: 190 }}>
+
+    <div aria-label="Progress summary" style={{ position: 'sticky', top: 64, zIndex: 20, margin: '0 10px', padding: '6px 10px', borderRadius: 12, background: 'rgba(18,15,34,.96)', border: '1px solid #3b2f66', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <b style={{ whiteSpace: 'nowrap' }}>Lv {lvl}/{ROAD_MAX}</b>
+      <span style={{ flex: 1, height: 6, borderRadius: 6, background: '#2a2347', overflow: 'hidden' }}><span style={{ display: 'block', width: `${overallPct}%`, height: '100%', background: 'linear-gradient(90deg,#34d399,#ffd84d)' }} /></span>
+      <span style={{ whiteSpace: 'nowrap', color: '#ffd84d', fontWeight: 700 }}>{nextBossLvl === null ? 'Road complete' : `${BOSS_ROSTER[nextBossLvl].icon} ${toBoss === 0 ? 'boss next' : `${toBoss} to boss`}`}</span>
+    </div>
     <header style={{ padding: '14px 14px 6px', textAlign: 'center' }}>
       <Link href="/road" style={{ color: '#ffd84d', fontSize: 12 }}>← Road</Link>
       <h1 style={{ margin: '4px 0', fontSize: 22, letterSpacing: '.08em' }}>{cfg.title}</h1>
