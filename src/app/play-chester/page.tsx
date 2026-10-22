@@ -152,7 +152,7 @@ function PlayChesterGame() {
   const turning = (() => { let best: WhyCard | null = null; for (const c of cardsRef.current) if (c.cp != null && c.cp >= 120 && (!best || (c.cp || 0) > (best.cp || 0))) best = c; return best; })();
   const hintInfo: WhyCard | null = (() => { const l = liveRef.current; if (!l.fen || !(l.bestSan || l.bestUci)) return null; const b = bestInfo(l.fen, l.bestSan || l.bestUci); return { ply: 0, moveNo: 0, san: '', grade: 'IDLE', cp: null, headlineBadge: '', whatHappenedLine: '', engineBlueprintLine: '', boardOverlayArrows: [], highlightedSquares: [], contextualChatChips: ['', '', ''], engineBestSan: b.san, engineBestUci: b.uci, hintMotif: b.motif, hintPiece: b.piece, hintSquare: b.from, fenBefore: l.fen, fenAfter: l.fen }; })();
   useEffect(() => {
-    const onLive = (e: Event) => { const d = (e as CustomEvent<{ fen?: string; bestMove?: { uci?: string | null; san?: string | null } }>).detail; if (!d?.fen) return; liveRef.current = { fen: d.fen, bestSan: d.bestMove?.san || null, bestUci: d.bestMove?.uci || null }; setLiveFen(d.fen); };
+    const onLive = (e: Event) => { const d = (e as CustomEvent<{ fen?: string; bestMoveFen?: string; bestMove?: { uci?: string | null; san?: string | null } }>).detail; if (!d?.fen) return; const fresh = !d.bestMoveFen || d.bestMoveFen === d.fen; liveRef.current = { fen: d.fen, bestSan: fresh ? (d.bestMove?.san || null) : null, bestUci: fresh ? (d.bestMove?.uci || null) : null }; setLiveFen(d.fen); };
     window.addEventListener('engine-evaluation', onLive); return () => window.removeEventListener('engine-evaluation', onLive);
   }, []);
   useEffect(() => { setHintStage(0); setChipArrow(null); }, [liveFen]);
@@ -621,8 +621,8 @@ function PlayChesterGame() {
       .catch(() => undefined);
   }, [report, difficulty]);
 
-  const sendChat = async (event: React.FormEvent, preset?: string) => {
-    event.preventDefault();
+  const sendChat = async (event: React.FormEvent | null, preset?: string) => {
+    event?.preventDefault();
     const message = (preset || chatInput).trim();
     if (!message || chatBusy) return;
     setChatInput(''); setChatError('');
@@ -633,6 +633,23 @@ function PlayChesterGame() {
     const fallback = () => chesterOfflineChat(message, { persona: difficulty, fen: lastFen, lastMove: lastMove?.move, lastMovePhrase, classification: lastMove?.classification, bestMove: lastBest, bestMovePhrase: lastBestPhrase, capturedCount: capturedPieces.length, historyCount: history.length });
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. You are chatting mid-game with your student. Live board FEN: ${lastFen}. Moves so far: ${moveTrail.map((m) => m.move).join(' ') || 'none yet'}. Last graded student move: ${lastMove ? `${lastMove.move} (${lastMove.classification || 'ungraded'})` : 'none'}. Engine-preferred idea: ${lastBest || 'unknown'}. Answer the student directly in at most 3 sentences. Be funny AND educational: every joke carries a chess lesson, every lesson lands a joke. Use only the FEN and record above for board facts - never invent pieces, squares, or lines. Plain English, no centipawns, no engine jargon.`;
     const deterministic = () => chatReply(message, whyCard, liveRef.current.fen ? { fen: liveRef.current.fen, bestSan: liveRef.current.bestSan } : null);
+    if (/what should i (do|play)|what next|what now|next move|what do i do|my best move|stuck|\blost\b|suggest|help me/i.test(message)) {
+      // Next-move questions are answered from a fresh look at the board as it is right now, never from an older card.
+      const id = Date.now();
+      const got = await new Promise<{ fen: string; bestMove: string | null } | null>((resolve) => {
+        const onResp = (ev: Event) => { const d = (ev as CustomEvent<{ id: number; fen: string; bestMove: string | null }>).detail; if (d?.id !== id) return; window.removeEventListener('chester-peek-response', onResp); window.clearTimeout(tm); resolve(d); };
+        const tm = window.setTimeout(() => { window.removeEventListener('chester-peek-response', onResp); resolve(null); }, 5000);
+        window.addEventListener('chester-peek-response', onResp);
+        window.dispatchEvent(new CustomEvent('chester-peek-request', { detail: { id } }));
+      });
+      let text: string;
+      const turn = got?.fen.split(' ')[1];
+      if (!got) text = 'I could not read the board in time. Ask me again in a second.';
+      else if (!isFriendMode && turn !== 'w') text = 'It is my move right now. Ask me again once I have played and I will tell you what I would do.';
+      else { const sug = got.bestMove ? explainEngineChoice(got.fen, got.bestMove) : null; text = sug ? `Here is what I would do: ${sug}.` : 'I cannot find a clear suggestion for this position yet. Look for anything of yours that is attacked and not protected, then for a safe capture.'; }
+      setChatMessages([...history, { role: 'chester', text: text.charAt(0).toUpperCase() + text.slice(1), kind: 'chat' }]); setChatBusy(false);
+      return;
+    }
     if (!geminiTierOn()) { // BUILD 165: deterministic analyzer is the default (0p); Gemini tier only when this flag is on AND credit exists
       window.setTimeout(() => { setChatMessages([...history, { role: 'chester', text: deterministic(), kind: 'chat' }]); setChatBusy(false); }, 250);
       return;
@@ -855,6 +872,7 @@ function PlayChesterGame() {
                 <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
                 <p className="chester-why__row">{whyCard.whatHappenedLine}</p>
                 <p className="chester-why__row chester-why__row--eng">{whyCard.engineBlueprintLine}</p>
+                {!isFriendMode && <button type="button" className="chester-chat-nudge" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }}>{whyCard.grade === 'BLUNDER' || whyCard.grade === 'SHAKY' ? '💬 Not sure why? Ask Chester to explain' : '💬 Want more? Ask Chester about this move'}</button>}
               </div>
             : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt && coachReply ? coachReply : lesson.body || 'Make a move. I will grade it here, in plain English, with the exact squares.'}</p>}
           {hintStage > 0 && <p className="chester-why__hint" aria-live="polite">💡 HINT {hintStage}/3 - {hintFor(hintInfo, hintStage as 1 | 2 | 3)}</p>}
@@ -905,7 +923,7 @@ function PlayChesterGame() {
       <span>TONIGHT’S TRAINING ROUTE</span><h2>LEARN WHILE YOU PLAY</h2><p>Chester’s notes arrive beside the live board. No pop-ups, no dismissing, no break in the game.</p>
       <ol>{LESSONS.map((item, index) => <li key={item.title} className={index === lessonStep ? 'is-active' : index < lessonStep ? 'is-done' : ''}><i>{index < lessonStep ? '✓' : index + 1}</i><span>{item.title}</span></li>)}</ol>
     </aside>
-    {chatOpen && <div className="chester-chatsheet" style={chatTop ? { top: chatTop } : undefined} role="dialog" aria-label="Chat with Chester">
+    {chatOpen && <div className="chester-chatsheet" role="dialog" aria-label="Chat with Chester">
       <header><b>CHAT WITH CHESTER</b><button type="button" onClick={() => setChatOpen(false)} aria-label="Close">×</button></header>
       <div className="chester-chatsheet__msgs" ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}>
         {chatMessages.length === 0 && <p className="chester-chatsheet__hint">Ask about your last move, a threat, or what to play. Tap a move I mention to see it on the board.</p>}

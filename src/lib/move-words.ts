@@ -201,6 +201,26 @@ export function explainEngineChoice(fenBefore: string, bestMove: string): string
 }
 
 
+
+const PAWN_ROLE: Record<string, string> = { a: "queen's rook's pawn", b: "queen's knight's pawn", c: "queen's bishop's pawn", d: "queen's pawn", e: "king's pawn", f: "king's bishop's pawn", g: "king's knight's pawn", h: "king's rook's pawn" };
+/** "king's pawn", "king's knight", "queen": a name a new player knows, from the piece standing on `sq` in `fen`. */
+export function roleOf(fen: string, sq: string): string {
+  try {
+    const c = new Chess(fen);
+    const p = c.get(sq as any) as any;
+    if (!p) return 'piece';
+    let same = 0; let sameSide = 0;
+    const kingSide = (f: string) => f >= 'e';
+    for (const row of c.board()) for (const x of row as any[]) {
+      if (x && x.type === p.type && x.color === p.color) { same += 1; if (p.type !== 'p' && kingSide(x.square[0]) === kingSide(sq[0])) sameSide += 1; if (p.type === 'p' && x.square[0] === sq[0]) sameSide += 1; }
+    }
+    if (p.type === 'p') return sameSide > 1 ? `pawn on ${sq}` : PAWN_ROLE[sq[0]];
+    const name = PIECE_NAMES[p.type];
+    if (same <= 1 || p.type === 'q' || p.type === 'k') return name;
+    return sameSide > 1 ? `${name} on ${sq}` : `${kingSide(sq[0]) ? "king's" : "queen's"} ${name}`;
+  } catch { return 'piece'; }
+}
+
 // Batch 173: plain-English move talk for new players. Piece + from-square + to-square + the why. No SAN.
 function findMove(fenBefore: string, m: string): any | null {
   try {
@@ -216,12 +236,12 @@ export function plainMoveNoun(fenBefore: string, m: string): string | null {
   const flags: string = mv.flags || '';
   if (flags.includes('k')) return 'castling kingside';
   if (flags.includes('q') && mv.piece === 'k') return 'castling queenside';
-  const name = PIECE_NAMES[mv.piece];
+  const name = roleOf(fenBefore, mv.from);
   const tail = mv.captured ? `, taking the ${PIECE_NAMES[mv.captured]}` : '';
   const san: string = mv.san || '';
   const sfx = san.includes('#') ? ' - checkmate' : san.includes('+') ? ', giving check' : '';
-  if (mv.promotion) return `the pawn from ${mv.from} to ${mv.to}, promoting to a ${PIECE_NAMES[mv.promotion]}${sfx}`;
-  return `the ${name} from ${mv.from} to ${mv.to}${tail}${sfx}`;
+  if (mv.promotion) return `the ${name} from ${mv.from} to ${mv.to}, promoting to a ${PIECE_NAMES[mv.promotion]}${sfx}`;
+  return `the ${name.includes(' on ') ? PIECE_NAMES[mv.piece] : name} from ${mv.from} to ${mv.to}${tail}${sfx}`;
 }
 
 /** The "why" as a clause that follows "to ...": e.g. "put pressure on the queen and protect your pawn". */
@@ -249,7 +269,7 @@ export function plainWhy(fenBefore: string, m: string): string {
     try {
       const probe = new Chess(after.fen().replace(/ (w|b) /, ` ${mv.color} `).replace(/ [-a-h1-8]+ \d+ \d+$/, ' - 0 1'));
       const hits = (probe.moves({ verbose: true }) as any[]).filter((x) => x.from === mv.to && x.captured && x.captured !== 'k');
-      for (const h of hits) if (val[h.captured] >= 3 || val[h.captured] > val[mv.piece]) { const label = `the ${PIECE_NAMES[h.captured]} on ${h.to}`; if (!pressured.includes(label)) pressured.push(label); }
+      for (const h of hits) if (val[h.captured] >= 3 || val[h.captured] > val[mv.piece]) { const rr = roleOf(after.fen(), h.to); const label = `their ${rr.includes(' on ') ? rr : `${rr} (${h.to})`}`; if (!pressured.includes(label)) pressured.push(label); }
     } catch { /* ignore */ }
     if (!mv.captured && pressured.length) why.push(`put pressure on ${pressured.slice(0, 2).join(' and ')}`);
     // protects a friendly pawn/piece?
@@ -258,7 +278,7 @@ export function plainWhy(fenBefore: string, m: string): string {
       const guarded: string[] = [];
       for (const row of after.board()) for (const sq of row as any[]) {
         if (!sq || sq.color !== mv.color || sq.square === mv.to || sq.type === 'k') continue;
-        if (before.isAttacked(sq.square, enemy) && !after.isAttacked(sq.square, enemy)) guarded.push(`your ${PIECE_NAMES[sq.type]} on ${sq.square}`);
+        if (before.isAttacked(sq.square, enemy) && !after.isAttacked(sq.square, enemy)) { const rr = roleOf(after.fen(), sq.square); guarded.push(`your ${rr.includes(' on ') ? rr : `${rr} (${sq.square})`}`); }
       }
       void probe2;
       if (guarded.length) why.push(`protect ${guarded.slice(0, 2).join(' and ')}`);
@@ -297,6 +317,7 @@ export function plainSuggestion(fenBefore: string, m: string): string | null {
   const why = plainWhy(fenBefore, m);
   if (flags.includes('k')) return `castle kingside to ${why}`;
   if (flags.includes('q') && mv.piece === 'k') return `castle queenside to ${why}`;
-  const name = PIECE_NAMES[mv.piece];
-  return `move the ${name} on ${mv.from} to ${mv.to} to ${why}`;
+  const mine = roleOf(fenBefore, mv.from);
+  if (mv.captured && !mv.promotion) return `take their ${roleOf(fenBefore, mv.to === mv.from ? mv.from : (mv.flags.includes('e') ? mv.to[0] + mv.from[1] : mv.to))} with your ${mine} ${mine.includes(' on ') ? `(taking on ${mv.to})` : `(${mv.from} takes ${mv.to})`} to ${why}`;
+  return `move your ${mine} to ${mv.to}${mine.includes(' on ') ? '' : ` (from ${mv.from})`} to ${why}`;
 }

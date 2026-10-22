@@ -921,6 +921,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               window.dispatchEvent(new CustomEvent('engine-evaluation', {
                 detail: {
                   fen,
+                  bestMoveFen: fen,
                   evalScore: absMate === null ? (absScore === null ? null : absScore / 100) : `M${absMate}`,
                   bestMove: { uci: analysis.bestMove, san: (() => { try { return new Chess(fen).move(analysis.bestMove, { sloppy: true } as any)?.san || null; } catch { return null; } })(), phrase: describeMove(fen, analysis.bestMove) },
                   evalDelta: null,
@@ -1017,6 +1018,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               window.dispatchEvent(new CustomEvent('engine-evaluation', {
                 detail: {
                   fen: telemetry.fenAfter,
+                  bestMoveFen: telemetry.fenBefore, // the best move belongs to the position BEFORE the move (stale-suggestion fix)
                   evalScore: telemetry.evalScore,
                   bestMove: { uci: telemetry.bestMove, san: telemetry.bestMoveSan },
                   evalDelta: telemetry.evalDelta,
@@ -1842,6 +1844,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               window.dispatchEvent(new CustomEvent('chester-help-response', { detail: { fen, bestMove: null } }));
             });
           };
+          // Chat "what should I do next?": analyse the board exactly as it is NOW and answer with fen + move together.
+          const handlePeek = (e: Event) => {
+            const id = (e as CustomEvent<{ id?: number }>).detail?.id ?? 0;
+            const fen = gameRef.current.chess.fen();
+            void getStockfishClient().analyzeForDisplay(fen).then((analysis: any) => {
+              window.dispatchEvent(new CustomEvent('chester-peek-response', { detail: { id, fen, bestMove: analysis?.bestMove || null } }));
+            }).catch(() => window.dispatchEvent(new CustomEvent('chester-peek-response', { detail: { id, fen, bestMove: null } })));
+          };
+          window.addEventListener('chester-peek-request', handlePeek);
           window.addEventListener('chester-help-request', handleHelpRequest);
           const handleShowBetter = (e: Event) => { gameRef.current.betterHint = (e as CustomEvent).detail; renderBoard?.(); };
           const handleClearBetter = () => { if (!gameRef.current.betterHint) return; gameRef.current.betterHint = null; renderBoard?.(); };
@@ -1889,6 +1900,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('brawl-position', handleBrawlPosition);
             window.removeEventListener('remote-chess-move', handleRemoteMove);
             window.removeEventListener('replay-step', handleReplayStep);
+            window.removeEventListener('chester-peek-request', handlePeek);
             window.removeEventListener('chester-help-request', handleHelpRequest);
             window.removeEventListener('chester-show-better', handleShowBetter);
             window.removeEventListener('chester-clear-better', handleClearBetter);

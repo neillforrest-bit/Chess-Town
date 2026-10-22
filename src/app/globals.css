@@ -3309,3 +3309,18 @@ a.battle-btn{text-decoration:none}
 .chester-game .acc2__cap .chester-challenge { position: static !important; display: inline-flex !important; height: auto !important; padding: 0 6px !important; border: 1px solid #ffd84d; border-radius: 999px; background: rgba(255,216,77,.1); color: #ffd84d; font: 900 .5rem/12px Arial, sans-serif !important; letter-spacing: .04em; gap: 4px; max-width: 62%; overflow: hidden; white-space: nowrap; }
 .chester-game .acc2__cap .chester-challenge * { font-size: inherit !important; line-height: 12px !important; font-style: normal; }
 .chester-game .chester-game__board .chester-board-frame, .chester-game[data-challenge="1"] .chester-game__board .chester-board-frame { width: min(100cqw, 600px, calc(100dvh - 328px)) !important; }
+
+/* Batch 175: chat as a large readable modal sheet */
+.chester-chatsheet { top: 6dvh !important; left: 8px !important; right: 8px !important; bottom: 8px !important; width: auto !important; border: 2px solid #22d3ee; border-radius: 18px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.6), 0 12px 40px rgba(0,0,0,.7); z-index: 200; }
+.chester-chatsheet header { padding: .7rem 1rem; font-size: 1rem; }
+.chester-chatsheet header button { width: 44px; height: 40px; font-size: 1.4rem; }
+.chester-chatsheet__msgs { padding: .5rem 1rem; gap: .65rem; }
+.chester-chatsheet__msg { max-width: 94%; font-size: 1.12rem; line-height: 1.42; padding: .65rem .85rem; border-radius: 14px; }
+.chester-chatsheet__hint { font-size: 1rem; }
+.chester-chatsheet__chips { flex-wrap: wrap; white-space: normal; overflow: visible; gap: .4rem; padding: .4rem 1rem; }
+.chester-chatsheet__chips .chester-chat-chip { white-space: normal; text-align: left; font-size: .95rem; padding: .5rem .7rem; }
+.chester-chatsheet__form { padding: .5rem 1rem calc(.7rem + env(safe-area-inset-bottom)); }
+.chester-chatsheet__form input { font-size: 16px; padding: .7rem .8rem; }
+.chester-chatsheet__form button { padding: 0 1.2rem; font-size: 1rem; }
+@media (min-width: 1024px) { .chester-chatsheet { left: auto !important; width: min(560px, 46%) !important; top: 4dvh !important; } }
+.chester-chat-nudge { margin-top: .4rem; align-self: flex-start; background: rgba(34,211,238,.14); color: #67e8f9; border: 1px solid rgba(34,211,238,.55); border-radius: 999px; padding: .35rem .8rem; font-size: .85rem; font-weight: 700; }

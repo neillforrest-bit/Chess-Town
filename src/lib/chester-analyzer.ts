@@ -189,5 +189,5 @@ export function chatReply(message: string, card: WhyCard | null, live: { fen: st
   if (/take that move back|retry|undo/.test(q)) return 'Use the Retry pill under my comment. It rewinds your last move so you can try the engine idea.';
   if (/compare|candidate|what should i play|best/.test(q)) return engLine || 'Look for checks, captures and threats in that order, then pick the safest of them.';
   if (/tactic/.test(q)) return 'Three questions before every move: what is loose, what can be forked, what does my move leave undefended? Tonight the third one wins you games.';
-  return engLine || (card ? card.engineBlueprintLine.replace(/^🤖\s*/, '') : 'Ask me about your last move, a threat, or what to play next.');
+  return engLine || (card ? `About your last move: ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} Ask me "what should I do next?" for a fresh idea.` : 'Ask me about your last move, a threat, or what to play next.');
 }
