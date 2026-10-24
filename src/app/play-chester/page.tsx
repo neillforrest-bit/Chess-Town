@@ -952,7 +952,32 @@ function PlayChesterGame() {
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
-      {!endBanner && <div className={`chester-teleprompter chester-teleprompter--tappable${whyCard && !isThinking && !calculating ? ` chester-hud chester-hud--${whyCard.grade.toLowerCase()}` : ' chester-hud chester-hud--idle'}`} key={whyCard ? `hud-${whyCard.ply}-${whyCard.grade}` : 'hud-idle'} role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; if (whyCard) setWhyModal(whyCard); else setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
+      {whyCard && teachOpen && !endBanner && !isFriendMode && (() => {
+        // Readable staged teaching (his #4): full text at reading size, no autoscroll, no hidden
+        // scroll. Long feedback paginates with NEXT; GOT IT returns to the compact strip.
+        const long = (whyCard.whatHappenedLine.length + whyCard.engineBlueprintLine.length) > 220;
+        const full = [whyCard.whatHappenedLine, whyCard.engineBlueprintLine].filter(Boolean).join(' ');
+        const sentences = full.match(/[^.]+\.s*|[^.]+$/g) || [full];
+        const pages: string[] = [];
+        let curPg = '';
+        for (const snt of sentences) { if (curPg && (curPg + snt).length > 150) { pages.push(curPg.trim()); curPg = snt; } else curPg += snt; }
+        if (curPg.trim()) pages.push(curPg.trim());
+        const pg = Math.min(teachPage, pages.length - 1);
+        const last = pg === pages.length - 1;
+        return <div className={`chester-teach chester-teach--${whyCard.grade.toLowerCase()}`} role="dialog" aria-label="Chester explains your move">
+          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span></div>
+          <b className="chester-teach__headline">{whyCard.headlineBadge}</b>
+          <p className="chester-teach__line">{pages[pg]}</p>
+          {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
+          <div className="chester-teach__actions">
+            {whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
+            {!last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => setTeachPage(pg + 1)}>NEXT ▸</button>}
+            {last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => setTeachOpen(false)}>GOT IT ▸</button>}
+          </div>
+        </div>;
+      })()}
+
+      {!endBanner && !(teachOpen && whyCard) && <div className={`chester-teleprompter chester-teleprompter--tappable${whyCard && !isThinking && !calculating ? ` chester-hud chester-hud--${whyCard.grade.toLowerCase()}` : ' chester-hud chester-hud--idle'}`} key={whyCard ? `hud-${whyCard.ply}-${whyCard.grade}` : 'hud-idle'} role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; if (whyCard) setWhyModal(whyCard); else setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
         <div className="chester-teleprompter__head">
           <i className="chester-teleprompter__beacon" aria-hidden="true" />
           <span>CHESTER SAYS</span><span className="chester-teleprompter__expand" aria-hidden="true">⤢ TAP TO READ</span>
@@ -990,30 +1015,7 @@ function PlayChesterGame() {
         </div>}
       </div>}
 
-      {whyCard && teachOpen && !endBanner && !isFriendMode && (() => {
-        // Readable staged teaching (his #4): full text at reading size, no autoscroll, no hidden
-        // scroll. Long feedback paginates with NEXT; GOT IT returns to the compact strip.
-        const long = (whyCard.whatHappenedLine.length + whyCard.engineBlueprintLine.length) > 220;
-        const full = [whyCard.whatHappenedLine, whyCard.engineBlueprintLine].filter(Boolean).join(' ');
-        const sentences = full.match(/[^.]+\.s*|[^.]+$/g) || [full];
-        const pages: string[] = [];
-        let curPg = '';
-        for (const snt of sentences) { if (curPg && (curPg + snt).length > 150) { pages.push(curPg.trim()); curPg = snt; } else curPg += snt; }
-        if (curPg.trim()) pages.push(curPg.trim());
-        const pg = Math.min(teachPage, pages.length - 1);
-        const last = pg === pages.length - 1;
-        return <div className={`chester-teach chester-teach--${whyCard.grade.toLowerCase()}`} role="dialog" aria-label="Chester explains your move">
-          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span></div>
-          <b className="chester-teach__headline">{whyCard.headlineBadge}</b>
-          <p className="chester-teach__line">{pages[pg]}</p>
-          {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
-          <div className="chester-teach__actions">
-            {whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
-            {!last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => setTeachPage(pg + 1)}>NEXT ▸</button>}
-            {last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => setTeachOpen(false)}>GOT IT ▸</button>}
-          </div>
-        </div>;
-      })()}
+
       <div className="chester-bottom">
       <div className="chester-stack">
       <div className={`chester-console ${freeze ? 'chester-console--hidden' : ''}`} style={verdictStyle}>

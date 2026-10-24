@@ -3433,7 +3433,7 @@ a.battle-btn{text-decoration:none}
 
 /* ── BATCH 181b · parent review fixes: board never covered, explicit continue, no clipping ── */
 .chester-teleprompter { position: relative !important; }
-.chester-teach { position: absolute !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; max-height: 46dvh !important; border-radius: 12px; padding: .4rem .55rem .35rem; gap: .3rem; }
+.chester-teach { position: absolute !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; max-height: 28dvh !important; overflow-y: auto !important; border-radius: 12px; padding: .4rem .55rem .35rem; gap: .3rem; }
 .chester-teach__line { font-size: .86rem !important; line-height: 1.35 !important; }
 .chester-teach__headline { font-size: .8rem !important; }
 .chester-endbanner { top: auto !important; bottom: calc(6px + env(safe-area-inset-bottom)) !important; left: 10px !important; right: 10px !important; flex-direction: column !important; justify-content: center; align-items: center; gap: .1rem; padding: .5rem .7rem !important; border-radius: 14px; }
