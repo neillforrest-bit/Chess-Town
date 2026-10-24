@@ -243,6 +243,7 @@ function PlayChesterGame() {
   // Batch 177 (stage 2 RPG): Mario-style board power-ups on normal road levels; none spawn on bosses (exam mode stays bare).
   const [powerups, setPowerups] = useState<{ sq: string; kind: 'torch' | 'shield' }[]>([]);
   const [loot, setLoot] = useState<{ torch: number; shield: number }>({ torch: 0, shield: 0 });
+  const powerupsRef = useRef<{ sq: string; kind: 'torch' | 'shield' }[]>([]);
   const helpLeftRef = useRef(helpRemaining);
   useEffect(() => { helpLeftRef.current = helpRemaining; }, [helpRemaining]);
   const [bossCards, setBossCards] = useState(0);
@@ -461,22 +462,22 @@ function PlayChesterGame() {
     if (roadActive && !isBossFight && !isFriendMode) {
       const squares = ['d4', 'e4', 'c4', 'f4', 'd5', 'e5', 'c5', 'f5', 'c3', 'f3', 'c6', 'f6'];
       const pick = () => squares.splice(Math.floor(Math.random() * squares.length), 1)[0];
-      setPowerups([{ sq: pick(), kind: 'torch' }, { sq: pick(), kind: 'shield' }]);
-    } else setPowerups([]);
+      powerupsRef.current = [{ sq: pick(), kind: 'torch' }, { sq: pick(), kind: 'shield' }];
+      setPowerups(powerupsRef.current);
+    } else { powerupsRef.current = []; setPowerups([]); }
   };
   useEffect(() => { setLoot({ torch: 0, shield: 0 }); placePowerups(); }, [started, roadLevel, roadActive, isBossFight, isFriendMode]);
   useEffect(() => {
     const collect = (e: Event) => {
       const to = (e as CustomEvent<{ to?: string }>).detail?.to;
       if (!to) return;
-      setPowerups((cur) => {
-        const hit = cur.find((p) => p.sq === to);
-        if (!hit) return cur;
-        setLoot((l) => ({ ...l, [hit.kind]: l[hit.kind] + 1 }));
-        playSfx('win');
-        setBanter(hit.kind === 'torch' ? '⭐ POWER-UP: TORCH collected. Cash it in for the full engine answer, free.' : '⭐ POWER-UP: SHIELD collected. Cash it in for a free take-back, no questions asked.');
-        return cur.filter((p) => p.sq !== to);
-      });
+      const hit = powerupsRef.current.find((p) => p.sq === to);
+      if (!hit) return;
+      powerupsRef.current = powerupsRef.current.filter((p) => p.sq !== to);
+      setPowerups(powerupsRef.current);
+      setLoot((l) => ({ ...l, [hit.kind]: l[hit.kind] + 1 }));
+      playSfx('win');
+      setBanter(hit.kind === 'torch' ? '⭐ POWER-UP: TORCH collected. Cash it in for the full engine answer, free.' : '⭐ POWER-UP: SHIELD collected. Cash it in for a free take-back, no questions asked.');
     };
     const reload = () => { setLoot({ torch: 0, shield: 0 }); placePowerups(); };
     window.addEventListener('chester-move-squares', collect);
@@ -1110,7 +1111,7 @@ function PowerupOverlay({ items }: { items: { sq: string; kind: 'torch' | 'shiel
   const ctr = (sq: string) => { const c = sq.charCodeAt(0) - 97; const r = 8 - Number(sq[1]); return [30 + c * 92 + 46, 30 + r * 92 + 46] as const; };
   if (!items.length) return null;
   return <svg className="chester-arrows chester-powerups" viewBox="0 0 796 796" aria-hidden="true">
-    {items.map((p) => { const [x, y] = ctr(p.sq); return <g key={p.sq} className="chester-powerup"><circle className="chester-powerup__ring" cx={x} cy={y} r={40} /><text className="chester-powerup__glyph" x={x} y={y + 16} textAnchor="middle" fontSize={48}>{p.kind === 'torch' ? '🔦' : '🛡️'}</text></g>; })}
+    {items.map((p) => { const [x, y] = ctr(p.sq); return <g key={p.sq} data-square={p.sq} className="chester-powerup"><circle className="chester-powerup__ring" cx={x} cy={y} r={40} /><text className="chester-powerup__glyph" x={x} y={y + 16} textAnchor="middle" fontSize={48}>{p.kind === 'torch' ? '🔦' : '🛡️'}</text></g>; })}
   </svg>;
 }
 
