@@ -2,12 +2,12 @@
 // BATTLE MODE: Walkout Tunnel lobby (Supabase Realtime Presence), board only when two fighters are
 // seated, moves + clocks + results synced over a Realtime broadcast channel. Each phone also keeps a
 // local copy so a reload (or a closed opponent tab) does not lose the game.
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import MatchCountdown from '@/components/MatchCountdown';
-import { ChesterAvatar } from '@/components/ChesterUI';
+import { ChesterAvatar, ChesterChatOverlay } from '@/components/ChesterUI';
 import { LiveAccuracy } from '@/components/CapturedPieceJails';
 import { direct } from '@/lib/chester-director';
 import { buzz, playSfx } from '@/lib/sounds';
@@ -25,7 +25,7 @@ type Synced = {
   playerOneHintUsed: boolean; playerTwoHintUsed: boolean;
 };
 const FRESH: Synced = { pgn: '', playerOneTime: START_MS, playerTwoTime: START_MS, playerOneTimeoutUsed: false, playerTwoTimeoutUsed: false, rev: 0, result: null, drawBy: null, rematchBy: null, pausedBy: null, flipped: false, takebackBy: null, playerOneTakebackUsed: false, playerTwoTakebackUsed: false, ghost: null, playerOneGhostUsed: false, playerTwoGhostUsed: false, playerOneHintUsed: false, playerTwoHintUsed: false };
-type Peer = { id: string; at: number; seat: 0 | 1 | null; fid?: string };
+type Peer = { id: string; at: number; seat: 0 | 1 | null; fid?: string; name?: string };
 // BUILD 150 fun pass: Chester calls the fight like a corner-man with a microphone.
 const OPENERS = [
   'Two walk in. One walks out smug. Touch gloves.',
@@ -70,6 +70,9 @@ export default function BattlePage() {
   const [state, setState] = useState<Synced>(FRESH);
   const [now, setNow] = useState(Date.now());
   const [copied, setCopied] = useState(false);
+  const [myName, setMyName] = useState('');
+  const [nameDraft, setNameDraft] = useState('');
+  const nameRef = useRef('');
   const [err, setErr] = useState('');
   const [ready, setReady] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -120,6 +123,7 @@ export default function BattlePage() {
       // Stable per-device fighter id for the rivalry dossier (BUILD 157). Device-local - no schema change.
       fid.current = localStorage.getItem('ct-fighter-id') || uid(); localStorage.setItem('ct-fighter-id', fid.current);
       setZen(localStorage.getItem('ct-zen') === '1'); setMotion(localStorage.getItem('ct-motion') !== '0');
+      const nm = localStorage.getItem('ct-fighter-name') || ''; nameRef.current = nm; setMyName(nm); setNameDraft(nm);
       const saved = localStorage.getItem(key + ':state'); if (saved) { const s = JSON.parse(saved) as Synced; stateRef.current = s; setState({ ...FRESH, ...s }); stamp.current = Date.now(); }
       const sv = sessionStorage.getItem(key + ':seat'); if (sv === '0' || sv === '1') trackedSeat.current = Number(sv);
     } catch { me.current = me.current || uid(); }
@@ -132,8 +136,8 @@ export default function BattlePage() {
     const ch = sb.channel(`battle:${matchId}`, { config: { presence: { key: me.current }, broadcast: { self: false } } });
     chanRef.current = ch;
     ch.on('presence', { event: 'sync' }, () => {
-      const st = ch.presenceState() as Record<string, { at: number; seat: 0 | 1 | null; fid?: string }[]>;
-      setPeers(Object.entries(st).map(([id, v]) => ({ id, at: v[0]?.at ?? 0, seat: v[0]?.seat ?? null, fid: v[0]?.fid })).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id)));
+      const st = ch.presenceState() as Record<string, { at: number; seat: 0 | 1 | null; fid?: string; name?: string }[]>;
+      setPeers(Object.entries(st).map(([id, v]) => ({ id, at: v[0]?.at ?? 0, seat: v[0]?.seat ?? null, fid: v[0]?.fid, name: v[0]?.name })).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id)));
     });
     ch.on('broadcast', { event: 'state' }, ({ payload }) => apply(payload as Synced, true));
     ch.on('broadcast', { event: 'pause_game' }, ({ payload }) => apply(payload as Synced, true));
@@ -146,7 +150,7 @@ export default function BattlePage() {
     });
     ch.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await ch.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current });
+        await ch.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: nameRef.current });
         void ch.send({ type: 'broadcast', event: 'hello', payload: {} });
         if (stateRef.current.rev > 0) void ch.send({ type: 'broadcast', event: 'state', payload: stateRef.current });
       }
@@ -163,7 +167,7 @@ export default function BattlePage() {
     if (seat === null || trackedSeat.current === seat) return;
     trackedSeat.current = seat;
     try { sessionStorage.setItem(key + ':seat', String(seat)); } catch { /* ignore */ }
-    void chanRef.current?.track({ at: joinedAt.current, seat, fid: fid.current });
+    void chanRef.current?.track({ at: joinedAt.current, seat, fid: fid.current, name: nameRef.current });
   }, [seat, key]);
 
   const seated = peers.filter((p) => seats[p.id] !== null && seats[p.id] !== undefined).length;
@@ -213,6 +217,8 @@ export default function BattlePage() {
   useEffect(() => { if (!banter || banter.key === 'verdict') return; const t = setTimeout(() => setBanter(null), 4500); return () => clearTimeout(t); }, [banter]);
   useEffect(() => { if (!edu) return; const t = setTimeout(() => setEdu(null), 6000); return () => clearTimeout(t); }, [edu]);
   const turn = chess.turn();
+  // Material tally (classic 1/3/3/5/9): positive = WHITE ahead, negative = BLACK ahead.
+  const material = useMemo(() => { const V: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 }; let w = 0, b = 0; for (const row of chess.board()) for (const sqp of row) if (sqp && sqp.type !== 'k') { if (sqp.color === 'w') w += V[sqp.type] || 0; else b += V[sqp.type] || 0; } return w - b; }, [chess]);
   const over = chess.isGameOver() || state.result !== null;
   const paused = state.pausedBy !== null;
   const running = connected && state.pgn !== '' && !over && !paused;
@@ -416,6 +422,7 @@ export default function BattlePage() {
 
   // Rivalry dossier: the opponent's stable fighter id arrives over presence.
   const oppFid = peers.find((p) => p.id !== me.current && p.fid)?.fid;
+  const oppName = peers.find((p) => p.id !== me.current && p.name)?.name || '';
   const oppFidRef = useRef<string | undefined>(undefined);
   oppFidRef.current = oppFid;
   useEffect(() => {
@@ -476,6 +483,35 @@ export default function BattlePage() {
     const m = cornerInput.trim(); if (!m || cornerBusy) return;
     const h: Msg[] = [...corner, { role: 'user', text: m }]; setCorner(h); setCornerInput(''); void askCorner(m, h);
   };
+
+  // ARENA CHAT TO CHESTER (always available, grounded in the live position):
+  // same /api/chester/chat route as the corner-man, but with the 'chat' contract,
+  // the current FEN, the engine's preferred idea and the live evaluation.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMsgs, setChatMsgs] = useState<Msg[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatErr, setChatErr] = useState('');
+  const askChat = useCallback(async (message: string, history: Msg[]) => {
+    setChatBusy(true); setChatErr('');
+    // Grounded offline fallback: when the AI route is down (e.g. provider credits), still
+    // answer from the match's own engine read - clearly labelled, never a canned non-answer.
+    const offline = () => {
+      const best = bestRef.current;
+      const pv = pawnsRef.current;
+      if (!best) return 'Chester is watching the board - ask me again in a breath.';
+      const tilt = pv === null ? '' : pv >= 2 ? ' White is well on top.' : pv >= 0.75 ? ' White has the pull.' : pv <= -2 ? ' Black is well on top.' : pv <= -0.75 ? ' Black has the pull.' : ' The game is balanced.';
+      return `My full brain is off the board right now, but the engine's read on THIS position: ${best} is the move it would play.${tilt} Ask me again when the arena lights are fully back on.`;
+    };
+    try {
+      const r = await fetch('/api/chester/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', message, fen: loadChess(stateRef.current.pgn).fen(), principalVariation: bestRef.current ? [bestRef.current] : [], evaluationAfter: pawnsRef.current === null ? null : Math.round(pawnsRef.current * 100), conversationHistory: history.slice(-6) }) });
+      const j = await r.json() as { reply?: string };
+      setChatMsgs([...history, { role: 'chester', text: j.reply || offline() }]);
+    } catch { setChatMsgs([...history, { role: 'chester', text: offline() }]); }
+    setChatBusy(false);
+  }, []);
+  const sendChat = (e: FormEvent) => { e.preventDefault(); const m = chatInput.trim(); if (!m || chatBusy) return; const h: Msg[] = [...chatMsgs, { role: 'user', text: m }]; setChatMsgs(h); setChatInput(''); void askChat(m, h); };
+  const askWhatNext = () => { if (chatBusy) return; const q = 'What should I do next in this position?'; const h: Msg[] = [...chatMsgs, { role: 'user', text: q }]; setChatMsgs(h); setChatOpen(true); void askChat(q, h); };
 
   const onMove = useCallback((from: string, to: string, promotion?: string) => {
     const s = stateRef.current;
@@ -577,6 +613,13 @@ export default function BattlePage() {
     <p className="battle-sub">{peers.length < 1 ? 'Connecting...' : 'Waiting for your opponent to walk out...'}</p>
     <div className="battle-dots"><i /><i /><i /></div>
     <button type="button" className="battle-btn" onClick={() => void copy()}>{copied ? 'COPIED - SEND IT TO YOUR OPPONENT' : 'COPY INVITE LINK'}</button>
+    <form className="battle-nameform" onSubmit={(e) => { e.preventDefault(); const v = nameDraft.trim().slice(0, 18).toUpperCase(); if (!v) return; setMyName(v); nameRef.current = v; try { localStorage.setItem('ct-fighter-name', v); } catch { /* private mode */ } void chanRef.current?.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: v }); }}>
+      <label htmlFor="battle-name">YOUR FIGHTER NAME</label>
+      <div className="battle-nameform__row">
+        <input id="battle-name" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} placeholder="e.g. LIEUTENANT DAN" maxLength={18} autoComplete="off" />
+        <button type="submit" className="battle-btn battle-btn--sm">{myName ? 'SAVED' : 'SAVE'}</button>
+      </div>
+    </form>
     {dossierStrip}
     <p className="battle-hint">The board appears the moment two fighters are in the tunnel.</p>
   </main>;
@@ -599,14 +642,14 @@ export default function BattlePage() {
     </div>}
     {swing && <div key={swing.n} className={`battle-banner ${swing.good ? 'battle-banner--roar' : 'battle-banner--silent'}`}>{swing.text}</div>}
     {countdown > 0 && <MatchCountdown key={countdown} fast={countdownFast} />}
-    <div className={`battle-clock${running && theirs <= 30000 && theirs > 0 ? ' battle-clock--clutch' : ''}`} data-active={running && turn !== myColor}><span>OPPONENT{opponentHere ? '' : ' (AWAY)'}</span><b>{running && theirs <= 30000 && theirs > 0 ? fmtT(theirs) : fmt(theirs)}</b></div>
+    <div className={`battle-clock${running && theirs <= 30000 && theirs > 0 ? ' battle-clock--clutch' : ''}`} data-active={running && turn !== myColor}><span>{oppName || 'OPPONENT'}{opponentHere ? '' : ' (AWAY)'}</span><b>{running && theirs <= 30000 && theirs > 0 ? fmtT(theirs) : fmt(theirs)}</b></div>
     {!zen && <div className="fighthud battle-fighthud">
       <div className="fighthud__names">
-        <div className={`fighthud__name fighthud__name--you ${turn === 'w' ? 'is-turn' : ''}`}><span>WHITE</span></div>
+        <div className={`fighthud__name fighthud__name--you ${turn === 'w' ? 'is-turn' : ''}`}><span>WHITE</span>{material > 0 ? <b className="fighthud__mat">+{material}</b> : null}</div>
         {!over && connected && seat !== null && <div className="battle-chits" aria-label="Quick-fire banter">
           {CHITS.map((c) => <button key={c.id} type="button" className="battle-chit" aria-label={c.text} title={c.text} disabled={now < chitCool.current} onClick={() => sendChit(c)}>{c.id === 'bogen' ? '🤔' : c.id === 'ticktock' ? '⏳' : '🛡'}</button>)}
         </div>}
-        <div className={`fighthud__name fighthud__name--opp ${turn === 'b' ? 'is-turn' : ''}`}><span>BLACK</span></div>
+        <div className={`fighthud__name fighthud__name--opp ${turn === 'b' ? 'is-turn' : ''}`}><span>BLACK</span>{material < 0 ? <b className="fighthud__mat">+{-material}</b> : null}</div>
       </div>
       <div className={`fighthud__bar${swing ? ' fighthud__bar--surge' : ''}`} role="img" aria-label={`Tug of war: white ${odds} percent, black ${100 - odds} percent`}>
         <i className="fighthud__you" style={{ width: `${odds}%` }} />
@@ -637,7 +680,7 @@ export default function BattlePage() {
       </div>}
     </div>
     {!zen && <LiveAccuracy rows={([['w', 'WHITE', accuracy.w], ['b', 'BLACK', accuracy.b]] as const).map(([c, label, a]) => ({ label, side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }))} />}
-    <div className={`battle-clock${running && mine <= 30000 && mine > 0 ? ' battle-clock--clutch' : ''}`} data-active={running && turn === myColor}><span>FORREST 🌲</span><b>{running && mine <= 30000 && mine > 0 ? fmtT(mine) : fmt(mine)}</b></div>
+    <div className={`battle-clock${running && mine <= 30000 && mine > 0 ? ' battle-clock--clutch' : ''}`} data-active={running && turn === myColor}><span>{myName || (seat === 1 ? 'FIGHTER TWO' : 'FIGHTER ONE')}</span><b>{running && mine <= 30000 && mine > 0 ? fmtT(mine) : fmt(mine)}</b></div>
     {over ? <>
       <p className="battle-sub battle-outcome">{outcome}</p>
       {dossierStrip}
@@ -661,9 +704,15 @@ export default function BattlePage() {
             <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-takeback" onClick={askTakeback} disabled={myTakebackUsed || !state.pgn || turn === myColor || state.takebackBy !== null}>{state.takebackBy === seat ? '⏪ ASKED' : myTakebackUsed ? '⏪ SPENT' : '⏪ BACK'}</button>
             <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-ghost" onClick={playGhost} disabled={myGhostUsed || !myTurn || !!ghostLive}>{myGhostUsed ? '👻 SPENT' : ghostLive ? '👻 ON' : '👻 GHOST'}</button>
             <button type="button" className="battle-btn battle-btn--wild battle-btn--wild-hint" onClick={askHint} disabled={myHintUsed || !myTurn}>{myHintUsed ? '💡 SPENT' : '💡 HINT'}</button>
+            <button type="button" className="battle-btn battle-btn--wild battle-btn--chat" onClick={() => setChatOpen(true)}>💬 CHAT</button>
           </div>
         </div>
       </>}
+    </div>}
+    {chatOpen && <div className="battle-chatdrawer chester-drawer is-open" role="dialog" aria-label="Chat to Chester">
+      <header><b>CHESTER - ARENA CHAT</b><button type="button" onClick={() => setChatOpen(false)} aria-label="Close Chester chat">×</button></header>
+      <button type="button" className="battle-btn battle-btn--sm battle-btn--next" onClick={askWhatNext} disabled={chatBusy}>🤔 WHAT SHOULD I DO NEXT?</button>
+      <ChesterChatOverlay chatMessages={chatMsgs} chatInput={chatInput} setChatInput={setChatInput} onSendMessage={sendChat} isThinking={chatBusy} chatError={chatErr} defaultExpanded />
     </div>}
     {paused && !iCalled && <div className="battle-overlay" role="alert"><h2>OPPONENT CALLED TIMEOUT</h2><p>Clocks are stopped. Hold your ground - the fight resumes when they are ready.</p></div>}
     {iCalled && <div className="battle-overlay battle-overlay--corner" role="dialog" aria-label="Chester in your corner">

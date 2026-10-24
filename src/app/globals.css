@@ -3450,3 +3450,15 @@ a.battle-btn{text-decoration:none}
 .chester-report-card__math ul { margin: .35rem 0 0; padding: 0; list-style: none; max-height: 130px; overflow-y: auto; }
 .chester-report-card__math li { display: flex; justify-content: space-between; gap: .5rem; padding: .12rem 0; border-top: 1px solid rgba(255,255,255,.08); color: #efdce4; font-size: .72rem; }
 .chester-report-card__math li em { color: #f2a9c7; font-style: normal; font-weight: 900; margin-left: .3rem; }
+
+/* Batch 182 arena feedback: top clearance under the fixed global nav, fighter-name form, material tally, arena chat drawer */
+.battle-shell{padding-top:calc(74px + env(safe-area-inset-top))}
+.battle-nameform{display:grid;gap:.35rem;width:min(100%,320px);margin:0 auto}
+.battle-nameform label{color:#9db2b7;font-size:.62rem;font-weight:900;letter-spacing:1.5px}
+.battle-nameform__row{display:flex;gap:.5rem}
+.battle-nameform__row input{flex:1;min-height:2.6rem;border:1px solid rgba(34,211,238,.5);border-radius:4px;padding:.5rem .6rem;color:#eaffff;background:#050708;font:700 16px Georgia,serif;box-sizing:border-box}
+.fighthud__mat{margin-left:.4rem;padding:.1rem .35rem;border:1px solid rgba(255,216,77,.6);border-radius:3px;color:#ffd84d;font:900 .62rem/1 Georgia,serif}
+.battle-btn--chat{border-color:var(--arena-pink) !important;color:#ffe8f2 !important;background:rgba(244,63,122,.14) !important}
+.battle-chatdrawer{left:1rem;right:1rem;width:auto;z-index:1150}
+.battle-chatdrawer .battle-btn--next{width:100%;flex:0 0 auto}
+.battle-btn--next{border-color:var(--arena-cyan);color:var(--arena-cyan);background:rgba(34,211,238,.1)}
