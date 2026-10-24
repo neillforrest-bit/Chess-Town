@@ -19,7 +19,7 @@ import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/s
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
-import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt } from '@/lib/road';
+import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt, BOSS_FOCUS } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { getStockfishClient } from '@/lib/stockfish';
@@ -240,6 +240,9 @@ function PlayChesterGame() {
   const qaMatchId = useRef(`qa-${Math.random().toString(36).slice(2, 10)}`);
   const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
   const [helpRemaining, setHelpRemaining] = useState(3);
+  // Batch 177 (stage 2 RPG): Mario-style board power-ups on normal road levels; none spawn on bosses (exam mode stays bare).
+  const [powerups, setPowerups] = useState<{ sq: string; kind: 'torch' | 'shield' }[]>([]);
+  const [loot, setLoot] = useState<{ torch: number; shield: number }>({ torch: 0, shield: 0 });
   const helpLeftRef = useRef(helpRemaining);
   useEffect(() => { helpLeftRef.current = helpRemaining; }, [helpRemaining]);
   const [bossCards, setBossCards] = useState(0);
@@ -454,6 +457,33 @@ function PlayChesterGame() {
   const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : mode === 'PVP_REMOTE' ? 'LIVE DUEL' : 'PLAYING CHESTER';
   const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : mode === 'PVP_REMOTE' ? (requestedSeat === 'w' ? 'YOU ARE WHITE' : 'YOU ARE BLACK') : selectedLevel.label;
   const isFriendMode = mode === 'PVP_LOCAL' || mode === '2V2' || mode === 'PVP_REMOTE';
+  const placePowerups = () => {
+    if (roadActive && !isBossFight && !isFriendMode) {
+      const squares = ['d4', 'e4', 'c4', 'f4', 'd5', 'e5', 'c5', 'f5', 'c3', 'f3', 'c6', 'f6'];
+      const pick = () => squares.splice(Math.floor(Math.random() * squares.length), 1)[0];
+      setPowerups([{ sq: pick(), kind: 'torch' }, { sq: pick(), kind: 'shield' }]);
+    } else setPowerups([]);
+  };
+  useEffect(() => { setLoot({ torch: 0, shield: 0 }); placePowerups(); }, [started, roadLevel, roadActive, isBossFight, isFriendMode]);
+  useEffect(() => {
+    const collect = (e: Event) => {
+      const to = (e as CustomEvent<{ to?: string }>).detail?.to;
+      if (!to) return;
+      setPowerups((cur) => {
+        const hit = cur.find((p) => p.sq === to);
+        if (!hit) return cur;
+        setLoot((l) => ({ ...l, [hit.kind]: l[hit.kind] + 1 }));
+        playSfx('win');
+        setBanter(hit.kind === 'torch' ? '⭐ POWER-UP: TORCH collected. Cash it in for the full engine answer, free.' : '⭐ POWER-UP: SHIELD collected. Cash it in for a free take-back, no questions asked.');
+        return cur.filter((p) => p.sq !== to);
+      });
+    };
+    const reload = () => { setLoot({ torch: 0, shield: 0 }); placePowerups(); };
+    window.addEventListener('chester-move-squares', collect);
+    window.addEventListener('load-puzzle', reload);
+    return () => { window.removeEventListener('chester-move-squares', collect); window.removeEventListener('load-puzzle', reload); };
+  }, [roadActive, isBossFight, isFriendMode, roadLevel, started]);
+
 
   useEffect(() => { if (started) setCountdown((n) => n + 1); }, [started]);
 
@@ -736,6 +766,8 @@ function PlayChesterGame() {
   </div> : null;
   const flagBanner = flagResult ? <div className={`duel-flag-banner ${flagResult === 'won' ? 'is-won' : 'is-lost'}`} role="status">{flagResult === 'won' ? '⚡ FLAG FALL - rival ran out of time. You win on the clock!' : '⏱ FLAG FALL - your clock hit zero. Rival wins on time.'}</div> : null;
 
+  const spendTorch = () => { if (!loot.torch) return; setLoot((l) => ({ ...l, torch: l.torch - 1 })); dismissHeroTip(); setHintStage(3); setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); };
+  const spendShield = () => { if (!loot.shield) return; setLoot((l) => ({ ...l, shield: l.shield - 1 })); rewindAndRetry(); };
   const help = () => { if (isThinking) return; if (bossRef.current.on) { if (!bossCardsRef.current) return; bossCardsRef.current -= 1; setBossCards(bossCardsRef.current); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
@@ -744,9 +776,15 @@ function PlayChesterGame() {
       {!isFriendMode && ladder.lastLevel && <p className="chester-remembers">🧠 CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
       {introOpen && !started && (
         <div className="road-intro" role="dialog" aria-modal="true" aria-label="Chester">
-          <div className="road-intro__card">
+          <div className={boss ? 'road-intro__card road-intro__card--boss' : 'road-intro__card'}>
+            {boss && <div className="road-intro__boss" aria-label={`Boss fight: ${boss.name}`}>
+              <div className="road-intro__boss-emoji" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</div>
+              <p className="road-intro__boss-name">BOSS FIGHT: {boss.name}</p>
+              <p className="road-intro__boss-arch">{boss.archetype} · about {eloForLevel(roadLevel)} Elo · exam mode, 2 wild cards</p>
+              <p className="road-intro__boss-focus">{BOSS_FOCUS[roadLevel]?.focus}</p>
+            </div>}
             <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>
-            <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>
+            {boss ? <p>This one actually plays. No power-ups on this board - just you, your two wild cards, and whatever you have learned. Do not waste my time.</p> : <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>}
             <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
           </div>
         </div>
@@ -861,6 +899,7 @@ function PlayChesterGame() {
           <a href="/boss-rush" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', margin: '8px auto 0', boxSizing: 'border-box', width: 'min(100%, 260px)' }}>TRY THE RUSH AGAIN</a>
         </div>}
         {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
+        {powerups.length > 0 && <PowerupOverlay items={powerups} />}
         <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
         {inCheckSide && !mateNow && <div className="chester-check-banner" role="status">⚠️ CHECK!</div>}
         {mateNow && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔️ CHECKMATE - YOU WIN!' : '🛡️ CHECKMATE - CHESTER WINS!'}</div>}
@@ -922,6 +961,8 @@ function PlayChesterGame() {
         </div>
         <div className="chester-console__lifelines">
           <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); const next = (hintStage < 3 ? hintStage + 1 : 3) as 1 | 2 | 3; if (next === 3 && hintStage !== 3) { if (isBossFight) { if (!bossCards) return; bossCardsRef.current = bossCards - 1; setBossCards(bossCards - 1); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); } setHintStage(next); }} disabled={hintStage === 2 && (isBossFight ? !bossCards : !helpRemaining)} title={undefined} aria-label={`Hint from Chester, ${isBossFight ? bossCards : helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{isBossFight ? bossCards : helpRemaining} LEFT</small></button>
+          {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} aria-label="Use torch power-up for the full engine answer"><b>🔦 TORCH</b><small>{loot.torch} LEFT</small></button>}
+          {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b>🛡️ SHIELD</b><small>{loot.shield} LEFT</small></button>}
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
           <div className="chester-taunts" role="group" aria-label="Taunt Chester">
             {['😏', '😤', '🤯', '💪'].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
@@ -1062,6 +1103,15 @@ function burstConfetti() {
 function Ico({ n }: { n: 'wave' | 'chat' | 'chart' | 'book' }) {
   const d = { wave: 'M7 11V5a1.5 1.5 0 0 1 3 0v5m0-6a1.5 1.5 0 0 1 3 0v6m0-5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-4a1.5 1.5 0 0 1 2.5-1.5L7 14', chat: 'M4 5h16v11H9l-5 4z', chart: 'M4 20V10m6 10V4m6 16v-7m4 7H2', book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm2 14h13' }[n];
   return <svg className="chester-ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
+}
+
+// Batch 177 (stage 2 RPG): board power-up markers, same square geometry as FreezeSpotlight.
+function PowerupOverlay({ items }: { items: { sq: string; kind: 'torch' | 'shield' }[] }) {
+  const ctr = (sq: string) => { const c = sq.charCodeAt(0) - 97; const r = 8 - Number(sq[1]); return [30 + c * 92 + 46, 30 + r * 92 + 46] as const; };
+  if (!items.length) return null;
+  return <svg className="chester-arrows chester-powerups" viewBox="0 0 796 796" aria-hidden="true">
+    {items.map((p) => { const [x, y] = ctr(p.sq); return <g key={p.sq} className="chester-powerup"><circle className="chester-powerup__ring" cx={x} cy={y} r={40} /><text className="chester-powerup__glyph" x={x} y={y + 16} textAnchor="middle" fontSize={48}>{p.kind === 'torch' ? '🔦' : '🛡️'}</text></g>; })}
+  </svg>;
 }
 
 // BUILD 128: Red Freeze spotlight. Everything on the board is dimmed except the two squares of the best move.

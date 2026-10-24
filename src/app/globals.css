@@ -3344,3 +3344,18 @@ a.battle-btn{text-decoration:none}
   .chester-game .chester-teleprompter .chester-teleprompter__body .chester-why .chester-chat-nudge { font-size: .95rem !important; }
 }
 .chester-chatsheet__quicklabel{font-size:.62rem;letter-spacing:2px;opacity:.55;margin:2px 10px 0;color:#67e8f9}
+
+/* Batch 177 (stage 2 RPG): board power-ups + pre-boss scouting card */
+.chester-powerups { pointer-events: none; }
+.chester-powerup__ring { fill: rgba(250, 204, 21, 0.18); stroke: #facc15; stroke-width: 4; stroke-dasharray: 10 6; animation: ct-powerup-spin 6s linear infinite; }
+.chester-powerup__glyph { animation: ct-powerup-bob 1.6s ease-in-out infinite; }
+@keyframes ct-powerup-spin { to { stroke-dashoffset: -64; } }
+@keyframes ct-powerup-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.chester-console__pill--loot { border-color: #facc15 !important; color: #fde68a !important; }
+.road-intro__card--boss { border-color: #f43f5e !important; box-shadow: 0 0 24px rgba(244, 63, 94, 0.35) !important; }
+.road-intro__boss { text-align: center; margin-bottom: 10px; }
+.road-intro__boss-emoji { font-size: 3rem; line-height: 1.1; animation: ct-boss-pulse 1.8s ease-in-out infinite; }
+.road-intro__boss-name { font-weight: 800; letter-spacing: 0.08em; color: #fda4af; margin: 6px 0 2px; }
+.road-intro__boss-arch { font-size: 0.85rem; opacity: 0.85; margin: 0 0 8px; }
+.road-intro__boss-focus { font-size: 0.9rem; background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.4); border-radius: 10px; padding: 8px 10px; margin: 0; }
+@keyframes ct-boss-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(244,63,94,0.6)); } 50% { transform: scale(1.12); filter: drop-shadow(0 0 14px rgba(244,63,94,0.9)); } }
