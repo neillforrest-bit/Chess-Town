@@ -3462,3 +3462,4 @@ a.battle-btn{text-decoration:none}
 .battle-chatdrawer{left:1rem;right:1rem;width:auto;z-index:1150}
 .battle-chatdrawer .battle-btn--next{width:100%;flex:0 0 auto}
 .battle-btn--next{border-color:var(--arena-cyan);color:var(--arena-cyan);background:rgba(34,211,238,.1)}
+.battle-nameform--menu{margin:.4rem 0;text-align:left}

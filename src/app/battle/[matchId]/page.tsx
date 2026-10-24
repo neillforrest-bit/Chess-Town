@@ -501,7 +501,9 @@ export default function BattlePage() {
       const pv = pawnsRef.current;
       if (!best) return 'Chester is watching the board - ask me again in a breath.';
       const tilt = pv === null ? '' : pv >= 2 ? ' White is well on top.' : pv >= 0.75 ? ' White has the pull.' : pv <= -2 ? ' Black is well on top.' : pv <= -0.75 ? ' Black has the pull.' : ' The game is balanced.';
-      return `My full brain is off the board right now, but the engine's read on THIS position: ${best} is the move it would play.${tilt} Ask me again when the arena lights are fully back on.`;
+      const theirMove = loadChess(stateRef.current.pgn).turn() !== myColorRef.current;
+      const read = theirMove ? `their move right now - the engine likes ${best} for them` : `${best} is the move it would play`;
+      return `My full brain is off the board right now, but the engine's read on THIS position: ${read}.${tilt} Ask me again when the arena lights are fully back on.`;
     };
     try {
       const r = await fetch('/api/chester/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', message, fen: loadChess(stateRef.current.pgn).fen(), principalVariation: bestRef.current ? [bestRef.current] : [], evaluationAfter: pawnsRef.current === null ? null : Math.round(pawnsRef.current * 100), conversationHistory: history.slice(-6) }) });
@@ -637,6 +639,13 @@ export default function BattlePage() {
           <button type="button" role="menuitem" className="battle-menu__danger" onClick={() => { setMenuOpen(false); resign(); }} disabled={!state.pgn}>🏳 RESIGN</button>
           <button type="button" role="menuitem" onClick={() => { const v = !zen; setZen(v); try { localStorage.setItem('ct-zen', v ? '1' : '0'); } catch { /* private mode */ } }}>{zen ? '🧘 ZEN MODE: ON' : '🧘 ZEN MODE: OFF'}</button>
           <button type="button" role="menuitem" onClick={() => { const v = !motion; setMotion(v); try { localStorage.setItem('ct-motion', v ? '1' : '0'); } catch { /* private mode */ } }}>{motion ? '🎢 MOTION FX: ON' : '🎢 MOTION FX: OFF'}</button>
+          <form className="battle-nameform battle-nameform--menu" onSubmit={(e) => { e.preventDefault(); const v = nameDraft.trim().slice(0, 18).toUpperCase(); if (!v) return; setMyName(v); nameRef.current = v; try { localStorage.setItem('ct-fighter-name', v); } catch { /* private mode */ } void chanRef.current?.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: v }); }}>
+            <label htmlFor="battle-name-menu">YOUR FIGHTER NAME</label>
+            <div className="battle-nameform__row">
+              <input id="battle-name-menu" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} placeholder={myName || 'FIGHTER NAME'} maxLength={18} autoComplete="off" />
+              <button type="submit" className="battle-btn battle-btn--sm">SAVE</button>
+            </div>
+          </form>
         </div>
       </>}
     </div>}
