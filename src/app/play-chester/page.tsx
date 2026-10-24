@@ -903,6 +903,7 @@ function PlayChesterGame() {
           {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}>⏪ Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
           {freeze?.tone === 'green' && <button type="button" className="chester-pill chester-pill--primary" onClick={releaseFreeze}>Continue ▸</button>}
           {whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
+          {whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}>🔎 Read</button>}
           {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}>💬 Ask why</button>}
         </div>
       </div>
