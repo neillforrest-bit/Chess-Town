@@ -179,7 +179,7 @@ export class StockfishClient {
     });
   }
 
-  async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty }): Promise<EngineTelemetry> {
+  async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty; suspectSacrifice?: boolean }): Promise<EngineTelemetry> {
     void input.difficulty; // grading always runs at analyst strength for verdict integrity
     let before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2, undefined, GRADE_CAP_MS);
     // Loss is computed inside ONE search whenever possible, so two independent searches can
@@ -238,7 +238,7 @@ export class StockfishClient {
     // move (first or second choice), the shallow grade was the horizon, not the truth.
     // Costs one deeper search, only on apparent bad moves; the verdict card shows its
     // thinking state meanwhile.
-    if ((classification === 'MISTAKE' || classification === 'BLUNDER') && before.mate === null) {
+    if ((classification === 'MISTAKE' || classification === 'BLUNDER' || (input.suspectSacrifice && classification === 'INACCURACY')) && before.mate === null) {
       try {
         const deep = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 2, undefined, DEEP_CAP_MS);
         const deepBest = deep.bestMove === input.uci;
@@ -262,6 +262,25 @@ export class StockfishClient {
           afterMate = deepLine.mate;
           afterIsMoverRelative = true; // the deep line is fenBefore-relative
           before = deep; // WWCD and the eval read speak from the deeper, truer search
+        } else if (input.suspectSacrifice && deep.bestMove && deep.bestMove !== input.uci) {
+          // Sound-sacrifice arbitration (his playtest: a real sac should not tank win%/accuracy
+          // just for giving up material): the move is not the engine's top-2, so it can never be
+          // BRILLIANT - but the DEEP before/after searches, not the shallow horizon read, decide
+          // how much it actually cost. Deep loss small -> the grade softens to match the truth;
+          // deep loss still big -> the punishment stands, intent alone earns nothing.
+          const deepAfter = await this.analyze(input.fenAfter, ANALYST_PRESET, 18, false, 1, undefined, DEEP_CAP_MS);
+          if (deep.score !== null && deepAfter.score !== null) {
+            const deepDelta = Math.max(0, deep.score + deepAfter.score);
+            if (loss === null || deepDelta < loss) {
+              classification = classify(deepDelta, false, null, false);
+              loss = deepDelta;
+              continuation = deepAfter.pv;
+              afterScore = deepAfter.score;
+              afterMate = deepAfter.mate;
+              afterIsMoverRelative = false; // fresh fenAfter search, opponent-relative
+              before = deep;
+            }
+          }
         }
       } catch { /* the sac check is best-effort - the shallow grade stands */ }
     }

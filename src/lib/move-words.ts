@@ -319,5 +319,5 @@ export function plainSuggestion(fenBefore: string, m: string): string | null {
   if (flags.includes('q') && mv.piece === 'k') return `castle queenside to ${why}`;
   const mine = roleOf(fenBefore, mv.from);
   if (mv.captured && !mv.promotion) return `take their ${roleOf(fenBefore, mv.to === mv.from ? mv.from : (mv.flags.includes('e') ? mv.to[0] + mv.from[1] : mv.to))} with your ${mine} ${mine.includes(' on ') ? `(taking on ${mv.to})` : `(${mv.from} takes ${mv.to})`} to ${why}`;
-  return `move your ${mine} to ${mv.to}${mine.includes(' on ') ? '' : ` (from ${mv.from})`} to ${why}`;
+  return `move your ${mine} ${mine.includes(' on ') ? `to ${mv.to}` : `from ${mv.from} to ${mv.to}`} to ${why}`;
 }

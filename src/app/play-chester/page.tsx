@@ -37,7 +37,7 @@ import { ARMORY } from '@/lib/armory';
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
-type CoachPrompt = { evaluationMateAfter?: number | null; kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; principleKey?: string | null; principleFollowed?: boolean | null; exchangeLost?: string | null; exchangeWon?: string | null; exchangeNet?: number | null };
+type CoachPrompt = { evaluationMateAfter?: number | null; kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; pending?: boolean; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; principleKey?: string | null; principleFollowed?: boolean | null; exchangeLost?: string | null; exchangeWon?: string | null; exchangeNet?: number | null };
 // BUILD 94: giant emoji move reviews replace the static horse avatar on graded moves.
 // (The horse stays for the idle/thinking coach persona - Chester IS a knight.)
 const GRADE_EMOJI: Record<string, string> = { BRILLIANT: '👑', BEST: '🎯', GREAT: '🔥', GOOD: '✅', INACCURACY: '😬', MISTAKE: '⚠️', BLUNDER: '💥' };
@@ -137,6 +137,11 @@ function PlayChesterGame() {
   const [commOpen, setCommOpen] = useState(false);
   // BUILD 165 (PRD V2): structured Why Engine card, arrows, hint ladder, check/mate cinematics. All hooks live above the start-screen return.
   const [whyCard, setWhyCard] = useState<WhyCard | null>(null);
+  const [pendingCard, setPendingCard] = useState<{ ply: number; san: string; movePhrase: string | null } | null>(null);
+  const [teachOpen, setTeachOpen] = useState(false);
+  const [teachPage, setTeachPage] = useState(0);
+  const [endBanner, setEndBanner] = useState<{ outcome: 'you' | 'opp' | 'draw'; cause: string } | null>(null);
+  const lastTugRef = useRef<number>(50);
   const [whyModal, setWhyModal] = useState<WhyCard | null>(null);
   const cardsRef = useRef<WhyCard[]>([]);
   const [arrowsOn, setArrowsOn] = useState(false);
@@ -235,7 +240,7 @@ function PlayChesterGame() {
     return () => window.removeEventListener('engine-evaluation', onEval);
   }, [isJosephFight]);
   useEffect(() => { const onCalc = (e: Event) => { const d = (e as CustomEvent).detail; if (d?.on && !calcCycle.current) setWhyFresh(false); calcCycle.current = !!d?.on; setCalculating(!!d?.on); setDeepThought(!!d?.on && !!d?.deep); if (d?.on) { window.clearTimeout(leanT.current); } else { window.clearTimeout(leanT.current); leanT.current = window.setTimeout(() => { setReaction('🧐'); window.clearTimeout(reactT.current); reactT.current = window.setTimeout(() => setReaction(null), 2400); }, 7000); } }; window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
-  useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = freeze ? 0 : el.scrollHeight; });
+  useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = 0; }, [whyCard]); // a fresh card starts at its first line - never auto-jump to the bottom (his 12:47 playtest)
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
   const qaMatchId = useRef(`qa-${Math.random().toString(36).slice(2, 10)}`);
@@ -250,6 +255,7 @@ function PlayChesterGame() {
   const [bossCards, setBossCards] = useState(0);
   const bossCardsRef = useRef(0); // boss wild cards live ONLY in this ref pair - game-start effects reset help state and must not resurrect spent cards
   const [report, setReport] = useState<GameReport | null>(null);
+  const [finalResult, setFinalResult] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   // BUILD 158: Chester's Breakdown - interactive post-mortem pivot scrubber.
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
@@ -278,7 +284,7 @@ function PlayChesterGame() {
     if (rushActive) { window.location.href = '/boss-rush'; return; }
     const next = atTop ? 1 : roadLevel + 1; // beating Joseph restarts the climb at level 1
     setRoadLevel(next); setRoadLevelState(next);
-    setVictoryState('none'); setReport(null); setReportOpen(false); setScrubIdx(null); setMatchOver(false); setCoachPrompt(null); setCoachReply(''); setFreeze(null); setBanter(''); setCapturedPieces([]);
+    setVictoryState('none'); setReport(null); setReportOpen(false); setScrubIdx(null); setMatchOver(false); setCoachPrompt(null); setCoachReply(''); setFreeze(null); setBanter(''); setCapturedPieces([]); setEndBanner(null); setPendingCard(null); setTeachOpen(false); setTeachPage(0); setFinalResult(null);
     (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false;
     window.dispatchEvent(new CustomEvent('chester-clear-better'));
     window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } }));
@@ -497,7 +503,17 @@ function PlayChesterGame() {
     const gameReport = (event: Event) => {
       const detail = (event as CustomEvent<GameReport>).detail;
       if (!isFriendMode) bumpPlayStreak();
-      setReport(detail); setReportOpen(true);
+      setReport(detail); setReportOpen(false);
+      // Unambiguous result moment first (his playtest: endings were sudden and unnamed) -
+      // the banner names the winner AND the cause with the final board visible; the report
+      // card (and any road victory dialog) opens only after it clears.
+      { const gr = (detail as { gameResult?: { outcome: 'white' | 'black' | 'draw'; cause: string } }).gameResult;
+        const oc = gr ? (gr.outcome === 'draw' ? 'draw' : ((gr.outcome === 'white') === (mode === 'PVP_REMOTE' ? requestedSeat === 'w' : true)) ? 'you' : 'opp') : (/1-0\s*$/.test(detail.pgn || '') ? 'you' : /0-1\s*$/.test(detail.pgn || '') ? 'opp' : 'draw');
+        const causeTxt = gr?.cause || (/1-0\s*$/.test(detail.pgn || '') || /0-1\s*$/.test(detail.pgn || '') ? 'checkmate' : 'draw');
+        setTeachOpen(false); setPendingCard(null);
+        setEndBanner({ outcome: oc as 'you' | 'opp' | 'draw', cause: causeTxt });
+        setFinalResult(oc === 'draw' ? `DRAW - ${causeTxt.toUpperCase()}` : oc === 'you' ? (causeTxt === 'resignation' ? 'YOU WIN - CHESTER RESIGNED' : `YOU WIN - ${causeTxt.toUpperCase()}`) : (causeTxt === 'resignation' ? 'CHESTER WINS - YOU RESIGNED' : `CHESTER WINS - ${causeTxt.toUpperCase()}`));
+        window.setTimeout(() => setEndBanner((cur) => { if (cur) setReportOpen(true); return null; }), 3400); }
       if (!isFriendMode) {
         const result = /1-0\s*$/.test(detail.pgn || '') ? 'win' : /0-1\s*$/.test(detail.pgn || '') ? 'loss' : 'draw';
         const myMoves = detail.gradeHistory.filter((entry) => entry.player === 'You');
@@ -522,7 +538,7 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured }); setWhyCard(wc); setWhyFresh(true); cardsRef.current = [...cardsRef.current.slice(-59), wc]; if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '❌' : '✅'} ${j.whatHappenedLine}`, engineBlueprintLine: `🤖 ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on && !(d.ui_action === 'freeze_red' && bossCardsRef.current > 0)) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) { const mv = detail.ply % 2 === 1 ? 'w' : 'b'; const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); bumpAcc(mv, detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : accPointsFromDelta(detail.evalDelta)); } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); } };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { if (detail.pending) { setPendingCard({ ply: detail.ply || 0, san: detail.move || '', movePhrase: detail.movePhrase || null }); setWhyCard(null); setWhyFresh(false); setTeachOpen(false); setTeachPage(0); } else { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured }); setWhyCard(wc); setWhyFresh(true); cardsRef.current = [...cardsRef.current.slice(-59), wc]; if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '❌' : '✅'} ${j.whatHappenedLine}`, engineBlueprintLine: `🤖 ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on && !(d.ui_action === 'freeze_red' && bossCardsRef.current > 0)) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) { const mv = detail.ply % 2 === 1 ? 'w' : 'b'; const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); bumpAcc(mv, detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : accPointsFromDelta(detail.evalDelta)); } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); setPendingCard(null); if (!bossRef.current.on) { setTeachOpen(true); setTeachPage(0); } } } };
     const aiGraded = (event: Event) => { const d = (event as CustomEvent<{ evalDelta: number | null }>).detail; if (d && d.evalDelta != null) { bumpAcc('b', accPointsFromDelta(d.evalDelta)); if (d.evalDelta >= 250) fireReact('😬'); } if (bossRef.current.on) setBossStrike(Date.now()); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
@@ -836,7 +852,9 @@ function PlayChesterGame() {
   const turnSide: 'you' | 'opp' = turnColor === viewerSeat ? 'you' : 'opp';
   // BUILD 94 tug-of-war: same winOddsPct + same evaluationAfter as the ODDS bullet, so
   // the bar and the ODDS line can never disagree. 50/50 until the first graded move.
-  const tugPct = winOddsPct(coachPrompt?.kind === 'move' ? coachPrompt.evaluationAfter : null, viewerSeat, coachPrompt?.kind === 'move' ? coachPrompt.evaluationMateAfter : null) ?? 50;
+  const tugNow = winOddsPct(coachPrompt?.kind === 'move' ? coachPrompt.evaluationAfter : null, viewerSeat, coachPrompt?.kind === 'move' ? coachPrompt.evaluationMateAfter : null);
+  if (tugNow !== null) lastTugRef.current = tugNow; // never snap to 50 while the verdict is pending
+  const tugPct = tugNow ?? lastTugRef.current;
   const gradeEmoji = coachPrompt?.kind === 'move' ? GRADE_EMOJI[(coachPrompt.classification || '').toUpperCase()] || '♟️' : null;
   const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined;
   const moodEmoji = material.lead > 0 ? '🦄' : material.lead < 0 ? '🐴💦' : '🐴';
@@ -886,7 +904,7 @@ function PlayChesterGame() {
           <small style={{ color: bp.line.kind === 'abort' ? '#f59e0b' : bp.opening.color }}>{bp.line.kind === 'abort' ? '⚠ BLUEPRINT ABORTED' : bp.line.kind === 'handoff' ? '★ BLUEPRINT COMPLETE' : `BLUEPRINT · ${bp.opening.name.toUpperCase()} · ${Math.min(bp.line.step + 1, bp.line.total)}/${bp.line.total}`}</small>
           <TypeLine text={bp.line.text} />
         </div>}
-        {victoryState !== 'none' && (() => {
+        {victoryState !== 'none' && !endBanner && !(reportOpen && finalResult) && (() => {
           const finalWin = roadLevel >= ROAD_MAX;
           const bossName = bossFor(roadLevel)?.name || 'THE BOSS';
           const rw = rushActive && rushMsg?.kind === 'win' ? rushMsg : null;
@@ -910,9 +928,14 @@ function PlayChesterGame() {
         {freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
         {powerups.length > 0 && <PowerupOverlay items={powerups} />}
         <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
+        {endBanner && <div className={`chester-endbanner chester-endbanner--${endBanner.outcome}`} role="alertdialog" aria-label="Game over" onClick={() => { setEndBanner(null); setReportOpen(true); }}>
+          <b>{endBanner.outcome === 'draw' ? '🤝 DRAW' : endBanner.outcome === 'you' ? '🏆 YOU WIN' : '💀 CHESTER WINS'}</b>
+          <span>{endBanner.outcome === 'draw' ? `by ${endBanner.cause}` : endBanner.cause === 'resignation' ? 'by resignation' : `by ${endBanner.cause}`}</span>
+          <small>tap to see the full report</small>
+        </div>}
         {inCheckSide && !mateNow && <div className="chester-check-banner" role="status">⚠️ CHECK!</div>}
-        {mateNow && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔️ CHECKMATE - YOU WIN!' : '🛡️ CHECKMATE - CHESTER WINS!'}</div>}
-        {mateStage === 2 && mateNow && <div className="chester-turning" role="dialog" aria-label="Match debrief">
+        {mateNow && !endBanner && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔️ CHECKMATE - YOU WIN!' : '🛡️ CHECKMATE - CHESTER WINS!'}</div>}
+        {mateStage === 2 && mateNow && !endBanner && !(reportOpen && finalResult) && <div className="chester-turning" role="dialog" aria-label="Match debrief">
           <b>{mateNow.you ? '🏆 WELL PLAYED' : 'CRITICAL TURNING POINT'}</b>
           {mateNow.you ? <p>{cardsRef.current.filter((c) => c.grade === 'BRILLIANT' || c.grade === 'STRONG').length} engine-grade moves. Chester wants a rematch.</p>
             : turning ? <p>Move {turning.moveNo}: {turning.san} cost {(turning.cp! / 100).toFixed(1)} pawns. {turning.engineBlueprintLine.replace(/^🤖\s*/, '')}</p> : <p>No single big mistake. It was a slow squeeze: take the engine-grade move more often.</p>}
@@ -937,7 +960,12 @@ function PlayChesterGame() {
           }} />}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          {(isThinking || calculating) && !(whyFresh && whyCard && !isThinking)
+          {pendingCard
+            ? <div className="chester-why chester-why--pending" key={`pending-${pendingCard.ply}`}>
+                <div className="chester-why__head"><span className="chester-why__san">{pendingCard.san}</span><span className="chester-why__grade">⏳ GRADING…</span></div>
+                <p className="chester-why__row">You played {pendingCard.movePhrase || pendingCard.san}. Chester is grading this move<span className="chester-teleprompter__cursor">▮</span></p>
+              </div>
+            : (isThinking || calculating) && !(whyFresh && whyCard && !isThinking)
             ? <p className="chester-teleprompter__calculating">{deepThought ? 'CHESTER IS DEEP IN THOUGHT' : 'CHESTER IS CALCULATING'}<span className="chester-teleprompter__cursor">▮</span></p>
             : whyCard
             ? <div className="chester-why" key={`${whyCard.ply}-${whyCard.san}`}>
@@ -958,6 +986,25 @@ function PlayChesterGame() {
         </div>
       </div>
 
+      {whyCard && teachOpen && !isFriendMode && (() => {
+        // Readable staged teaching (his #4): full text at reading size, no autoscroll, no hidden
+        // scroll. Long feedback paginates with NEXT; GOT IT returns to the compact strip.
+        const long = (whyCard.whatHappenedLine.length + whyCard.engineBlueprintLine.length) > 220;
+        const pages: string[] = long && whyCard.engineBlueprintLine ? [whyCard.whatHappenedLine, whyCard.engineBlueprintLine] : [[whyCard.whatHappenedLine, whyCard.engineBlueprintLine].filter(Boolean).join(' ')];
+        const pg = Math.min(teachPage, pages.length - 1);
+        const last = pg === pages.length - 1;
+        return <div className={`chester-teach chester-teach--${whyCard.grade.toLowerCase()}`} role="dialog" aria-label="Chester explains your move">
+          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span></div>
+          <b className="chester-teach__headline">{whyCard.headlineBadge}</b>
+          <p className="chester-teach__line">{pages[pg]}</p>
+          {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
+          <div className="chester-teach__actions">
+            {whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
+            {!last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => setTeachPage(pg + 1)}>NEXT ▸</button>}
+            {last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => setTeachOpen(false)}>GOT IT ▸</button>}
+          </div>
+        </div>;
+      })()}
       <div className="chester-bottom">
       <div className="chester-stack">
       <div className={`chester-console ${freeze ? 'chester-console--hidden' : ''}`} style={verdictStyle}>
@@ -1071,7 +1118,7 @@ function PlayChesterGame() {
       </section>
     </div>}
     {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
-    {report && reportOpen && victoryState === 'none' && <ChesterReportCard grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => setReportOpen(false)} onRetry={isFriendMode ? null : retryMistake} />}
+    {report && reportOpen && (victoryState === 'none' || finalResult) && <ChesterReportCard resultLine={finalResult} grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => { setReportOpen(false); setFinalResult(null); }} onRetry={isFriendMode ? null : retryMistake} />}
     {breakdownVisible && pivot && (
       <div className="breakdown" role="dialog" aria-label="Chester's breakdown">
         <header><b>CHESTER'S BREAKDOWN</b><button type="button" aria-label="Close breakdown" onClick={() => setReport(null)}>×</button></header>

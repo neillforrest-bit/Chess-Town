@@ -130,7 +130,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
 
   const eng = inp.bestSan
     ? (!good || grade === 'SOLID')
-      ? `🤖 Better: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
+      ? `🤖 Before your move, the stronger idea was: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
       : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'} - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}.`
     : '🤖 Engine line loading - the move above is graded on the board facts.';
 

@@ -60,6 +60,7 @@ function habitMark(state: 'pass' | 'almost' | 'miss'): string {
 }
 
 export default function ChesterReportCard({
+  resultLine = null,
   grades,
   review,
   scouting,
@@ -70,7 +71,7 @@ export default function ChesterReportCard({
   onClose,
   onRetry,
 }: {
-  grades: GradedMove[];
+  resultLine?: string | null;  grades: GradedMove[];
   review: string;
   scouting?: string[];
   isLoading: boolean;
@@ -172,6 +173,7 @@ export default function ChesterReportCard({
     <div className="chester-report-modal__backdrop" onClick={onClose} />
     <section className="chester-report-card">
       <header><span>CHESTER'S FINAL VERDICT</span><button type="button" onClick={onClose} aria-label="Close report">×</button></header>
+      {resultLine && <p className="chester-report-card__result" role="status">{resultLine}</p>}
       <h2 id="chester-report-title">{verdict.emoji} {verdict.word}</h2>
       <p className="chester-report-card__tagline">{verdict.line}</p>
 

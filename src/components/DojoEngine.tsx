@@ -823,13 +823,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             } catch { /* the pulse is decoration - never break the game for it */ }
           };
 
-          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null; provisional?: boolean; principle?: OpeningPrinciple | null; exchange?: PlannedExchange | null } = {}, fenBeforeMove: string | null = null) => {
+          const publishMove = (move: any, player: string, quality: { label: string; centipawnLoss: number } | null, engineTelemetry: any = null, phrases: { movePhrase?: string | null; bestMovePhrase?: string | null; engineLine?: string[] | null; sacrificePiece?: string | null; provisional?: boolean; pending?: boolean; principle?: OpeningPrinciple | null; exchange?: PlannedExchange | null } = {}, fenBeforeMove: string | null = null) => {
             // Commentary speaks only to human moves: in AI games the opponent (black) gets no banter or coaching line.
             const isAiMover = mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b';
+            const isPending = (phrases as { pending?: boolean }).pending === true;
             // Army verdict pulse - Play Chester coach games only for now (his test
             // environment). Deduped per ply+label so the provisional/final pair never
             // double-fires, but a revised grade upgrades the color.
-            if (!isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && quality?.label) {
+            if (!isPending && !isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && quality?.label) {
               const flashKey = `${gameRef.current.ply}:${quality.label}`;
               if ((gameRef.current as any).lastArmyFlash !== flashKey) {
                 (gameRef.current as any).lastArmyFlash = flashKey;
@@ -846,7 +847,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const grade = getLetterGrade(engineTelemetry?.evalDelta ?? quality?.centipawnLoss);
             gameRef.current.lastMove = { ...gameRef.current.lastMove, grade, color: move.color };
             const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
-            if (!isAiMover) window.dispatchEvent(new CustomEvent('dojo-banter', {
+            if (!isPending && !isAiMover) window.dispatchEvent(new CustomEvent('dojo-banter', {
               detail: {
                 type: 'move', ply: gameRef.current.ply, player, move: move.san,
                 from: move.from, to: move.to, piece: move.piece, captured: move.captured || null,
@@ -891,7 +892,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 fenBefore: fenBeforeMove || null,
                 bestMove: engineTelemetry?.bestMoveSan || engineTelemetry?.bestMove || null,
                 classification: quality?.label || null,
-                evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null,
+                pending: isPending,
+                evalDelta: isPending ? null : (engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null),
                 evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
                 evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
                 evaluationMateAfter: engineTelemetry?.evaluationMateAfter ?? null,
@@ -958,6 +960,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // Scoped by owner decision: the rookie teaching pass lives in the Play Chester
             // game mode only - other modes (arena, brawl, PvP) keep their existing grading.
             const openingPrinciple = rookieTeaching && move.color === 'w' ? detectOpeningPrinciple(fenBeforeMove, move, gameRef.current.chess.history({ verbose: true })) : null;
+            // Instant bridge (his #1 playtest point): the moment the move lands, narrate WHAT
+            // was played in plain language with an explicit pending state - never a local grade
+            // that the engine verdict might later contradict (parent guardrail: no false verdict).
+            // The graded card replaces it when the analyst search resolves.
+            const pendingSac = detectSacrifice(fenBeforeMove, move);
+            if (!(mode !== 'PVP_LOCAL' && mode !== 'PVP_REMOTE' && move.color === 'b')) {
+              publishMove(move, player, null, null, { movePhrase: describeMove(fenBeforeMove, move.san), pending: true, principle: openingPrinciple }, fenBeforeMove);
+            }
             void getStockfishClient().evaluateMove({
               fenBefore: fenBeforeMove,
               fenAfter: fenAfterMove,
@@ -965,6 +975,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               uci,
               playerColor: move.color,
               difficulty: getChesterDifficulty(difficulty),
+              suspectSacrifice: !!pendingSac,
             }).then((telemetry) => {
               const quality = { label: applyMaterialReality(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
               // Delicate grading for genuine learner moves (ROOKIE only): a move that follows a
@@ -974,7 +985,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               // engine's own first choice and holds the eval (near-zero loss) claims the top
               // grade. Depth-12 re-evaluation noise lands these in the GREAT band, so escalate.
               const earlySacrifice = detectSacrifice(fenBeforeMove, move);
-              if (earlySacrifice && telemetry.bestMove === uci && telemetry.evalDelta !== null && telemetry.evalDelta !== undefined && telemetry.evalDelta <= 30) {
+              // chess.com-informed conditions (support.chess.com/articles/8572705): a brilliant is
+              // a GOOD piece sacrifice that is the best/nearly-best move - and it does not count
+              // when you were already completely winning without it, or the position after is bad.
+              const relAfter = telemetry.evaluationAfter === null || telemetry.evaluationAfter === undefined ? null : (move.color === 'w' ? telemetry.evaluationAfter : -telemetry.evaluationAfter);
+              const notAlreadyWinning = telemetry.evaluationBefore === null || telemetry.evaluationBefore === undefined || telemetry.evaluationBefore < 400;
+              const notBadAfter = relAfter === null || relAfter > -150;
+              if (earlySacrifice && telemetry.bestMove === uci && telemetry.evalDelta !== null && telemetry.evalDelta !== undefined && telemetry.evalDelta <= 30 && notAlreadyWinning && notBadAfter) {
                 quality.label = 'BRILLIANT';
               }
               const isBrawl = mode === 'UNDERDOG' || (mode === 'PVP_REMOTE' && new URLSearchParams(window.location.search).get('brawl') === '1');
@@ -1088,7 +1105,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // no banked points. Stamp it here: checkmate/resign -> the side to move lost.
             const resultTag = result === 'draw' ? '1/2-1/2' : gameRef.current.chess.turn() === 'w' ? '0-1' : '1-0';
             const pgn = `${gameRef.current.chess.pgn().replace(/\s*\*?\s*$/, '')} ${resultTag}`;
-            window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory, pgn } }));
+            // Grounded terminal cause (his playtest: endings must name the winner AND the reason).
+            const c = gameRef.current.chess;
+            const cause = result === 'resigned' ? 'resignation'
+              : c.isCheckmate() ? 'checkmate'
+              : c.isStalemate() ? 'stalemate'
+              : (typeof (c as any).isThreefoldRepetition === 'function' && c.isThreefoldRepetition()) ? 'threefold repetition'
+              : (typeof (c as any).isInsufficientMaterial === 'function' && c.isInsufficientMaterial()) ? 'insufficient material'
+              : (typeof (c as any).isFiftyMoves === 'function' && (c as any).isFiftyMoves()) ? 'fifty-move rule'
+              : 'draw';
+            const outcome: 'white' | 'black' | 'draw' = resultTag === '1/2-1/2' ? 'draw' : resultTag === '1-0' ? 'white' : 'black';
+            window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory, pgn, gameResult: { outcome, cause } } }));
             window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn } }));
             window.dispatchEvent(new CustomEvent('match-complete', { detail: { result, pgn } }));
           };
