@@ -51,6 +51,22 @@ export function gradeOf(classification: string | null | undefined, cp: number | 
   return 'IDLE';
 }
 
+
+/** Terminal facts about the position AFTER a move: mate/stalemate/draw + mover material edge. */
+export function terminalInfo(fenAfter: string): { kind: 'mate' | 'stalemate' | 'draw'; moverUp: number } | null {
+  try {
+    const t = new Chess(fenAfter);
+    const mover = t.turn() === 'w' ? 'b' : 'w';
+    if (t.isCheckmate()) return { kind: 'mate', moverUp: 0 };
+    if (!t.isStalemate() && !t.isDraw()) return null;
+    const val: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    let moverMat = 0; let oppMat = 0;
+    for (const row of t.board()) for (const sq of row) { if (sq && sq.type !== 'k') { const v = val[sq.type] || 0; if (sq.color === mover) moverMat += v; else oppMat += v; } }
+    if (t.isStalemate()) return { kind: 'stalemate', moverUp: moverMat - oppMat };
+    return { kind: 'draw', moverUp: moverMat - oppMat };
+  } catch { return null; }
+}
+
 const BADGE_ICON: Record<MoveGrade, string> = { BRILLIANT: '👑', STRONG: '🎯', SOLID: '✅', SHAKY: '😬', BLUNDER: '🚨', IDLE: '♞' };
 export const gradeIcon = (g: MoveGrade) => BADGE_ICON[g];
 
@@ -105,13 +121,19 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
       if (takes) { punishSan = takes.san; punishArrow = { from: takes.from, to: takes.to }; }
     }
   } catch { /* bad fen: fall through to generic wording */ }
-  const grade = gradeOf(inp.classification, inp.cp, hang.length > 0);
+  const term = terminalInfo(inp.fenAfter);
+  let grade = gradeOf(inp.classification, inp.cp, hang.length > 0);
+  if (term?.kind === 'mate') grade = 'BRILLIANT';
+  else if (term?.kind === 'stalemate') grade = term.moverUp >= 5 ? 'BLUNDER' : term.moverUp <= -5 ? 'STRONG' : 'SOLID';
   const best = inp.bestSan ? engineReason(inp.fenBefore, inp.bestSan) : { uci: null, text: '', piece: null, from: null, motif: 'a stronger move' };
   const bestHuman = inp.bestSan ? formatSanToHuman(inp.fenBefore, inp.bestSan) : '';
   const good = grade === 'BRILLIANT' || grade === 'STRONG' || grade === 'SOLID';
   const salt = inp.ply * 7 + (inp.san.charCodeAt(0) || 1);
 
   const headline = (() => {
+    if (term?.kind === 'mate') return 'CHECKMATE';
+    if (term?.kind === 'stalemate') return term.moverUp >= 5 ? 'THREW AWAY THE WIN' : term.moverUp <= -5 ? 'STALEMATE ESCAPE' : 'DRAWN BY STALEMATE';
+    if (term?.kind === 'draw') return 'DRAWN';
     if (!good && inp.provisional) return 'ENGINE STILL UNSURE';
     if (!good && hang.length) return `LOOSE ${hang[0].piece.toUpperCase()} ON ${hang[0].square.toUpperCase()}`;
     return pick(good
@@ -120,6 +142,13 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   })();
 
   const did = (() => {
+    if (term?.kind === 'mate') return `\u2705 You played ${human} - checkmate. Their king has no escape: the game is over.`;
+    if (term?.kind === 'stalemate') {
+      if (term.moverUp >= 5) return `\u274c You played ${human} - stalemate. Their king was NOT in check but had no legal move, so the game is a draw. With your extra material this was winning: box the king in first, then deliver check.`;
+      if (term.moverUp <= -5) return `\u2705 You played ${human} - stalemate. They have no legal move and are not in check, so the game is a draw. Behind on material, that saves you half a point.`;
+      return `\u2796 You played ${human} - stalemate: no legal moves and no check, so the game is a draw.`;
+    }
+    if (term?.kind === 'draw') return `\u2796 You played ${human}, and the game ends in a draw.`;
     if (good) {
       const verb = pick(['You played', 'Your move:', 'You chose'], salt + 1);
       const why = inp.captured ? `winning the ${N[inp.captured] || inp.captured}` : inp.check ? 'with check, so my reply is forced' : grade === 'BRILLIANT' ? 'and the engine rates it as the strongest idea here' : `to ${plainWhy(inp.fenBefore, inp.san)}`;
@@ -130,7 +159,13 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     return `❌ You played ${human}, and it gives up ground: the engine had a clearly better idea.`;
   })();
 
-  const eng = inp.bestSan
+  const eng = term
+    ? (term.kind === 'mate'
+      ? '\ud83e\udd16 No engine opinion needed - the game is over.'
+      : term.kind === 'stalemate' && term.moverUp >= 5
+        ? '\ud83e\udd16 Stalemate ends the game immediately as a draw. Any move that kept their king an escape square - or gave check - kept the win. The final report shows the exact accuracy math.'
+        : '\ud83e\udd16 Stalemate ends the game as a draw - there is nothing left to analyse.')
+    : inp.bestSan
     ? (!good || grade === 'SOLID')
       ? `🤖 Before your move, the stronger idea was: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
       : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'} - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}.`
@@ -147,7 +182,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     : ['What should my next move be?', 'Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"];
 
   return {
-    ply: inp.ply, moveNo, san: inp.san, grade, cp: inp.cp == null ? null : Math.round(inp.cp),
+    ply: inp.ply, moveNo, san: inp.san, grade, cp: term ? null : inp.cp == null ? null : Math.round(inp.cp),
     headlineBadge: headline, whatHappenedLine: did, engineBlueprintLine: eng,
     boardOverlayArrows: arrows, highlightedSquares: squares, contextualChatChips: chips,
     engineBestSan: inp.bestSan || null, engineBestUci: best.uci, hintMotif: best.motif, hintPiece: best.piece, hintSquare: best.from,

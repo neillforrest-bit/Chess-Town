@@ -3436,10 +3436,10 @@ a.battle-btn{text-decoration:none}
 .chester-teach { position: absolute !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; max-height: 46dvh !important; border-radius: 12px; padding: .4rem .55rem .35rem; gap: .3rem; }
 .chester-teach__line { font-size: .86rem !important; line-height: 1.35 !important; }
 .chester-teach__headline { font-size: .8rem !important; }
-.chester-endbanner { top: auto !important; bottom: calc(6px + env(safe-area-inset-bottom)) !important; left: 10px !important; right: 10px !important; flex-direction: row !important; justify-content: center; align-items: baseline; gap: .5rem; padding: .6rem .7rem !important; border-radius: 14px; }
+.chester-endbanner { top: auto !important; bottom: calc(6px + env(safe-area-inset-bottom)) !important; left: 10px !important; right: 10px !important; flex-direction: column !important; justify-content: center; align-items: center; gap: .1rem; padding: .5rem .7rem !important; border-radius: 14px; }
 .chester-endbanner b { font-size: 1.05rem !important; }
 .chester-endbanner span { font-size: .7rem !important; }
-.chester-endbanner small { margin-top: 0 !important; }
+.chester-endbanner small { margin-top: .2rem !important; }
 .chester-report-card { overflow-x: clip !important; }
 .chester-report-card__ladder { min-width: 0 !important; }
 .chester-report-card__ladder-track { flex-wrap: wrap !important; }
