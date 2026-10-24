@@ -3467,3 +3467,6 @@ a.battle-btn{text-decoration:none}
 /* Battle route: keep global chrome clear of the arena's bottom rows (wildcards/chat + own clock) */
 body.battle-route .chester-fab{bottom:calc(9.2rem + env(safe-area-inset-bottom))}
 body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));opacity:.55}
+/* Battle chat drawer open: the global Chester fab is redundant (drawer is the chat surface)
+   and floats over the drawer's right edge/Send area - hide it while the drawer is up. */
+body.battle-route:has(.battle-chatdrawer) .chester-fab{display:none}
