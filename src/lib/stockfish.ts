@@ -59,6 +59,16 @@ const DEEP_CAP_MS = 2200;
 type AnalysisLine = { score: number | null; mate: number | null; pv: string[] };
 type Analysis = { score: number | null; mate: number | null; pv: string[]; bestMove: string | null; lines: Record<number, AnalysisLine> };
 
+/** Exact terminal state of a post-move FEN (game-theoretic, no engine needed). */
+function terminalAfter(fen: string): 'mate' | 'draw' | null {
+  try {
+    const c = new Chess(fen);
+    if (c.isCheckmate()) return 'mate';
+    if (c.isStalemate() || c.isDraw()) return 'draw';
+    return null;
+  } catch { return null; }
+}
+
 function classify(loss: number | null, isBestMove: boolean, firstChoiceGap: number | null, foundForcedMate: boolean): EngineTelemetry['classification'] {
   if (loss === null) return 'GREAT';
   // TOP DOG stays rare (owner calibration, batch 43): the engine's first choice earns the
@@ -76,6 +86,7 @@ function classify(loss: number | null, isBestMove: boolean, firstChoiceGap: numb
   return 'BLUNDER';
 }
 
+import { Chess } from 'chess.js';
 import { eloForLevel, engineEloFor, depthForLevel, movetimeForLevel, HANDICAP_DEPTH, pickHandicapIndex } from '@/lib/road';
 
 export class StockfishClient {
@@ -213,6 +224,23 @@ export class StockfishClient {
       afterScore = playedLine.score;
       afterMate = playedLine.mate;
     } else {
+      // Terminal positions carry exact game-theoretic values; stockfish returns
+      // "bestmove (none)" on a game-over FEN, so a blind after-search yields null scores
+      // and the old code then defaulted the grade to GREAT (his false-STRONG stalemate).
+      const term = terminalAfter(input.fenAfter);
+      if (term === 'draw' || term === 'mate') {
+        if (term === 'draw') {
+          afterScore = 0; // stalemate/draw: 0 for the side to move, exactly
+          afterMate = null;
+          continuation = [];
+          loss = before.score !== null ? Math.max(0, before.score) : before.mate !== null ? (before.mate > 0 ? 10000 : 0) : null;
+        } else {
+          afterScore = -100000; // side to move is checkmated: full loss for them
+          afterMate = null;
+          continuation = [];
+          loss = 0;
+        }
+      } else {
       const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH, false, 1, undefined, GRADE_CAP_MS);
       // Stockfish reports scores relative to the SIDE TO MOVE. Before a move and after it the
       // side to move flips, so the centipawn loss of the played move is before + after
@@ -222,6 +250,7 @@ export class StockfishClient {
       continuation = after.pv;
       afterScore = after.score;
       afterMate = after.mate;
+      }
     }
     // Rarity inputs for the crown: the same-search gap to the second line (only meaningful
     // when the played move IS the first choice), and whether a forced mate was found and the
@@ -240,7 +269,7 @@ export class StockfishClient {
     // move (first or second choice), the shallow grade was the horizon, not the truth.
     // Costs one deeper search, only on apparent bad moves; the verdict card shows its
     // thinking state meanwhile.
-    let provisional = false;
+    let provisional = loss === null; // no trustworthy engine loss: never grade on missing evidence
     if ((classification === 'MISTAKE' || classification === 'BLUNDER' || (input.suspectSacrifice && classification === 'INACCURACY')) && before.mate === null) {
       try {
         const deep = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 2, undefined, DEEP_CAP_MS);

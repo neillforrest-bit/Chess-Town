@@ -122,9 +122,9 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     }
   } catch { /* bad fen: fall through to generic wording */ }
   const term = terminalInfo(inp.fenAfter);
-  let grade = gradeOf(inp.classification, inp.cp, hang.length > 0);
-  if (term?.kind === 'mate') grade = 'BRILLIANT';
-  else if (term?.kind === 'stalemate') grade = term.moverUp >= 5 ? 'BLUNDER' : term.moverUp <= -5 ? 'STRONG' : 'SOLID';
+  // Terminal facts (mate/stalemate/draw) are certain from the board; the move's QUALITY
+  // comes only from real engine evidence (classification/cp) - never from material counts.
+  const grade = gradeOf(inp.classification, inp.cp, hang.length > 0);
   const best = inp.bestSan ? engineReason(inp.fenBefore, inp.bestSan) : { uci: null, text: '', piece: null, from: null, motif: 'a stronger move' };
   const bestHuman = inp.bestSan ? formatSanToHuman(inp.fenBefore, inp.bestSan) : '';
   const good = grade === 'BRILLIANT' || grade === 'STRONG' || grade === 'SOLID';
@@ -132,9 +132,9 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
 
   const headline = (() => {
     if (term?.kind === 'mate') return 'CHECKMATE';
-    if (term?.kind === 'stalemate') return term.moverUp >= 5 ? 'THREW AWAY THE WIN' : term.moverUp <= -5 ? 'STALEMATE ESCAPE' : 'DRAWN BY STALEMATE';
+    if (term?.kind === 'stalemate') return !inp.provisional && grade === 'BLUNDER' ? 'THREW AWAY THE WIN' : 'DRAWN BY STALEMATE';
     if (term?.kind === 'draw') return 'DRAWN';
-    if (!good && inp.provisional) return 'ENGINE STILL UNSURE';
+    if (inp.provisional) return 'ENGINE STILL UNSURE';
     if (!good && hang.length) return `LOOSE ${hang[0].piece.toUpperCase()} ON ${hang[0].square.toUpperCase()}`;
     return pick(good
       ? grade === 'BRILLIANT' ? ['BRILLIANT FIND', 'PINPOINT STRIKE', 'CHESTER SALUTES THAT'] : grade === 'STRONG' ? ['ENGINE-GRADE MOVE', 'EXACTLY RIGHT', 'CLEAN AND ACCURATE'] : ['SOLID CHOICE', 'SENSIBLE AND SAFE', 'STEADY PLAY']
@@ -144,9 +144,10 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   const did = (() => {
     if (term?.kind === 'mate') return `\u2705 You played ${human} - checkmate. Their king has no escape: the game is over.`;
     if (term?.kind === 'stalemate') {
-      if (term.moverUp >= 5) return `\u274c You played ${human} - stalemate. Their king was NOT in check but had no legal move, so the game is a draw. With your extra material this was winning: box the king in first, then deliver check.`;
-      if (term.moverUp <= -5) return `\u2705 You played ${human} - stalemate. They have no legal move and are not in check, so the game is a draw. Behind on material, that saves you half a point.`;
-      return `\u2796 You played ${human} - stalemate: no legal moves and no check, so the game is a draw.`;
+      const fact = `${human} - stalemate: their king was NOT in check but had no legal move, so the game is a draw.`;
+      if (inp.provisional) return `\u2796 You played ${fact} The engine did not produce a trustworthy grade here, so this move is excluded from your accuracy.`;
+      if (grade === 'BLUNDER') return `\u274c You played ${fact} The engine had a much stronger move - this cost you most of your expected score.`;
+      return `\u2796 You played ${fact}`;
     }
     if (term?.kind === 'draw') return `\u2796 You played ${human}, and the game ends in a draw.`;
     if (good) {
@@ -162,9 +163,11 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   const eng = term
     ? (term.kind === 'mate'
       ? '\ud83e\udd16 No engine opinion needed - the game is over.'
-      : term.kind === 'stalemate' && term.moverUp >= 5
-        ? '\ud83e\udd16 Stalemate ends the game immediately as a draw. Any move that kept their king an escape square - or gave check - kept the win. The final report shows the exact accuracy math.'
-        : '\ud83e\udd16 Stalemate ends the game as a draw - there is nothing left to analyse.')
+      : term.kind === 'stalemate'
+        ? (grade === 'BLUNDER' && !inp.provisional
+          ? '\ud83e\udd16 Stalemate ends the game immediately as a draw. The engine\u2019s preferred move kept the win - the final report shows the exact accuracy math.'
+          : '\ud83e\udd16 Stalemate ends the game immediately as a draw - there is nothing left to analyse.')
+        : '\ud83e\udd16 The game is drawn - there is nothing left to analyse.')
     : inp.bestSan
     ? (!good || grade === 'SOLID')
       ? `🤖 Before your move, the stronger idea was: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
