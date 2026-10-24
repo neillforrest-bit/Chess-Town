@@ -340,7 +340,7 @@ function PlayChesterGame() {
     if (!graded.length) return null;
     return graded.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b));
   };
-  const breakdownOn = !!report && !reportOpen && victoryState === 'none' && !!report?.pgn && !!breakdownPivotOf(report);
+  const breakdownOn = !endBanner && !!report && !reportOpen && victoryState === 'none' && !!report?.pgn && !!breakdownPivotOf(report); // banner phase keeps the FINAL board (his #6); the pivot scrub waits for dismissal
   useEffect(() => {
     if (!breakdownOn || !report) return;
     const pv = breakdownPivotOf(report); if (!pv) return;
@@ -885,7 +885,7 @@ function PlayChesterGame() {
   const coachBullets = coachMovePrompt && !isBossFight ? buildCoachBullets({ fen: coachMovePrompt.fen, classification: coachMovePrompt.classification, movePhrase: coachMovePrompt.movePhrase, bestMovePhrase: coachMovePrompt.bestMovePhrase, captured: coachMovePrompt.captured, check: coachMovePrompt.check, mate: coachMovePrompt.mate, evalDelta: coachMovePrompt.evalDelta, evaluationAfter: coachMovePrompt.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: coachMovePrompt.ply, move: coachMovePrompt.move, bestMove: coachMovePrompt.bestMove, fenBefore: coachMovePrompt.fenBefore, engineLine: coachMovePrompt.engineLine || null }) : null;
   // Chester's Breakdown: pivot = biggest single-move swing of the game.
   const pivot = breakdownPivotOf(report);
-  const breakdownVisible = !!report && !reportOpen && victoryState === 'none' && !!pivot && !!report?.pgn;
+  const breakdownVisible = !endBanner && !!report && !reportOpen && victoryState === 'none' && !!pivot && !!report?.pgn;
   const pivotIdx = pivot ? pivot.ply - 1 : 0;
   const breakdownStep = (d: number) => {
     const cur = scrubIdx ?? pivotIdx;
@@ -963,7 +963,7 @@ function PlayChesterGame() {
             <button type="button" className="chester-pill" onClick={() => setMateStage(0)}>Close</button>
           </div>
         </div>}
-        {!freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : 'CHESTER'}</b> {banter}</div>}
+        {!endBanner && !freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : 'CHESTER'}</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
