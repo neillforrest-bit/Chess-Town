@@ -2803,7 +2803,7 @@ vercel-live-feedback { display: none !important; }
 
 /* ── BUILD 132 · Chester's theatrical intro for Road to Joseph (plain CSS, no rules text) */
 .road-intro { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 1.2rem; background: radial-gradient(ellipse at 50% 35%, rgba(70,10,40,.92), rgba(0,0,0,.98) 70%); animation: roadIntroIn .9s ease both; }
-.road-intro__card { max-width: 440px; width: 100%; text-align: center; }
+.road-intro__card { max-width: 440px; width: 100%; text-align: center; max-height: calc(100vh - 2.4rem); max-height: calc(100dvh - 2.4rem); overflow-y: auto; }
 .road-intro__avatar { display: flex; justify-content: center; margin-bottom: 1.2rem; filter: drop-shadow(0 0 24px rgba(255,78,177,.55)); }
 .road-intro__card p { margin: 0 0 1.6rem; color: #f4f7ff; font: italic 600 clamp(1.1rem, 4.8vw, 1.45rem)/1.5 Georgia, serif; text-shadow: 0 2px 12px rgba(0,0,0,.8); animation: roadIntroIn 1.6s ease .4s both; }
 .road-intro__card button { padding: .95rem 2.2rem; border: 3px solid #fff0b3; border-radius: 14px; background: linear-gradient(180deg, #ffd84d, #e2ac1f); color: #241a02; font: 900 1.15rem/1 Arial Black, Arial, sans-serif; letter-spacing: 2px; box-shadow: 0 0 22px rgba(255,216,77,.5); cursor: pointer; animation: roadIntroIn 1.2s ease 1.6s both; }
@@ -3372,3 +3372,29 @@ a.battle-btn{text-decoration:none}
 @keyframes ct-boss-walk { 0%, 100% { transform: translateX(-3px) rotate(-8deg); } 50% { transform: translateX(3px) rotate(8deg); } }
 .chester-matchbar__boss.is-mocking .road-strip__boss-emoji--walk { animation: ct-boss-mock 0.5s ease-in-out 3; }
 @keyframes ct-boss-mock { 0%, 100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-6px) scale(1.25) rotate(-10deg); } 60% { transform: translateY(-2px) scale(1.15) rotate(10deg); } }
+
+/* Batch 180: boss character movement library (distinct per boss, not just pulse) */
+.boss-char { overflow: visible; }
+.boss-char--live .boss-char__sway { animation: ct-boss-sway 2.6s ease-in-out infinite; transform-origin: 50% 90%; }
+.boss-char--live .boss-char__bob { animation: ct-boss-bob 2.2s ease-in-out infinite; }
+.boss-char--live .boss-char__twitch { animation: ct-boss-twitch 0.9s steps(2) infinite; }
+.boss-char--live .boss-char__float { animation: ct-boss-float 3.2s ease-in-out infinite; }
+.boss-char--live .boss-char__eyes { animation: ct-boss-blink 3.8s ease-in-out infinite; transform-origin: center; }
+.boss-char--live .boss-char__cape { animation: ct-boss-cape 1.8s ease-in-out infinite; transform-origin: 28px 56px; }
+.boss-char--live .boss-char__bolt { animation: ct-boss-bolt 0.7s steps(2) infinite; }
+.boss-char--live .boss-char__frost { animation: ct-boss-spin 7s linear infinite; transform-origin: 50px 50px; }
+.boss-char--live .boss-char__aura { animation: ct-boss-aura 2.4s ease-in-out infinite; transform-origin: 50px 48px; }
+.boss-char--live .boss-char__zzz { animation: ct-boss-zzz 2.4s ease-in infinite; }
+.boss-char--live .boss-char__zzz--2 { animation-delay: 1.2s; }
+.boss-char--live .boss-char__visor { animation: ct-boss-glint 2.8s ease-in-out infinite; }
+@keyframes ct-boss-sway { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes ct-boss-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes ct-boss-twitch { 0%,100% { transform: translate(0,0) rotate(0); } 25% { transform: translate(1px,-1px) rotate(1deg); } 75% { transform: translate(-1px,1px) rotate(-1deg); } }
+@keyframes ct-boss-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes ct-boss-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+@keyframes ct-boss-cape { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(9deg); } }
+@keyframes ct-boss-bolt { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes ct-boss-spin { to { transform: rotate(360deg); } }
+@keyframes ct-boss-aura { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.12); opacity: 1; } }
+@keyframes ct-boss-zzz { 0% { transform: translateY(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
+@keyframes ct-boss-glint { 0%,100% { opacity: 0.9; } 50% { opacity: 0.4; } }

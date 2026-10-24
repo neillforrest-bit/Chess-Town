@@ -14,6 +14,7 @@ import { getProfile, saveProfile } from '@/lib/profile';
 import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
 import ChesterReportCard, { type GradedMove } from '@/components/ChesterReportCard';
 import MatchCountdown from '@/components/MatchCountdown';
+import BossAvatar from '@/components/BossAvatar';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct, accPoints, accPointsFromDelta } from '@/lib/chester-voice';
 import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
 import PawnWarDuel from '@/components/PawnWarDuel';
@@ -780,16 +781,16 @@ function PlayChesterGame() {
         <div className="road-intro" role="dialog" aria-modal="true" aria-label="Chester">
           <div className={boss ? 'road-intro__card road-intro__card--boss' : 'road-intro__card'}>
             {boss && <div className="road-intro__boss" aria-label={`Boss fight: ${boss.name}`}>
-              <div className="road-intro__boss-emoji" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</div>
+              <div className="road-intro__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={72} /></div>
               <p className="road-intro__boss-name">BOSS FIGHT: {boss.name}</p>
-              <p className="road-intro__boss-arch">{boss.archetype} · difficulty setting ~{eloForLevel(roadLevel)} · exam mode, 2 wild cards</p>
+              <p className="road-intro__boss-arch">{boss.archetype} · {eloForLevel(roadLevel) ? `difficulty setting ~${eloForLevel(roadLevel)}` : 'no difficulty limit'} · exam mode, 2 wild cards</p>
               <p className="road-intro__boss-focus">{BOSS_FOCUS[roadLevel]?.focus}</p>
             </div>}
             {!boss && roadActive && <div className="road-intro__boss">
               <p className="road-intro__boss-name">LEVEL {roadLevel}/{ROAD_MAX} · difficulty setting ~{eloForLevel(roadLevel)}</p>
               <p className="road-intro__boss-focus">{levelFocus(roadLevel)}</p>
             </div>}
-            <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>
+            {!boss && <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>}
             {boss ? <p>This one actually plays. No power-ups on this board - just you, your two wild cards, and whatever you have learned. Do not waste my time.</p> : <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>}
             <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
           </div>
@@ -798,7 +799,7 @@ function PlayChesterGame() {
       {!isFriendMode && roadActive && (
         <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
           <p className="road-strip__title">ROAD TO JOSEPH · LEVEL {roadLevel}/{ROAD_MAX}</p>
-          {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
+          {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
           <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
           <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
           <p className="road-strip__who">{roadLevel >= ROAD_MAX ? 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.' : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two wild cards for hints or take-backs - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()} (level ${[3, 6, 9, 12, 15].find((b) => b >= roadLevel)}).`}</p>
@@ -862,7 +863,7 @@ function PlayChesterGame() {
       <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b></button>
       <div className="chester-matchbar chester-matchbar--hud">
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
-        {boss && started && <span className={`chester-matchbar__boss${freeze?.tone === 'red' ? ' is-mocking' : ''}`} aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji road-strip__boss-emoji--walk" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</span> BOSS</span>}
+        {boss && started && <span className={`chester-matchbar__boss${freeze?.tone === 'red' ? ' is-mocking' : ''}`} aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji road-strip__boss-emoji--walk" aria-hidden="true"><BossAvatar level={roadLevel} size={22} /></span> BOSS</span>}
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
       </div>
     </header>
