@@ -1846,10 +1846,12 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
           // Chat "what should I do next?": analyse the board exactly as it is NOW and answer with fen + move together.
           const handlePeek = (e: Event) => {
-            const id = (e as CustomEvent<{ id?: number }>).detail?.id ?? 0;
+            const req = (e as CustomEvent<{ id?: number; multiPv?: number }>).detail;
+            const id = req?.id ?? 0;
             const fen = gameRef.current.chess.fen();
-            void getStockfishClient().analyzeForDisplay(fen).then((analysis: any) => {
-              window.dispatchEvent(new CustomEvent('chester-peek-response', { detail: { id, fen, bestMove: analysis?.bestMove || null } }));
+            void getStockfishClient().analyzeForDisplay(fen, req?.multiPv || 1).then((analysis: any) => {
+              const lines = [analysis?.lines?.[1], analysis?.lines?.[2]].filter(Boolean).map((l: any) => ({ uci: l?.pv?.[0] || null, score: l?.score ?? null, mate: l?.mate ?? null }));
+              window.dispatchEvent(new CustomEvent('chester-peek-response', { detail: { id, fen, bestMove: analysis?.bestMove || null, lines } }));
             }).catch(() => window.dispatchEvent(new CustomEvent('chester-peek-response', { detail: { id, fen, bestMove: null } })));
           };
           window.addEventListener('chester-peek-request', handlePeek);

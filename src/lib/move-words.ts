@@ -300,7 +300,7 @@ export function plainWhy(fenBefore: string, m: string): string {
         const home = mv.color === 'w' ? '1' : '8';
         if (mv.piece === 'p' && mv.from[1] === (mv.color === 'w' ? '2' : '7') && 'bcdefg'.includes(mv.from[0])) why.push('open a path for the pieces behind it');
         else if (mv.piece === 'p') why.push(mv.from[0] === mv.to[0] ? 'gain space and free up your pieces' : 'change the pawn structure and open a line');
-        else if (reach > reachBefore + 1) why.push(`let your ${name} reach ${reach} squares instead of ${reachBefore}`);
+        else if (reach > reachBefore + 1) why.push(`give your ${name} more room and more options`);
         else if (mv.from[1] === home) why.push(`get your ${name} off the back rank`);
         else why.push(`reposition your ${name} to a more useful square`);
       }

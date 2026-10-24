@@ -109,7 +109,7 @@ export function buildLocalDebrief(grades: DebriefMove[], phrases: Map<number, st
   const drill = tally.hanging >= tally.missed
     ? 'Before every move ask one question: which of my pieces is loose? That single habit erases most of what happened here.'
     : 'When a piece lands en prise, stop and check every capture twice - the winning tactic was on the board today.';
-  const review = `Let's talk about ${swings.length ? swingText : 'the shape of this one - ' + swingText} ${phaseLine ? `Phase by phase: ${phaseLine}.` : ''} ${themeText} ${drill}`;
+  const review = `Let's talk about ${swings.length ? swingText : 'the shape of this one - ' + swingText}`; // Form/weakness/adjustment live in the scouting bullets below - saying them here too read as a stutter (his 24 Oct screenshot)
   const scouting = [
     phaseLine ? `Form: ${phaseLine}.` : 'Form: not enough moves to grade the phases.',
     `Recurring weakness: ${themes.length ? themes.join('; ') : 'none repeated itself'}.`,

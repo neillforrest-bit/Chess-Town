@@ -312,8 +312,8 @@ export class StockfishClient {
     return this.analyze(fen, difficulty);
   }
 
-  async analyzeForDisplay(fen: string) {
-    return this.analyze(fen, ANALYST_PRESET, ANALYST_DEPTH, false);
+  async analyzeForDisplay(fen: string, multiPv = 1) {
+    return this.analyze(fen, ANALYST_PRESET, ANALYST_DEPTH, false, multiPv);
   }
 
   async diagnose() {

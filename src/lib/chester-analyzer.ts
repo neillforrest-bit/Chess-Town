@@ -3,7 +3,7 @@
 // same schema later (flag), but this path is the default and the guaranteed fallback so the HUD is never blank.
 import { Chess } from 'chess.js';
 import { hangingPieces } from './tactics';
-import { plainMoveNoun, plainSuggestion } from './move-words';
+import { plainMoveNoun, plainSuggestion, plainWhy } from './move-words';
 
 export type MoveGrade = 'BRILLIANT' | 'STRONG' | 'SOLID' | 'SHAKY' | 'BLUNDER' | 'IDLE';
 export type ArrowIntent = 'ENGINE_BEST' | 'OPPONENT_THREAT' | 'PLAYER_MISTAKE';
@@ -13,7 +13,7 @@ export type WhyCard = {
   headlineBadge: string; whatHappenedLine: string; engineBlueprintLine: string;
   boardOverlayArrows: { from: string; to: string; intent: ArrowIntent }[];
   highlightedSquares: { square: string; type: SquareType }[];
-  contextualChatChips: [string, string, string];
+  contextualChatChips: string[];
   engineBestSan: string | null; engineBestUci: string | null; hintMotif: string; hintPiece: string | null; hintSquare: string | null;
   fenBefore: string; fenAfter: string;
 };
@@ -131,7 +131,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   const eng = inp.bestSan
     ? (!good || grade === 'SOLID')
       ? `🤖 Better: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
-      : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'} - it was a good way to ${(plainSuggestion(inp.fenBefore, inp.bestSan) || 'play it').replace(/^move the .*? to ([a-h][1-8]) to /, '').replace(/^castle (king|queen)side to /, 'castle to ')}.`
+      : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'} - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}.`
     : '🤖 Engine line loading - the move above is graded on the board facts.';
 
   const arrows: WhyCard['boardOverlayArrows'] = [];
@@ -141,8 +141,8 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   if (inp.check) { try { const a = new Chess(inp.fenAfter); const t = a.turn(); for (const s of [].concat(...(a.board() as any))) { const sq = s as any; if (sq && sq.type === 'k' && sq.color === t) squares.push({ square: sq.square, type: 'CHECK_DANGER' }); } } catch { /* ignore */ } }
 
   const chips: WhyCard['contextualChatChips'] = !good
-    ? ['Why did my last move lose points?', "How do I defend against Chester's threat?", 'Let me take that move back']
-    : ['Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"];
+    ? ['What should my next move be?', 'Why did my last move lose points?', "How do I defend against Chester's threat?", 'Let me take that move back']
+    : ['What should my next move be?', 'Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"];
 
   return {
     ply: inp.ply, moveNo, san: inp.san, grade, cp: inp.cp == null ? null : Math.round(inp.cp),
@@ -181,13 +181,49 @@ export function chatReply(message: string, card: WhyCard | null, live: { fen: st
   let und: string[] = [];
   try { if (live?.fen) { const c = new Chess(live.fen); const mine = c.turn(); und = hangingPieces(c, mine).map((h) => `${h.piece} on ${h.square}`); } } catch { /* ignore */ }
   if (/undefended|loose|hanging/.test(q)) return und.length ? `Yes: your ${und.join(' and your ')} ${und.length > 1 ? 'are' : 'is'} attacked with no defender. Fix that before anything fancy.` : 'Nothing of yours is hanging right now. Every attacked piece has a defender.';
-  if (/lose points|why.*(shaky|last move|lose)|what could i have done|better/.test(q)) {
+  if (/lose points|why.*(shaky|last move|lose|brilliant|graded|mistake)|what could i have done|better/.test(q)) {
     if (!card) return 'Make a move first and I will grade it. Then ask me again.';
     return `${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} ${card.engineBlueprintLine.replace(/^🤖\s*/, '')}`;
   }
-  if (/defend|threat|secret plan|plan/.test(q)) return und.length ? `Your ${und[0]} is the soft spot. Guard it or move it, then think about attack. ${engLine}` : `${engLine || 'Keep your pieces guarded and look at what my last move attacks.'}`;
+  const pieceAsk = q.match(/queen|rook|bishop|knight/);
+  if (pieceAsk && /lose|safe|attacked|take|hang|blunder/.test(q) && live?.fen) {
+    try {
+      const c = new Chess(live.fen); const mine = c.turn(); const enemy = mine === 'w' ? 'b' : 'w';
+      const t = { q: 'q', r: 'r', b: 'b', k: 'n' }[pieceAsk[0][0]] as string;
+      const squares: string[] = [];
+      for (const row of c.board()) for (const sq of row as any[]) { if (sq && sq.type === t && sq.color === mine) squares.push(sq.square); }
+      if (squares.length) {
+        const attacked = squares.filter((sq) => c.isAttacked(sq as any, enemy));
+        return attacked.length
+          ? `Yes, watch it: your ${pieceAsk[0]} on ${attacked.join(' and ')} is under attack right now. ${engLine || 'Move it or guard it before anything fancy.'}`
+          : `Your ${pieceAsk[0]} is not under attack at the moment. ${engLine || 'Still, count attackers and defenders before you commit.'}`;
+      }
+    } catch { /* ignore */ }
+  }
+  if (/defend|threat|secret plan|plan/.test(q)) {
+    // Concrete, from the live board: name what is actually under attack right now.
+    const threats: string[] = [];
+    try { if (live?.fen) { const c = new Chess(live.fen); const mine = c.turn(); const enemy = mine === 'w' ? 'b' : 'w'; const val: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+      const hits: { t: string; v: number }[] = [];
+      for (const row of c.board()) for (const sq of row as any[]) { if (sq && sq.color === mine && sq.type !== 'k' && val[sq.type] && c.isAttacked(sq.square as any, enemy)) hits.push({ t: `your ${N[sq.type]} on ${sq.square}`, v: val[sq.type] }); }
+      for (const h of hits.sort((a, b) => b.v - a.v).slice(0, 2)) threats.push(h.t);
+    } } catch { /* ignore */ }
+    if (threats.length) return `Watch out: ${threats.join(' and ')} ${threats.length > 1 ? 'are' : 'is'} under attack right now. Deal with the biggest one first. ${engLine}`;
+    return `${engLine || 'Nothing of yours is under fire right now. Find your worst-placed piece and give it a better job.'}`;
+  }
   if (/take that move back|retry|undo/.test(q)) return 'Use the Retry pill under my comment. It rewinds your last move so you can try the engine idea.';
-  if (/compare|candidate|what should i play|best/.test(q)) return engLine || 'Look for checks, captures and threats in that order, then pick the safest of them.';
+  if (/compare|candidate|what should i play|best/.test(q)) {
+    // Never the chess.com proverb: name the actual checks and captures on this board.
+    try { if (live?.fen) {
+      const c = new Chess(live.fen); const ms = c.moves({ verbose: true }) as any[];
+      const fmt = (m: any) => plainMoveNoun(live.fen, m.san) || m.san;
+      const checks = ms.filter((m) => m.san.includes('+')).slice(0, 2).map((m) => `check with ${fmt(m)}`);
+      const caps = ms.filter((m) => m.captured).slice(0, 2).map((m) => fmt(m));
+      const opts = [...checks, ...caps];
+      if (opts.length) return `Concrete options on this board: ${opts.join('; ')}. ${engLine}`;
+    } } catch { /* ignore */ }
+    return engLine || 'Look for checks, captures and threats in that order, then pick the safest of them.';
+  }
   if (/tactic/.test(q)) return 'Three questions before every move: what is loose, what can be forked, what does my move leave undefended? Tonight the third one wins you games.';
   return engLine || (card ? `About your last move: ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} Ask me "what should I do next?" for a fresh idea.` : 'Ask me about your last move, a threat, or what to play next.');
 }

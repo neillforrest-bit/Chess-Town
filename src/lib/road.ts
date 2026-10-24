@@ -11,11 +11,15 @@ export const BOSS_ROSTER: Record<number, RoadBoss> = {
 export const isBossLevel = (level: number) => level % 3 === 0;
 export const bossFor = (level: number): RoadBoss | null => (isBossLevel(level) ? BOSS_ROSTER[level] || null : null);
 /** Nominal strength. Levels 1-14 interpolate 800..3190 Elo. Level 15 is unlimited (null): Joseph plays at full grandmaster strength. */
-export const ROAD_FLOOR_ELO = 800;
+export const ROAD_FLOOR_ELO = 600;
+// Batch 176 (his steering): the old ramp hit ~2271 by level 9 of 15 - far too steep for a
+// beginner-to-master road. Gentler linear ramp: ~600 at L1 to ~2400 at L14, L15 unlimited.
+// This is the nominal engine SETTING, not a measured strength.
+const ROAD_CEIL_ELO = 2400;
 export function eloForLevel(level: number): number | null {
   if (level >= ROAD_MAX) return null;
   const l = Math.max(1, level);
-  return Math.round(ROAD_FLOOR_ELO + ((l - 1) / 13) * (3190 - ROAD_FLOOR_ELO));
+  return Math.round(ROAD_FLOOR_ELO + ((l - 1) / 13) * (ROAD_CEIL_ELO - ROAD_FLOOR_ELO));
 }
 /** UCI_Elo for levels 4+: rounded to an integer and clamped to 1380..3190 (Stockfish rejects decimals and values under its floor). */
 export const engineEloFor = (level: number): number | null => {

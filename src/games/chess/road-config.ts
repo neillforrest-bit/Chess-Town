@@ -1,4 +1,4 @@
-import { BOSS_ROSTER, ROAD_MAX, eloForLevel } from '@/lib/road';
+import { BOSS_ROSTER, ROAD_MAX, eloForLevel, engineEloFor } from '@/lib/road';
 import type { RoadCfg } from '../RoadMap';
 const LINES: Record<number, string> = {
   3: 'Casual, chatty, and confident. Beat him and the road opens.',
@@ -18,5 +18,5 @@ export const CHESS_ROAD: RoadCfg = {
     { from: 13, name: 'JOSEPH\u2019S CASTLE', bg: 'linear-gradient(180deg,#3a1420,#561b2a)', tag: 'One door left.' },
   ],
   bosses: Object.fromEntries(Object.entries(BOSS_ROSTER).map(([k, b]) => [k, { name: b.name, archetype: b.archetype, line: LINES[+k], icon: ICON[+k] }])),
-  strength: (n) => { const e = eloForLevel(n); return e ? `~${e} Elo` : 'full strength'; },
+  strength: (n) => { const e = n >= 4 ? engineEloFor(n) : eloForLevel(n); return e ? `~${e} Elo` : 'full strength'; }, // label = the actual setting the engine gets (UCI_Elo floors at 1380)
 };

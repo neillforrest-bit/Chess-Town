@@ -136,6 +136,7 @@ function PlayChesterGame() {
   const [commOpen, setCommOpen] = useState(false);
   // BUILD 165 (PRD V2): structured Why Engine card, arrows, hint ladder, check/mate cinematics. All hooks live above the start-screen return.
   const [whyCard, setWhyCard] = useState<WhyCard | null>(null);
+  const [whyModal, setWhyModal] = useState<WhyCard | null>(null);
   const cardsRef = useRef<WhyCard[]>([]);
   const [arrowsOn, setArrowsOn] = useState(false);
   const [chipArrow, setChipArrow] = useState<{ from: string; to: string } | null>(null);
@@ -239,6 +240,8 @@ function PlayChesterGame() {
   const qaMatchId = useRef(`qa-${Math.random().toString(36).slice(2, 10)}`);
   const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
   const [helpRemaining, setHelpRemaining] = useState(3);
+  const helpLeftRef = useRef(helpRemaining);
+  useEffect(() => { helpLeftRef.current = helpRemaining; }, [helpRemaining]);
   const [report, setReport] = useState<GameReport | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   // BUILD 158: Chester's Breakdown - interactive post-mortem pivot scrubber.
@@ -274,7 +277,7 @@ function PlayChesterGame() {
     window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } }));
     burstConfetti();
   };
-  const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-clear-better')); window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); };
+  const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-clear-better')); window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); if (bossRef.current.on) setHelpRemaining((n) => Math.max(0, n - 1)); };
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
   useEffect(() => {
@@ -454,7 +457,7 @@ function PlayChesterGame() {
 
   useEffect(() => {
     if (!started) return;
-    setHelpRemaining(difficulty === 'BEGINNER' ? 5 : 3); setCoachPrompt(null);
+    setHelpRemaining(bossRef.current.on ? 2 : difficulty === 'BEGINNER' ? 5 : 3); setCoachPrompt(null);
     const timer = window.setTimeout(() => window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })), 0);
     const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const gameReport = (event: Event) => {
@@ -485,7 +488,7 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured }); setWhyCard(wc); setWhyFresh(true); cardsRef.current = [...cardsRef.current.slice(-59), wc]; if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '❌' : '✅'} ${j.whatHappenedLine}`, engineBlueprintLine: `🤖 ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) { const mv = detail.ply % 2 === 1 ? 'w' : 'b'; const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); bumpAcc(mv, detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : accPointsFromDelta(detail.evalDelta)); } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); } };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured }); setWhyCard(wc); setWhyFresh(true); if (wc.grade === 'SHAKY' || wc.grade === 'BRILLIANT' || (wc.grade === 'BLUNDER' && (bossRef.current.on || d.ui_action !== 'freeze_red'))) setWhyModal(wc); cardsRef.current = [...cardsRef.current.slice(-59), wc]; if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '❌' : '✅'} ${j.whatHappenedLine}`, engineBlueprintLine: `🤖 ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on && !(d.ui_action === 'freeze_red' && helpLeftRef.current > 0)) { setFreeze(null); setBanter(''); } else if (d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && detail.evalDelta != null && detail.ply != null) { const mv = detail.ply % 2 === 1 ? 'w' : 'b'; const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); bumpAcc(mv, detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : accPointsFromDelta(detail.evalDelta)); } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); } };
     const aiGraded = (event: Event) => { const d = (event as CustomEvent<{ evalDelta: number | null }>).detail; if (d && d.evalDelta != null) { bumpAcc('b', accPointsFromDelta(d.evalDelta)); if (d.evalDelta >= 250) fireReact('😬'); } if (bossRef.current.on) setBossStrike(Date.now()); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
@@ -621,6 +624,14 @@ function PlayChesterGame() {
       .catch(() => undefined);
   }, [report, difficulty]);
 
+  type PeekLine = { uci: string | null; score: number | null; mate: number | null };
+  const peekBoard = (multiPv = 1) => new Promise<{ fen: string; bestMove: string | null; lines?: PeekLine[] } | null>((resolve) => {
+    const id = Date.now() + Math.random();
+    const onResp = (ev: Event) => { const d = (ev as CustomEvent<{ id: number; fen: string; bestMove: string | null; lines?: PeekLine[] }>).detail; if (d?.id !== id) return; window.removeEventListener('chester-peek-response', onResp); window.clearTimeout(tm); resolve(d); };
+    const tm = window.setTimeout(() => { window.removeEventListener('chester-peek-response', onResp); resolve(null); }, 5000);
+    window.addEventListener('chester-peek-response', onResp);
+    window.dispatchEvent(new CustomEvent('chester-peek-request', { detail: { id, multiPv } }));
+  });
   const sendChat = async (event: React.FormEvent | null, preset?: string) => {
     event?.preventDefault();
     const message = (preset || chatInput).trim();
@@ -635,18 +646,29 @@ function PlayChesterGame() {
     const deterministic = () => chatReply(message, whyCard, liveRef.current.fen ? { fen: liveRef.current.fen, bestSan: liveRef.current.bestSan } : null);
     if (/what should i (do|play)|what next|what now|next move|what do i do|my best move|stuck|\blost\b|suggest|help me/i.test(message)) {
       // Next-move questions are answered from a fresh look at the board as it is right now, never from an older card.
-      const id = Date.now();
-      const got = await new Promise<{ fen: string; bestMove: string | null } | null>((resolve) => {
-        const onResp = (ev: Event) => { const d = (ev as CustomEvent<{ id: number; fen: string; bestMove: string | null }>).detail; if (d?.id !== id) return; window.removeEventListener('chester-peek-response', onResp); window.clearTimeout(tm); resolve(d); };
-        const tm = window.setTimeout(() => { window.removeEventListener('chester-peek-response', onResp); resolve(null); }, 5000);
-        window.addEventListener('chester-peek-response', onResp);
-        window.dispatchEvent(new CustomEvent('chester-peek-request', { detail: { id } }));
-      });
+      const got = await peekBoard();
       let text: string;
       const turn = got?.fen.split(' ')[1];
       if (!got) text = 'I could not read the board in time. Ask me again in a second.';
       else if (!isFriendMode && turn !== 'w') text = 'It is my move right now. Ask me again once I have played and I will tell you what I would do.';
       else { const sug = got.bestMove ? explainEngineChoice(got.fen, got.bestMove) : null; text = sug ? `Here is what I would do: ${sug}.` : 'I cannot find a clear suggestion for this position yet. Look for anything of yours that is attacked and not protected, then for a safe capture.'; }
+      setChatMessages([...history, { role: 'chester', text: text.charAt(0).toUpperCase() + text.slice(1), kind: 'chat' }]); setChatBusy(false);
+      return;
+    }
+    if (/compare|candidate|top 2|top two/i.test(message)) {
+      // One-tap compare: two real engine lines for THIS position, in words, with an honest gap call.
+      const got = await peekBoard(2);
+      let text: string;
+      const turn = got?.fen.split(' ')[1];
+      if (!got) text = 'I could not read the board in time. Ask me again in a second.';
+      else if (!isFriendMode && turn !== 'w') text = 'It is my move right now. Ask me again once I have played.';
+      else if (got.lines && got.lines.length >= 2 && got.lines[0].uci && got.lines[1].uci) {
+        const a = explainEngineChoice(got.fen, got.lines[0].uci as string);
+        const b = explainEngineChoice(got.fen, got.lines[1].uci as string);
+        const s0 = got.lines[0].score, s1 = got.lines[1].score;
+        const gap = s0 != null && s1 != null ? Math.abs(s0 - s1) : null;
+        text = `My two favourite moves here: first, ${a || got.lines[0].uci}; second, ${b || got.lines[1].uci}.` + (gap == null ? '' : gap < 25 ? ' There is almost nothing between them - pick the one you understand.' : gap < 90 ? ' The first is a little better, but the second is very playable.' : ' The first is clearly stronger.');
+      } else text = deterministic();
       setChatMessages([...history, { role: 'chester', text: text.charAt(0).toUpperCase() + text.slice(1), kind: 'chat' }]); setChatBusy(false);
       return;
     }
@@ -712,7 +734,7 @@ function PlayChesterGame() {
   </div> : null;
   const flagBanner = flagResult ? <div className={`duel-flag-banner ${flagResult === 'won' ? 'is-won' : 'is-lost'}`} role="status">{flagResult === 'won' ? '⚡ FLAG FALL - rival ran out of time. You win on the clock!' : '⏱ FLAG FALL - your clock hit zero. Rival wins on time.'}</div> : null;
 
-  const help = () => { if (!helpRemaining || isThinking || isBossFight) return; setHelpRemaining((n) => n - 1); setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
+  const help = () => { if (!helpRemaining || isThinking) return; setHelpRemaining((n) => n - 1); setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
     <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
@@ -731,8 +753,8 @@ function PlayChesterGame() {
         <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
           <p className="road-strip__title">ROAD TO JOSEPH · LEVEL {roadLevel}/{ROAD_MAX}</p>
           <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
-          <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 800) - 800) / 2390) * 100}%` }} /><span>800</span><span>3190+</span></div>
-          <p className="road-strip__who">{roadLevel >= ROAD_MAX ? 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.' : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. About ${eloForLevel(roadLevel)} Elo. No hints, no freezes. Exam mode.` : `You face about ${eloForLevel(roadLevel)} Elo this level. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()} (level ${[3, 6, 9, 12, 15].find((b) => b >= roadLevel)}).`}</p>
+          <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
+          <p className="road-strip__who">{roadLevel >= ROAD_MAX ? 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.' : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. About ${eloForLevel(roadLevel)} Elo. Two wild cards for hints or take-backs - spend them well. Exam mode.` : `You face about ${eloForLevel(roadLevel)} Elo this level. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()} (level ${[3, 6, 9, 12, 15].find((b) => b >= roadLevel)}).`}</p>
           {roadLevel < ROAD_MAX && <p className="road-strip__top">At the top waits <b>JOSEPH</b>: a grandmaster at full engine strength, the hardest opponent here. Each rung is a real step up.</p>}
         </div>
       )}
@@ -881,7 +903,7 @@ function PlayChesterGame() {
           {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}>⏪ Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
           {freeze?.tone === 'green' && <button type="button" className="chester-pill chester-pill--primary" onClick={releaseFreeze}>Continue ▸</button>}
           {whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
-          {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, whyCard.contextualChatChips[0]); }}>💬 Ask why</button>}
+          {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}>💬 Ask why</button>}
         </div>
       </div>
 
@@ -896,7 +918,7 @@ function PlayChesterGame() {
           </div>
         </div>
         <div className="chester-console__lifelines">
-          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); if (isBossFight) return; const next = (hintStage < 3 ? hintStage + 1 : 3) as 1 | 2 | 3; if (next === 3 && hintStage !== 3) { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); } setHintStage(next); }} disabled={isBossFight || (hintStage === 2 && !helpRemaining)} title={isBossFight ? 'No hints in a boss fight' : undefined} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{helpRemaining} LEFT</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); const next = (hintStage < 3 ? hintStage + 1 : 3) as 1 | 2 | 3; if (next === 3 && hintStage !== 3) { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); } setHintStage(next); }} disabled={hintStage === 2 && !helpRemaining} title={undefined} aria-label={`Hint from Chester, ${helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{helpRemaining} LEFT</small></button>
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
           <div className="chester-taunts" role="group" aria-label="Taunt Chester">
             {['😏', '😤', '🤯', '💪'].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
@@ -907,6 +929,21 @@ function PlayChesterGame() {
       </div>
       
     </section>
+    {whyModal && (() => { const wm = whyCard && whyCard.ply === whyModal.ply && whyCard.san === whyModal.san ? whyCard : whyModal; return (
+      <div className="chester-why-modal" role="dialog" aria-modal="true" aria-label="Chester explains the last move">
+        <div className="chester-why-modal__backdrop" onClick={() => setWhyModal(null)} />
+        <section className="chester-why-modal__content">
+          <header><b>{gradeIcon(wm.grade)} {wm.moveNo}. {wm.san} · {wm.grade}</b><button type="button" onClick={() => setWhyModal(null)} aria-label="Close">×</button></header>
+          <b className="chester-why-modal__headline">{wm.headlineBadge}</b>
+          <p>{wm.whatHappenedLine}</p>
+          <p>{wm.engineBlueprintLine}</p>
+          <div className="chester-why-modal__actions">
+            <button type="button" className="chester-pill" onClick={() => { setWhyModal(null); setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${wm.grade.toLowerCase()}?`); }}>💬 Ask why</button>
+            <button type="button" className="chester-pill chester-pill--primary" onClick={() => setWhyModal(null)}>Got it</button>
+          </div>
+        </section>
+      </div>
+    ); })()}
     {commOpen && <div className="chester-comm-modal" role="dialog" aria-modal="true" aria-label="Chester commentary this game" onClick={() => setCommOpen(false)}>
       <div className="chester-comm-modal__card" onClick={(e) => e.stopPropagation()}>
         <header><b>CHESTER SAYS · THIS GAME</b><button type="button" onClick={() => setCommOpen(false)} aria-label="Close">×</button></header>
@@ -930,7 +967,7 @@ function PlayChesterGame() {
         {chatMessages.map((m, i) => <div key={i} className={`chester-chatsheet__msg chester-chatsheet__msg--${m.role === 'user' ? 'you' : 'chester'}`}>{m.role === 'user' ? m.text : <MoveChipText text={m.text} onChip={(san) => { try { const c = new Chess(liveRef.current.fen || lastFen); const mv = (c.moves({ verbose: true }) as { san: string; from: string; to: string }[]).find((x) => x.san.replace(/[+#]/g, '') === san.replace(/[+#]/g, '')); if (mv) setChipArrow({ from: mv.from, to: mv.to }); } catch { /* ignore */ } }} />}</div>)}
         {chatBusy && <div className="chester-chatsheet__msg chester-chatsheet__msg--chester">…</div>}
       </div>
-      <div className="chester-chatsheet__chips">{(whyCard ? whyCard.contextualChatChips : ['Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"]).map((q) => <button key={q} type="button" className="chester-chat-chip" onClick={(e) => { void sendChat(e as unknown as React.FormEvent, q); }}>{q}</button>)}</div>
+      <div className="chester-chatsheet__quicklabel">QUICK QUESTIONS</div><div className="chester-chatsheet__chips">{(whyCard ? whyCard.contextualChatChips : ['What should my next move be?', 'Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"]).map((q) => <button key={q} type="button" className="chester-chat-chip" onClick={(e) => { void sendChat(e as unknown as React.FormEvent, q); }}>{q}</button>)}</div>
       <form className="chester-chatsheet__form" onSubmit={(e) => { void sendChat(e); }}><input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Message Chester..." aria-label="Message Chester" /><button type="submit" disabled={chatBusy}>Send</button></form>
     </div>}
     {hintOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Hint from Chester">
