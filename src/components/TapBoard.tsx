@@ -6,7 +6,7 @@
 // like the same town.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import { getPieceSpriteDataUrl } from '@/lib/piece-sprites';
+import { getPieceSpriteDataUrl, type PieceTheme } from '@/lib/piece-sprites';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const PIECES: Record<string, string> = { p: '♟', r: '♜', n: '♞', b: '♝', q: '♛', k: '♚' };
@@ -24,13 +24,16 @@ type TapBoardProps = {
   toppleSquare?: string;
   // BUILD 160: battle's motion-FX toggle - off means no capture theatre, just the new position.
   motion?: boolean;
+  theme?: PieceTheme;
 };
 
 function rows(fen: string): string[][] {
   return fen.split(' ')[0].split('/').map((rank) => rank.split('').flatMap((piece) => Number.isInteger(Number(piece)) ? Array(Number(piece)).fill('') : [piece]));
 }
 
-export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares, toppleSquare, motion = true }: TapBoardProps) {
+export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares, toppleSquare, motion = true,
+  theme = 'neon',
+}: TapBoardProps) {
   const [sprites, setSprites] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
   // Capture battle: the attacker trots in along a flashing path, the loser gets yeeted off the board.
@@ -73,11 +76,11 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
   useEffect(() => {
     const next: Record<string, string> = {};
     (['w', 'b'] as const).forEach((color) => ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => {
-      const url = getPieceSpriteDataUrl(color, type);
-      if (url) next[`${color}${type}`] = url;
+      const url = getPieceSpriteDataUrl(color, type, 288, theme);
+      if (url) next[`${theme}-${color}${type}`] = url;
     }));
     setSprites(next);
-  }, []);
+  }, [theme]);
 
   useEffect(() => { setSelected(null); }, [fen]);
 
@@ -114,7 +117,7 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
       const piece = grid[row][col];
       const square = `${FILES[col]}${8 - row}`;
       const isWhite = piece === piece.toUpperCase();
-      const sprite = piece ? sprites[`${isWhite ? 'w' : 'b'}${piece.toLowerCase()}`] : null;
+      const sprite = piece ? sprites[`${theme}-${isWhite ? 'w' : 'b'}${piece.toLowerCase()}`] : null;
       const target = targets.get(square);
       const classes = [
         (row + col) % 2 ? 'neon-chessboard__dark' : 'neon-chessboard__light',

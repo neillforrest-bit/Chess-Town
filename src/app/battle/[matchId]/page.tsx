@@ -12,6 +12,7 @@ import { LiveAccuracy } from '@/components/CapturedPieceJails';
 import { direct } from '@/lib/chester-director';
 import { buzz, playSfx } from '@/lib/sounds';
 import { winOddsPct, accPoints } from '@/lib/chester-voice';
+import type { PieceTheme } from '@/lib/piece-sprites';
 import { createClient } from '@/utils/supabase/client';
 import { getStockfishClient } from '@/lib/stockfish';
 
@@ -81,6 +82,7 @@ export default function BattlePage() {
   const [edu, setEdu] = useState<{ key: string; text: string } | null>(null);
   const [ghostArm, setGhostArm] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pieceTheme, setPieceTheme] = useState<PieceTheme>('metallic');
   const [zen, setZen] = useState(false);
   const [motion, setMotion] = useState(true);
   const [chitIn, setChitIn] = useState<{ key: number; text: string; from: 0 | 1 | null } | null>(null);
@@ -123,6 +125,7 @@ export default function BattlePage() {
       // Stable per-device fighter id for the rivalry dossier (BUILD 157). Device-local - no schema change.
       fid.current = localStorage.getItem('ct-fighter-id') || uid(); localStorage.setItem('ct-fighter-id', fid.current);
       setZen(localStorage.getItem('ct-zen') === '1'); setMotion(localStorage.getItem('ct-motion') !== '0');
+      setPieceTheme(localStorage.getItem('ct-piece-theme') === 'neon' ? 'neon' : 'metallic');
       const nm = localStorage.getItem('ct-fighter-name') || ''; nameRef.current = nm; setMyName(nm); setNameDraft(nm);
       const saved = localStorage.getItem(key + ':state'); if (saved) { const s = JSON.parse(saved) as Synced; stateRef.current = s; setState({ ...FRESH, ...s }); stamp.current = Date.now(); }
       const sv = sessionStorage.getItem(key + ':seat'); if (sv === '0' || sv === '1') trackedSeat.current = Number(sv);
@@ -641,6 +644,7 @@ export default function BattlePage() {
           <button type="button" role="menuitem" className="battle-menu__danger" onClick={() => { setMenuOpen(false); resign(); }} disabled={!state.pgn}>🏳 RESIGN</button>
           <button type="button" role="menuitem" onClick={() => { const v = !zen; setZen(v); try { localStorage.setItem('ct-zen', v ? '1' : '0'); } catch { /* private mode */ } }}>{zen ? '🧘 ZEN MODE: ON' : '🧘 ZEN MODE: OFF'}</button>
           <button type="button" role="menuitem" onClick={() => { const v = !motion; setMotion(v); try { localStorage.setItem('ct-motion', v ? '1' : '0'); } catch { /* private mode */ } }}>{motion ? '🎢 MOTION FX: ON' : '🎢 MOTION FX: OFF'}</button>
+          <button type="button" role="menuitem" onClick={() => { const v = pieceTheme === 'metallic' ? 'neon' : 'metallic'; setPieceTheme(v); try { localStorage.setItem('ct-piece-theme', v); } catch { /* private mode */ } }}>{pieceTheme === 'metallic' ? '🎨 PIECES: METALLIC' : '🎨 PIECES: NEON'}</button>
           <form className="battle-nameform battle-nameform--menu" onSubmit={(e) => { e.preventDefault(); const v = nameDraft.trim().slice(0, 18).toUpperCase(); if (!v) return; setMyName(v); nameRef.current = v; try { localStorage.setItem('ct-fighter-name', v); } catch { /* private mode */ } void chanRef.current?.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: v }); }}>
             <label htmlFor="battle-name-menu">YOUR FIGHTER NAME</label>
             <div className="battle-nameform__row">
@@ -672,7 +676,7 @@ export default function BattlePage() {
       <div className="fighthud__caption">LIVE WIN ODDS</div>
     </div>}
     <div className={`battle-board battle-board--frame${shakeBattle ? ' chester-board-frame--shake' : ''}${mood ? ` battle-fx--${mood}` : ''}${fx?.kind === 'mate' ? ' battle-board--mate' : ''}`}>
-      <TapBoard fen={chess.fen()} orientation={myColor} locked={!myTurn || ghostArm} lastMove={lastMove} onMove={onMove} ghostSquares={ghostSquares} toppleSquare={motion && fx?.kind === 'mate' ? fx.kingSq : undefined} motion={motion} />
+      <TapBoard fen={chess.fen()} theme={pieceTheme} orientation={myColor} locked={!myTurn || ghostArm} lastMove={lastMove} onMove={onMove} ghostSquares={ghostSquares} toppleSquare={motion && fx?.kind === 'mate' ? fx.kingSq : undefined} motion={motion} />
       {motion && fx && fx.kind !== 'move' && <div className="battle-fxlayer" aria-hidden="true">
         {fx.kind === 'capture' && <i key={fx.key} className="battle-fxpuff" style={sqPos(fx.to)} />}
         {(fx.kind === 'check' || fx.kind === 'mate') && fx.kingSq && <i key={fx.key} className={`battle-fxhalo${fx.kind === 'mate' ? ' battle-fxhalo--mate' : ''}`} style={sqPos(fx.kingSq)} />}

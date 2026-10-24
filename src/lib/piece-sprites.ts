@@ -21,9 +21,24 @@ const PIECES_SVG: Record<string, string> = {
 
 
 
-export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288): string | null {
+// PIECE THEMES (batch 182d): the SVG geometry is shared; a theme swaps the two side
+// gradients. 'neon' is the classic frost-blue vs flame-orange skin. 'metallic' is the
+// traditional black-vs-white identity with a polished metal sheen (silver vs gunmetal),
+// per his arena feedback - clear sides first, spectacle second.
+export type PieceTheme = 'metallic' | 'neon';
+const THEME_GRADIENTS: Record<PieceTheme, { frost: [string, string, string]; flame: [string, string, string] }> = {
+  neon: { frost: ['#f2f9ff', '#63a5f2', '#1c48b0'], flame: ['#ffe27a', '#ff8a1f', '#c21807'] },
+  metallic: { frost: ['#ffffff', '#dfe5ec', '#8a93a3'], flame: ['#cfd6df', '#5a626e', '#14161a'] },
+};
+
+export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288, theme: PieceTheme = 'neon'): string | null {
   let svg = PIECES_SVG[`${color}-${type}`] || PIECES_SVG[`${color}-p`];
   if (!svg) return null;
+  if (theme !== 'neon') {
+    const from = color === 'w' ? THEME_GRADIENTS.neon.frost : THEME_GRADIENTS.neon.flame;
+    const to = (color === 'w' ? THEME_GRADIENTS[theme].frost : THEME_GRADIENTS[theme].flame);
+    for (let i = 0; i < 3; i++) svg = svg.split(from[i]).join(to[i]);
+  }
   // BUILD 128: light drop shadow (0 2px 4px, white; strengthened at his request to 55%) lifts black pieces off dark squares.
   // Phaser draws the board, so the Tailwind drop-shadow utility cannot reach the pieces; same values baked into the SVG.
   if (color === 'b' && svg.includes('</defs>')) {
@@ -36,13 +51,14 @@ export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288
 // async-decode shim: first call kicks the decode and draws a soft disc placeholder,
 // the redraw lands on the next frame via the img decode cache.
 const rasterCache: Record<string, HTMLImageElement> = {};
-export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b', type: string, size: number, opts?: { small?: boolean }) {
-  const key = `${color}-${type}`;
+export function drawPieceSprite(ctx: CanvasRenderingContext2D, color: 'w' | 'b', type: string, size: number, opts?: { small?: boolean; theme?: PieceTheme }) {
+  const theme = opts?.theme || 'neon';
+  const key = `${color}-${type}-${theme}`;
   ctx.clearRect(0, 0, size, size);
   let img = rasterCache[key];
   if (!img) {
     img = new Image();
-    img.src = getPieceSpriteDataUrl(color, type) || '';
+    img.src = getPieceSpriteDataUrl(color, type, 288, theme) || '';
     rasterCache[key] = img;
   }
   if (img.complete && img.naturalWidth > 0) {
