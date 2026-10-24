@@ -1105,7 +1105,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               // holds while a freeze is up, then thinks for as long as the position deserves (his hesitation rule).
               const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
               const w = window as any;
-              for (let t = 0; t < 30 && w.__ctPending; t++) await sleep(100);
+              for (let t = 0; t < 120 && w.__ctPending; t++) await sleep(100); // wait out slow deep grading so a freeze can land before Chester replies
               w.__ctPending = false;
               for (let t = 0; t < 150 && w.__ctFreeze; t++) await sleep(100);
               if ((w.__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
@@ -1873,14 +1873,19 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const handleRewind = () => {
             const g = gameRef.current; const w = window as any;
             if (g.isGameOver || mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') return;
-            const last = (g.chess.history({ verbose: true }) as any[]).at(-1);
-            if (!last || last.color !== 'w') return;
-            const undone = g.chess.undo();
-            if (!undone) return;
+            // Take back the player's last move - including Chester's reply if it already landed.
+            let undoneAny = false;
+            for (let i = 0; i < 2; i++) {
+              const u = g.chess.undo();
+              if (!u) break;
+              undoneAny = true;
+              g.ply = Math.max(0, g.ply - 1); g.timeline.pop(); g.gradeHistory.pop(); g.playerQualities.pop();
+              if (u.captured) window.dispatchEvent(new CustomEvent('piece-restored', { detail: { color: u.color === 'w' ? 'b' : 'w', type: u.captured } }));
+              if (u.color === 'w') break;
+            }
+            if (!undoneAny) return;
             w.__ctAiEpoch = (w.__ctAiEpoch || 0) + 1; w.__ctPending = false; w.__ctFreeze = false;
-            g.ply = Math.max(0, g.ply - 1); g.timeline.pop(); g.gradeHistory.pop(); g.playerQualities.pop();
             g.lastMove = g.timeline.at(-1)?.lastMove || null; g.selectedSquare = null; g.legalTargets = []; g.coachSuggestion = null;
-            if (undone.captured) window.dispatchEvent(new CustomEvent('piece-restored', { detail: { color: 'b', type: undone.captured } }));
             window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } }));
             renderBoard();
             publishPositionEvaluation(g.chess.fen());
