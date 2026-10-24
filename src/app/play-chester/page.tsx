@@ -767,7 +767,8 @@ function PlayChesterGame() {
   </div> : null;
   const flagBanner = flagResult ? <div className={`duel-flag-banner ${flagResult === 'won' ? 'is-won' : 'is-lost'}`} role="status">{flagResult === 'won' ? '⚡ FLAG FALL - rival ran out of time. You win on the clock!' : '⏱ FLAG FALL - your clock hit zero. Rival wins on time.'}</div> : null;
 
-  const spendTorch = () => { if (!loot.torch) return; setLoot((l) => ({ ...l, torch: l.torch - 1 })); dismissHeroTip(); setHintStage(3); setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); };
+  const torchReady = () => { const l = liveRef.current; return Boolean(l.fen && l.fen === liveFen && l.bestUci && l.fen.split(' ')[1] === 'w'); };
+  const spendTorch = () => { if (!loot.torch || !torchReady()) { setBanter('🔦 Torch not ready - wait for your turn while Chester reads the position.'); return; } setLoot((l) => ({ ...l, torch: l.torch - 1 })); dismissHeroTip(); const uci = liveRef.current.bestUci!; setHintStage(3); setChipArrow({ from: uci.slice(0, 2), to: uci.slice(2, 4) }); };
   const spendShield = () => { if (!loot.shield) return; setLoot((l) => ({ ...l, shield: l.shield - 1 })); rewindAndRetry(); };
   const help = () => { if (isThinking) return; if (bossRef.current.on) { if (!bossCardsRef.current) return; bossCardsRef.current -= 1; setBossCards(bossCardsRef.current); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
@@ -781,7 +782,7 @@ function PlayChesterGame() {
             {boss && <div className="road-intro__boss" aria-label={`Boss fight: ${boss.name}`}>
               <div className="road-intro__boss-emoji" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</div>
               <p className="road-intro__boss-name">BOSS FIGHT: {boss.name}</p>
-              <p className="road-intro__boss-arch">{boss.archetype} · about {eloForLevel(roadLevel)} Elo · exam mode, 2 wild cards</p>
+              <p className="road-intro__boss-arch">{boss.archetype} · difficulty setting ~{eloForLevel(roadLevel)} · exam mode, 2 wild cards</p>
               <p className="road-intro__boss-focus">{BOSS_FOCUS[roadLevel]?.focus}</p>
             </div>}
             <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>
@@ -793,9 +794,10 @@ function PlayChesterGame() {
       {!isFriendMode && roadActive && (
         <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
           <p className="road-strip__title">ROAD TO JOSEPH · LEVEL {roadLevel}/{ROAD_MAX}</p>
+          {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
           <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
           <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
-          <p className="road-strip__who">{roadLevel >= ROAD_MAX ? 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.' : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. About ${eloForLevel(roadLevel)} Elo. Two wild cards for hints or take-backs - spend them well. Exam mode.` : `You face about ${eloForLevel(roadLevel)} Elo this level. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()} (level ${[3, 6, 9, 12, 15].find((b) => b >= roadLevel)}).`}</p>
+          <p className="road-strip__who">{roadLevel >= ROAD_MAX ? 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.' : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two wild cards for hints or take-backs - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()} (level ${[3, 6, 9, 12, 15].find((b) => b >= roadLevel)}).`}</p>
           {roadLevel < ROAD_MAX && <p className="road-strip__top">At the top waits <b>JOSEPH</b>: a grandmaster at full engine strength, the hardest opponent here. Each rung is a real step up.</p>}
         </div>
       )}
@@ -856,6 +858,7 @@ function PlayChesterGame() {
       <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b></button>
       <div className="chester-matchbar chester-matchbar--hud">
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
+        {boss && started && <span className="chester-matchbar__boss" aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</span> BOSS</span>}
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
       </div>
     </header>
@@ -870,8 +873,8 @@ function PlayChesterGame() {
         <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
         <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
       </div>
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : 'CHESTER'} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
-      <LiveAccuracy extra={challenge ? <span className={`chester-challenge${challenge.done ? ' is-done' : ''}`} role="status"><b>{challenge.done ? '✓ CHALLENGE · +150' : `CHALLENGE: ${challenge.label}`}</b>{!challenge.done && <i>{challenge.n}/{challenge.target}</i>}</span> : undefined} rows={(['w', 'b'] as const).map((c) => { const a = accuracy[c]; return { label: c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : 'CHESTER'), side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }; })} />
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : 'CHESTER')} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
+      <LiveAccuracy extra={challenge ? <span className={`chester-challenge${challenge.done ? ' is-done' : ''}`} role="status"><b>{challenge.done ? '✓ CHALLENGE · +150' : `CHALLENGE: ${challenge.label}`}</b>{!challenge.done && <i>{challenge.n}/{challenge.target}</i>}</span> : undefined} rows={(['w', 'b'] as const).map((c) => { const a = accuracy[c]; return { label: c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : 'CHESTER')), side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }; })} />
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {bp.line && bp.opening && <div className="bp-line" style={{ borderColor: bp.opening.color }}>
@@ -962,7 +965,7 @@ function PlayChesterGame() {
         </div>
         <div className="chester-console__lifelines">
           <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); const next = (hintStage < 3 ? hintStage + 1 : 3) as 1 | 2 | 3; if (next === 3 && hintStage !== 3) { if (isBossFight) { if (!bossCards) return; bossCardsRef.current = bossCards - 1; setBossCards(bossCards - 1); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); } setHintStage(next); }} disabled={hintStage === 2 && (isBossFight ? !bossCards : !helpRemaining)} title={undefined} aria-label={`Hint from Chester, ${isBossFight ? bossCards : helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{isBossFight ? bossCards : helpRemaining} LEFT</small></button>
-          {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} aria-label="Use torch power-up for the full engine answer"><b>🔦 TORCH</b><small>{loot.torch} LEFT</small></button>}
+          {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} disabled={!torchReady()} aria-label="Use torch power-up for the full engine answer"><b>🔦 TORCH</b><small>{loot.torch} LEFT</small></button>}
           {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b>🛡️ SHIELD</b><small>{loot.shield} LEFT</small></button>}
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
           <div className="chester-taunts" role="group" aria-label="Taunt Chester">

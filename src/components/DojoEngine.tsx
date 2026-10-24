@@ -881,6 +881,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // the page listens for chester-coaching-pause; nothing else dispatches it.
             if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-move-squares', { detail: { from: move.from, to: move.to, ply: gameRef.current.ply } }));
             if (isAiMover) window.dispatchEvent(new CustomEvent('chester-ai-graded', { detail: { evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null, fen: gameRef.current.chess.fen() } }));
+            if (isAiMover) publishPositionEvaluation(gameRef.current.chess.fen());
             if (!isAiMover) { (window as any).__ctEval = engineTelemetry?.evaluationAfter ?? (window as any).__ctEval ?? null; (window as any).__ctPending = false; }
             if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
               detail: {

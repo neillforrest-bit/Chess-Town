@@ -3359,3 +3359,8 @@ a.battle-btn{text-decoration:none}
 .road-intro__boss-arch { font-size: 0.85rem; opacity: 0.85; margin: 0 0 8px; }
 .road-intro__boss-focus { font-size: 0.9rem; background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.4); border-radius: 10px; padding: 8px 10px; margin: 0; }
 @keyframes ct-boss-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(244,63,94,0.6)); } 50% { transform: scale(1.12); filter: drop-shadow(0 0 14px rgba(244,63,94,0.9)); } }
+
+/* Batch 178: in-game boss presence chip */
+.road-strip__boss { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 0.8rem; color: #fda4af; }
+.road-strip__boss-emoji { display: inline-block; animation: ct-boss-pulse 1.8s ease-in-out infinite; }
+.chester-matchbar__boss { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; color: #fda4af; }

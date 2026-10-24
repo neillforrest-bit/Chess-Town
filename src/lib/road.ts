@@ -10,11 +10,11 @@ export const BOSS_ROSTER: Record<number, RoadBoss> = {
 };
 /** Batch 177 (stage 2 RPG): pre-boss scouting card - badge emoji + one tactical focus line, deterministic. */
 export const BOSS_FOCUS: Record<number, { emoji: string; focus: string }> = {
-  3: { emoji: '♟️', focus: 'FOCUS: he drifts with no plan. Take the centre early, develop every piece, and his position falls apart on its own.' },
-  6: { emoji: '🐴', focus: 'FOCUS: he squeezes slowly. Do not panic in quiet positions - keep your pieces active and do not give him weak pawns to chew on.' },
-  9: { emoji: '🏹', focus: 'FOCUS: he raids early with queen and bishops. Develop with tempo, castle on time, and his attack runs out of fuel.' },
-  12: { emoji: '❄️', focus: 'FOCUS: she gives nothing away. Build slowly, improve your worst piece, and only break open the position when it is really winning.' },
-  15: { emoji: '👑', focus: 'FOCUS: everything you have learned. No gifts are coming - play your best chess on every single move.' },
+  3: { emoji: '♟️', focus: 'TRAINING FOCUS: punishing drift - take the centre early and develop every piece.' },
+  6: { emoji: '🐴', focus: 'TRAINING FOCUS: patience in quiet positions - keep pieces active and avoid weak pawns.' },
+  9: { emoji: '🏹', focus: 'TRAINING FOCUS: defending early raids - develop with tempo, castle on time, and let attacks run out of fuel.' },
+  12: { emoji: '❄️', focus: 'TRAINING FOCUS: breaking down a wall - build slowly, improve your worst piece, strike only when it is really winning.' },
+  15: { emoji: '👑', focus: 'TRAINING FOCUS: everything you have learned - no gifts, play your best chess on every move.' },
 };
 export const isBossLevel = (level: number) => level % 3 === 0;
 export const bossFor = (level: number): RoadBoss | null => (isBossLevel(level) ? BOSS_ROSTER[level] || null : null);
