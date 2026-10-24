@@ -21,7 +21,7 @@ async function gradedMove(page, from, to, sanRx) {
     for (let j = 0; j < 45; j++) {
       await sleep(1000);
       const st = await page.evaluate(() => { const t = document.querySelector('.chester-teach'); const san = t?.querySelector('.chester-why__san')?.textContent || null; const grade = t?.querySelector('.chester-why__grade')?.textContent || document.querySelector('.chester-why__grade')?.textContent || null; return { san, grade }; });
-      if (st.grade && !/GRADING/.test(st.grade) && st.san && sanRx.test(st.san)) return st.grade;
+      if (st.grade && !/GRADING/.test(st.grade) && st.san && sanRx.test(st.san)) { await sleep(1200); await page.screenshot({ path: `/tmp/pp/sac-graded-${from}${to}.png` }); return st.grade; }
     }
     const dbg = await page.evaluate(() => ({ teach: document.querySelector('.chester-teach .chester-why__san')?.textContent || null, pending: document.querySelector('.chester-why--pending .chester-why__san')?.textContent || null, calc: !!document.querySelector('.chester-teleprompter__calculating'), body: (document.body.innerText.match(/MOVE ACCURACY[\s\S]{0,60}/) || [null])[0] }));
     await page.screenshot({ path: `/tmp/pp/sac3-debug-${i}.png` });

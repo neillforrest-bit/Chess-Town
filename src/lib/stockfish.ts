@@ -233,9 +233,9 @@ export class StockfishClient {
           afterScore = 0; // stalemate/draw: 0 for the side to move, exactly
           afterMate = null;
           continuation = [];
-          loss = before.score !== null ? Math.max(0, before.score) : before.mate !== null ? (before.mate > 0 ? 10000 : 0) : null;
+          loss = before.score !== null ? Math.max(0, before.score) : before.mate !== null ? (before.mate > 0 ? 1000 : 0) : null; // mate reads as 1000cp: the app's own winProbOf clamp ceiling
         } else {
-          afterScore = -100000; // side to move is checkmated: full loss for them
+          afterScore = -1000; // side to move is checkmated: clamp-ceiling loss for them
           afterMate = null;
           continuation = [];
           loss = 0;

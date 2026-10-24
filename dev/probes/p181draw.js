@@ -48,6 +48,8 @@ async function acc(page) { return page.evaluate(() => { const t = document.body.
     log('REPORT after tap:', JSON.stringify(await page.evaluate(() => { const c = document.querySelector('.chester-report-card'); return { open: !!document.querySelector('.chester-report-modal'), result: document.querySelector('.chester-report-card__result')?.textContent || null, clipX: c ? c.scrollWidth > c.clientWidth + 1 : null }; })));
     await tapText(page, /HOW YOUR ACCURACY/); await sleep(500);
     log('math open:', await page.evaluate(() => document.querySelector('.chester-report-card__math')?.open ?? null), '| rows:', await page.evaluate(() => document.querySelectorAll('.chester-report-card__math li').length));
+    log('row text:', await page.evaluate(() => Array.from(document.querySelectorAll('.chester-report-card__math li')).map((li) => li.textContent).join(' || ')));
+    log('math explainer:', await page.evaluate(() => (document.querySelector('.chester-report-card__math')?.textContent || '').slice(0, 400)));
     await page.screenshot({ path: '/tmp/pp/p181-report.png' });
     await browser.close();
   } finally { srv.kill('SIGKILL'); }
