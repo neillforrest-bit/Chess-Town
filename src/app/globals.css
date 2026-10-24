@@ -3326,12 +3326,21 @@ a.battle-btn{text-decoration:none}
 .chester-chat-nudge { margin-top: .4rem; align-self: flex-start; background: rgba(34,211,238,.14); color: #67e8f9; border: 1px solid rgba(34,211,238,.55); border-radius: 999px; padding: .35rem .8rem; font-size: .85rem; font-weight: 700; }
 
 /* BUILD 176: big-read WHY modal + quick-questions label (his 24 Oct readability complaint) */
-.chester-why-modal{position:fixed;inset:0;z-index:1500;display:grid;place-items:center;padding:16px}
+.chester-why-modal{position:fixed;inset:0;z-index:1500;display:grid;place-items:center;padding:12px;box-sizing:border-box}
 .chester-why-modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.78)}
-.chester-why-modal__content{position:relative;width:min(94vw,360px);background:#050b14;border:2px solid #22d3ee;border-radius:16px;padding:14px 16px;color:#f1f5f9;box-shadow:0 18px 48px rgba(0,0,0,.65)}
+.chester-why-modal__content{position:relative;width:min(100%,340px);max-height:86dvh;overflow-y:auto;box-sizing:border-box;background:#050b14;border:2px solid #22d3ee;border-radius:16px;padding:14px 16px;color:#f1f5f9;box-shadow:0 18px 48px rgba(0,0,0,.65)}
 .chester-why-modal__content>header{display:flex;justify-content:space-between;align-items:center;font:900 .78rem/1 Georgia,serif;letter-spacing:1px;color:#67e8f9;margin-bottom:8px}
-.chester-why-modal__content>header button{width:1.8rem;height:1.8rem;border:1px solid rgba(244,63,122,.7);border-radius:4px;color:#f1f5f9;background:rgba(244,63,122,.14);font-size:1.2rem;cursor:pointer}
-.chester-why-modal__headline{display:block;font-size:1.25rem;line-height:1.25;margin:2px 0 10px}
-.chester-why-modal__content p{font-size:1.02rem;line-height:1.5;margin:0 0 10px}
-.chester-why-modal__actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.chester-why-modal__content>header button{width:1.8rem;height:1.8rem;flex:0 0 auto;border:1px solid rgba(244,63,122,.7);border-radius:4px;color:#f1f5f9;background:rgba(244,63,122,.14);font-size:1.2rem;cursor:pointer}
+.chester-why-modal__headline{display:block;font-size:1.25rem;line-height:1.25;margin:2px 0 10px;overflow-wrap:anywhere}
+.chester-why-modal__content p{font-size:1.02rem;line-height:1.5;margin:0 0 10px;overflow-wrap:anywhere}
+.chester-why-modal__actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}
+/* iPad and up: coaching text was tiny inside a tall mostly-empty panel - restore readable hierarchy */
+@media (min-width: 700px) {
+  .chester-game .chester-teleprompter .chester-teleprompter__body .chester-why .chester-why__row { font-size: 1.05rem !important; line-height: 1.45 !important; }
+  .chester-game .chester-teleprompter .chester-teleprompter__body .chester-why .chester-why__head { font-size: 1rem !important; }
+  .chester-game .chester-teleprompter .chester-teleprompter__body .chester-why .chester-why__san,
+  .chester-game .chester-teleprompter .chester-teleprompter__body .chester-why .chester-why__grade,
+  .chester-game .chester-teleprompter .chester-teleprompter__body .chester-why .chester-why__headline { font-size: 1.05rem !important; line-height: 1.35 !important; }
+  .chester-game .chester-teleprompter .chester-teleprompter__body .chester-why .chester-chat-nudge { font-size: .95rem !important; }
+}
 .chester-chatsheet__quicklabel{font-size:.62rem;letter-spacing:2px;opacity:.55;margin:2px 10px 0;color:#67e8f9}
