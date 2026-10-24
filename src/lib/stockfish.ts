@@ -295,6 +295,27 @@ export class StockfishClient {
           afterIsMoverRelative = true; // the deep line is fenBefore-relative
           before = deep; // WWCD and the eval read speak from the deeper, truer search
         } else if (input.suspectSacrifice && deep.bestMove && deep.bestMove !== input.uci) {
+          // Same-search loss first (his accuracy complaint: identical positions graded
+          // SHAKY one run, BLUNDER the next). One wide MultiPV-4 search ranks the played
+          // move against the best INSIDE a single search, so the loss carries zero
+          // cross-search noise. Only moves absent from the deep top 4 pay the older
+          // two-search delta below.
+          try {
+            const wide = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 4, undefined, DEEP_CAP_MS);
+            const wideLine = [1, 2, 3, 4].map((i) => wide.lines[i]).find((l) => l && l.pv[0] === input.uci) || null;
+            if (wide.score !== null && wideLine && wideLine.score !== null) {
+              const wideLoss = Math.max(0, wide.score - wideLine.score);
+              classification = classify(wideLoss, false, null, false);
+              loss = wideLoss;
+              continuation = wideLine.pv.slice(1);
+              afterScore = wideLine.score;
+              afterMate = wideLine.mate;
+              afterIsMoverRelative = true; // same fenBefore search: mover-relative
+              before = wide;
+            }
+          } catch { /* wide search is best-effort; the two-search delta below still runs */ }
+        }
+        if (!deepLine && input.suspectSacrifice && deep.bestMove && deep.bestMove !== input.uci && (loss === null || loss > 100)) {
           // Sound-sacrifice arbitration (his playtest: a real sac should not tank win%/accuracy
           // just for giving up material): the move is not the engine's top-2, so it can never be
           // BRILLIANT - but the DEEP before/after searches, not the shallow horizon read, decide
