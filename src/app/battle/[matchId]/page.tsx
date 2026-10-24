@@ -159,6 +159,8 @@ export default function BattlePage() {
   }, [matchId, key, apply]);
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 100); return () => clearInterval(t); }, []);
+  // Route marker so global chrome (Chester fab, build badge) can clear the arena's bottom rows.
+  useEffect(() => { document.body.classList.add('battle-route'); return () => document.body.classList.remove('battle-route'); }, []);
 
   const seats = useMemo(() => seatMap(peers), [peers]);
   const seat = ready && me.current in seats ? seats[me.current] : null;

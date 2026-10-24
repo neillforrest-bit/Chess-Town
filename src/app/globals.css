@@ -3463,3 +3463,7 @@ a.battle-btn{text-decoration:none}
 .battle-chatdrawer .battle-btn--next{width:100%;flex:0 0 auto}
 .battle-btn--next{border-color:var(--arena-cyan);color:var(--arena-cyan);background:rgba(34,211,238,.1)}
 .battle-nameform--menu{margin:.4rem 0;text-align:left}
+
+/* Battle route: keep global chrome clear of the arena's bottom rows (wildcards/chat + own clock) */
+body.battle-route .chester-fab{bottom:calc(9.2rem + env(safe-area-inset-bottom))}
+body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));opacity:.55}
