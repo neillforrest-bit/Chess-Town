@@ -20,6 +20,8 @@ export type EngineTelemetry = {
   /** White-absolute mate distance after the move (positive = white mates), null when no forced mate. */
   evaluationMateAfter?: number | null;
   evalDelta: number | null;
+  /** deep sacrifice re-check failed or was inconclusive - the shallow grade is unconfirmed */
+  provisional?: boolean;
   classification: 'BRILLIANT' | 'BEST' | 'GREAT' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER';
   bestMove: string | null;
   principalVariation: string[];
@@ -238,6 +240,7 @@ export class StockfishClient {
     // move (first or second choice), the shallow grade was the horizon, not the truth.
     // Costs one deeper search, only on apparent bad moves; the verdict card shows its
     // thinking state meanwhile.
+    let provisional = false;
     if ((classification === 'MISTAKE' || classification === 'BLUNDER' || (input.suspectSacrifice && classification === 'INACCURACY')) && before.mate === null) {
       try {
         const deep = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 2, undefined, DEEP_CAP_MS);
@@ -269,6 +272,7 @@ export class StockfishClient {
           // how much it actually cost. Deep loss small -> the grade softens to match the truth;
           // deep loss still big -> the punishment stands, intent alone earns nothing.
           const deepAfter = await this.analyze(input.fenAfter, ANALYST_PRESET, 18, false, 1, undefined, DEEP_CAP_MS);
+          if (deep.score === null || deepAfter.score === null) provisional = true;
           if (deep.score !== null && deepAfter.score !== null) {
             const deepDelta = Math.max(0, deep.score + deepAfter.score);
             if (loss === null || deepDelta < loss) {
@@ -282,7 +286,7 @@ export class StockfishClient {
             }
           }
         }
-      } catch { /* the sac check is best-effort - the shallow grade stands */ }
+      } catch { provisional = provisional || input.suspectSacrifice === true; /* the sac check is best-effort - the shallow grade stands, flagged unconfirmed */ }
     }
     const stmAfter = input.fenAfter.split(/\s+/)[1];
     // Sign discipline: scores from the fenBefore MultiPV search (best-move and played-line
@@ -295,6 +299,7 @@ export class StockfishClient {
     const absAfter = afterScore === null ? null : afterIsMoverRelative ? (stmBefore === 'w' ? afterScore : -afterScore) : (stmAfter === 'w' ? afterScore : -afterScore);
     const absMateAfter = afterMate === null ? null : afterIsMoverRelative ? (stmBefore === 'w' ? afterMate : -afterMate) : (stmAfter === 'w' ? afterMate : -afterMate);
     return {
+      provisional,
       evalScore: absMateAfter === null ? (absAfter === null ? null : absAfter / 100) : `M${absMateAfter}`,
       bestMoveSan: before.pv[0] || null,
       moveQuality: classification === 'BRILLIANT' || classification === 'BEST'

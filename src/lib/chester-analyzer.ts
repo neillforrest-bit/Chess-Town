@@ -89,7 +89,7 @@ function engineReason(fenBefore: string, bestSan: string): { uci: string | null;
   } catch { return { uci: null, text: '', piece: null, from: null, motif: 'a stronger move' }; }
 }
 
-export type AnalyzerInput = { ply: number; san: string; fenBefore: string; fenAfter: string; classification?: string | null; cp?: number | null; bestSan?: string | null; check?: boolean; mate?: boolean; captured?: string | null };
+export type AnalyzerInput = { ply: number; san: string; fenBefore: string; fenAfter: string; classification?: string | null; cp?: number | null; bestSan?: string | null; check?: boolean; mate?: boolean; captured?: string | null; provisional?: boolean };
 
 export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   const moveNo = Math.ceil(inp.ply / 2);
@@ -112,6 +112,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   const salt = inp.ply * 7 + (inp.san.charCodeAt(0) || 1);
 
   const headline = (() => {
+    if (!good && inp.provisional) return 'ENGINE STILL UNSURE';
     if (!good && hang.length) return `LOOSE ${hang[0].piece.toUpperCase()} ON ${hang[0].square.toUpperCase()}`;
     return pick(good
       ? grade === 'BRILLIANT' ? ['BRILLIANT FIND', 'PINPOINT STRIKE', 'CHESTER SALUTES THAT'] : grade === 'STRONG' ? ['ENGINE-GRADE MOVE', 'EXACTLY RIGHT', 'CLEAN AND ACCURATE'] : ['SOLID CHOICE', 'SENSIBLE AND SAFE', 'STEADY PLAY']
@@ -121,9 +122,10 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   const did = (() => {
     if (good) {
       const verb = pick(['You played', 'Your move:', 'You chose'], salt + 1);
-      const why = inp.captured ? `winning the ${N[inp.captured] || inp.captured}` : inp.check ? 'with check, so my reply is forced' : grade === 'BRILLIANT' ? 'and the engine rates it as the strongest idea here' : 'and it keeps your position healthy';
+      const why = inp.captured ? `winning the ${N[inp.captured] || inp.captured}` : inp.check ? 'with check, so my reply is forced' : grade === 'BRILLIANT' ? 'and the engine rates it as the strongest idea here' : `to ${plainWhy(inp.fenBefore, inp.san)}`;
       return `✅ ${verb} ${human} ${why}.`;
     }
+    if (inp.provisional) return `❓ You played ${human}. The quick engine read calls this a slip, but the deeper check did not finish - treat this grade as unconfirmed.`;
     if (hang.length) return `❌ You played ${human}, leaving your ${hang[0].piece} on ${hang[0].square} undefended${punishSan ? ` - I can take it with ${punishSan}` : ''}.`;
     return `❌ You played ${human}, and it gives up ground: the engine had a clearly better idea.`;
   })();

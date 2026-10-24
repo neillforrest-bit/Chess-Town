@@ -893,6 +893,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 bestMove: engineTelemetry?.bestMoveSan || engineTelemetry?.bestMove || null,
                 classification: quality?.label || null,
                 pending: isPending,
+                color: move.color,
                 evalDelta: isPending ? null : (engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null),
                 evaluationBefore: engineTelemetry?.evaluationBefore ?? null,
                 evaluationAfter: engineTelemetry?.evaluationAfter ?? null,
@@ -1079,7 +1080,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const plannedExchange = rookieTeaching && move.color === 'w'
                 ? trapCreated || detectPlannedExchange(fenAfterMove, telemetry?.continuation, move.color)
                 : null;
-              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece, principle: openingPrinciple, exchange: plannedExchange }, fenBeforeMove);
+              publishMove(move, player, quality, telemetry, { movePhrase, bestMovePhrase, engineLine, sacrificePiece, provisional: (telemetry as { provisional?: boolean }).provisional === true, principle: openingPrinciple, exchange: plannedExchange }, fenBeforeMove);
               if (chaosEvent) {
                 window.dispatchEvent(new CustomEvent('dojo-banter', {
                   detail: { type: 'move', move: move.san, player, fen: gameRef.current.chess.fen(), quality: quality.label, engineTelemetry: telemetry, activeChaosEvent: chaosEvent, matchup: 'The Backroom Brawl', instruction: chaosEvent === 'MULLIGAN' ? 'Reply exactly: Oops, slip of the finger. The house grants the underdog another go.' : 'Reply exactly: Chester was getting too comfortable. One of his pieces is now disguised as a pawn. Good luck, Expert.' },

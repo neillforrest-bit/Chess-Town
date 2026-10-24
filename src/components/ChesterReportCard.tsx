@@ -61,6 +61,7 @@ function habitMark(state: 'pass' | 'almost' | 'miss'): string {
 
 export default function ChesterReportCard({
   resultLine = null,
+  accMath = null,
   grades,
   review,
   scouting,
@@ -71,7 +72,8 @@ export default function ChesterReportCard({
   onClose,
   onRetry,
 }: {
-  resultLine?: string | null;  grades: GradedMove[];
+  resultLine?: string | null;
+  accMath?: { san: string; grade: string; lost: number; score: number }[] | null;  grades: GradedMove[];
   review: string;
   scouting?: string[];
   isLoading: boolean;
@@ -174,6 +176,7 @@ export default function ChesterReportCard({
     <section className="chester-report-card">
       <header><span>CHESTER'S FINAL VERDICT</span><button type="button" onClick={onClose} aria-label="Close report">×</button></header>
       {resultLine && <p className="chester-report-card__result" role="status">{resultLine}</p>}
+      {accMath && accMath.length > 0 && <details className="chester-report-card__math"><summary>HOW YOUR ACCURACY % IS COMPUTED</summary><p>Each move is compared with the engine's best. Win% uses Lichess's published conversion from engine eval; move score = 103.16 x e^(-0.0435 x 1.5 x win% lost) - 0.8, adapted from the move-accuracy formula Lichess publishes (lichess.org/page/accuracy) with our 1.5x weighting. Your accuracy is the plain average of your move scores - Lichess weights by volatility and chess.com's model is private, so no two sites' numbers match exactly.</p><ul>{accMath.map((mv, i) => <li key={i}><span>{mv.san}<em>{mv.grade}</em></span><span>-{mv.lost}% &rarr; {mv.score}</span></li>)}</ul></details>}
       <h2 id="chester-report-title">{verdict.emoji} {verdict.word}</h2>
       <p className="chester-report-card__tagline">{verdict.line}</p>
 

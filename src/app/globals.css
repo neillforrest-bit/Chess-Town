@@ -3430,3 +3430,23 @@ a.battle-btn{text-decoration:none}
 .chester-endbanner--opp { border-color: #f43f5e; box-shadow: 0 24px 70px rgba(0,0,0,.75), 0 0 44px rgba(244,63,94,.4); }
 .chester-endbanner--opp span { color: #f43f5e; }
 .chester-report-card__result { margin: .1rem 0 .3rem; text-align: center; font: 900 .95rem Arial, sans-serif; letter-spacing: 1.6px; color: #ffe27a; }
+
+/* ── BATCH 181b · parent review fixes: board never covered, explicit continue, no clipping ── */
+.chester-teleprompter { position: relative !important; }
+.chester-teach { position: absolute !important; inset: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: 0 !important; max-height: none !important; border-radius: 12px; padding: .4rem .55rem .35rem; gap: .3rem; }
+.chester-teach__line { font-size: .86rem !important; line-height: 1.35 !important; }
+.chester-teach__headline { font-size: .8rem !important; }
+.chester-endbanner { top: auto !important; bottom: calc(6px + env(safe-area-inset-bottom)) !important; left: 10px !important; right: 10px !important; flex-direction: row !important; justify-content: center; align-items: baseline; gap: .5rem; padding: .6rem .7rem !important; border-radius: 14px; }
+.chester-endbanner b { font-size: 1.05rem !important; }
+.chester-endbanner span { font-size: .7rem !important; }
+.chester-endbanner small { margin-top: 0 !important; }
+.chester-report-card { overflow-x: clip !important; }
+.chester-report-card__ladder { min-width: 0 !important; }
+.chester-report-card__ladder-track { flex-wrap: wrap !important; }
+.chester-report-card__rung { min-width: 56px !important; }
+.chester-report-card__math { margin: .6rem 0; padding: .55rem .65rem; border: 1px solid rgba(34,211,238,.4); border-radius: 6px; background: rgba(34,211,238,.05); }
+.chester-report-card__math summary { cursor: pointer; color: var(--arena-cyan, #22d3ee); font-size: .62rem; font-weight: 900; letter-spacing: 1.4px; }
+.chester-report-card__math p { margin: .4rem 0 0; color: #cfe9ee; font-size: .76rem; line-height: 1.45; }
+.chester-report-card__math ul { margin: .35rem 0 0; padding: 0; list-style: none; max-height: 130px; overflow-y: auto; }
+.chester-report-card__math li { display: flex; justify-content: space-between; gap: .5rem; padding: .12rem 0; border-top: 1px solid rgba(255,255,255,.08); color: #efdce4; font-size: .72rem; }
+.chester-report-card__math li em { color: #f2a9c7; font-style: normal; font-weight: 900; margin-left: .3rem; }
