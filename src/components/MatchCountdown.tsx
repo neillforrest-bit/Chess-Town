@@ -33,6 +33,6 @@ export default function MatchCountdown({ onDone, fast = false }: { onDone?: () =
   const current = beats[Math.min(beat, beats.length - 1)];
   return <div className="match-countdown" role="status" aria-label="Match starting">
     <span key={beat} className="match-countdown__word" style={{ color: current.color, textShadow: `0 0 24px ${current.color}, 0 0 64px ${current.color}` }}>{current.word}</span>
-    <span className="match-countdown__sub">{fast ? 'COLORS FLIPPED' : 'CHESTER PRESENTS'}</span>
+    <span className="match-countdown__sub">{fast ? 'COLORS FLIPPED' : 'CHESTER PRESENTS · TAPS UNLOCK ON GO'}</span>
   </div>;
 }

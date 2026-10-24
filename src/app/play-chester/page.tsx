@@ -19,7 +19,7 @@ import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/s
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
-import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt, BOSS_FOCUS } from '@/lib/road';
+import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt, BOSS_FOCUS, levelFocus } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { getStockfishClient } from '@/lib/stockfish';
@@ -785,6 +785,10 @@ function PlayChesterGame() {
               <p className="road-intro__boss-arch">{boss.archetype} · difficulty setting ~{eloForLevel(roadLevel)} · exam mode, 2 wild cards</p>
               <p className="road-intro__boss-focus">{BOSS_FOCUS[roadLevel]?.focus}</p>
             </div>}
+            {!boss && roadActive && <div className="road-intro__boss">
+              <p className="road-intro__boss-name">LEVEL {roadLevel}/{ROAD_MAX} · difficulty setting ~{eloForLevel(roadLevel)}</p>
+              <p className="road-intro__boss-focus">{levelFocus(roadLevel)}</p>
+            </div>}
             <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>
             {boss ? <p>This one actually plays. No power-ups on this board - just you, your two wild cards, and whatever you have learned. Do not waste my time.</p> : <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>}
             <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
@@ -858,7 +862,7 @@ function PlayChesterGame() {
       <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b></button>
       <div className="chester-matchbar chester-matchbar--hud">
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
-        {boss && started && <span className="chester-matchbar__boss" aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</span> BOSS</span>}
+        {boss && started && <span className={`chester-matchbar__boss${freeze?.tone === 'red' ? ' is-mocking' : ''}`} aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji road-strip__boss-emoji--walk" aria-hidden="true">{BOSS_FOCUS[roadLevel]?.emoji || '⚔️'}</span> BOSS</span>}
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
       </div>
     </header>

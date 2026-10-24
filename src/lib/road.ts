@@ -16,6 +16,14 @@ export const BOSS_FOCUS: Record<number, { emoji: string; focus: string }> = {
   12: { emoji: '❄️', focus: 'TRAINING FOCUS: breaking down a wall - build slowly, improve your worst piece, strike only when it is really winning.' },
   15: { emoji: '👑', focus: 'TRAINING FOCUS: everything you have learned - no gifts, play your best chess on every move.' },
 };
+/** Batch 179: per-level training focus text for the pre-game card on NORMAL levels (his words: "text that overrides the game board to talk about the difficulty between each level"). */
+export function levelFocus(level: number): string {
+  if (level <= 2) return 'TRAINING FOCUS: the basics - centre pawns, develop knights and bishops, castle early.';
+  if (level <= 5) return 'TRAINING FOCUS: stop hanging pieces - before every move, check what is attacked.';
+  if (level <= 8) return 'TRAINING FOCUS: tactics - look for forks, pins and loose pieces before developing on autopilot.';
+  if (level <= 11) return 'TRAINING FOCUS: plans over moves - ask what your worst-placed piece needs.';
+  return 'TRAINING FOCUS: precision - calculate every forcing move: checks, captures, threats.';
+}
 export const isBossLevel = (level: number) => level % 3 === 0;
 export const bossFor = (level: number): RoadBoss | null => (isBossLevel(level) ? BOSS_ROSTER[level] || null : null);
 /** Nominal strength. Levels 1-14 interpolate 800..3190 Elo. Level 15 is unlimited (null): Joseph plays at full grandmaster strength. */
