@@ -122,6 +122,28 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     }
   } catch { /* bad fen: fall through to generic wording */ }
   const term = terminalInfo(inp.fenAfter);
+  // Tactic grounding (his insight ask): the moved piece's LEGAL captures on the next move,
+  // read from the board with the turn flipped back (pin-safe by construction). A fork is only
+  // named when those captures are actually legal; when the piece can simply be taken back it is
+  // described as a sacrifice whose compensation the deep engine search confirmed - never as a
+  // guaranteed material win.
+  const tactic = (() => {
+    const none = { caps: [] as { piece: string; square: string }[], enPrise: false, kingTakes: false, piece: '' };
+    try {
+      const beforeC = new Chess(inp.fenBefore);
+      const mv = (beforeC.moves({ verbose: true }) as any[]).find((m) => m.san === inp.san);
+      if (!mv || mv.piece === 'k' || mv.piece === 'p') return none;
+      const afterT = new Chess(inp.fenAfter);
+      (afterT as any).setTurn(mv.color);
+      const caps = ((afterT.moves({ verbose: true }) as any[]).filter((m: any) => m.from === mv.to && m.captured && m.captured !== 'p') as any[])
+        .map((m: any) => ({ piece: m.captured as string, square: m.to as string }))
+        .sort((a, b) => 'qrbn'.indexOf(a.piece) - 'qrbn'.indexOf(b.piece));
+      const enemy = mv.color === 'w' ? 'b' : 'w';
+      const takers = ((new Chess(inp.fenAfter)) as any).attackers(mv.to, enemy) as string[];
+      const kingTakes = takers.some((sq) => { const pc = (new Chess(inp.fenAfter)).get(sq as any) as any; return pc && pc.type === 'k'; });
+      return { caps, enPrise: takers.length > 0, kingTakes, piece: N[mv.piece] || mv.piece };
+    } catch { return none; }
+  })();
   // Terminal facts (mate/stalemate/draw) are certain from the board; the move's QUALITY
   // comes only from real engine evidence (classification/cp) - never from material counts.
   const grade = gradeOf(inp.classification, inp.cp, hang.length > 0);
@@ -152,8 +174,14 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     if (term?.kind === 'draw') return `\u2796 You played ${human}, and the game ends in a draw.`;
     if (good) {
       const verb = pick(['You played', 'Your move:', 'You chose'], salt + 1);
-      const why = inp.captured ? `winning the ${N[inp.captured] || inp.captured}` : inp.check ? 'with check, so my reply is forced' : grade === 'BRILLIANT' ? 'and the engine rates it as the strongest idea here' : `to ${plainWhy(inp.fenBefore, inp.san)}`;
-      return `✅ ${verb} ${human} ${why}.`;
+      const parts: string[] = [];
+      if (inp.captured && !/taking|captures/i.test(human)) parts.push(`winning the ${N[inp.captured] || inp.captured}`);
+      if (tactic.caps.length >= 2 && !tactic.enPrise) parts.push(`forking their ${N[tactic.caps[0].piece]} on ${tactic.caps[0].square} and ${N[tactic.caps[1].piece]} on ${tactic.caps[1].square}`);
+      else if (tactic.caps.length >= 1 && !tactic.enPrise && 'qr'.includes(tactic.caps[0].piece)) parts.push(`attacking their ${N[tactic.caps[0].piece]} on ${tactic.caps[0].square}`);
+      else if (tactic.kingTakes && grade === 'BRILLIANT') parts.push(`sacrificing ${inp.captured ? 'it' : `the ${tactic.piece}`} to drag their king into the open`);
+      const why = parts.length ? parts.join(' and ') : inp.check ? 'with check, so my reply is forced' : grade === 'BRILLIANT' ? 'and the engine rates it as the strongest idea here' : `to ${plainWhy(inp.fenBefore, inp.san)}`;
+      const glue = parts.length && /taking|captures/i.test(human) ? ' and ' : ' ';
+      return `✅ ${verb} ${human}${glue}${why}.`;
     }
     if (inp.provisional) return `❓ You played ${human}. The quick engine read calls this a slip, but the deeper check did not finish - treat this grade as unconfirmed.`;
     if (hang.length) return `❌ You played ${human}, leaving your ${hang[0].piece} on ${hang[0].square} undefended${punishSan ? ` - I can take it with ${punishSan}` : ''}.`;
@@ -171,7 +199,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     : inp.bestSan
     ? (!good || grade === 'SOLID')
       ? `🤖 Before your move, the stronger idea was: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
-      : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'} - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}.`
+      : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : ` - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}`}.`
     : '🤖 Engine line loading - the move above is graded on the board facts.';
 
   const arrows: WhyCard['boardOverlayArrows'] = [];

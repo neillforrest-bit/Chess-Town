@@ -709,7 +709,7 @@ export function winOddsPct(evaluationAfter: number | null | undefined, viewerCol
 // an already-won position tanked the WINNING side (his sister's game read 1% / 1.2%).
 // Our adaptation: -0.8 offset instead of -3.1669, and win-probability loss weighted 1.5x so an early queen
 // blunder lands the game in the 65-75% range.
-function winProbOf(cp: number): number { const c = Math.max(-1000, Math.min(1000, cp)); return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1); }
+export function winProbOf(cp: number): number { const c = Math.max(-1000, Math.min(1000, cp)); return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1); }
 export function accPoints(beforeCpMover: number | null | undefined, afterCpMover: number | null | undefined): number {
   if (beforeCpMover === null || beforeCpMover === undefined || afterCpMover === null || afterCpMover === undefined) return 0;
   return Math.max(0, (winProbOf(beforeCpMover) - winProbOf(afterCpMover)) * 1.5);

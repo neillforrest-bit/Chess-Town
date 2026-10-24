@@ -16,6 +16,8 @@ export type EngineTelemetry = {
   san: string;
   uci: string;
   evaluationBefore: number | null;
+  /** Mover-relative mate distance from the real PRE-move search (positive = mover has forced mate); null when the search reported cp. Never derived from material. */
+  evaluationMateBefore?: number | null;
   evaluationAfter: number | null;
   /** White-absolute mate distance after the move (positive = white mates), null when no forced mate. */
   evaluationMateAfter?: number | null;
@@ -211,6 +213,9 @@ export class StockfishClient {
     let continuation: string[];
     let afterScore: number | null;
     let afterMate: number | null;
+    let terminalForced: 'BLUNDER' | null = null; // thrown search-confirmed mate: fact, not a measurement
+    let terminalAbsolute = false; // terminal branch scores are side-to-move-after-relative
+
     if (isBestMove) {
       loss = 0;
       continuation = before.pv.slice(1);
@@ -233,12 +238,18 @@ export class StockfishClient {
           afterScore = 0; // stalemate/draw: 0 for the side to move, exactly
           afterMate = null;
           continuation = [];
-          loss = before.score !== null ? Math.max(0, before.score) : before.mate !== null ? (before.mate > 0 ? 1000 : 0) : null; // mate reads as 1000cp: the app's own winProbOf clamp ceiling
+          loss = before.score !== null ? Math.max(0, before.score) : null;
+          // Throwing a SEARCH-CONFIRMED forced mate into a draw is a fact, not a measurement:
+          // grade BLUNDER directly, leave loss null (no fabricated centipawns anywhere), and let
+          // the accuracy side use the app's published mate convention (forced mate = 100%, draw = 50%).
+          if (loss === null && before.mate !== null && before.mate > 0) terminalForced = 'BLUNDER';
+          terminalAbsolute = true;
         } else {
           afterScore = -1000; // side to move is checkmated: clamp-ceiling loss for them
-          afterMate = null;
+          afterMate = -1; // mated NOW: negative mate against the side to move (engine "mate 0" would be dropped downstream)
           continuation = [];
           loss = 0;
+          terminalAbsolute = true;
         }
       } else {
       const after = await this.analyze(input.fenAfter, ANALYST_PRESET, ANALYST_DEPTH, false, 1, undefined, GRADE_CAP_MS);
@@ -261,15 +272,15 @@ export class StockfishClient {
       : null;
     const foundForcedMate = isBestMove && before.mate !== null
       && !(secondLine && secondLine.mate !== null && secondLine.mate <= before.mate + 1);
-    let afterIsMoverRelative = isBestMove || playedLine !== null;
-    let classification = classify(loss, isBestMove, firstChoiceGap, foundForcedMate);
+    let afterIsMoverRelative = !terminalAbsolute && (isBestMove || playedLine !== null);
+    let classification = terminalForced ?? classify(loss, isBestMove, firstChoiceGap, foundForcedMate);
     // Sound-sacrifice confirmation (batch 90, his steering): a planned sacrifice reads as
     // MISTAKE/BLUNDER at grading depth because the compensation lives past the horizon.
     // Before scolding, re-search the position at depth 18 - if the engine now endorses the
     // move (first or second choice), the shallow grade was the horizon, not the truth.
     // Costs one deeper search, only on apparent bad moves; the verdict card shows its
     // thinking state meanwhile.
-    let provisional = loss === null; // no trustworthy engine loss: never grade on missing evidence
+    let provisional = loss === null && terminalForced === null; // no trustworthy engine loss: never grade on missing evidence
     if ((classification === 'MISTAKE' || classification === 'BLUNDER' || (input.suspectSacrifice && classification === 'INACCURACY')) && before.mate === null) {
       try {
         const deep = await this.analyze(input.fenBefore, ANALYST_PRESET, 18, false, 2, undefined, DEEP_CAP_MS);
@@ -359,7 +370,7 @@ export class StockfishClient {
           : classification.toLowerCase() as 'inaccuracy' | 'mistake' | 'blunder',
       fenBefore: input.fenBefore, fenAfter: input.fenAfter, san: input.san, uci: input.uci,
       // evaluationAfter is now WHITE-ABSOLUTE centipawns (positive = white better).
-      evaluationBefore: before.score, evaluationAfter: absAfter, evaluationMateAfter: absMateAfter, evalDelta: loss,
+      evaluationBefore: before.score, evaluationMateBefore: before.mate, evaluationAfter: absAfter, evaluationMateAfter: absMateAfter, evalDelta: loss,
       classification, bestMove: before.bestMove,
       principalVariation: before.pv, alternateWinningLines: before.pv.length ? [before.pv.join(' ')] : [], engine: 'stockfish-18',
       centipawns: afterScore, mateIn: afterMate, continuation,
