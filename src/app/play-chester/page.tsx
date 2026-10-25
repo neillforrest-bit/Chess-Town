@@ -730,7 +730,7 @@ function PlayChesterGame() {
     const fallback = () => chesterOfflineChat(message, { persona: difficulty, fen: lastFen, lastMove: lastMove?.move, lastMovePhrase, classification: lastMove?.classification, bestMove: lastBest, bestMovePhrase: lastBestPhrase, capturedCount: capturedPieces.length, historyCount: history.length });
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. You are chatting mid-game with your student. Live board FEN: ${lastFen}. Moves so far: ${moveTrail.map((m) => m.move).join(' ') || 'none yet'}. Last graded student move: ${lastMove ? `${lastMove.move} (${lastMove.classification || 'ungraded'})` : 'none'}. Engine-preferred idea: ${lastBest || 'unknown'}. Answer the student directly in at most 3 sentences. Be funny AND educational: every joke carries a chess lesson, every lesson lands a joke. Use only the FEN and record above for board facts - never invent pieces, squares, or lines. Plain English, no centipawns, no engine jargon.`;
     const deterministic = () => chatReply(message, whyCard, liveRef.current.fen ? { fen: liveRef.current.fen, bestSan: liveRef.current.bestSan } : null, history);
-    if (/what should i (do|play)|what next|what now|next move|what do i do|my best move|stuck|\blost\b|suggest|help me/i.test(message)) {
+    if (!(report || finalResult) && /what should i (do|play)|what next|what now|next move|what do i do|my best move|stuck|\blost\b|suggest|help me/i.test(message)) {
       // Next-move questions are answered from a fresh look at the board as it is right now, never from an older card.
       const got = await peekBoard();
       let text: string;
@@ -741,7 +741,7 @@ function PlayChesterGame() {
       setChatMessages([...history, { role: 'chester', text: text.charAt(0).toUpperCase() + text.slice(1), kind: 'chat' }]); setChatBusy(false);
       return;
     }
-    if (/compare|candidate|top 2|top two/i.test(message)) {
+    if (!(report || finalResult) && /compare|candidate|top 2|top two/i.test(message)) {
       // One-tap compare: two real engine lines for THIS position, in words, with an honest gap call.
       const got = await peekBoard(2);
       let text: string;
@@ -1145,7 +1145,7 @@ function PlayChesterGame() {
         {chatMessages.map((m, i) => <div key={i} className={`chester-chatsheet__msg chester-chatsheet__msg--${m.role === 'user' ? 'you' : 'chester'}`}>{m.role === 'user' ? m.text : <MoveChipText text={m.text} onChip={(san) => { try { const c = new Chess(liveRef.current.fen || lastFen); const mv = (c.moves({ verbose: true }) as { san: string; from: string; to: string }[]).find((x) => x.san.replace(/[+#]/g, '') === san.replace(/[+#]/g, '')); if (mv) setChipArrow({ from: mv.from, to: mv.to }); } catch { /* ignore */ } }} />}</div>)}
         {chatBusy && <div className="chester-chatsheet__msg chester-chatsheet__msg--chester">…</div>}
       </div>
-      <div className="chester-chatsheet__quicklabel">QUICK QUESTIONS</div><div className="chester-chatsheet__chips">{(whyCard ? whyCard.contextualChatChips : ['What should my next move be?', 'Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"]).map((q) => <button key={q} type="button" className="chester-chat-chip" onClick={(e) => { void sendChat(e as unknown as React.FormEvent, q); }}>{q}</button>)}</div>
+      <div className="chester-chatsheet__quicklabel">QUICK QUESTIONS</div><div className="chester-chatsheet__chips">{((report || finalResult) ? ['How did I do?', 'Explain the final move', 'What should I practise?', 'Grade my game'] : whyCard ? whyCard.contextualChatChips : ['What should my next move be?', 'Compare my top 2 candidate moves', 'Are any of my pieces undefended right now?', "What is Chester's plan here?"]).map((q) => <button key={q} type="button" className="chester-chat-chip" onClick={(e) => { void sendChat(e as unknown as React.FormEvent, q); }}>{q}</button>)}</div>
       <form className="chester-chatsheet__form" onSubmit={(e) => { void sendChat(e); }}><input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Message Chester..." aria-label="Message Chester" /><button type="submit" disabled={chatBusy}>Send</button></form>
     </div>}
     {hintOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Hint from Chester">

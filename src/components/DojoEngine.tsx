@@ -141,9 +141,16 @@ function getPostGameReport(chess: any, qualities: { label: string; move: string;
   // version counted BOTH sides' minor moves all game, credited king safety when
   // either side castled, and pinned a typical beginner win to a C by formula.
   const qualityScores: Record<string, number> = { BEST: 100, GREAT: 90, GOOD: 78, INACCURACY: 58, MISTAKE: 35, BLUNDER: 10 };
+  // Terminal-aware default: a very short game ends before the analyst confirms any
+  // move. A checkmate win must never grade as failure (his testers play short games);
+  // getting mated fast should still read as the lesson it is.
+  const mateNow = chess.isCheckmate();
+  const playerMatedEngine = mateNow && chess.turn() === 'b'; // side to move is mated
+  const engineMatedPlayer = mateNow && chess.turn() === 'w';
+  const unconfirmedDefault = playerMatedEngine ? 85 : engineMatedPlayer ? 35 : 50;
   const accuracy = confirmed.length
     ? Math.round(confirmed.reduce((total, quality) => total + (qualityScores[quality.label] || 50), 0) / confirmed.length)
-    : 50;
+    : unconfirmedDefault;
   const history = chess.history({ verbose: true }) as any[];
   const playerMoves = history.filter((move) => move.color === 'w');
   const developedFroms = new Set(playerMoves.filter((move) => (move.piece === 'n' || move.piece === 'b') && ['b1', 'g1', 'c1', 'f1'].includes(move.from)).map((move) => move.from));
@@ -151,7 +158,7 @@ function getPostGameReport(chess: any, qualities: { label: string; move: string;
   const castled = playerMoves.some((move) => move.flags.includes('k') || move.flags.includes('q'));
   const kingSafety = castled ? 95 : 45;
   const captures = playerMoves.filter((move) => move.captured).length;
-  const checksGiven = playerMoves.filter((move) => (move.san || '').includes('+')).length;
+  const checksGiven = playerMoves.filter((move) => (move.san || '').includes('+') || (move.san || '').includes('#')).length; // mate counts as a check - Ra8# is tactical
   const tactics = Math.min(100, 45 + captures * 15 + checksGiven * 5);
   const blunders = confirmed.filter((quality) => quality.label === 'BLUNDER').length;
   const score = Math.round(accuracy * 0.5 + development * 0.2 + kingSafety * 0.15 + tactics * 0.15);
@@ -703,6 +710,23 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               emitCapture(move);
               renderBoard();
               showCaptureBubble(move);
+              // BUILD 183l capture payoff: the material you just won rises off the square
+              // ("+3" for a knight) - makes the capture READ as a gain, not just motion.
+              try {
+                const VALS: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+                const v = VALS[move.captured] || 0;
+                if (v > 0) {
+                  const cCol = files.indexOf(move.to[0]);
+                  const cRow = ranks.indexOf(move.to[1]);
+                  if (cCol >= 0 && cRow >= 0) {
+                    const px = boardOffset + sx(cCol) * tileSize + tileSize / 2;
+                    const py = boardOffset + sy(cRow) * tileSize + tileSize / 2;
+                    const gain = scene.add.text(px, py, `+${v}`, { fontFamily: 'Georgia, serif', fontSize: `${Math.round(tileSize * 0.55)}px`, fontStyle: 'bold', color: '#4ade80', stroke: '#0a0e14', strokeThickness: 5 }).setOrigin(0.5).setDepth(33).setScale(0.4);
+                    scene.tweens.add({ targets: gain, scaleX: 1, scaleY: 1, duration: 260, ease: 'Back.Out' });
+                    scene.tweens.add({ targets: gain, y: py - tileSize * 0.9, alpha: 0, delay: 700, duration: 750, ease: 'Quad.In', onComplete: () => gain.destroy() });
+                  }
+                }
+              } catch { /* the payoff pop is decoration */ }
             };
             // His capture spec: the taken piece pops larger, TIPS OVER, then waddles off.
             capturedPiece.setScale(1.08);
@@ -1187,37 +1211,51 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // BUILD 183j finish drama: the losing king topples in slow motion, the
             // winner's crown rises, the arena rim burns the winner's colour. Purely
             // decorative - every claim about WHO won comes from the stamped result.
+            // ORDERING: finishGame runs BEFORE the final renderBoard, which destroys and
+            // recreates every piece container - a tween on the pre-render king dies with
+            // it (parent pixel review: king still upright). Run delayed, look the king up
+            // fresh, and repeat once late enough to catch a capture-mate's settle render.
             if (result !== 'draw') {
-              try {
-                const loserColor = gameRef.current.chess.turn() === 'w' ? 'w' : 'b'; // side to move lost (mate/resign)
-                let loserKingSq: string | null = null;
-                let winnerKingSq: string | null = null;
-                for (const row of gameRef.current.chess.board()) {
-                  for (const cell of row) {
-                    if (cell && cell.type === 'k') { if (cell.color === loserColor) loserKingSq = cell.square; else winnerKingSq = cell.square; }
+              const runFinishDrama = (late: boolean) => {
+                try {
+                  const done = ((gameRef.current as any).finishDrama ||= { topple: false, crown: false, rim: false });
+                  const loserColor = gameRef.current.chess.turn() === 'w' ? 'w' : 'b'; // side to move lost (mate/resign)
+                  let loserKingSq: string | null = null;
+                  let winnerKingSq: string | null = null;
+                  for (const row of gameRef.current.chess.board()) {
+                    for (const cell of row) {
+                      if (cell && cell.type === 'k') { if (cell.color === loserColor) loserKingSq = cell.square; else winnerKingSq = cell.square; }
+                    }
                   }
-                }
-                const loserKing = loserKingSq ? pieceContainers[loserKingSq] : null;
-                if (loserKing) {
-                  loserKing.setDepth(29);
-                  scene.tweens.add({ targets: loserKing, angle: 88, y: loserKing.y + tileSize * 0.16, duration: 750, ease: 'Bounce.Out' });
-                  const puff = scene.add.circle(loserKing.x, loserKing.y + tileSize * 0.18, tileSize * 0.3, 0x9ca3af, 0.35).setDepth(28);
-                  scene.tweens.add({ targets: puff, scaleX: 2.2, scaleY: 2.2, alpha: 0, duration: 900, ease: 'Quad.Out', onComplete: () => puff.destroy() });
-                }
-                if (winnerKingSq) {
-                  const wCol = files.indexOf(winnerKingSq[0]);
-                  const wRow = ranks.indexOf(winnerKingSq[1]);
-                  if (wCol >= 0 && wRow >= 0) {
-                    const wx = boardOffset + sx(wCol) * tileSize + tileSize / 2;
-                    const wy = boardOffset + sy(wRow) * tileSize + tileSize / 2;
-                    const crown = scene.add.text(wx, wy - tileSize * 0.7, '👑', { fontSize: `${Math.round(tileSize * 0.6)}px` }).setOrigin(0.5).setDepth(31).setScale(0.1);
-                    scene.tweens.add({ targets: crown, scaleX: 1, scaleY: 1, y: wy - tileSize * 0.95, duration: 600, ease: 'Back.Out', delay: 380 });
-                    scene.tweens.add({ targets: crown, alpha: 0, delay: 2800, duration: 500, ease: 'Quad.In', onComplete: () => crown.destroy() });
+                  const loserKing = loserKingSq ? pieceContainers[loserKingSq] : null;
+                  if (loserKing && !done.topple) {
+                    done.topple = true;
+                    loserKing.setDepth(29);
+                    scene.tweens.add({ targets: loserKing, angle: 88, y: loserKing.y + tileSize * 0.16, duration: 750, ease: 'Bounce.Out' });
+                    const puff = scene.add.circle(loserKing.x, loserKing.y + tileSize * 0.18, tileSize * 0.3, 0x9ca3af, 0.35).setDepth(28);
+                    scene.tweens.add({ targets: puff, scaleX: 2.2, scaleY: 2.2, alpha: 0, duration: 900, ease: 'Quad.Out', onComplete: () => puff.destroy() });
                   }
-                }
-                const rim = scene.add.rectangle(398, 398, 756, 756).setStrokeStyle(12, loserColor === 'b' ? 0xffd84d : 0xf43f7a, 0.85).setDepth(33);
-                scene.tweens.add({ targets: rim, alpha: 0, duration: 1600, ease: 'Cubic.Out', onComplete: () => rim.destroy() });
-              } catch { /* finish drama is decoration - never break the result flow */ }
+                  if (winnerKingSq && !done.crown && !late) {
+                    done.crown = true;
+                    const wCol = files.indexOf(winnerKingSq[0]);
+                    const wRow = ranks.indexOf(winnerKingSq[1]);
+                    if (wCol >= 0 && wRow >= 0) {
+                      const wx = boardOffset + sx(wCol) * tileSize + tileSize / 2;
+                      const wy = boardOffset + sy(wRow) * tileSize + tileSize / 2;
+                      const crown = scene.add.text(wx, wy - tileSize * 0.7, '👑', { fontSize: `${Math.round(tileSize * 0.6)}px` }).setOrigin(0.5).setDepth(31).setScale(0.1);
+                      scene.tweens.add({ targets: crown, scaleX: 1, scaleY: 1, y: wy - tileSize * 0.95, duration: 600, ease: 'Back.Out', delay: 380 });
+                      scene.tweens.add({ targets: crown, alpha: 0, delay: 2800, duration: 500, ease: 'Quad.In', onComplete: () => crown.destroy() });
+                    }
+                  }
+                  if (!done.rim && !late) {
+                    done.rim = true;
+                    const rim = scene.add.rectangle(398, 398, 756, 756).setStrokeStyle(12, loserColor === 'b' ? 0xffd84d : 0xf43f7a, 0.85).setDepth(33);
+                    scene.tweens.add({ targets: rim, alpha: 0, duration: 1600, ease: 'Cubic.Out', onComplete: () => rim.destroy() });
+                  }
+                } catch { /* finish drama is decoration - never break the result flow */ }
+              };
+              scene.time.delayedCall(120, () => runFinishDrama(false));
+              scene.time.delayedCall(3200, () => runFinishDrama(true)); // capture-mate: after the settle render
             }
             window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory, pgn, gameResult: { outcome, cause } } }));
             window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn } }));

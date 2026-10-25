@@ -401,6 +401,55 @@ export function chatReply(message: string, card: WhyCard | null, live: { fen: st
   const q = message.toLowerCase();
   const prevChester = history ? [...history].reverse().find((t) => t.role === 'chester')?.text || '' : '';
   let out = '';
+  // 0. Terminal board: the game is over. Answer in review voice from the final position
+  // and the actual last move - never a future suggestion on a finished board, and never
+  // "it was not better" boilerplate when nobody asked for a comparison (his pixel review).
+  try {
+    if (live?.fen) {
+      const over = new Chess(live.fen);
+      if (over.isGameOver()) {
+        const hist = over.history({ verbose: true }) as any[];
+        const last = hist[hist.length - 1] || null;
+        const mate = over.isCheckmate();
+        const stale = over.isStalemate();
+        const playerMatedIt = mate && card && last && card.san === last.san; // the player's graded move was the mate
+        const piecePhrase = last ? `your ${({ p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' } as Record<string, string>)[last.piece] || 'piece'} to ${last.to}` : 'the final move';
+        const resultLine = mate
+          ? (playerMatedIt ? `${piecePhrase} was checkmate` : 'that final move was checkmate against you')
+          : stale ? 'the game ended in stalemate - no legal moves, but no check' : 'the game ended in a draw';
+        const whyMate = (): string => {
+          if (!mate) return '';
+          try {
+            const kingSq = (() => { for (const row of over.board()) for (const cell of row) { if (cell && cell.type === 'k' && cell.color === over.turn()) return cell.square; } return null; })();
+            if (!kingSq) return 'The king was attacked and had no legal reply.';
+            const files = 'abcdefgh';
+            const kc = files.indexOf(kingSq[0]);
+            const kr = parseInt(kingSq[1], 10);
+            const reasons: string[] = [];
+            for (let dc = -1; dc <= 1 && reasons.length < 3; dc++) for (let dr = -1; dr <= 1 && reasons.length < 3; dr++) {
+              if (!dc && !dr) continue;
+              const c2 = kc + dc; const r2 = kr + dr;
+              if (c2 < 0 || c2 > 7 || r2 < 1 || r2 > 8) continue;
+              const sq2 = `${files[c2]}${r2}`;
+              const occ = over.get(sq2 as any);
+              if (occ && occ.color === over.turn()) { reasons.push(`${sq2} was blocked by their own ${({ p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' } as Record<string, string>)[occ.type] || 'piece'}`); continue; }
+              const hunters = over.attackers(sq2 as any, over.turn() === 'w' ? 'b' : 'w');
+              if (hunters.length) reasons.push(`${sq2} was covered`);
+            }
+            return reasons.length ? ` The king could not run: ${reasons.join(', ')} - and nothing could block or take the attacker.` : ' The king was attacked and had no legal reply.';
+          } catch { return ' The king was attacked and had no legal reply.'; }
+        };
+        if (/why|how come|explain/.test(q) && mate) return `${resultLine.charAt(0).toUpperCase() + resultLine.slice(1)}.${whyMate()} That is what checkmate means - the attack with no answer.`;
+        if (/practise|practice|homework|work on|improve|get better/.test(q)) return 'One habit decides games at your level: before every move, ask what it leaves undefended. Pawn Wars is the short, sharp drill for exactly that - nothing left hanging.';
+        if (/next|what should i (play|do)|suggest|best move|stuck|help me/.test(q)) return 'There is no next move on this board - the game is finished. Tap REMATCH and I will meet you back at move one.';
+        if (/last move|how did i do|was .*(good|ok|okay|right)|good move|grade|how was|did i win|who won/.test(q) || mate || stale) {
+          if (playerMatedIt) return `Yes - and then some. ${resultLine.charAt(0).toUpperCase() + resultLine.slice(1)}.${whyMate()} The cleanest ending in chess.`;
+          if (mate) return `Hard truth: ${resultLine}.${whyMate()} The lesson lives a move or two earlier - ask me "what should I practise?" and I will point you at it.`;
+          return `Here is the honest read: ${resultLine}. Ask me "what should I practise?" for the next step.`;
+        }
+      }
+    }
+  } catch { /* terminal detection is a bonus - fall through to normal intents */ }
   // 1. Board support: frozen / can't move / not working. Never a move review.
   if (/frozen|can'?t move|cant move|won'?t move|wont move|not (working|responding|moving)|nothing happens|glitch|bug|broken|crashed|won'?t let me/.test(q)) {
     const turn = live?.fen ? live.fen.split(' ')[1] : null;
