@@ -123,6 +123,11 @@ export function nextBotIntent(s: State): Intent | null {
     return null;
   }
 
+  // DONE: confirm tonight's viewing - the bot backs the champion on the sofa vote.
+  if (s.phase === 'done' && s.fin.verdict && s.tonight === null && s.fin.watch?.B === undefined && s.fin.a && s.fin.b) {
+    const id = s.winner !== null && (s.winner === s.fin.a || s.winner === s.fin.b) ? s.winner : s.fin.a;
+    return { t: 'fwatch', pid: 'B', id } as unknown as Intent;
+  }
   // DONE: decline the reroll so the night stands.
   if (s.phase === 'done' && s.reroll && s.reroll.stage === 'ask' && s.reroll.votes?.B === undefined) {
     return { t: 'rr', pid: 'B', yes: false } as unknown as Intent;
