@@ -18,9 +18,11 @@ export type GradedMove = {
 type Habits = { castled?: boolean; developed?: boolean; blunders?: number };
 
 type Summary = {
-  grade?: string;
-  score?: number;
-  accuracy?: number;
+  grade?: string | null;
+  score?: number | null;
+  accuracy?: number | null;
+  graded?: boolean;
+  gradedMoves?: number;
   development?: number;
   kingSafety?: number;
   tactics?: number;
@@ -93,14 +95,24 @@ export default function ChesterReportCard({
   const goodCount = mine.filter((entry) => entry.grade === 'A' || entry.grade === 'B').length;
   const blunderCount = mine.filter((entry) => entry.grade === 'F').length;
   const goodRatio = mine.length ? goodCount / mine.length : 0;
-  const verdict = overallVerdict(goodRatio);
+  const won = /1-0\s*$/.test(pgn || '');
+  const lost = /0-1\s*$/.test(pgn || '');
+  // Honest grading (his 25 Oct review): no engine-scored moves means NO grade - the
+  // headline reflects the RESULT, and habit data below stands on real moves only. A win
+  // with poor habits can still grade low; result and coached habits stay distinct.
+  const ungraded = summary?.graded === false;
+  const verdict = ungraded
+    ? won
+      ? { emoji: '🏆', word: 'GAME WON', line: 'The result is real. No engine-scored moves to grade this one honestly - the habits below come from the moves you actually played.' }
+      : lost
+        ? { emoji: '💀', word: 'GAME LOST', line: 'No engine-scored moves to grade this one honestly - the habits below come from the moves you actually played.' }
+        : { emoji: '🤝', word: 'GAME DRAWN', line: 'No engine-scored moves to grade this one honestly - the habits below come from the moves you actually played.' }
+    : overallVerdict(goodRatio);
   const best = mine.length ? mine.reduce((a, b) => ((a.centipawnLoss ?? 999) <= (b.centipawnLoss ?? 999) ? a : b)) : null;
   const worst = mine.length ? mine.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b)) : null;
 
-  const letter = summary?.grade || (goodRatio >= 0.8 ? 'A' : goodRatio >= 0.65 ? 'B' : goodRatio >= 0.5 ? 'C' : goodRatio >= 0.35 ? 'D' : 'F');
-  const score = summary?.score ?? Math.round(goodRatio * 100);
-
-  const won = /1-0\s*$/.test(pgn || '');
+  const letter: string | null = ungraded ? null : (summary?.grade || (goodRatio >= 0.8 ? 'A' : goodRatio >= 0.65 ? 'B' : goodRatio >= 0.5 ? 'C' : goodRatio >= 0.35 ? 'D' : 'F'));
+  const score: number | null = ungraded ? null : (summary?.score ?? Math.round(goodRatio * 100));
   const levelIndex = Math.max(0, LADDER.findIndex((level) => level.value === difficulty));
   const levelLabel = LADDER[levelIndex]?.label || 'ROOKIE';
   const nextLabel = LADDER[levelIndex + 1]?.label || null;
@@ -181,12 +193,37 @@ export default function ChesterReportCard({
     <section className="chester-report-card">
       <header><span>CHESTER'S FINAL VERDICT</span><button type="button" onClick={onClose} aria-label="Close report">×</button></header>
       {resultLine && <p className="chester-report-card__result" role="status">{resultLine}</p>}
-      {accMath && accMath.length > 0 && <details className="chester-report-card__math"><summary>HOW YOUR ACCURACY % IS COMPUTED</summary><p>Each move is compared with the engine's best. Win% uses Lichess's published conversion from engine eval; move score = 103.16 x e^(-0.0435 x 1.5 x win% lost) - 0.8, adapted from the move-accuracy formula Lichess publishes (lichess.org/page/accuracy) with our 1.5x weighting. When the engine's pre-move search sees a forced mate, Win% reads 100% (being mated 0%) - a theoretical endpoint on this evaluation scale, not a measured human win rate. Your accuracy is the plain average of your move scores - Lichess weights by volatility and chess.com's model is private, so no two sites' numbers match exactly.</p><ul>{accMath.map((mv, i) => <li key={i}><span>{mv.san}<em>{mv.grade}</em></span><span>-{mv.lost}% &rarr; {mv.score}</span></li>)}</ul></details>}
       <h2 id="chester-report-title">{verdict.emoji} {verdict.word}</h2>
       <p className="chester-report-card__tagline">{verdict.line}</p>
 
+      {/* ONE PAGE PROMISE (his 25 Oct review): the primary screen is the result, the
+          habits grade, the ONE learning and the actions. Ladder, moments and Chester's
+          long review live behind FULL BREAKDOWN - no giant scroll of duplicated paragraphs. */}
       <div className="chester-report-card__graderow">
-        <div className="chester-report-card__letter"><span>EFFORT GRADE</span><b>{letter}</b><small>{score}/100</small></div>
+        <div className="chester-report-card__letter"><span>{ungraded ? 'GRADE' : 'HABITS GRADE'}</span><b>{letter || '—'}</b><small>{ungraded ? 'UNGRADED - no scored moves' : `${score}/100 · ${summary?.gradedMoves ?? mine.length} scored moves`}</small></div>
+        {habitChecks && <div className="chester-report-card__habits">
+          {habitChecks.map((check) => <span key={check.label} className={`chester-report-card__habit is-${check.state}`}><b>{check.label}</b><em>{habitMark(check.state)}</em></span>)}
+        </div>}
+      </div>
+
+      <div className="chester-report-card__focus">
+        <b>🎯 NEXT GAME'S MISSION</b>
+        <p>{habit.focus}</p>
+      </div>
+
+      {canRetry && <button type="button" className="verdict-share__cta" style={{ background: '#22d3ee' }} onClick={onRetry!}>🔁 RETRY THE MISTAKE<small>replay the position, find the better move</small></button>}
+
+      <div className="chester-report-card__actions" style={{ display: 'grid', gap: 8, margin: '12px 0' }}>
+        {(() => { const hw = WEAKNESS_HOMEWORK[habit.key]; return hw ? <Link href={hw.href} className="verdict-share__cta" style={{ background: '#4ade80', color: '#101418', textDecoration: 'none', display: 'block', textAlign: 'center' }}>🎯 YOUR TARGETED LESSON<small style={{ display: 'block' }}>{hw.text}</small></Link> : null; })()}
+        {onRematch && <button type="button" className="verdict-share__cta" style={{ background: '#fbbf24', color: '#101418' }} onClick={onRematch}>⚔️ REMATCH<small style={{ display: 'block' }}>same level, fresh board - run it back</small></button>}
+        {onChat && <button type="button" className="verdict-share__cta" style={{ background: '#a78bfa', color: '#101418' }} onClick={onChat}>💬 TALK IT OVER WITH CHESTER<small style={{ display: 'block' }}>ask anything about this game</small></button>}
+      </div>
+
+      {letter && <VerdictShare grades={grades} pgn={pgn} difficulty={difficulty} opponentLabel={`${levelLabel} CHESTER`} summary={{ grade: letter, score: score ?? Math.round(goodRatio * 100), accuracy: summary?.accuracy ?? undefined, openingName: null }} />}
+
+      <details className="chester-report-card__more">
+        <summary>FULL BREAKDOWN - LADDER, MOMENTS & CHESTER'S REVIEW</summary>
+      {accMath && accMath.length > 0 && <details className="chester-report-card__math"><summary>HOW YOUR ACCURACY % IS COMPUTED</summary><p>Each move is compared with the engine's best. Win% uses Lichess's published conversion from engine eval; move score = 103.16 x e^(-0.0435 x 1.5 x win% lost) - 0.8, adapted from the move-accuracy formula Lichess publishes (lichess.org/page/accuracy) with our 1.5x weighting. When the engine's pre-move search sees a forced mate, Win% reads 100% (being mated 0%) - a theoretical endpoint on this evaluation scale, not a measured human win rate. Your accuracy is the plain average of your move scores - Lichess weights by volatility and chess.com's model is private, so no two sites' numbers match exactly.</p><ul>{accMath.map((mv, i) => <li key={i}><span>{mv.san}<em>{mv.grade}</em></span><span>-{mv.lost}% &rarr; {mv.score}</span></li>)}</ul></details>}
         <div className="chester-report-card__ladder">
           <span className="chester-report-card__ladder-title">SKILL LADDER</span>
           <div className="chester-report-card__ladder-track">
@@ -201,11 +238,6 @@ export default function ChesterReportCard({
             <p>{promoReady ? (atTop ? 'The town is yours. Joseph is next.' : `Promotion case complete - ${nextLabel} Chester is waiting. Go take it.`) : atTop ? 'Beat NIGHTMARE and keep the sheets clean: the crown wants proof.' : `${promoDone} of 3 banked. ${!doorBeaten ? `Beat ${levelLabel} for the door.` : !gradeBanked ? 'A B-grade here seals the case.' : 'One clean game: castle, develop, hang nothing.'}`}</p>
           </div>
         </div>
-      </div>
-
-      {habitChecks && <div className="chester-report-card__habits">
-        {habitChecks.map((check) => <span key={check.label} className={`chester-report-card__habit is-${check.state}`}><b>{check.label}</b><em>{habitMark(check.state)}</em></span>)}
-      </div>}
 
       {missionCallback && <div className="chester-report-card__moment">
         <b>{missionCallback.icon} LAST GAME'S MISSION</b>
@@ -227,23 +259,10 @@ export default function ChesterReportCard({
         {turning.map((t) => <p key={t.n}><b>Move {t.n}:</b> you played {t.played}.{t.better ? ` Try this instead: ${t.better}.` : ''}</p>)}
       </div>}
 
-      <div className="chester-report-card__focus">
-        <b>🎯 NEXT GAME'S MISSION</b>
-        <p>{habit.focus}</p>
-      </div>
-
-      {canRetry && <button type="button" className="verdict-share__cta" style={{ background: '#22d3ee' }} onClick={onRetry!}>🔁 RETRY THE MISTAKE<small>replay the position, find the better move</small></button>}
-
-      <div className="chester-report-card__actions" style={{ display: 'grid', gap: 8, margin: '12px 0' }}>
-        {(() => { const hw = WEAKNESS_HOMEWORK[habit.key]; return hw ? <Link href={hw.href} className="verdict-share__cta" style={{ background: '#4ade80', color: '#101418', textDecoration: 'none', display: 'block', textAlign: 'center' }}>🎯 YOUR TARGETED LESSON<small style={{ display: 'block' }}>{hw.text}</small></Link> : null; })()}
-        {onRematch && <button type="button" className="verdict-share__cta" style={{ background: '#fbbf24', color: '#101418' }} onClick={onRematch}>⚔️ REMATCH<small style={{ display: 'block' }}>same level, fresh board - run it back</small></button>}
-        {onChat && <button type="button" className="verdict-share__cta" style={{ background: '#a78bfa', color: '#101418' }} onClick={onChat}>💬 TALK IT OVER WITH CHESTER<small style={{ display: 'block' }}>ask anything about this game</small></button>}
-      </div>
-
-      <p className="chester-report-card__story">{isLoading ? 'Chester is writing his final review...' : review}</p>
-      {!isLoading && scouting && scouting.length > 0 && <ul className="chester-report-card__scout" aria-label="Scouting report">{scouting.map((b, i) => <li key={i}>{b}</li>)}</ul>}
-      <p className="chester-report-signature">{letter === 'A' ? 'Framed. This one hangs on the town hall wall.' : letter === 'B' ? 'A proper scrap. You are knocking on something big.' : letter === 'C' ? 'The bones of a great player, the skin of a gambler.' : 'We burn this tape together, then we rebuild.'}<b>- Chester 🖋</b></p>
-      <VerdictShare grades={grades} pgn={pgn} difficulty={difficulty} opponentLabel={`${levelLabel} CHESTER`} summary={{ grade: letter, score, accuracy: summary?.accuracy, openingName: null }} />
+        <p className="chester-report-card__story">{isLoading ? 'Chester is writing his final review...' : review}</p>
+        {!isLoading && scouting && scouting.length > 0 && <ul className="chester-report-card__scout" aria-label="Scouting report">{scouting.map((b, i) => <li key={i}>{b}</li>)}</ul>}
+        <p className="chester-report-signature">{ungraded ? 'Result banked. Play a full game and we put honest numbers on it.' : letter === 'A' ? 'Framed. This one hangs on the town hall wall.' : letter === 'B' ? 'A proper scrap. You are knocking on something big.' : letter === 'C' ? 'The bones of a great player, the skin of a gambler.' : 'We burn this tape together, then we rebuild.'}<b>- Chester 🖋</b></p>
+      </details>
     </section>
   </div>;
 }

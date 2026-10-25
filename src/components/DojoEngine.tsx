@@ -141,16 +141,14 @@ function getPostGameReport(chess: any, qualities: { label: string; move: string;
   // version counted BOTH sides' minor moves all game, credited king safety when
   // either side castled, and pinned a typical beginner win to a C by formula.
   const qualityScores: Record<string, number> = { BEST: 100, GREAT: 90, GOOD: 78, INACCURACY: 58, MISTAKE: 35, BLUNDER: 10 };
-  // Terminal-aware default: a very short game ends before the analyst confirms any
-  // move. A checkmate win must never grade as failure (his testers play short games);
-  // getting mated fast should still read as the lesson it is.
-  const mateNow = chess.isCheckmate();
-  const playerMatedEngine = mateNow && chess.turn() === 'b'; // side to move is mated
-  const engineMatedPlayer = mateNow && chess.turn() === 'w';
-  const unconfirmedDefault = playerMatedEngine ? 85 : engineMatedPlayer ? 35 : 50;
-  const accuracy = confirmed.length
+  // Honest grading (his 25 Oct review): no confirmed engine-scored moves (practice
+  // fixture, or a game too short for the analyst to confirm) means UNGRADED - never a
+  // fabricated score. The result stands on its own; the grade reflects measured moves
+  // only, and a win with poor habits can still grade low.
+  const graded = confirmed.length > 0;
+  const accuracy = graded
     ? Math.round(confirmed.reduce((total, quality) => total + (qualityScores[quality.label] || 50), 0) / confirmed.length)
-    : unconfirmedDefault;
+    : null;
   const history = chess.history({ verbose: true }) as any[];
   const playerMoves = history.filter((move) => move.color === 'w');
   const developedFroms = new Set(playerMoves.filter((move) => (move.piece === 'n' || move.piece === 'b') && ['b1', 'g1', 'c1', 'f1'].includes(move.from)).map((move) => move.from));
@@ -161,13 +159,10 @@ function getPostGameReport(chess: any, qualities: { label: string; move: string;
   const checksGiven = playerMoves.filter((move) => (move.san || '').includes('+') || (move.san || '').includes('#')).length; // mate counts as a check - Ra8# is tactical
   const tactics = Math.min(100, 45 + captures * 15 + checksGiven * 5);
   const blunders = confirmed.filter((quality) => quality.label === 'BLUNDER').length;
-  const score = Math.round(accuracy * 0.5 + development * 0.2 + kingSafety * 0.15 + tactics * 0.15);
-  // A checkmate win floors at C: the formula cannot see a 4-move game's intent, and
-  // "COMMANDING performance, grade F" is a contradiction he will screenshot back to us.
-  const finalScore = playerMatedEngine ? Math.max(score, 60) : score;
-  const grade = finalScore >= 88 ? 'A' : finalScore >= 74 ? 'B' : finalScore >= 60 ? 'C' : finalScore >= 45 ? 'D' : 'F';
+  const score = graded && accuracy != null ? Math.round(accuracy * 0.5 + development * 0.2 + kingSafety * 0.15 + tactics * 0.15) : null;
+  const grade = score == null ? null : score >= 88 ? 'A' : score >= 74 ? 'B' : score >= 60 ? 'C' : score >= 45 ? 'D' : 'F';
   const turningPoint = [...confirmed].sort((left, right) => (qualityScores[left.label] || 50) - (qualityScores[right.label] || 50))[0];
-  return { grade, score: finalScore, accuracy, development, kingSafety, tactics, openingName: getOpeningName(chess), moves: chess.history().length, turningPoint: turningPoint ? `${turningPoint.move} (${turningPoint.label})` : 'No decisive turning point', habits: { castled, developed: developedFroms.size >= 3, blunders } };
+  return { grade, score, accuracy, graded, gradedMoves: confirmed.length, development, kingSafety, tactics, openingName: getOpeningName(chess), moves: chess.history().length, turningPoint: turningPoint ? `${turningPoint.move} (${turningPoint.label})` : 'No decisive turning point', habits: { castled, developed: developedFroms.size >= 3, blunders } };
 }
 
 function getMoveFlavor(player: string, move: string, ply: number, mode: string) {

@@ -37,7 +37,7 @@ import { ARMORY } from '@/lib/armory';
 
 const DojoEngine = dynamic(() => import('@/components/DojoEngine'), { ssr: false });
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
-type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string; score?: number; accuracy?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
+type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string | null; score?: number | null; accuracy?: number | null; graded?: boolean; gradedMoves?: number; development?: number; kingSafety?: number; tactics?: number; openingName?: string | null; moves?: number; turningPoint?: string; habits?: { castled?: boolean; developed?: boolean; blunders?: number } };
 type CoachPrompt = { evaluationMateAfter?: number | null; evaluationMateBefore?: number | null; kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; pending?: boolean; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; color?: 'w' | 'b'; principleKey?: string | null; principleFollowed?: boolean | null; exchangeLost?: string | null; exchangeWon?: string | null; exchangeNet?: number | null };
 // BUILD 94: giant emoji move reviews replace the static horse avatar on graded moves.
 // (The horse stays for the idle/thinking coach persona - Chester IS a knight.)
@@ -696,7 +696,8 @@ function PlayChesterGame() {
     const topSwings = [...report.gradeHistory].filter((g) => g.player === 'You').sort((a, b) => (b.centipawnLoss ?? 0) - (a.centipawnLoss ?? 0)).slice(0, 2).map((g) => `${phraseMap.get(g.ply) || g.move} (graded ${g.grade}, lost about ${((g.centipawnLoss ?? 0) / 100).toFixed(1)} pawns)`).join('; ') || 'no big swings on record';
     // BUILD 163: local debrief FIRST (zero AI spend, instant) - the Gemini path below
     // only overrides if it ever answers again.
-    const local = buildLocalDebrief(report.gradeHistory, phraseMap, radarTally.current);
+    const pgnResult = /1-0\s*$/.test(report.pgn || '') ? 'win' as const : /0-1\s*$/.test(report.pgn || '') ? 'loss' as const : /1\/2-1\/2\s*$/.test(report.pgn || '') ? 'draw' as const : null;
+    const local = buildLocalDebrief(report.gradeHistory, phraseMap, radarTally.current, pgnResult);
     setReview(local.review); setReviewLoading(false);
     // BUILD 163: drill of the day - carry the debrief's fix into the start screen, then reset tallies.
     try { localStorage.setItem('ct-drill', JSON.stringify({ ts: Date.now(), hanging: radarTally.current.hanging, missed: radarTally.current.missed, drill: (local.scouting[2] || '').replace('One adjustment: ', '') })); } catch { /* private mode */ }
@@ -1203,7 +1204,7 @@ function PlayChesterGame() {
       </section>
     </div>}
     {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
-    {report && reportOpen && (victoryState === 'none' || finalResult) && <ChesterReportCard resultLine={finalResult} accMath={accLog} grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => { setReportOpen(false); setFinalResult(null); }} onRetry={isFriendMode ? null : retryMistake} onRematch={isFriendMode ? null : () => { setReportOpen(false); setFinalResult(null); setEndBanner(null); window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })); }} onChat={isFriendMode ? null : () => { setReportOpen(false); setChatOpen(true); }} />}
+    {report && reportOpen && (victoryState === 'none' || finalResult) && <ChesterReportCard resultLine={finalResult} accMath={accLog} grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, graded: report.graded, gradedMoves: report.gradedMoves, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => { setReportOpen(false); setFinalResult(null); }} onRetry={isFriendMode ? null : retryMistake} onRematch={isFriendMode ? null : () => { setReportOpen(false); setFinalResult(null); setEndBanner(null); window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })); }} onChat={isFriendMode ? null : () => { setReportOpen(false); setChatOpen(true); }} />}
     {breakdownVisible && pivot && !endBanner && !(reportOpen && finalResult) && (
       <div className="breakdown" role="dialog" aria-label="Chester's breakdown">
         <header><b>CHESTER'S BREAKDOWN</b><button type="button" aria-label="Close breakdown" onClick={() => setReport(null)}>×</button></header>

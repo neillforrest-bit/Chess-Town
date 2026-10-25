@@ -147,7 +147,7 @@ export const WEAKNESS_HOMEWORK: Record<string, { text: string; href: string }> =
 
 /* Honest weakest-habit read from the scorecard dimensions. Shared by the
    report card, the ladder record and the landing-page homework line. */
-export function weakestHabit(summary: { development?: number; kingSafety?: number; accuracy?: number; tactics?: number } | undefined, blunders: number): { key: string; reason: string; focus: string } {
+export function weakestHabit(summary: { development?: number; kingSafety?: number; accuracy?: number | null; tactics?: number } | undefined, blunders: number): { key: string; reason: string; focus: string } {
   const dims = [
     { key: 'development', value: summary?.development ?? 100, reason: 'your back pieces slept too long', focus: 'First ten moves: bring every knight and bishop off the back rank before chasing anything. Soldiers first, plans second.' },
     { key: 'kingSafety', value: summary?.kingSafety ?? 100, reason: 'your king stayed in the firing line', focus: 'Castle inside your first eight moves. A king in the centre is a target wearing a crown.' },

@@ -3508,3 +3508,8 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
 .style-swatch__pieces { font-size: 1.2rem; }
 .style-swatch b { font: 900 .5rem/1 Arial, sans-serif; letter-spacing: .8px; }
 .style-sheet__note { margin: .45rem 0 0; color: #8fa6ad; font-size: .68rem; font-style: italic; }
+
+/* BUILD 183m: one-page report promise - secondary detail collapses behind FULL BREAKDOWN */
+.chester-report-card__more { margin: .6rem 0; padding: .55rem .65rem; border: 1px solid rgba(167,139,250,.4); border-radius: 6px; background: rgba(167,139,250,.05); }
+.chester-report-card__more summary { cursor: pointer; color: #a78bfa; font-size: .62rem; font-weight: 900; letter-spacing: 1.4px; }
+.chester-report-card__more[open] summary { margin-bottom: .5rem; }

@@ -91,7 +91,7 @@ export type DebriefMove = { player: string; move: string; ply: number; grade: st
 const phaseOf = (ply: number) => (ply <= 12 ? 'Opening' : ply <= 30 ? 'Middlegame' : 'Endgame');
 const phaseWord = (avg: number) => (avg < 40 ? 'sharp' : avg < 100 ? 'solid' : avg < 200 ? 'leaky' : 'expensive');
 
-export function buildLocalDebrief(grades: DebriefMove[], phrases: Map<number, string>, tally: { hanging: number; missed: number }): { review: string; scouting: string[] } {
+export function buildLocalDebrief(grades: DebriefMove[], phrases: Map<number, string>, tally: { hanging: number; missed: number }, result: 'win' | 'loss' | 'draw' | null = null): { review: string; scouting: string[] } {
   const mine = grades.filter((g) => g.player === 'You');
   const phases: Record<string, number[]> = { Opening: [], Middlegame: [], Endgame: [] };
   for (const g of mine) phases[phaseOf(g.ply)].push(g.centipawnLoss ?? 0);
@@ -99,17 +99,30 @@ export function buildLocalDebrief(grades: DebriefMove[], phrases: Map<number, st
     .map((k) => { const avg = phases[k].reduce((a, b) => a + b, 0) / phases[k].length; return `${k}: ${phaseWord(avg)} (${(avg / 100).toFixed(1)} pawns given a move)`; }).join(' · ');
   const swings = [...mine].filter((g) => (g.centipawnLoss ?? 0) >= 100).sort((a, b) => (b.centipawnLoss ?? 0) - (a.centipawnLoss ?? 0)).slice(0, 2);
   const worst = phases.Middlegame.length && (phases.Middlegame.reduce((a, b) => a + b, 0) / phases.Middlegame.length) > (phases.Opening.reduce((a, b) => a + b, 0) / Math.max(1, phases.Opening.length)) ? 'middlegame' : 'opening';
+  // Result-aware voice: after a WIN the recap must read as a winner's review, not the
+  // generic losing autopsy ("what happened here" after mate was his 25 Oct pixel review).
+  const won = result === 'win';
   const swingText = swings.length
-    ? swings.map((g) => `move ${Math.ceil(g.ply / 2)}: ${phrases.get(g.ply) || g.move} gave away ${((g.centipawnLoss ?? 0) / 100).toFixed(1)} pawns`).join('; ') + '.'
-    : 'no single move gave the game away - the squeeze was gradual.';
+    ? (won ? 'worth a look even in a win - ' : '') + swings.map((g) => `move ${Math.ceil(g.ply / 2)}: ${phrases.get(g.ply) || g.move} gave away ${((g.centipawnLoss ?? 0) / 100).toFixed(1)} pawns`).join('; ') + '.'
+    : won
+      ? 'no single move gave it away - you kept control and finished the job.'
+      : 'no single move gave the game away - the squeeze was gradual.';
   const themes: string[] = [];
   if (tally.hanging) themes.push(`you left pieces undefended ${tally.hanging} time${tally.hanging === 1 ? '' : 's'}`);
   if (tally.missed) themes.push(`${tally.missed} winning tactic${tally.missed === 1 ? '' : 's'} went begging`);
-  const themeText = themes.length ? `The pattern that cost you: ${themes.join(', ')}.` : 'No recurring leak showed up - the mistakes were one-offs.';
+  const themeText = themes.length
+    ? (won ? `The pattern to keep polishing: ${themes.join(', ')}.` : `The pattern that cost you: ${themes.join(', ')}.`)
+    : won ? 'No recurring leak showed up - clean on that front.' : 'No recurring leak showed up - the mistakes were one-offs.';
   const drill = tally.hanging >= tally.missed
-    ? 'Before every move ask one question: which of my pieces is loose? That single habit erases most of what happened here.'
-    : 'When a piece lands en prise, stop and check every capture twice - the winning tactic was on the board today.';
-  const review = `Let's talk about ${swings.length ? swingText : 'the shape of this one - ' + swingText}`; // Form/weakness/adjustment live in the scouting bullets below - saying them here too read as a stutter (his 24 Oct screenshot)
+    ? (won
+      ? 'Before every move ask one question: which of my pieces is loose? That habit turns one win into a streak.'
+      : 'Before every move ask one question: which of my pieces is loose? That single habit erases most of what happened here.')
+    : (won
+      ? 'When a piece lands en prise, stop and check every capture twice - that eye is what turns pressure into wins.'
+      : 'When a piece lands en prise, stop and check every capture twice - the winning tactic was on the board today.');
+  const review = won
+    ? `You won this one: ${swingText}`
+    : `Let's talk about ${swings.length ? swingText : 'the shape of this one - ' + swingText}`; // Form/weakness/adjustment live in the scouting bullets below - saying them here too read as a stutter (his 24 Oct screenshot)
   const scouting = [
     phaseLine ? `Form: ${phaseLine}.` : 'Form: not enough moves to grade the phases.',
     `Recurring weakness: ${themes.length ? themes.join('; ') : 'none repeated itself'}.`,
