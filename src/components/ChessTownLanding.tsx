@@ -7,6 +7,7 @@ import { getRating, rankFor, getLadder, LADDER_LABELS, WEAKNESS_HOMEWORK, type L
 
 import { DOORS } from '@/games/registry';
 import { getRoadLevel, ROAD_MAX, bossFor, isBossLevel } from '@/lib/road';
+import { loadPlayerFile, analyse, type Analysis } from '@/lib/player-file';
 
 const doors = DOORS.map((d) => ({ ...d, first: d.id === 'play', top: d.id === 'road' }));
 const OPENINGS = [
@@ -28,6 +29,7 @@ export default function ChessTownLanding() {
   const [ladder, setLadder] = useState<LadderState | null>(null);
   const [roadLevel, setRoadLevel] = useState(1);
   const [tip, setTip] = useState('');
+  const [scout, setScout] = useState<Analysis | null>(null);
 
   useEffect(() => {
     try {
@@ -41,6 +43,7 @@ export default function ChessTownLanding() {
       if (ladderState.updatedAt) setLadder(ladderState);
       setRoadLevel(getRoadLevel());
       if (ladderState.lastFocus) setTip(ladderState.lastFocus);
+      try { const a = analyse(loadPlayerFile()); if (a.games > 0) setScout(a); } catch { /* no file yet */ }
     } catch { /* private browsing */ }
   }, []);
 
@@ -97,6 +100,13 @@ export default function ChessTownLanding() {
             <b style={{ color: '#ffb800', letterSpacing: '.08em', fontSize: '.72rem' }}>WHERE YOU LEFT OFF</b>
             <span>👑 Road to Joseph: level {roadLevel} of {ROAD_MAX}{isBossLevel(roadLevel) ? ` - boss fight vs ${bossFor(roadLevel)?.name}` : ''}.</span>
             {tip ? <span>💡 Chester&rsquo;s tip you&rsquo;re working on: {tip}</span> : <span>💡 No tip yet. Play a game and Chester will give you one.</span>}
+            {scout && scout.flagged > 0 && (() => {
+              const phaseName = scout.worstPhase === 'middlegame' ? 'the middle of the game' : scout.worstPhase || 'the middlegame';
+              const target = Math.max(1, Math.floor(scout.perGame) - 1);
+              const drill = scout.worstPhase === 'opening' ? { text: 'Lesson Hall drills', href: '/training' } : scout.worstPhase === 'endgame' ? { text: 'a rematch at your level', href: '/play-chester' } : { text: 'Mate Sprint - checks and captures under pressure', href: '/mate-sprint' };
+              return <span>📚 <b>Today&rsquo;s homework:</b> {scout.headline}{scout.topPiece ? ` Your most-dropped piece: the <b>${scout.topPiece.piece}</b> (${scout.topPiece.n}&times;).` : ''} Assignment: one game at your level, and finish with <b>&le;{target} big slip{target === 1 ? '' : 's'}</b> (your average: {scout.perGame.toFixed(1)}). {scout.lesson} Sharpen it: <Link href={drill.href} style={{ color: '#4ade80' }}>{drill.text}</Link>.{scout.trend === 'better' ? ' Trend: improving - Chester noticed.' : scout.trend === 'worse' ? ' Trend: slipping - today we fix that.' : ''}</span>;
+            })()}
+            {scout && scout.flagged === 0 && <span>📚 <b>Today&rsquo;s homework:</b> no big slips on file - rare air. One game at the NEXT level up: the homework is noticing the moment it gets hard.</span>}
             <span>♟ Today&rsquo;s opening: <b>{openingToday().name}</b> ({openingToday().moves}). {openingToday().why} <Link href="/play-chester" style={{ color: '#4ade80' }}>Try it</Link></span>
           </div>
         </section>
