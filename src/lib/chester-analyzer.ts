@@ -146,7 +146,9 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   })();
   // Terminal facts (mate/stalemate/draw) are certain from the board; the move's QUALITY
   // comes only from real engine evidence (classification/cp) - never from material counts.
-  const grade = gradeOf(inp.classification, inp.cp, hang.length > 0);
+  // Provisional (deep engine check pending): never assert a quality grade - 'ENGINE STILL
+  // UNSURE' with a STRONG badge and 'matches the engine' body was self-contradictory (his screenshot).
+  const grade: MoveGrade = inp.provisional && !term ? 'IDLE' : gradeOf(inp.classification, inp.cp, hang.length > 0);
   const best = inp.bestSan ? engineReason(inp.fenBefore, inp.bestSan) : { uci: null, text: '', piece: null, from: null, motif: 'a stronger move' };
   const bestHuman = inp.bestSan ? formatSanToHuman(inp.fenBefore, inp.bestSan) : '';
   const good = grade === 'BRILLIANT' || grade === 'STRONG' || grade === 'SOLID';
@@ -164,6 +166,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
   })();
 
   const did = (() => {
+    if (inp.provisional && !term) return `\u2753 You played ${human}. The engine is still reading this one - no confirmed grade yet.`;
     if (term?.kind === 'mate') return `\u2705 You played ${human} - checkmate. Their king has no escape: the game is over.`;
     if (term?.kind === 'stalemate') {
       const fact = `${human} - stalemate: their king was NOT in check but had no legal move, so the game is a draw.`;
@@ -188,7 +191,9 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     return `❌ You played ${human}, and it gives up ground: the engine had a clearly better idea.`;
   })();
 
-  const eng = term
+  const eng = inp.provisional && !term
+    ? '\ud83e\udd16 Engine line still loading - the deeper check will settle this one.'
+    : term
     ? (term.kind === 'mate'
       ? '\ud83e\udd16 No engine opinion needed - the game is over.'
       : term.kind === 'stalemate'
