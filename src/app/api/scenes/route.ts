@@ -27,7 +27,9 @@ export async function POST(req: Request) {
   const round = body.round === 2 ? 2 : 1;
   const r = rng(Number.isFinite(body.seed) ? (body.seed as number) : Date.now());
   const ban = new Set<number>([...(body.ban || []), ...(body.pickedIds || [])]);
-  const pool = MOVIES.filter((m) => m.p && m.o && !ban.has(m.id) && m.pop >= 200 && m.r >= 6.5) as F[];
+  // no global popularity floor: this catalogue's pop skews to true-crime docs, so a high bar empties most lanes.
+  // rating floor for quality, then the most recognisable film per lane.
+  const pool = MOVIES.filter((m) => m.p && m.o && !ban.has(m.id) && m.r >= 7) as F[];
 
   let picks: F[] = [];
   if (round === 1) {
