@@ -13,3 +13,14 @@
 Design rule (main-endorsed): door 1 = keep the known matchup, door 2 = mystery. The reveal is an OFFER, not an automatic replacement; players can reject; nothing enters the bracket without explicit acceptance. Natural home: replaces GENRE SWAP's automatic swap when hr.wilds is on - swap becomes a two-stage offer (doors) then accept/keep. Deferred from slice 1 to protect the 06:00 handoff: the consent flow deserves the full two-stage treatment, and the strict default already closes the trust hole.
 
 ## Open test debt for morning: fcall/fsettle score matrix (missing/invalid/equal -> void/push), sealed/unsealed + per-card reveal, Cold Open beat->intent mapping, solo-bot fcall.
+
+## Slice 1 build log (02:40-02:50 leg)
+- ColdOpen.tsx mounted: 5 beats (Star Call type-ahead from catalogue actor index, Spectrum nightly rotation, Trophy or Trash, Swipe Three posters, Orson's Read) -> same sliders/tropes/taste intents; taste fires only after vibe.passed (engine gate), probe-covered.
+- Lobby House Rules toggles (host A): WILDCARD ENTRANTS strict-by-default, SEALED SCORES on-by-default -> 'hr' intent.
+- Reveal.tsx mounted in final phase when hr.sealed && !revealed: two calls (critics=RT Tomatometer, audiences=IMDb), host (pid A) fetches /api/omdb for both finalists with catalogue backstop, fsettle; skip plainly labelled "for both of us".
+- Sealing: Scores gains sealed prop (RT/IMDb -> lock, tap-to-peek per card, local only); draft card, bracket cards, grenade strip, detail sheet sealed until final reveal or phase done; critics line hidden while sealed.
+- Envelope results (fin.callLog / skipped note) render above the final pick screen.
+- `co?: boolean` on State (undefined === on), carried through reset.
+- Verification so far: tsc --noEmit clean, next build clean, 63/63 engine probes green (invariant 15, coldopen 17, reveal 17, coldopen-lib 14).
+- NOT yet verified: any live rendering of the new UI (local two-client run next), 820x1000 pass, preview deploy.
+- Debt: SoloRoom Scores left unsealed (legacy solo flow); OMDb-vs-catalogue provenance not surfaced in callLog; licence for scores-as-gameplay-input still unverified (product question, not code).
