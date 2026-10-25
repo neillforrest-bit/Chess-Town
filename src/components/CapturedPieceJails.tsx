@@ -183,3 +183,27 @@ export function LiveAccuracy({ rows, extra }: { rows: { label: string; pct: numb
     </div>
   );
 }
+
+// Batch 183 (his brief: the taken-pieces box is too small - make it a prominent feature
+// below the board, and make it fun). Big sprites, per-side points, and the newest capture
+// drops onto the shelf with a bounce.
+export function CaptureShowcase({ material, youLabel = 'YOU', oppLabel = 'CHESTER' }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string }) {
+  const row = (pieces: CapturedPiece[], tone: 'you' | 'opp', label: string, pts: number) => (
+    <div className={`capture-showcase__row capture-showcase__row--${tone}`} aria-label={`${label}: ${pts} points`}>
+      <span className="capture-showcase__label">{label}</span>
+      <div className="capture-showcase__pieces" key={pieces.length}>
+        {pieces.map((piece, index) => (
+          <img key={`${piece.color}-${piece.type}-${index}`} src={jailSpriteUrl(piece.color, piece.type)} alt="" className={index === pieces.length - 1 ? 'capture-showcase__new' : undefined} />
+        ))}
+        {!pieces.length && <em>nothing taken yet</em>}
+      </div>
+      <b className="capture-showcase__pts" key={`${tone}-${pts}`}>{pts > 0 ? `+${pts}` : ''}</b>
+    </div>
+  );
+  return (
+    <section className="capture-showcase" aria-label="Captured pieces trophy shelf">
+      {row(material.youTook, 'you', `${youLabel} TOOK`, material.yourPts)}
+      {row(material.oppTook, 'opp', `${oppLabel} TOOK`, material.oppPts)}
+    </section>
+  );
+}

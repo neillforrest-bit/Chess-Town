@@ -9,7 +9,7 @@ import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat, chesterUsageByReply } from '@/app/actions';
 import { GEMINI_MODEL } from '@/lib/gemini-model';
 import QAFlagButton from '@/components/QAFlagButton';
-import { CaptureStrip, HeroScoreboard, LiveAccuracy, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import { CaptureShowcase, CaptureStrip, HeroScoreboard, LiveAccuracy, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
 import { buildGameRecord, recordGameToFile } from '@/lib/player-file';
 import { getProfile, saveProfile } from '@/lib/profile';
 import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
@@ -967,6 +967,7 @@ function PlayChesterGame() {
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
+      <CaptureShowcase material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : 'CHESTER')} />
       {whyCard && teachOpen && !endBanner && !isFriendMode && (() => {
         // Readable staged teaching (his #4): full text at reading size, no autoscroll, no hidden
         // scroll. Long feedback paginates with NEXT; GOT IT returns to the compact strip.
