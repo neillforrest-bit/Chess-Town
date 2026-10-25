@@ -751,3 +751,11 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-co-card b { font-size: 18px; }
 .cs-hr { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 4px; }
 .cs-hr em { font-style: normal; font-size: 11px; letter-spacing: .12em; opacity: .6; }
+/* V2 Orson's Reveal */
+.cs-rev { display: flex; flex-direction: column; gap: 14px; }
+.cs-rev-line { display: flex; flex-direction: column; gap: 6px; }
+.cs-rev-line em { font-style: normal; font-size: 11px; letter-spacing: .12em; opacity: .65; }
+.cs-rev-card { cursor: pointer; }
+.cs-rev-log { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--gold, #d4af37); border-radius: 12px; }
+.cs-score-tile.sealed b { opacity: .9; }
+.cs-scores.is-sealed { cursor: pointer; }

@@ -15,6 +15,7 @@ import { newCons, type Cons } from '@/lib/cons';
 import { setTokens } from '@/lib/tokenStore';
 import PostMortem from './PostMortem';
 import ColdOpen from './ColdOpen';
+import Reveal from './Reveal';
 import { OrsonFace, Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 1200;
@@ -163,6 +164,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const eco = s.b8 && s.phase === 'bracket' && !s.b8.show ? <EconomyBar s={s} me={pid} code={code} /> : null;
   const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} now={now} send={send as (i: Intent) => void}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{eco}{foot}<PostMortem s={s} /></CineSyncPipeline>;
   const led = ledgerLine(s);
+  const sealed = s.hr?.sealed !== false && !(s.phase === 'final' && s.fin.revealed) && s.phase !== 'done';
 
   // ---- LOBBY
   if (s.phase === 'lobby') {
@@ -225,7 +227,7 @@ export default function PlayRoom({ code }: { code: string }) {
     if (s.draft.loading) return shell(<div className="cs-center"><div className="cs-spin" /><Typing text="Orson is writing a pitch for every film. He is dramatic about it" /></div>);
     if (s.draft.gren.id !== null) { const gm = BY_ID[s.draft.gren.id]; const mine = s.draft.gren.votes[pid];
       return shell(<div className="cs-gren"><div className="cs-orson">UNRESOLVED TENSION</div><p className="cs-say">I&apos;m seeing a lot of unresolved tension. Let&apos;s throw a grenade.</p>
-        <div className="cs-gren-card"><Poster id={gm.id} /><b>{gm.t}</b><span>{gm.y} · {gm.r.toFixed(1)}{gm.rt != null ? ` · RT ${gm.rt}%` : ''}</span></div>
+        <div className="cs-gren-card"><Poster id={gm.id} /><b>{gm.t}</b><span>{gm.y} · {gm.r.toFixed(1)}{!sealed && gm.rt != null ? ` · RT ${gm.rt}%` : ''}</span></div>
         {mine === undefined ? <div className="cs-row"><button className="cs-btn cs-btn--no" onClick={() => send({ t: 'grenvote', pid, yes: false })}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'grenvote', pid, yes: true })}>I&apos;LL TAKE IT</button></div> : <p className="cs-small cs-wait">🔒 Locked in. {them.name} is still deciding<span className="cs-dots">...</span></p>}</div>); }
     if (picks.length >= DRAFT_SIZE) return shell(<div className="cs-center"><p className="cs-say">Six drafted and locked. Your picks stay secret.</p><p className="cs-small">{s.draft.picks[other].length >= DRAFT_SIZE ? 'Both done.' : `${them.name} has ${s.draft.picks[other].length}/${DRAFT_SIZE}.`}</p></div>);
     if (id === undefined) return shell(<div className="cs-center">Out of films.</div>);
@@ -258,8 +260,8 @@ export default function PlayRoom({ code }: { code: string }) {
             {m.aw && <span className="cs-award">{m.aw.replace(/\.? ?$/, '')}</span>}
           </div>
         </div>
-        <Scores m={m} />
-        {critic && <p className="cs-critics"><em>CRITICS SAID</em> {critic}{m.rt != null && m.mc != null ? `, ${m.rt}% fresh, Metacritic ${m.mc}` : ''}.</p>}
+        <Scores m={m} sealed={sealed} />
+        {!sealed && critic && <p className="cs-critics"><em>CRITICS SAID</em> {critic}{m.rt != null && m.mc != null ? `, ${m.rt}% fresh, Metacritic ${m.mc}` : ''}.</p>}
         {(() => { const ci = CARD_CACHE.get(id); const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div className="cs-story-inline">
           <p className="cs-hook">{ok ? ok.hook : (s.draft.pitches[id] || m.o)}</p>
           {ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : ci === 'wait' ? <p className="cs-small">Orson is reading up on it...</p> : null}
@@ -309,7 +311,7 @@ export default function PlayRoom({ code }: { code: string }) {
         <i className="cs-who">{owner(id) || (i === 2 ? 'ORSON' : '')}</i>
         <button className="cs-info" onClick={() => setDet(id)}>i</button>
         <Poster id={id} /><b>{BY_ID[id].t}</b>
-        <span>{BY_ID[id].y}</span><Scores m={BY_ID[id]} big />
+        <span>{BY_ID[id].y}</span><Scores m={BY_ID[id]} big sealed={sealed} />
         {tot ? <em className="cs-tot">{tot[i]}</em> : mineW ? <em className="cs-tot">{free ? (mineW[i] ? 'YOU' : '') : mineW[i]}</em>
           : free ? <button className="cs-btn cs-btn--gold cs-pickbtn" onClick={() => { buzz(15); send({ t: 'wager', pid, alloc: [0, 1, 2].map((k) => (k === i ? 1 : 0)) }); }}>PICK</button>
           : <div className="cs-step"><button onClick={() => bump3(i, -1)}>-</button><span>{alloc[i]}</span><button onClick={() => bump3(i, 1)}>+</button></div>}
@@ -328,15 +330,18 @@ export default function PlayRoom({ code }: { code: string }) {
       {mt.winner === null && mineW && <p className="cs-small cs-wait">🔒 Locked in. {them.name} is still deciding<span className="cs-dots">...</span>{!free ? ` Purse left: ${purse}.` : ''}</p>}
       {free && mt.winner === null && !mineW && <p className="cs-small">Round 1 is free. Tap PICK on the film you want most. Tokens start in round 2 ({purse} each).</p>}
       {mt.winner !== null && <div className="cs-won">{BY_ID[mt.winner].t} advances <small>{mt.via}{mt.winner === mt.c ? ' · ORSON WINS A ROUND' : ''}</small></div>}
-      {det !== null && (() => { const dm = BY_ID[det]; const ci = CARD_CACHE.get(det); const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div className="cs-sheet" onClick={() => setDet(null)}><div className="cs-sheet-in" onClick={(e) => e.stopPropagation()}><b>{dm.t}</b><span className="cs-meta">{[dm.y, dm.k, dm.rn ? `${dm.rn} min` : ''].filter(Boolean).join(' · ')}</span>{dm.c && dm.c.length > 0 && <span className="cs-cast"><em>Starring</em> {dm.c.slice(0, 3).join(', ')}</span>}<Scores m={dm} /><p className="cs-hook">{ok ? ok.hook : dm.o}</p>{ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : <p className="cs-small">Orson is reading up on it...</p>}<button className="cs-btn cs-btn--gold" onClick={() => setDet(null)}>CLOSE</button></div></div>; })()}
+      {det !== null && (() => { const dm = BY_ID[det]; const ci = CARD_CACHE.get(det); const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div className="cs-sheet" onClick={() => setDet(null)}><div className="cs-sheet-in" onClick={(e) => e.stopPropagation()}><b>{dm.t}</b><span className="cs-meta">{[dm.y, dm.k, dm.rn ? `${dm.rn} min` : ''].filter(Boolean).join(' · ')}</span>{dm.c && dm.c.length > 0 && <span className="cs-cast"><em>Starring</em> {dm.c.slice(0, 3).join(', ')}</span>}<Scores m={dm} sealed={sealed} /><p className="cs-hook">{ok ? ok.hook : dm.o}</p>{ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : <p className="cs-small">Orson is reading up on it...</p>}<button className="cs-btn cs-btn--gold" onClick={() => setDet(null)}>CLOSE</button></div></div>; })()}
     </div>);
   }
 
   // ---- FINAL
   if (s.phase === 'final') {
     const f = s.fin; const myChoice = f.choice[pid];
+    // V2: Orson's Reveal runs before the pick whenever scores were sealed. The engine gates fchoice on it.
+    if (s.hr.sealed && !f.revealed && !f.verdict) return shell(<Reveal s={s} pid={pid} send={send as (i: Intent) => void} />);
     if (!f.pitchEnds) return shell(<div className="cs-bracket"><div className="cs-round">THE FINAL TWO</div>
       <div className="cs-vs cs-titlecard">{[f.a, f.b].map((id) => <button key={id} className={'cs-match-card' + (myChoice === id ? ' is-mine' : '')} disabled={myChoice !== undefined} onClick={() => send({ t: 'fchoice', pid, id })}><Poster id={id} /><b>{BY_ID[id].t}</b><span>{BY_ID[id].y}</span></button>)}</div>
+      {(f.revealed && f.callLog.length > 0 || f.skipped) && <div className="cs-rev-log">{f.skipped ? <p className="cs-small">Ceremony skipped. Straight to the fight.</p> : f.callLog.map((l, i) => <p key={i} className="cs-small">✉️ {l}</p>)}</div>}
       <p className="cs-small">{myChoice === undefined ? 'Pick the film you will fight for.' : `🔒 Locked in. ${them.name} is still deciding...`}</p></div>);
     if (f.judging) return <Takeover a={f.a} b={f.b} />;
     const left = secs(f.pitchEnds, now); const submitted = f.submitted[pid];

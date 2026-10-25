@@ -71,17 +71,20 @@ export async function shareReceipts(s: State) {
 export function Heat({ h, big = false }: { h: number; big?: boolean }) {
   return <div className={'cs-heat' + (big ? ' cs-heat--big' : '')} title="Sync heat"><div className="cs-heat-track"><i style={{ width: `${Math.max(4, h)}%` }} /></div><b>{heatLabel(h)}</b></div>;
 }
-export function Scores({ m, big = false }: { m: Movie; big?: boolean }) {
+export function Scores({ m, big = false, sealed = false }: { m: Movie; big?: boolean; sealed?: boolean }) {
+  // V2 House Rule: RT + IMDb stay sealed until Orson's Reveal. Tap a sealed card to peek (local, per card).
+  const [peek, setPeek] = useState(false);
+  const show = !sealed || peek;
   const tone = (v: number | null | undefined, hi: number, lo: number) => (v == null ? 'na' : v >= hi ? 'hi' : v >= lo ? 'mid' : 'lo');
   const cells: [string, string, string][] = [
-    ['ROTTEN TOM.', m.rt != null ? `${m.rt}%` : '–', tone(m.rt, 75, 50)],
+    ['ROTTEN TOM.', show ? (m.rt != null ? `${m.rt}%` : '–') : '🔒', show ? tone(m.rt, 75, 50) : 'sealed'],
     ['METACRITIC', m.mc != null ? `${m.mc}` : '–', tone(m.mc, 65, 45)],
-    ['IMDB', m.imdb != null ? m.imdb.toFixed(1) : '–', tone(m.imdb, 7.2, 6)],
+    ['IMDB', show ? (m.imdb != null ? m.imdb.toFixed(1) : '–') : '🔒', show ? tone(m.imdb, 7.2, 6) : 'sealed'],
     ['TMDB', m.r.toFixed(1), tone(m.r, 7.2, 6)],
   ];
   const shown = m.sr ? [...cells.slice(3), ['SEASONS', String(m.sr.s), 'mid'] as [string, string, string], ['EPISODES', String(m.sr.e), 'mid'] as [string, string, string], [m.sr.st === 'Ended' || m.sr.st === 'Canceled' ? 'FINISHED' : 'RUNNING', m.sr.last ? String(m.sr.last) : '', 'mid'] as [string, string, string]] : cells;
   const list = big ? shown.filter((x) => x[1] !== '–').slice(0, 3) : shown;
-  return <div className={'cs-scores' + (big ? ' cs-scores--big' : '')}>{list.map(([l, v, c]) => <div key={l} className={'cs-score-tile ' + c}><b>{l === 'ROTTEN TOM.' ? '🍅 ' : ''}{v}</b><span>{l}</span></div>)}</div>;
+  return <div className={'cs-scores' + (big ? ' cs-scores--big' : '') + (sealed && !peek ? ' is-sealed' : '')} onClick={sealed && !peek ? () => setPeek(true) : undefined} title={sealed && !peek ? 'Sealed until the Reveal - tap to peek' : undefined}>{list.map(([l, v, c]) => <div key={l} className={'cs-score-tile ' + c}><b>{l === 'ROTTEN TOM.' && show ? '🍅 ' : ''}{v}</b><span>{l}</span></div>)}</div>;
 }
 
 export function OrsonFace({ mood, talking }: { mood: Mood; talking: boolean }) {
