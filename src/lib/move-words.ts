@@ -86,10 +86,20 @@ function isOpenFile(chess: Chess, file: number): boolean {
 
 // Replay a PGN and return the position just before the given ply (1-based,
 // every half-move). Used by RETRY THE MISTAKE to reload the scene of the crime.
+// PGNs from games that started on a custom position (coach openings, puzzles, retries)
+// carry [SetUp "1"] + [FEN "..."] headers (verified 25 Oct): stripping them and starting
+// from the standard position made every ply lookup wrong for those games - RETRY THE
+// MISTAKE loaded a phantom position. Honour the FEN header when present.
+function pgnStartChess(pgn: string): Chess {
+  const fenMatch = pgn.match(/\[FEN "([^"]+)"\]/i);
+  if (fenMatch) { try { return new Chess(fenMatch[1]); } catch { /* fall through to standard */ } }
+  return new Chess();
+}
+
 export function fenBeforePly(pgn: string, targetPly: number): string | null {
   if (!pgn || targetPly < 1) return null;
   try {
-    const chess = new Chess();
+    const chess = pgnStartChess(pgn);
     let ply = 0;
     const body = pgn.replace(/\[[^\]]*\]/g, ' ');
     for (const token of body.split(/\s+/).filter((t) => t && !/^\d+\.+$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t))) {
@@ -108,8 +118,8 @@ export function phrasesFromPgn(pgn: string): Map<number, string> {
   const map = new Map<number, string>();
   if (!pgn) return map;
   try {
-    const replay = new Chess();
-    const check = new Chess();
+    const replay = pgnStartChess(pgn);
+    const check = pgnStartChess(pgn);
     let ply = 0;
     const body = pgn.replace(/\[[^\]]*\]/g, ' ');
     for (const token of body.split(/\s+/).filter((t) => t && !/^\d+\.+$/.test(t) && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t))) {
