@@ -242,7 +242,7 @@ export function bestInfo(fen: string, best: string | null | undefined): { san: s
 }
 
 /** Deterministic Chester chat (default, 0p). Same intents as the PRD chips; uses the live card + live engine pick. */
-export function chatReply(message: string, card: WhyCard | null, live: { fen: string; bestSan: string | null } | null): string {
+function chatReplyBase(message: string, card: WhyCard | null, live: { fen: string; bestSan: string | null } | null): string {
   const q = message.toLowerCase();
   const eng = live?.bestSan && live.fen ? bestInfo(live.fen, live.bestSan) : null;
   const engLine = eng?.san ? `My pick here: ${plainSuggestion(live!.fen, eng.san) || formatSanToHuman(live!.fen, eng.san)}.` : '';
@@ -294,4 +294,121 @@ export function chatReply(message: string, card: WhyCard | null, live: { fen: st
   }
   if (/tactic/.test(q)) return 'Three questions before every move: what is loose, what can be forked, what does my move leave undefended? Tonight the third one wins you games.';
   return engLine || (card ? `About your last move: ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} Ask me "what should I do next?" for a fresh idea.` : 'Ask me about your last move, a threat, or what to play next.');
+}
+
+// ---- BUILD 183: multi-turn Chester chat -------------------------------------
+// Fixes the verbatim-repeat bug: follow-ups used to fall through to the static card lines.
+// Adds: board-support intent (frozen/can't move), safety simulation of the discussed idea
+// ("won't I lose my pawn?"), why-better follow-ups, and a repeat guard.
+
+type ChatTurn = { role: 'user' | 'chester'; text: string };
+
+/** Legal captures landing on `target` for `byColor`, cheapest attacker first. */
+function takersOf(pos: Chess, target: string, byColor: 'w' | 'b'): { piece: string; value: number }[] {
+  const val: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+  try {
+    let c = pos;
+    const occ = pos.get(target as never) as { type: string; color: string } | null;
+    if (occ && occ.color === byColor && occ.type !== 'k') {
+      // Own piece sits on the square: swap in an enemy dummy so legal captures enumerate the real defenders.
+      c = new Chess(pos.fen());
+      c.remove(target as never);
+      c.put({ type: occ.type as never, color: (byColor === 'w' ? 'b' : 'w') as never }, target as never);
+    }
+    if (c.turn() !== byColor) {
+      const parts = c.fen().split(' ');
+      parts[1] = byColor; parts[3] = '-';
+      c = new Chess(parts.join(' '));
+    }
+    return (c.moves({ verbose: true }) as any[])
+      .filter((mv) => mv.to === target && mv.captured)
+      .map((mv) => ({ piece: N[mv.piece], value: val[mv.piece] || 1 }))
+      .sort((a, b) => a.value - b.value);
+  } catch { return []; }
+}
+
+function simMove(fen: string, moveSanOrUci: string): { after: Chess; m: any } | null {
+  try {
+    const c = new Chess(fen);
+    const legal = c.moves({ verbose: true }) as any[];
+    const m = legal.find((x) => x.san === moveSanOrUci) || legal.find((x) => `${x.from}${x.to}${x.promotion || ''}` === moveSanOrUci) || legal.find((x) => x.lan === moveSanOrUci);
+    if (!m) return null;
+    c.move(m.san);
+    return { after: c, m };
+  } catch { return null; }
+}
+
+/** "Won't I lose my pawn?" - simulate the discussed idea and answer its safety with named pieces. */
+function safetyAnswer(card: WhyCard | null, live: { fen: string; bestSan: string | null } | null): string | null {
+  const fen = card?.fenBefore || live?.fen || null;
+  const san = card?.engineBestSan || live?.bestSan || null;
+  if (!fen || !san) return null;
+  const sim = simMove(fen, san);
+  if (!sim) return null;
+  const { after, m } = sim;
+  const mover = m.color as 'w' | 'b';
+  const val: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+  const movedName = N[m.piece];
+  const human = formatSanToHuman(fen, m.san);
+  const oppTakers = takersOf(after, m.to, mover === 'w' ? 'b' : 'w');
+  if (!oppTakers.length) return `No - ${human} is safe. Nothing of theirs can take your ${movedName} on ${m.to} next move, so the idea stands.`;
+  const defenders = takersOf(after, m.to, mover);
+  const cheapest = oppTakers[0];
+  const dName = defenders.length ? ` - your ${defenders[0].piece} covers it` : '';
+  if (defenders.length) {
+    if (cheapest.value < (val[m.piece] || 1)) return `Yes, their ${cheapest.piece} can take it - and that is the trap: you recapture${dName}, and they have handed a ${cheapest.piece} over for a ${movedName}. Bad deal for them.`;
+    return `They can chase it with their ${cheapest.piece}, but your ${movedName} is guarded${dName}. If they take, you take straight back - an even trade, and your move has already done its job.`;
+  }
+  return `Honest answer: yes, right now their ${cheapest.piece} could win your ${movedName} on ${m.to} and nothing of yours guards it yet. The engine still rates ${human} for other reasons - but if you want the safe road first, ask me "what should I play?" and I will give you a solid one.`;
+}
+
+/** "Why is your idea better than what I played?" - consequence comparison, never the review text repeated. */
+function whyBetterAnswer(card: WhyCard): string {
+  const played = formatSanToHuman(card.fenBefore, card.san);
+  const idea = card.engineBestSan ? formatSanToHuman(card.fenBefore, card.engineBestSan) : null;
+  let moverColor: 'w' | 'b' = 'w';
+  try { moverColor = new Chess(card.fenBefore).turn(); } catch { /* ignore */ }
+  let afterPlayedLoose: { piece: string; square: string }[] = [];
+  try { afterPlayedLoose = hangingPieces(new Chess(card.fenAfter), moverColor); } catch { /* ignore */ }
+  const engineSim = card.engineBestSan ? simMove(card.fenBefore, card.engineBestSan) : null;
+  let afterIdeaLoose: { piece: string; square: string }[] = [];
+  if (engineSim) { try { afterIdeaLoose = hangingPieces(engineSim.after, moverColor); } catch { /* ignore */ } }
+  const bits: string[] = [];
+  if (idea) bits.push(`the idea was ${idea}`);
+  if (afterPlayedLoose.length && !afterIdeaLoose.length) bits.push(`your move (${played}) leaves your ${afterPlayedLoose[0].piece} on ${afterPlayedLoose[0].square} attacked with no defender, and the idea keeps everything covered`);
+  else if (card.cp != null && Math.abs(card.cp) >= 40) bits.push(`the engine counts your move (${played}) as giving up about ${(Math.abs(card.cp) / 100).toFixed(1)} pawns of value - nothing drops at once, but the pressure fades`);
+  if (!bits.length) return `Short version: ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')}`;
+  return `Here is the difference: ${bits.join(', ')}. That is why I nudged you there - want to try it? Use the Retry pill under my review.`;
+}
+
+export function chatReply(message: string, card: WhyCard | null, live: { fen: string; bestSan: string | null } | null, history?: ChatTurn[]): string {
+  const q = message.toLowerCase();
+  const prevChester = history ? [...history].reverse().find((t) => t.role === 'chester')?.text || '' : '';
+  let out = '';
+  // 1. Board support: frozen / can't move / not working. Never a move review.
+  if (/frozen|can'?t move|cant move|won'?t move|wont move|not (working|responding|moving)|nothing happens|glitch|bug|broken|crashed|won'?t let me/.test(q)) {
+    const turn = live?.fen ? live.fen.split(' ')[1] : null;
+    if (turn === 'b') return 'That is not the board freezing - it is my move. Give me a few seconds to play, then your pieces will answer again.';
+    return 'Not chess this time - let us unstick you. Tap one of your own pieces once: every square it can reach should glow. If nothing glows, try a different piece. If the whole board ignores you, refresh the page once and come straight back to me.';
+  }
+  // 2. Safety of the discussed idea: "won't I lose my pawn?" - simulate it and name names.
+  if (!out && (/won'?t i lose|wont i lose|will i lose|lose my (pawn|queen|rook|bishop|knight|piece)|get taken|be captured|be taken|take my (pawn|queen|rook|bishop|knight)/.test(q) || (/is (it|that|this|the move) safe/.test(q)))) {
+    out = safetyAnswer(card, live) || '';
+  }
+  // 3. Why is your idea better than what I played?
+  if (!out && card && (/why .*(better|stronger|prefer)|but why|how come|why is (that|this|it)/.test(q) || /^(why|why\?|really|are you sure|how so|what do you mean|explain)[?!. ]*$/.test(q.trim()))) {
+    out = whyBetterAnswer(card);
+  }
+  // 4. Everything else: the original intent router.
+  if (!out) out = chatReplyBase(message, card, live);
+  // 5. Repeat guard: never serve the identical answer twice in a row.
+  if (prevChester && out === prevChester) {
+    if (card) {
+      const deeper = whyBetterAnswer(card);
+      out = deeper !== prevChester ? deeper : `${out} Ask me "what should I play?" and I will take a fresh look at the board as it stands.`;
+    } else {
+      out = `${out} Ask me "what should I play?" and I will take a fresh look at the board as it stands.`;
+    }
+  }
+  return out;
 }
