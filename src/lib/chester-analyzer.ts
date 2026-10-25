@@ -412,12 +412,13 @@ export function chatReply(message: string, card: WhyCard | null, live: { fen: st
         const last = hist[hist.length - 1] || null;
         const mate = over.isCheckmate();
         const stale = over.isStalemate();
-        // Whose mate was it: the graded card matching the final move is primary; when the
-        // card is gone (post-report chat), the coach-mode player is White - last mover wins.
-        const playerMatedIt = mate && last && ((card && card.san === last.san) || (!card && last.color === 'w'));
+        // Whose mate was it: the side TO MOVE is the mated side, always (a FEN-built board
+        // has no history, so never trust `last` here). The coach-mode player is White, so
+        // black-to-move-mated means the player delivered it.
+        const playerMatedIt = mate && ((card && last && card.san === last.san) || over.turn() === 'b');
         const piecePhrase = last ? `your ${({ p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' } as Record<string, string>)[last.piece] || 'piece'} to ${last.to}` : 'the final move';
         const resultLine = mate
-          ? (playerMatedIt ? `${piecePhrase} was checkmate` : 'that final move was checkmate against you')
+          ? (playerMatedIt ? 'your final move was checkmate' : 'that final move was checkmate against you')
           : stale ? 'the game ended in stalemate - no legal moves, but no check' : 'the game ended in a draw';
         const whyMate = (): string => {
           if (!mate) return '';
