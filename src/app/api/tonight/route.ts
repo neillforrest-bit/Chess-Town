@@ -103,9 +103,11 @@ export async function POST(req: Request) {
       why, whyKind, providers, trailer: t ? t.key : null, wild,
     };
   };
-  const picks = await Promise.all([
+  let picks = await Promise.all([
     ...ranked.map((x) => enrich(x.m, x.why, x.whyKind, false)),
     ...(wildC ? [enrich(wildC, 'The wildcard: outside your usual taste, on purpose. Ignore it freely.', 'wild' as const, true)] : []),
   ]);
+  // TMDB's discover runtime filter and the title's true runtime can disagree - enforce the ceiling on the verified runtime, never trust the query filter
+  if (body.capMin) picks = picks.filter((x) => x.rn == null || x.rn <= (body.capMin as number));
   return NextResponse.json({ picks, matchedServices, providerFiltered: providerIds.length > 0, seed });
 }
