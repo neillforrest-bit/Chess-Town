@@ -1184,6 +1184,41 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               : (typeof (c as any).isFiftyMoves === 'function' && (c as any).isFiftyMoves()) ? 'fifty-move rule'
               : 'draw';
             const outcome: 'white' | 'black' | 'draw' = resultTag === '1/2-1/2' ? 'draw' : resultTag === '1-0' ? 'white' : 'black';
+            // BUILD 183j finish drama: the losing king topples in slow motion, the
+            // winner's crown rises, the arena rim burns the winner's colour. Purely
+            // decorative - every claim about WHO won comes from the stamped result.
+            if (result !== 'draw') {
+              try {
+                const loserColor = gameRef.current.chess.turn() === 'w' ? 'w' : 'b'; // side to move lost (mate/resign)
+                let loserKingSq: string | null = null;
+                let winnerKingSq: string | null = null;
+                for (const row of gameRef.current.chess.board()) {
+                  for (const cell of row) {
+                    if (cell && cell.type === 'k') { if (cell.color === loserColor) loserKingSq = cell.square; else winnerKingSq = cell.square; }
+                  }
+                }
+                const loserKing = loserKingSq ? pieceContainers[loserKingSq] : null;
+                if (loserKing) {
+                  loserKing.setDepth(29);
+                  scene.tweens.add({ targets: loserKing, angle: 88, y: loserKing.y + tileSize * 0.16, duration: 750, ease: 'Bounce.Out' });
+                  const puff = scene.add.circle(loserKing.x, loserKing.y + tileSize * 0.18, tileSize * 0.3, 0x9ca3af, 0.35).setDepth(28);
+                  scene.tweens.add({ targets: puff, scaleX: 2.2, scaleY: 2.2, alpha: 0, duration: 900, ease: 'Quad.Out', onComplete: () => puff.destroy() });
+                }
+                if (winnerKingSq) {
+                  const wCol = files.indexOf(winnerKingSq[0]);
+                  const wRow = ranks.indexOf(winnerKingSq[1]);
+                  if (wCol >= 0 && wRow >= 0) {
+                    const wx = boardOffset + sx(wCol) * tileSize + tileSize / 2;
+                    const wy = boardOffset + sy(wRow) * tileSize + tileSize / 2;
+                    const crown = scene.add.text(wx, wy - tileSize * 0.7, '👑', { fontSize: `${Math.round(tileSize * 0.6)}px` }).setOrigin(0.5).setDepth(31).setScale(0.1);
+                    scene.tweens.add({ targets: crown, scaleX: 1, scaleY: 1, y: wy - tileSize * 0.95, duration: 600, ease: 'Back.Out', delay: 380 });
+                    scene.tweens.add({ targets: crown, alpha: 0, delay: 2800, duration: 500, ease: 'Quad.In', onComplete: () => crown.destroy() });
+                  }
+                }
+                const rim = scene.add.rectangle(398, 398, 756, 756).setStrokeStyle(12, loserColor === 'b' ? 0xffd84d : 0xf43f7a, 0.85).setDepth(33);
+                scene.tweens.add({ targets: rim, alpha: 0, duration: 1600, ease: 'Cubic.Out', onComplete: () => rim.destroy() });
+              } catch { /* finish drama is decoration - never break the result flow */ }
+            }
             window.dispatchEvent(new CustomEvent('game-report', { detail: { ...getPostGameReport(gameRef.current.chess, gameRef.current.playerQualities), gradeHistory: gameRef.current.gradeHistory, pgn, gameResult: { outcome, cause } } }));
             window.dispatchEvent(new CustomEvent('dojo-banter', { detail: { type: 'summary', message, pgn } }));
             window.dispatchEvent(new CustomEvent('match-complete', { detail: { result, pgn } }));

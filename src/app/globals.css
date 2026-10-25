@@ -3440,7 +3440,13 @@ a.battle-btn{text-decoration:none}
 .chester-why--pending .chester-why__grade { color: #22d3ee; }
 
 /* ── BATCH 181 · unambiguous end-of-game moment ── */
-.chester-endbanner { position: fixed; left: 14px; right: 14px; top: 38%; z-index: 80; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: 1rem .9rem .8rem; border-radius: 18px; text-align: center; background: linear-gradient(180deg, rgba(10,14,20,.97), rgba(5,8,12,.96)); border: 2.5px solid #ffe27a; box-shadow: 0 24px 70px rgba(0,0,0,.75), 0 0 40px rgba(255,226,122,.25); animation: teachIn .3s cubic-bezier(.2,1.25,.3,1) both; cursor: pointer; }
+.chester-endbanner { position: fixed; left: 14px; right: 14px; top: 34%; z-index: 80; display: flex; flex-direction: column; align-items: center; gap: .25rem; padding: 1.3rem 1rem 1rem; border-radius: 20px; text-align: center; background: linear-gradient(180deg, rgba(10,14,20,.97), rgba(5,8,12,.96)); border: 3px solid #ffe27a; box-shadow: 0 24px 70px rgba(0,0,0,.75), 0 0 40px rgba(255,226,122,.25); animation: endBannerIn .55s cubic-bezier(.2,1.35,.3,1) both; cursor: pointer; }
+@keyframes endBannerIn { 0% { opacity: 0; transform: scale(.55) translateY(40px); } 70% { opacity: 1; transform: scale(1.06) translateY(-4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+.chester-endbanner--you { border-color: #ffd84d; box-shadow: 0 24px 80px rgba(0,0,0,.8), 0 0 60px rgba(255,216,77,.45); }
+.chester-endbanner--you b { animation: endBannerGlow 1.6s ease-in-out infinite alternate; }
+@keyframes endBannerGlow { from { text-shadow: 0 0 10px rgba(255,216,77,.35); } to { text-shadow: 0 0 26px rgba(255,216,77,.85); } }
+.chester-endbanner__confetti { font-size: 1.25rem; letter-spacing: .35em; animation: endBannerConfetti .8s cubic-bezier(.2,1.3,.3,1) both .35s; }
+@keyframes endBannerConfetti { from { opacity: 0; transform: translateY(14px) scale(.6); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .chester-endbanner b { font: 900 1.5rem Arial, sans-serif; letter-spacing: 1.5px; color: #fff; }
 .chester-endbanner span { font: 800 .85rem Arial, sans-serif; letter-spacing: 1px; color: #ffe27a; text-transform: uppercase; }
 .chester-endbanner small { margin-top: .35rem; font: 700 .62rem Arial, sans-serif; letter-spacing: 1.6px; color: rgba(255,255,255,.55); text-transform: uppercase; }

@@ -965,6 +965,7 @@ function PlayChesterGame() {
         {powerups.length > 0 && <PowerupOverlay items={powerups} />}
         <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
         {endBanner && typeof document !== 'undefined' && createPortal(<div className={`chester-endbanner chester-endbanner--${endBanner.outcome}`} role="alertdialog" aria-label="Game over" onClick={() => { setEndBanner(null); setReportOpen(true); }}>
+          {endBanner.outcome === 'you' && <span className="chester-endbanner__confetti" aria-hidden="true">🎉 ✨ 🏆 ✨ 🎉</span>}
           <b>{endBanner.outcome === 'draw' ? '🤝 DRAW' : endBanner.outcome === 'you' ? '🏆 YOU WIN' : '💀 CHESTER WINS'}</b>
           <span>{endBanner.outcome === 'draw' ? `by ${endBanner.cause}` : endBanner.cause === 'resignation' ? 'by resignation' : `by ${endBanner.cause}`}</span>
           <small>tap to see the full report</small>
