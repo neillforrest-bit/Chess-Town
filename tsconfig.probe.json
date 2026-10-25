@@ -10,5 +10,5 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["src/lib/game.ts", "src/lib/b8.ts"]
+  "include": ["src/lib/game.ts", "src/lib/b8.ts", "src/lib/coldopen.ts"]
 }
