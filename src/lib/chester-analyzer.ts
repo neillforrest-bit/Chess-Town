@@ -167,7 +167,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
 
   const did = (() => {
     if (inp.provisional && !term) return `\u2753 You played ${human}. The engine is still reading this one - no confirmed grade yet.`;
-    if (term?.kind === 'mate') return `\u2705 You played ${human} - checkmate. Their king has no escape: the game is over.`;
+    if (term?.kind === 'mate') return `\u2705 You played ${human.replace(/[ -]+checkmate\.?$/i, '')} - checkmate. Their king has no escape: the game is over.`;
     if (term?.kind === 'stalemate') {
       const fact = `${human} - stalemate: their king was NOT in check but had no legal move, so the game is a draw.`;
       if (inp.provisional) return `\u2796 You played ${fact} The engine did not produce a trustworthy grade here, so this move is excluded from your accuracy.`;
