@@ -412,7 +412,9 @@ export function chatReply(message: string, card: WhyCard | null, live: { fen: st
         const last = hist[hist.length - 1] || null;
         const mate = over.isCheckmate();
         const stale = over.isStalemate();
-        const playerMatedIt = mate && card && last && card.san === last.san; // the player's graded move was the mate
+        // Whose mate was it: the graded card matching the final move is primary; when the
+        // card is gone (post-report chat), the coach-mode player is White - last mover wins.
+        const playerMatedIt = mate && last && ((card && card.san === last.san) || (!card && last.color === 'w'));
         const piecePhrase = last ? `your ${({ p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' } as Record<string, string>)[last.piece] || 'piece'} to ${last.to}` : 'the final move';
         const resultLine = mate
           ? (playerMatedIt ? `${piecePhrase} was checkmate` : 'that final move was checkmate against you')
