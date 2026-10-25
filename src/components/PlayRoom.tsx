@@ -14,6 +14,7 @@ import { ConsPicker, PivotModal, PassPips, EconomyBar, useGraveSync } from './V2
 import { newCons, type Cons } from '@/lib/cons';
 import { setTokens } from '@/lib/tokenStore';
 import PostMortem from './PostMortem';
+import ColdOpen from './ColdOpen';
 import { OrsonFace, Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
 
 const DRUMROLL_MS = 1200;
@@ -174,6 +175,10 @@ export default function PlayRoom({ code }: { code: string }) {
       {s.mem.last && <p className="cs-small">Last time: {s.mem.last}. I remember everything.</p>}
       {led && <p className="cs-small cs-gold">{led}</p>}
       {pid === 'A' && <button className={'cs-toggle' + (s.roast ? ' is-on' : '')} onClick={() => send({ t: 'roast', on: !s.roast })}>ROAST MODE · {s.roast ? 'ON' : 'OFF'}</button>}
+      {pid === 'A' && <div className="cs-hr"><em>HOUSE RULES</em>
+        <button className={'cs-toggle' + (s.hr?.wilds ? ' is-on' : '')} onClick={() => send({ t: 'hr', pid, wilds: !s.hr?.wilds, sealed: s.hr?.sealed !== false })}>WILDCARD ENTRANTS · {s.hr?.wilds ? 'ON' : 'STRICT'}</button>
+        <button className={'cs-toggle' + (s.hr?.sealed !== false ? ' is-on' : '')} onClick={() => send({ t: 'hr', pid, wilds: s.hr?.wilds === true, sealed: !(s.hr?.sealed !== false) })}>SEALED SCORES · {s.hr?.sealed !== false ? 'ON' : 'OFF'}</button>
+      </div>}
       <button className="cs-btn" onClick={() => { const msg = `Join my CineSync movie night! Room code: ${code}\n${link}`; if (navigator.share) { navigator.share({ text: msg }).catch(() => navigator.clipboard?.writeText(msg)); } else navigator.clipboard?.writeText(msg); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'COPIED' : 'COPY INVITE LINK'}</button>
       <p className="cs-small">TV: open <b>/tv/{code}</b></p>
     </div>);
@@ -190,6 +195,9 @@ export default function PlayRoom({ code }: { code: string }) {
       <p className="cs-say">Swipe a few vibes, draft your favourites in secret, then watch them fight it out in a bracket with Popcorn Tokens. One winner. I will be rude about it.</p>
       <button className="cs-btn cs-btn--gold" onClick={() => { setGo(2); setCd(0); }}>LET&apos;S FIND A FILM</button>
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
+    // V2 COLD OPEN: five Orson-hosted beats replace the mood/swiper calibration; it emits the same
+    // sliders + tropes + taste intents, so everything downstream (discovery, draft) is unchanged.
+    if (s.co !== false && !s.vibe.tasteReady?.[pid]) return shell(<ColdOpen s={s} pid={pid} send={send as (i: Intent) => void} />);
     // THE VIBE CHECK (v2.0): three sliders feed live TMDB discovery; the trope matrix stays as the flavour layer.
     if (!s.vibe.sl?.[pid]) { const LB = [['Dark / Gritty', 'Light / Fun'], ['Indie / Auteur', 'Blockbuster'], ['Brain-Bending', 'Turn-Brain-Off']];
       return shell(<div className="cs-ask cs-ask--tight"><div className="cs-orson">TONIGHT&apos;S MOOD · PICK UP TO 2</div>

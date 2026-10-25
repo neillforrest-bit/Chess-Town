@@ -395,6 +395,8 @@ export type State = {
   cost: { calls: number; inTok: number; outTok: number; usd: number };
   fx: { seen: string[] };
   hit: Hit | null; b8: B8 | null; reroll: Reroll; b8Bonus: { A: number; B: number }; taste: string | null; seenBan: number[]; seenLoaded: boolean;
+  /** V2 Cold Open calibration beats. Default on; only old persisted rooms lack it. */
+  co?: boolean;
   /** House Rules. wilds: opt-in wildcard entrants (GENRE SWAP / Resurrection / bust replacements). STRICT by default: only player-chosen titles enter the bracket. sealed: hide RT/IMDb until the final (Reveal). */ hr: { wilds: boolean; sealed: boolean };
   orson: { line: string; mood: Mood; n: number; emo?: string };
   sab?: Sab;
@@ -1012,7 +1014,7 @@ export function reduce(prev: State, it: Intent): State {
       }
       break;
     }
-    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, v: s.v + 1, players: s.players, solo: s.solo, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, hr: s.hr, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
+    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, co: s.co !== false, v: s.v + 1, players: s.players, solo: s.solo, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, hr: s.hr, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
   }
   return s;
 }

@@ -728,3 +728,26 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-drow>span{display:flex;flex-direction:column;gap:2px;min-width:0}
 .cs-drow b{font-size:.82rem}.cs-drow small{font-size:.6rem;color:#c9bfd6;letter-spacing:.05em}
 .cs-drow em{font-style:italic;font-family:var(--serif);font-size:.68rem;color:#fff1c2;line-height:1.25}
+/* V2 Cold Open */
+.cs-co { display: flex; flex-direction: column; gap: 12px; }
+.cs-co-head { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.cs-co-pips { display: flex; gap: 6px; }
+.cs-co-pips i { width: 22px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); }
+.cs-co-pips i.is-done { background: var(--gold, #d4af37); opacity: .55; }
+.cs-co-pips i.is-now { background: var(--gold, #d4af37); }
+.cs-co-beat { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+.cs-co-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.cs-co-chips i, .cs-co-chip { font-style: normal; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.06); color: inherit; font-size: 13px; }
+.cs-co-chips i.is-on, .cs-co-chip.is-on { border-color: var(--gold, #d4af37); color: var(--gold, #d4af37); }
+.cs-co-chip em { font-style: normal; opacity: .55; margin-left: 6px; font-size: 11px; }
+.cs-co-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.35); color: inherit; font-size: 16px; }
+.cs-co-hits { display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-co-spectrum { display: flex; justify-content: space-between; font-weight: 700; letter-spacing: .08em; font-size: 13px; }
+.cs-co-range { width: 100%; accent-color: var(--gold, #d4af37); height: 34px; }
+.cs-co-lean { text-align: center; opacity: .8; font-size: 14px; }
+.cs-co-tt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cs-co-swipe { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cs-co-card { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.cs-co-card b { font-size: 18px; }
+.cs-hr { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 4px; }
+.cs-hr em { font-style: normal; font-size: 11px; letter-spacing: .12em; opacity: .6; }
