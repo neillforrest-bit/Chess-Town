@@ -78,7 +78,8 @@ export function Scores({ m, big = false, sealed = false }: { m: Movie; big?: boo
   const tone = (v: number | null | undefined, hi: number, lo: number) => (v == null ? 'na' : v >= hi ? 'hi' : v >= lo ? 'mid' : 'lo');
   const cells: [string, string, string][] = [
     ['ROTTEN TOM.', show ? (m.rt != null ? `${m.rt}%` : '–') : '🔒', show ? tone(m.rt, 75, 50) : 'sealed'],
-    ['METACRITIC', m.mc != null ? `${m.mc}` : '–', tone(m.mc, 65, 45)],
+    // Metacritic is a direct critics proxy: it seals with RT/IMDb. TMDB stays visible as the labelled house rating.
+    ['METACRITIC', show ? (m.mc != null ? `${m.mc}` : '–') : '🔒', show ? tone(m.mc, 65, 45) : 'sealed'],
     ['IMDB', show ? (m.imdb != null ? m.imdb.toFixed(1) : '–') : '🔒', show ? tone(m.imdb, 7.2, 6) : 'sealed'],
     ['TMDB', m.r.toFixed(1), tone(m.r, 7.2, 6)],
   ];
