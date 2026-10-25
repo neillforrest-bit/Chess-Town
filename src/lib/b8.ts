@@ -300,11 +300,14 @@ const startMatch = (s: State, b: B8, now: number) => { const nx = b.matches[b.cu
 /** CineSync v2.0 wildcard events: 10% chance per token matchup (QF onward). Blind Bet masks the films; Genre Swap swaps in two divergent cult/vintage picks; Resurrection drags an eliminated film back in. */
 export const WC_P = 0.1;
 const redact = (m: Movie) => { const first = (m.o.split(/(?<=[.!?])\s/)[0] || m.o).replace(new RegExp(m.t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '___'); return first.length > 110 ? first.slice(0, 107) + '...' : first; };
-function rollWildcard(s: State, b: B8, m: M8): boolean {
+export function rollWildcard(s: State, b: B8, m: M8): boolean {
   if (m.wc !== undefined || m.round < 2 || m.a === null || m.b === null) return false;
   const rnd = seeded(s.code, 'wc' + m.id + m.a + m.b); m.wc = null;
   if (rnd() >= WC_P) return false;
-  const kind = (['blind', 'swap', 'res'] as const)[Math.floor(rnd() * 3)];
+  // House Rules: wildcard ENTRANTS (Genre Swap, Resurrection) only when players explicitly opted in.
+  // Blind Bet never admits a title, so it rolls in strict mode too. Strict = only player-chosen titles, ever.
+  const kinds = s.hr?.wilds ? (['blind', 'swap', 'res'] as const) : (['blind'] as const);
+  const kind = kinds[Math.floor(rnd() * kinds.length)];
   const inPlay = new Set<number>(b.matches.flatMap((x) => [x.a, x.b]).filter((x): x is number => x !== null));
   if (kind === 'blind') {
     m.wc = 'blind'; m.cry = { a: redact(BY_ID[m.a]), b: redact(BY_ID[m.b]) };
@@ -343,7 +346,8 @@ export function bustDone(s: State, roast: string, now: number) {
   const { by, id } = m.busting; const old = BY_ID[id];
   const taken = new Set([...Object.keys(b.seed).map(Number), ...s.vetoed, ...s.pool]);
   const t = vecOf(old);
-  const inn = poolOf(s.kind, s.gm, s.cl).filter((x) => !taken.has(x.id) && x.r >= 6.8).map((x) => ({ x, sc: x.r * 0.6 + wdist(vecOf(x), t) * 0.5 })).sort((a, c) => c.sc - a.sc || a.x.id - c.x.id)[0];
+  // Strict House Rules: a busted film leaves and the bracket adapts - no unchosen replacement storms in.
+  const inn = s.hr?.wilds ? poolOf(s.kind, s.gm, s.cl).filter((x) => !taken.has(x.id) && x.r >= 6.8).map((x) => ({ x, sc: x.r * 0.6 + wdist(vecOf(x), t) * 0.5 })).sort((a, c) => c.sc - a.sc || a.x.id - c.x.id)[0] : undefined;
   if (inn) {
     const n = inn.x.id; b.seed[n] = b.seed[id]; delete b.seed[id]; s.vetoed.push(id);
     if (m.a === id) { m.a = n; } else { m.b = n; }

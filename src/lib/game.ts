@@ -394,6 +394,7 @@ export type State = {
   cost: { calls: number; inTok: number; outTok: number; usd: number };
   fx: { seen: string[] };
   hit: Hit | null; b8: B8 | null; reroll: Reroll; b8Bonus: { A: number; B: number }; taste: string | null; seenBan: number[]; seenLoaded: boolean;
+  /** House Rules. wilds: opt-in wildcard entrants (GENRE SWAP / Resurrection / bust replacements). STRICT by default: only player-chosen titles enter the bracket. sealed: hide RT/IMDb until the final (Reveal). */ hr: { wilds: boolean; sealed: boolean };
   orson: { line: string; mood: Mood; n: number; emo?: string };
   sab?: Sab;
   log: string[];
@@ -413,7 +414,7 @@ export const newState = (code: string): State => ({
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
-  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, sab: newSab(), hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, seenBan: [], seenLoaded: false, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
+  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, sab: newSab(), hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, seenBan: [], seenLoaded: false, hr: { wilds: false, sealed: true }, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
 });
 
 // seeded shuffle so every client sees the same order
@@ -533,7 +534,7 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' } | { t: 'sab'; pid: PID; kind: SabKey; winner?: number; genre?: string; dead?: number } | { t: 'wheel'; pid: PID; act: 'start' | 'spin' | 'veto' | 'accept' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'reset' };
+  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'hr'; pid: PID; wilds?: boolean; sealed?: boolean } | { t: 'reset' };
 
 // Orson's Devil's Advocate Pause: when the two taste profiles diverge hard, throw a polarising wildcard at both players. Once per draft.
 function cosProf(a: Prof, b: Prof): number {
@@ -671,7 +672,7 @@ function freshIntent(s: State, it: { pid: PID; at: number; movies: Movie[] }) {
 export function reduce(prev: State, it: Intent): State {
   const s: State = JSON.parse(JSON.stringify(prev)); s.v++;
   if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.reviews) s.reviews = {}; if (!s.inter) s.inter = {}; if (s.asym === undefined) s.asym = null; if (!s.vibe.sw) s.vibe.sw = { A: {}, B: {} }; if (!s.vibe.lock) s.vibe.lock = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra); sanitizeIds(s);
-  if (!s.dx) s.dx = newDx(); if (!s.grave) s.grave = [];
+  if (!s.dx) s.dx = newDx(); if (!s.grave) s.grave = []; if (!s.hr) s.hr = { wilds: false, sealed: true };
   const now = (it as { now?: number }).now ?? Date.now(); s.now = now;
   switch (it.t) {
     case 'join': {
@@ -913,6 +914,13 @@ export function reduce(prev: State, it: Intent): State {
       if (s.b8 && !s.reroll.used) s.reroll = { stage: 'ask', votes: {}, used: false, to: null };
       break;
     }
+    case 'hr': {
+      if (s.phase !== 'lobby' || it.pid !== 'A') break;
+      s.hr = { wilds: it.wilds === true, sealed: it.sealed !== false };
+      const ln = `House Rules set: wildcard surprise entrants ${s.hr.wilds ? 'ON - entrants arrive only via an explicit offer you can refuse' : 'OFF - only films you picked can enter the bracket'}; scores ${s.hr.sealed ? 'sealed until the final' : 'on show'}.`;
+      s.log.unshift(ln); s.orson = { line: s.hr.wilds ? 'House Rules: my wildcards are in play. Doors will be offered, never forced.' : 'House Rules: strict bracket. Only films you two picked can fight. As it should be.', mood: 'idle', n: s.orson.n + 1 };
+      break;
+    }
     case 'roast': s.roast = it.on; break;
     case 'mem': { s.mem = { ...s.mem, nights: it.nights, ledger: it.ledger, last: it.last, durable: it.durable }; if (s.phase === 'lobby' || (s.phase === 'vibe' && s.vibe.attempts === 0)) s.vibe.set = it.nights % (QUESTION_SETS.length - 1); s.vibe.sets = [s.vibe.set, s.vibe.set, s.vibe.set, s.vibe.set]; break; }
     case 'seenload': if (!s.seenLoaded) { s.seenBan = (it.ids || []).filter((x) => Number.isFinite(x)); s.seenLoaded = true; } break;
@@ -954,7 +962,7 @@ export function reduce(prev: State, it: Intent): State {
       }
       break;
     }
-    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, v: s.v + 1, players: s.players, solo: s.solo, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
+    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, v: s.v + 1, players: s.players, solo: s.solo, phase: (s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, hr: s.hr, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
   }
   return s;
 }

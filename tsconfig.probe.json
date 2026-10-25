@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "/tmp/mvout",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "incremental": false,
+    "strict": false,
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["src/lib/game.ts", "src/lib/b8.ts"]
+}
