@@ -762,3 +762,8 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-rev-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cs-rev-cards .cs-match-card .cs-poster { max-height: 19dvh; }
 .cs-co-card .cs-poster { max-height: 42dvh; width: auto; max-width: 100%; }
+/* Reveal compaction: everything above the fold at 390x700 */
+.cs-rev { gap: 10px; }
+.cs-rev .cs-say { font-size: .92rem; margin: 0; }
+.cs-rev-cards .cs-match-card .cs-poster { max-height: 15dvh; }
+.cs-rev-cards .cs-match-card b { font-size: .78rem; }

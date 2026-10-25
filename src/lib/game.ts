@@ -929,13 +929,14 @@ export function reduce(prev: State, it: Intent): State {
       const settle = (label: string, av: number | null, bv: number | null, pick: (c: { cr: number; au: number }) => number) => {
         if (av === null || bv === null) { s.fin.callLog.push(`${label}: a comparable score is missing, so that call is void. No chips move - nobody wins by a missing number.`); return; }
         if (av === bv) { s.fin.callLog.push(`${label}: dead level at ${av}. A push - chips back, honour intact.`); return; }
-        const winnerId = av > bv ? s.fin.a : s.fin.b;
+        const winnerId = av > bv ? s.fin.a : s.fin.b; let anyWin = false;
         for (const p of ['A', 'B'] as PID[]) {
           const c = s.fin.calls[p]; if (!c) continue;
           const won = pick(c) === winnerId;
           s.purse[p] = Math.max(0, s.purse[p] + (won ? STAKE : -STAKE));
-          if (won) s.fin.callLog.push(`${label}: ${s.players[p].name} called it and takes ${STAKE} chips.`);
+          if (won) { anyWin = true; s.fin.callLog.push(`${label}: ${s.players[p].name} called it and takes ${STAKE} chips.`); }
         }
+        if (!anyWin) s.fin.callLog.push(`${label}: ${av} vs ${bv} - nobody called it. ${STAKE} chips each, gone.`);
       };
       settle('CRITICS (Tomatometer)', sa.rt, sb.rt, (c) => c.cr);
       settle('AUDIENCES (IMDb)', sa.imdb, sb.imdb, (c) => c.au);
