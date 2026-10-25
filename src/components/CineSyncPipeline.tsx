@@ -23,7 +23,8 @@ export default function CineSyncPipeline({ s, pid, code, send, now, children }: 
   const stage = STAGE_OF(s.phase);
   const [acked, setAcked] = useState<Record<string, boolean>>(() => { const o: Record<string, boolean> = {}; try { for (const st of ['mood', 'scene', 'tournament']) if (sessionStorage.getItem(`cs-dec-${code}-${st}`)) o[st] = true; } catch { /* none */ } return o; });
   const ack = (st: string) => { try { sessionStorage.setItem(`cs-dec-${code}-${st}`, '1'); } catch { /* none */ } setAcked((a) => ({ ...a, [st]: true })); };
-  const gate = stage && !acked[stage];
+  // V2 Cold Open: the five beats ARE the vibe-stage ceremony, so the old mood decree would double-host it.
+  const gate = stage && !acked[stage] && !(stage === 'mood' && s.co !== false);
   const b = s.b8; const m = b && s.phase === 'bracket' ? b.matches[b.cur] : null; const cat = m?.cat || null;
   const [catSeen, setCatSeen] = useState('');
   const catKey = cat ? m!.id + cat.in : '';

@@ -8,6 +8,8 @@ import { WildRow } from './V2Bits';
 import { WK_ALL, WK_NAME, type WK } from '@/lib/b8';
 
 type P = { s: State; pid: PID; send: (i: Intent) => void; now: number };
+/** V2 House Rule: every numeric rating seals until the Reveal (deliberate, labelled in the Scores tiles). */
+const isSealed = (s: State) => s.hr?.sealed !== false && !(s.phase === 'final' && s.fin.revealed) && s.phase !== 'done';
 const pitchOf = (s: State, id: number) => (s.draft.pitches[id] || BY_ID[id].o || '').replace(/\s+/g, ' ');
 const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
@@ -39,7 +41,7 @@ export function HitScreen({ s, pid, send, now }: P) {
       {mineList.map((id) => <div key={id} className={'cs8-wrow cs8-wrow--tap' + (golden === id ? ' is-gold' : '') + ((tk[id] || 0) > 0 ? ' is-bet' : '')}>
         <button className="cs8-wtap" disabled={me.done || lefty <= 0} onClick={() => set(id, (tk[id] || 0) + Math.min(10, lefty))}>
           <span className="cs8-wt"><b>{clip(BY_ID[id].t, 24)}</b><em>{BY_ID[id].y}{h.owner[id] === 'AB' ? ' · BOTH PICKED' : ''}</em></span>
-          <span className="cs8-wsc">{BY_ID[id].rt != null ? <u>🍅 {BY_ID[id].rt}%</u> : null}<u>★ {BY_ID[id].r.toFixed(1)}</u></span>
+          <span className="cs8-wsc">{isSealed(s) ? <u>🔒 sealed</u> : <>{BY_ID[id].rt != null && <u>🍅 {BY_ID[id].rt}%</u>}<u>★ {BY_ID[id].r.toFixed(1)}</u></>}</span>
           <span className="cs8-wamt">{tk[id] || 0}</span>
         </button>
         {(tk[id] || 0) > 0 && <button className="cs8-wx" disabled={me.done} onClick={() => set(id, 0)} title="Remove tokens">✕</button>}
@@ -48,7 +50,7 @@ export function HitScreen({ s, pid, send, now }: P) {
     </div> : <div className="cs8-wlist cs8-wbul">
       <p className="cs8-sel">{me.veto === null ? `Pick one of ${s.players[other].name}'s titles to shoot. It dies before the bracket.` : `Loaded: ${BY_ID[me.veto].t}. Tap again to unload.`}</p>
       <div className="cs8-grid" style={{ gridTemplateColumns: `repeat(${h.grid.length > 9 ? 4 : 3}, 1fr)` }}>{theirs.map((id) => <button key={id} disabled={me.done} className={'cs8-tile' + (me.veto === id ? ' is-strike' : '')} onClick={() => { buzz(8); send({ t: 'hit', pid, veto: me.veto === id ? null : id }); setSel(id); }}><Poster id={id} />{me.veto === id && <em className="cs8-x">⌖</em>}</button>)}</div>
-      {sel !== null && theirs.includes(sel) && <p className="cs8-sel"><b>{BY_ID[sel].t}</b> · {BY_ID[sel].y} · {BY_ID[sel].r.toFixed(1)}</p>}
+      {sel !== null && theirs.includes(sel) && <p className="cs8-sel"><b>{BY_ID[sel].t}</b> · {BY_ID[sel].y}{isSealed(s) ? '' : ` · ${BY_ID[sel].r.toFixed(1)}`}</p>}
     </div>}
     {(() => { const hp = (h as unknown as { wpick?: Partial<Record<PID, WK>> }).wpick || {}; const got = hp[pid]; return got ? <p className="cs8-sel">🃏 Wild card held: {WK_NAME[got]}. Used from round 2.</p> : <div className="cs8-wpick"><span>🃏 PICK 1 WILD CARD</span>{WK_ALL.map((k) => <button key={k} disabled={me.done} onClick={() => { buzz(14); send({ t: 'wcpick', pid, k }); }}>{k === 'spy' ? '🔭 Spy' : k === 'mul' ? '✖️ x2' : '🦝 Thief'}</button>)}</div>; })()}
     <p className="cs8-sel">{golden !== undefined ? `★ Golden Ticket: ${clip(BY_ID[golden].t, 24)} (seed 1)` : '★ = your Golden Ticket, locked as seed 1.'}</p>
@@ -87,7 +89,7 @@ const ROUND_INFO: Record<number, { name: string; says: string }> = {
 export function CallsPage({ s, now, tv }: { s: State; now: number; tv?: boolean; pid?: PID; send?: (i: Intent) => void }) {
   const b = s.b8; const sh = b?.show; if (!b || !sh) return null;
   const ms = b.matches.filter((m) => m.round === sh.round && m.a !== null && m.b !== null); const left = secs(sh.until, now);
-  const fb = (m: M8) => `${BY_ID[m.a as number].t} meets ${BY_ID[m.b as number].t}. Rated ${BY_ID[m.a as number].r.toFixed(1)} and ${BY_ID[m.b as number].r.toFixed(1)}. Somebody is about to be very smug.`;
+  const fb = (m: M8) => isSealed(s) ? `${BY_ID[m.a as number].t} meets ${BY_ID[m.b as number].t}. Scores sealed. Somebody is about to be very smug.` : `${BY_ID[m.a as number].t} meets ${BY_ID[m.b as number].t}. Rated ${BY_ID[m.a as number].r.toFixed(1)} and ${BY_ID[m.b as number].r.toFixed(1)}. Somebody is about to be very smug.`;
   return <div className={'cs8-page cs8-comm' + (tv ? ' is-tv' : '')}>
     <TokStrip s={s} />
     <div className="cs8-top"><span className="cs-orson">ORSON LIVE · {RNDN[sh.round - 1]}</span><b className="cs8-clock">{left}s</b></div>
@@ -100,13 +102,13 @@ export function TapePage({ s, now, tv, pid, send }: { s: State; now: number; tv?
   const b = s.b8; const sh = b?.show; const [i, setI] = useState(0); const [x0, setX0] = useState<number | null>(null); if (!b || !sh) return null;
   const ms = previewMatches(b); const m = ms[Math.min(i, ms.length - 1)]; if (!m) return null;
   const ack = b.ack || { A: false, B: false }; const dn = pid ? ack[pid] : true; const left = secs(sh.until, now);
-  const fb = `${BY_ID[m.a as number].t} meets ${BY_ID[m.b as number].t}. Rated ${BY_ID[m.a as number].r.toFixed(1)} and ${BY_ID[m.b as number].r.toFixed(1)}. Taste is subjective, and you are both wrong.`;
+  const fb = isSealed(s) ? `${BY_ID[m.a as number].t} meets ${BY_ID[m.b as number].t}. Scores sealed. Taste is subjective, and you are both wrong.` : `${BY_ID[m.a as number].t} meets ${BY_ID[m.b as number].t}. Rated ${BY_ID[m.a as number].r.toFixed(1)} and ${BY_ID[m.b as number].r.toFixed(1)}. Taste is subjective, and you are both wrong.`;
   const line = m.tape || fb; const go = (d: number) => setI((v) => Math.max(0, Math.min(ms.length - 1, v + d)));
   return <div className={'cs8-page cs-tape' + (tv ? ' is-tv' : '')}>
     <TokStrip s={s} />
     <div className="cs8-top"><span className="cs-orson">TALE OF THE TAPE</span><b className="cs8-clock">{left}s</b></div>
     <div className="cs-tape-c" onTouchStart={(e) => setX0(e.touches[0].clientX)} onTouchEnd={(e) => { if (x0 !== null) { const d = e.changedTouches[0].clientX - x0; if (Math.abs(d) > 50) go(d < 0 ? 1 : -1); } setX0(null); }}>
-      <div className="cs-tape-row">{[m.a as number, m.b as number].map((id, k) => { const rv = s.reviews?.[id]; return <div key={id} className="cs-tape-f">{k === 1 && null}<Poster id={id} /><b>{clip(BY_ID[id].t, 22)}</b><Scores m={BY_ID[id]} big />
+      <div className="cs-tape-row">{[m.a as number, m.b as number].map((id, k) => { const rv = s.reviews?.[id]; return <div key={id} className="cs-tape-f">{k === 1 && null}<Poster id={id} /><b>{clip(BY_ID[id].t, 22)}</b><Scores m={BY_ID[id]} big sealed={s.hr?.sealed !== false && !(s.phase === 'final' && s.fin.revealed) && s.phase !== 'done'} />
         {rv && rv.q ? <><q>{rv.q.replace(/^["“”]+|["“”]+$/g, '')}</q><em className="cs-tape-rt">{rv.r !== null ? `${rv.r}/10 · ` : ''}{rv.a}</em></> : <em>{s.reviews?.[id] ? 'No critic would go on record.' : 'Fetching a critic...'}</em>}</div>; })}</div>
     </div>
     <div className="cs-tape-nav"><button className="cs-btn" disabled={i === 0} onClick={() => go(-1)}>‹</button><div className="cs-tape-dots">{ms.map((_, k) => <i key={k} className={k === i ? 'is-on' : ''} onClick={() => setI(k)} />)}</div><button className="cs-btn" disabled={i >= ms.length - 1} onClick={() => go(1)}>›</button></div>
@@ -180,7 +182,7 @@ export function BracketScreen({ s, pid, send, now }: P) {
         return <button key={id} className={'cs8-card' + (pick === id || mine ? ' is-pick' : '') + (m.winner === id ? ' is-win' : m.winner !== null ? ' is-lose' : '')} disabled={m.status !== 'VOTING_ACTIVE' || !!m.wg[pid] || (!!m.live?.[pid] && m.live[pid]!.id !== id)} onClick={() => { buzz(8); if (m.round === 1) send({ t: 'w8', pid, id, tok: 0 }); else setPick(id); }}>
           <i className="cs8-seed">#{b.seed[id]}</i>{m.round > 1 && (['A', 'B'] as PID[]).map((p) => { const l = m.wg[p] || m.live?.[p]; return l && l.id === id ? <u key={p} className={'cs8-stake ' + (p === pid ? 'is-me' : 'is-them')}>{p === pid ? 'YOU' : s.players[p].name.slice(0, 5).toUpperCase()} ◈{l.tok}</u> : null; })}{b.shield[id] && <i className="cs8-sb">★ GOLDEN</i>}{m.round > 1 && isSpectacle(id) && <i className="cs8-spec">{SPEC_TAG} ×2</i>}{upset && <i className="cs8-up">x{R.UPSET_MULT}</i>}
           {blind ? <div className="cs8-mask">?</div> : <Poster id={id} big />}<b>{blind ? nm(id, 20) : clip(BY_ID[id].t, 20)}</b>
-          {!blind && <><span>{BY_ID[id].y}</span><Scores m={BY_ID[id]} big /></>}
+          {!blind && <><span>{BY_ID[id].y}</span><Scores m={BY_ID[id]} big sealed={s.hr?.sealed !== false && !(s.phase === 'final' && s.fin.revealed) && s.phase !== 'done'} /></>}
           <p className="cs8-syn">{blind ? (m.cry ? (id === a ? m.cry.a : m.cry.b) : '...') : clip(pitchOf(s, id), 170)}</p>
           {!blind && duelActorChips(id)}</button>; })}</div>
       {m.round > 1 && (() => { const tot = tokA + tokB; const wob = Math.round(Math.sin(now / 900) * 4); const crowd = Math.max(8, Math.min(92, tot ? Math.round(50 + (pa - 50) * 0.85) + wob : 50 + wob)); const lead = crowd > 58 ? s.players.A.name : crowd < 42 ? s.players.B.name : ''; const say = !tot ? 'The crowd is waiting for someone to be brave.' : lead ? `The crowd is leaning toward ${BY_ID[crowd > 50 ? a : c].t}. ${lead === s.players[pid].name ? 'Do not get comfortable.' : 'The room has turned against you.'}` : 'The room is split. Nobody knows anything.'; return <div className="cs8-crowd"><small>THE CROWD · {crowd > 50 ? BY_ID[a].t.slice(0, 14) : BY_ID[c].t.slice(0, 14)}</small><div className="cs8-crowd-bar"><i style={{ width: crowd + '%' }} /></div><em>{say}</em></div>; })()}
@@ -220,7 +222,7 @@ export function RerollScreen({ s, pid, send }: { s: State; pid: PID; send: (i: I
       <div className="cs8-chips">{TROPE_NAMES.map((x) => <button key={x} className={'cs8-chip' + (sel.includes(x) ? ' is-on' : '')} onClick={() => tog(x)}>{x}</button>)}</div>
       <button className="cs-btn cs-btn--no" disabled={sel.length !== 3} onClick={() => send({ t: 'nuketropes', pid, tropes: sel })}>LOCK ({sel.length}/3)</button></>}</div>;
   if (r.stage === 'wait') return <div className="cs8-rr cs8-nuke"><div className="cs-orson">THE GENRE GAUNTLET</div><p className="cs-say">Six tropes in. Orson is composing the ultimatum from: {(r.tropes || []).join(', ') || 'chaos'}...</p></div>;
-  if (r.stage === 'pick' && r.ult) { const u = r.ult; const my = r.uv?.[pid]; const card = (k: 'titan' | 'gem', lab: string) => { const m = BY_ID[u[k].id]; return <button disabled={!!my} className={'cs8-ult' + (my === k ? ' is-sel' : '')} onClick={() => send({ t: 'nukepick', pid, which: k })}><small>{lab}</small><Poster id={m.id} /><b>{m.t} <i>{m.y}</i></b><span>{m.rt ? `RT ${m.rt}%` : `TMDB ${m.r.toFixed(1)} (RT n/a)`}</span><em>{u[k].why}</em></button>; };
+  if (r.stage === 'pick' && r.ult) { const u = r.ult; const my = r.uv?.[pid]; const card = (k: 'titan' | 'gem', lab: string) => { const m = BY_ID[u[k].id]; return <button disabled={!!my} className={'cs8-ult' + (my === k ? ' is-sel' : '')} onClick={() => send({ t: 'nukepick', pid, which: k })}><small>{lab}</small><Poster id={m.id} /><b>{m.t} <i>{m.y}</i></b><span>{isSealed(s) ? '🔒 sealed' : m.rt ? `RT ${m.rt}%` : `TMDB ${m.r.toFixed(1)} (RT n/a)`}</span><em>{u[k].why}</em></button>; };
     return <div className="cs8-rr cs8-nuke"><div className="cs-orson">TAKE IT OR LEAVE IT</div><p className="cs-say">{u.rant}</p>
       <div className="cs-row cs8-ults">{card('titan', 'THE BLOCKBUSTER')}{card('gem', 'THE HIDDEN GEM')}</div>
       {my ? <p className="cs-small">Locked. Waiting for {oName}. You must BOTH take the same film.</p> : <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'nukepick', pid, which: 'keep' })}>LEAVE IT: KEEP {w.t.toUpperCase()}</button>}</div>; }
