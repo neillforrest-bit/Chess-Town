@@ -135,6 +135,8 @@ function PlayChesterGame() {
   const chalRef = useRef<Challenge | null>(null);
   const [skinUnlocked, setSkinUnlocked] = useState<string | null>(null);
   const [skinNow, setSkinNow] = useState<string>(() => { try { return localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } });
+  const [styleOpen, setStyleOpen] = useState(false);
+  const [pieceThemeNow, setPieceThemeNow] = useState<'neon' | 'metallic'>(() => { try { return window.localStorage.getItem('ct-piece-theme') === 'metallic' ? 'metallic' : 'neon'; } catch { return 'neon'; } });
   const [commOpen, setCommOpen] = useState(false);
   // BUILD 165 (PRD V2): structured Why Engine card, arrows, hint ladder, check/mate cinematics. All hooks live above the start-screen return.
   const [whyCard, setWhyCard] = useState<WhyCard | null>(null);
@@ -1048,10 +1050,41 @@ function PlayChesterGame() {
           {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} disabled={!torchReady()} aria-label="Use torch power-up for the full engine answer"><b>🔦 TORCH</b><small>{loot.torch} LEFT</small></button>}
           {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b>🛡️ SHIELD</b><small>{loot.shield} LEFT</small></button>}
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--style" onClick={() => { dismissHeroTip(); setStyleOpen((v) => !v); }} aria-label="Change board and piece style" aria-expanded={styleOpen}><b>🎨 STYLE</b><small>{skinNow}</small></button>
           <div className="chester-taunts" role="group" aria-label="Taunt Chester">
             {['😏', '😤', '🤯', '💪'].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
           </div>
         </div>
+        {styleOpen && (() => {
+          const SWATCHES: Record<string, [string, string]> = { NEON: ['#fffaf0', '#ecd9b0'], RETRO: ['#e8d9b5', '#4a3728'], FOREST: ['#eaf3e2', '#2f6b3a'], OCEAN: ['#e2f0f7', '#1c4f7a'], ROYAL: ['#efe4f5', '#5c2b7a'], EMBER: ['#ffe8c9', '#9a4a1c'], SHADOW: ['#cfc3e8', '#3d2b5c'], CRIMSON: ['#f5d0d0', '#7a1020'], FROST: ['#eaf7ff', '#5c93b8'], GOLD: ['#fff3c2', '#8a6a1c'] };
+          let earned: string[] = [];
+          try { earned = JSON.parse(window.localStorage.getItem('ct-skins') || '[]'); } catch { /* private mode */ }
+          const always = ['NEON', 'RETRO', 'FOREST', 'OCEAN', 'ROYAL'];
+          const pickBoard = (name: string) => { window.dispatchEvent(new CustomEvent('set-board-theme', { detail: { name } })); setSkinNow(name); playSfx('select'); };
+          const pickPieces = (name: 'neon' | 'metallic') => { window.dispatchEvent(new CustomEvent('set-piece-theme', { detail: { name } })); setPieceThemeNow(name); playSfx('select'); };
+          return <div className="style-sheet" role="dialog" aria-label="Board and piece style">
+            <div className="style-sheet__head"><span>🎨 STYLE</span><button type="button" onClick={() => setStyleOpen(false)} aria-label="Close style picker">✕</button></div>
+            <div className="style-sheet__label">BOARD</div>
+            <div className="style-sheet__grid">
+              {Object.entries(SWATCHES).map(([name, [light, dark]]) => {
+                const unlocked = always.includes(name) || earned.includes(name);
+                return <button key={name} type="button" className={`style-swatch ${skinNow === name ? 'is-current' : ''} ${unlocked ? '' : 'is-locked'}`} aria-label={`${name} board${unlocked ? '' : ' (locked - beat a road boss)'}`}
+                  onClick={() => { if (unlocked) pickBoard(name); }}>
+                  <span className="style-swatch__board" aria-hidden="true"><i style={{ background: light }} /><i style={{ background: dark }} /><i style={{ background: dark }} /><i style={{ background: light }} /></span>
+                  <b>{unlocked ? name : `🔒 ${name}`}</b>
+                </button>;
+              })}
+            </div>
+            <div className="style-sheet__label">PIECES</div>
+            <div className="style-sheet__grid style-sheet__grid--pieces">
+              {(['neon', 'metallic'] as const).map((name) => <button key={name} type="button" className={`style-swatch ${pieceThemeNow === name ? 'is-current' : ''}`} onClick={() => pickPieces(name)} aria-label={`${name} pieces`}>
+                <span className="style-swatch__pieces" aria-hidden="true">{name === 'neon' ? '♞🔥' : '♞❄️'}</span>
+                <b>{name.toUpperCase()}</b>
+              </button>)}
+            </div>
+            <p className="style-sheet__note">Locked boards are trophies - beat road bosses to earn them.</p>
+          </div>;
+        })()}
       </div>
       </div>
       </div>

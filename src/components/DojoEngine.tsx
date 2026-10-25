@@ -28,6 +28,10 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 const BOARD_THEMES = {
   NEON: [0xfffaf0, 0xecd9b0],
   RETRO: [0xe8d9b5, 0x4a3728],
+  // Batch 183: more looks, available from the start (trophy skins below stay boss-gated).
+  FOREST: [0xeaf3e2, 0x2f6b3a],
+  OCEAN: [0xe2f0f7, 0x1c4f7a],
+  ROYAL: [0xefe4f5, 0x5c2b7a],
   // BUILD 158 trophy skins: one per Road to Joseph boss checkpoint.
   EMBER: [0xffe8c9, 0x9a4a1c],
   SHADOW: [0xcfc3e8, 0x3d2b5c],
@@ -39,7 +43,7 @@ const BOARD_THEME_ORDER = Object.keys(BOARD_THEMES);
 const unlockedBoardThemes = (): string[] => {
   let skins: string[] = [];
   try { skins = JSON.parse(window.localStorage.getItem('ct-skins') || '[]'); } catch { /* */ }
-  return BOARD_THEME_ORDER.filter((t) => t === 'NEON' || t === 'RETRO' || skins.includes(t));
+  return BOARD_THEME_ORDER.filter((t) => t === 'NEON' || t === 'RETRO' || t === 'FOREST' || t === 'OCEAN' || t === 'ROYAL' || skins.includes(t));
 };
 
 const AI_TAGS: Record<string, { player: string; rival: string; title: string }> = {
@@ -429,6 +433,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     isGameOver: false,
     ply: 0,
     boardTheme: (() => { try { return window.localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } })(),
+    pieceTheme: (() => { try { return window.localStorage.getItem('ct-piece-theme') === 'metallic' ? 'metallic' : 'neon'; } catch { return 'neon'; } })(),
     coachMarks: [] as any[],
   });
 
@@ -532,7 +537,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           // crashing, and renderBoard re-registers from cache before drawing - a piece
           // can never silently render blank again.
           const registerPieceTexture = (color: 'w' | 'b', type: string, attempt = 0) => {
-            const key = `piece-${color}-${type}`;
+            const key = `piece-${gameRef.current.pieceTheme}-${color}-${type}`;
             if (!scene.add || !scene.sys) return;
             if (scene.textures.exists(key)) return;
             const cached = pieceImageCache.get(key);
@@ -551,7 +556,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             image.onerror = () => {
               if (attempt < 5 && scene.add) setTimeout(() => registerPieceTexture(color, type, attempt + 1), 350 * (attempt + 1));
             };
-            image.src = getPieceSpriteDataUrl(color, type) || '';
+            image.src = getPieceSpriteDataUrl(color, type, 288, gameRef.current.pieceTheme as 'metallic' | 'neon') || '';
           };
           (['w', 'b'] as const).forEach((color) => {
             ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => registerPieceTexture(color, type));
@@ -583,7 +588,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const startX = color === 'w' ? 112 : 570;
               const spacing = Math.min(26, 200 / Math.max(1, count + 1));
               (layer.getAll() as any[]).forEach((child, index) => child.setX(startX + index * spacing));
-              const glyph = scene.add.image(startX + count * spacing, jailY, `piece-${color}-${type}`).setDisplaySize(28, 28);
+              const glyph = scene.add.image(startX + count * spacing, jailY, `piece-${gameRef.current.pieceTheme}-${color}-${type}`).setDisplaySize(28, 28);
               const fullScale = glyph.scaleX;
               glyph.setScale(0.02);
               scene.tweens.add({ targets: glyph, scaleX: fullScale, scaleY: fullScale, duration: 260, ease: 'Back.Out' });
@@ -1483,7 +1488,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 if (fc >= 0 && fr >= 0 && tc >= 0 && tr >= 0) {
                   const gx1 = boardOffset + sx(fc) * tileSize + tileSize / 2, gy1 = boardOffset + sy(fr) * tileSize + tileSize / 2;
                   const gx2 = boardOffset + sx(tc) * tileSize + tileSize / 2, gy2 = boardOffset + sy(tr) * tileSize + tileSize / 2;
-                  const tex = `piece-${h.piece[0]}-${h.piece[1]}`;
+                  const tex = `piece-${gameRef.current.pieceTheme}-${h.piece[0]}-${h.piece[1]}`;
                   if (scene.textures.exists(tex)) {
                     const ghost = scene.add.image(gx1, gy1, tex).setDisplaySize(tileSize * 1.0, tileSize * 1.0).setOrigin(0.5).setDepth(45).setAlpha(0.8);
                     const halo = scene.add.graphics().setDepth(44);
@@ -1504,7 +1509,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (bfc >= 0 && bfr >= 0 && btc >= 0 && btr >= 0) {
                 const bx1 = boardOffset + sx(bfc) * tileSize + tileSize / 2, by1 = boardOffset + sy(bfr) * tileSize + tileSize / 2;
                 const bx2 = boardOffset + sx(btc) * tileSize + tileSize / 2, by2 = boardOffset + sy(btr) * tileSize + tileSize / 2;
-                const btex = `piece-${bh.piece[0]}-${bh.piece[1]}`;
+                const btex = `piece-${gameRef.current.pieceTheme}-${bh.piece[0]}-${bh.piece[1]}`;
                 if (scene.textures.exists(btex)) {
                   const bghost = scene.add.image(bx1, by1, btex).setDisplaySize(tileSize, tileSize).setOrigin(0.5).setDepth(46).setAlpha(0.4);
                   scene.tweens.add({ targets: bghost, x: bx2, y: by2, duration: 900, hold: 500, repeatDelay: 300, yoyo: false, repeat: -1, ease: 'Sine.InOut', onRepeat: () => { bghost.setPosition(bx1, by1); } });
@@ -1548,7 +1553,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const isNeonBlind = gameRef.current.neonBlindnessColor === piece.color;
                   const displayPieceType = gameRef.current.trojanPawnSquare === squareName ? 'p' : piece.type;
                   const royalTexture = displayPieceType === piece.type && (piece.type === 'q' || piece.type === 'k') ? royalCatTextures[piece.type] : undefined;
-                  const pieceKey = `piece-${piece.color}-${displayPieceType}`;
+                  const pieceKey = `piece-${gameRef.current.pieceTheme}-${piece.color}-${displayPieceType}`;
                   if (!royalTexture && !scene.textures.exists(pieceKey)) {
                     const cached = pieceImageCache.get(pieceKey);
                     if (cached) { try { scene.textures.addImage(pieceKey, cached); } catch { /* scene gone */ } }
@@ -1595,7 +1600,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                       const gRow = ranks.indexOf(glide.from[1]);
                       if (gCol >= 0 && gRow >= 0) {
                         try {
-                          const echo = scene.add.image(boardOffset + sx(gCol) * tileSize + tileSize / 2, boardOffset + sy(gRow) * tileSize + tileSize / 2, royalTexture || `piece-${piece.color}-${displayPieceType}`)
+                          const echo = scene.add.image(boardOffset + sx(gCol) * tileSize + tileSize / 2, boardOffset + sy(gRow) * tileSize + tileSize / 2, royalTexture || `piece-${gameRef.current.pieceTheme}-${piece.color}-${displayPieceType}`)
                             .setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5).setAlpha(0.55).setDepth(28);
                           scene.tweens.add({ targets: echo, x: posX, y: posY, duration: 400, ease: 'Cubic.Out', onComplete: () => { try { echo.destroy(); } catch { /* gone */ } } });
                           scene.time.delayedCall(900, () => { try { echo.destroy(); } catch { /* gone */ } });
@@ -1932,6 +1937,22 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             renderBoard();
           };
           window.addEventListener('toggle-board-theme', handleToggleBoardTheme);
+          const handleSetBoardTheme = (event: Event) => {
+            const name = (event as CustomEvent<{ name?: string }>).detail?.name || '';
+            if (!unlockedBoardThemes().includes(name)) return;
+            gameRef.current.boardTheme = name;
+            try { window.localStorage.setItem('ct-board-theme', name); } catch { /* */ }
+            renderBoard();
+          };
+          window.addEventListener('set-board-theme', handleSetBoardTheme);
+          const handleSetPieceTheme = (event: Event) => {
+            const name = (event as CustomEvent<{ name?: string }>).detail?.name === 'metallic' ? 'metallic' : 'neon';
+            if (gameRef.current.pieceTheme === name) return;
+            gameRef.current.pieceTheme = name;
+            try { window.localStorage.setItem('ct-piece-theme', name); } catch { /* */ }
+            (['w', 'b'] as const).forEach((color) => { ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => registerPieceTexture(color, type)); });
+          };
+          window.addEventListener('set-piece-theme', handleSetPieceTheme);
 
           scene.events.once('destroy', () => {
             window.removeEventListener('load-puzzle', handleLoadPuzzle);
