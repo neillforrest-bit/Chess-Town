@@ -729,7 +729,15 @@ function PlayChesterGame() {
     const lastMove = moveTrail[moveTrail.length - 1];
     const fallback = () => chesterOfflineChat(message, { persona: difficulty, fen: lastFen, lastMove: lastMove?.move, lastMovePhrase, classification: lastMove?.classification, bestMove: lastBest, bestMovePhrase: lastBestPhrase, capturedCount: capturedPieces.length, historyCount: history.length });
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. You are chatting mid-game with your student. Live board FEN: ${lastFen}. Moves so far: ${moveTrail.map((m) => m.move).join(' ') || 'none yet'}. Last graded student move: ${lastMove ? `${lastMove.move} (${lastMove.classification || 'ungraded'})` : 'none'}. Engine-preferred idea: ${lastBest || 'unknown'}. Answer the student directly in at most 3 sentences. Be funny AND educational: every joke carries a chess lesson, every lesson lands a joke. Use only the FEN and record above for board facts - never invent pieces, squares, or lines. Plain English, no centipawns, no engine jargon.`;
-    const deterministic = () => chatReply(message, whyCard, liveRef.current.fen ? { fen: liveRef.current.fen, bestSan: liveRef.current.bestSan } : null, history);
+    const deterministic = () => {
+      // liveRef lags one position behind on terminal moves (engine-evaluation only
+      // publishes for AI moves) - lastFen carries the mate position. Prefer it when it
+      // is the finished board so chatReply's terminal branch can speak (parent review).
+      const liveF = liveRef.current.fen;
+      let fen = liveF || lastFen;
+      try { if (lastFen && new Chess(lastFen).isGameOver()) fen = lastFen; } catch { /* keep live */ }
+      return chatReply(message, whyCard, fen ? { fen, bestSan: liveRef.current.bestSan } : null, history);
+    };
     if (!(report || finalResult) && /what should i (do|play)|what next|what now|next move|what do i do|my best move|stuck|\blost\b|suggest|help me/i.test(message)) {
       // Next-move questions are answered from a fresh look at the board as it is right now, never from an older card.
       const got = await peekBoard();

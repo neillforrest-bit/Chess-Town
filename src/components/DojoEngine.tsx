@@ -162,9 +162,12 @@ function getPostGameReport(chess: any, qualities: { label: string; move: string;
   const tactics = Math.min(100, 45 + captures * 15 + checksGiven * 5);
   const blunders = confirmed.filter((quality) => quality.label === 'BLUNDER').length;
   const score = Math.round(accuracy * 0.5 + development * 0.2 + kingSafety * 0.15 + tactics * 0.15);
-  const grade = score >= 88 ? 'A' : score >= 74 ? 'B' : score >= 60 ? 'C' : score >= 45 ? 'D' : 'F';
+  // A checkmate win floors at C: the formula cannot see a 4-move game's intent, and
+  // "COMMANDING performance, grade F" is a contradiction he will screenshot back to us.
+  const finalScore = playerMatedEngine ? Math.max(score, 60) : score;
+  const grade = finalScore >= 88 ? 'A' : finalScore >= 74 ? 'B' : finalScore >= 60 ? 'C' : finalScore >= 45 ? 'D' : 'F';
   const turningPoint = [...confirmed].sort((left, right) => (qualityScores[left.label] || 50) - (qualityScores[right.label] || 50))[0];
-  return { grade, score, accuracy, development, kingSafety, tactics, openingName: getOpeningName(chess), moves: chess.history().length, turningPoint: turningPoint ? `${turningPoint.move} (${turningPoint.label})` : 'No decisive turning point', habits: { castled, developed: developedFroms.size >= 3, blunders } };
+  return { grade, score: finalScore, accuracy, development, kingSafety, tactics, openingName: getOpeningName(chess), moves: chess.history().length, turningPoint: turningPoint ? `${turningPoint.move} (${turningPoint.label})` : 'No decisive turning point', habits: { castled, developed: developedFroms.size >= 3, blunders } };
 }
 
 function getMoveFlavor(player: string, move: string, ply: number, mode: string) {
