@@ -417,14 +417,14 @@ export function chatReply(message: string, card: WhyCard | null, live: { fen: st
   }
   // 4. Everything else: the original intent router.
   if (!out) out = chatReplyBase(message, card, live);
-  // 5. Repeat guard: never serve the identical answer twice in a row.
-  if (prevChester && out === prevChester) {
-    if (card) {
-      const deeper = whyBetterAnswer(card);
-      out = deeper !== prevChester ? deeper : `${out} Ask me "what should I play?" and I will take a fresh look at the board as it stands.`;
-    } else {
-      out = `${out} Ask me "what should I play?" and I will take a fresh look at the board as it stands.`;
-    }
+  // 5. Repeat guard: only for card-based review questions. Live-board answers ("is anything
+  // hanging?") are recomputed from the position - an identical repeat there is the honest
+  // answer when the facts are identical, and swapping in a card answer would go off-intent.
+  const cardIntent = /lose points|why.*(shaky|last move|lose|brilliant|graded|mistake)|what could i have done|better/.test(q);
+  if (prevChester && out === prevChester && cardIntent && card) {
+    const deeper = whyBetterAnswer(card);
+    if (deeper !== prevChester) out = deeper;
+    else out = `${out} Ask me "what should I play?" and I will take a fresh look at the board as it stands.`;
   }
   return out;
 }
