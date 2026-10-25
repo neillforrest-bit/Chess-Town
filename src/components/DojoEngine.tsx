@@ -845,6 +845,67 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 speakGrade(quality.label);
               }
             }
+            // BUILD 183h risk reveal: when a graded mistake/blunder leaves a piece
+            // loose, paint the danger on the board in the same beat Chester speaks
+            // about it - rose pulse on the hanging piece, rose arrow from the piece
+            // that can take it, plus a grounded event the page turns into Chester's
+            // warning line. chess.js attackers() keeps every claim real.
+            if (!isPending && !isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && (quality?.label === 'MISTAKE' || quality?.label === 'BLUNDER')) {
+              const riskKey = `${gameRef.current.ply}:risk`;
+              if ((gameRef.current as any).lastRiskReveal !== riskKey) {
+                (gameRef.current as any).lastRiskReveal = riskKey;
+                try {
+                  const chessNow = gameRef.current.chess;
+                  const moverColor = move.color as 'w' | 'b';
+                  const foe = moverColor === 'w' ? 'b' : 'w';
+                  const PIECE_NAMES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+                  const hanging: { square: string; piece: string; attackerSquare: string; attackerPiece: string }[] = [];
+                  for (const row of chessNow.board()) {
+                    for (const cell of row) {
+                      if (!cell || cell.color !== moverColor || cell.type === 'k') continue;
+                      if (!chessNow.isAttacked(cell.square, foe)) continue;
+                      if (chessNow.isAttacked(cell.square, moverColor)) continue; // defended - a trade, not a free piece
+                      const hunters = chessNow.attackers(cell.square, foe);
+                      if (!hunters.length) continue;
+                      const hunterSq = hunters[0];
+                      const hunterCell = chessNow.get(hunterSq);
+                      hanging.push({ square: cell.square, piece: PIECE_NAMES[cell.type] || 'piece', attackerSquare: hunterSq, attackerPiece: PIECE_NAMES[hunterCell?.type || 'p'] || 'piece' });
+                      if (hanging.length >= 2) break;
+                    }
+                    if (hanging.length >= 2) break;
+                  }
+                  hanging.forEach((h, idx) => {
+                    const hCol = files.indexOf(h.square[0]);
+                    const hRow = ranks.indexOf(h.square[1]);
+                    const aCol = files.indexOf(h.attackerSquare[0]);
+                    const aRow = ranks.indexOf(h.attackerSquare[1]);
+                    if (hCol < 0 || hRow < 0 || aCol < 0 || aRow < 0) return;
+                    const hx = boardOffset + sx(hCol) * tileSize + tileSize / 2;
+                    const hy = boardOffset + sy(hRow) * tileSize + tileSize / 2;
+                    const ax = boardOffset + sx(aCol) * tileSize + tileSize / 2;
+                    const ay = boardOffset + sy(aRow) * tileSize + tileSize / 2;
+                    const ring = scene.add.circle(hx, hy, tileSize * 0.5, 0xfb7185, 0).setStrokeStyle(3.5, 0xfb7185, 0.95).setDepth(27);
+                    const arrowG = scene.add.graphics().setDepth(26);
+                    arrowG.lineStyle(4, 0xfb7185, 0.28);
+                    arrowG.strokeLineShape(new Phaser.Geom.Line(ax, ay, hx, hy));
+                    arrowG.lineStyle(2.25, 0xfb7185, 0.9);
+                    arrowG.strokeLineShape(new Phaser.Geom.Line(ax, ay, hx, hy));
+                    const ang = Phaser.Math.Angle.Between(ax, ay, hx, hy);
+                    const hl = 12;
+                    arrowG.fillStyle(0xfb7185, 0.9);
+                    arrowG.fillTriangle(hx, hy, hx - hl * Math.cos(ang - 0.45), hy - hl * Math.sin(ang - 0.45), hx - hl * Math.cos(ang + 0.45), hy - hl * Math.sin(ang + 0.45));
+                    (gameRef.current.coachMarks = gameRef.current.coachMarks || []).push(ring, arrowG);
+                    scene.tweens.add({ targets: ring, scaleX: 1.3, scaleY: 1.3, alpha: 0.25, duration: 420, delay: idx * 160, ease: 'Sine.InOut', yoyo: true, repeat: 3, onComplete: () => { try { ring.destroy(); } catch { /* wiped in a redraw */ } } });
+                    scene.tweens.add({ targets: arrowG, alpha: 0.3, duration: 2600, delay: idx * 160, ease: 'Sine.InOut', onComplete: () => { try { arrowG.destroy(); } catch { /* wiped in a redraw */ } } });
+                  });
+                  if (hanging.length) {
+                    window.dispatchEvent(new CustomEvent('chester-risk-reveal', {
+                      detail: { ply: gameRef.current.ply, label: quality.label, centipawnLoss: quality.centipawnLoss ?? null, hanging },
+                    }));
+                  }
+                } catch { /* the reveal is decoration - never break the game for it */ }
+              }
+            }
             playSfx(move.captured ? 'capture' : 'move');
             if (move.captured) buzz(22);
             if (move.san.includes('#')) playSfx('win');

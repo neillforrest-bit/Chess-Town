@@ -566,8 +566,23 @@ function PlayChesterGame() {
     const restored = (event: Event) => { const r = (event as CustomEvent<CapturedPiece>).detail; setCapturedPieces((pieces) => { const i = pieces.findLastIndex((p) => p.color === r.color && p.type === r.type); return i < 0 ? pieces : pieces.filter((_, k) => k !== i); }); };
     window.addEventListener('piece-restored', restored);
     window.addEventListener('load-puzzle', resetJails);
+    const riskReveal = (event: Event) => {
+      const d = (event as CustomEvent<{ ply?: number; label?: string; hanging?: { square: string; piece: string; attackerSquare: string; attackerPiece: string }[] }>).detail;
+      if (!d || !d.hanging || !d.hanging.length) return;
+      // Chester names the danger in the same beat the board paints it: let the
+      // verdict card/banter land first, then warn. Skipped while a freeze card
+      // owns the screen (the frozen lesson already explains the blunder).
+      window.setTimeout(() => {
+        if ((window as unknown as { __ctFreeze?: boolean }).__ctFreeze) return;
+        const h = d.hanging!;
+        const first = `your ${h[0].piece} on ${h[0].square} is loose - ${h[0].attackerPiece === 'pawn' ? 'a pawn' : `the ${h[0].attackerPiece}`} on ${h[0].attackerSquare} can just take it`;
+        const second = h[1] ? `, and the ${h[1].piece} on ${h[1].square} is hanging too` : '';
+        setBanter(`⚠️ Look - ${first}${second}.`);
+      }, 2600);
+    };
+    window.addEventListener('chester-risk-reveal', riskReveal);
     window.addEventListener('piece-captured', capture); window.addEventListener('game-report', gameReport); window.addEventListener('chester-coaching-pause', coach); window.addEventListener('chester-help-response', help); window.addEventListener('chester-ai-graded', aiGraded); accRef.current = { w: { loss: 0, n: 0 }, b: { loss: 0, n: 0 } }; setAccuracy({ ...accRef.current });
-    return () => { window.clearTimeout(timer); window.removeEventListener('load-puzzle', resetJails); window.removeEventListener('piece-restored', restored); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); window.removeEventListener('chester-ai-graded', aiGraded); };
+    return () => { window.clearTimeout(timer); window.removeEventListener('load-puzzle', resetJails); window.removeEventListener('piece-restored', restored); window.removeEventListener('chester-risk-reveal', riskReveal); window.removeEventListener('piece-captured', capture); window.removeEventListener('game-report', gameReport); window.removeEventListener('chester-coaching-pause', coach); window.removeEventListener('chester-help-response', help); window.removeEventListener('chester-ai-graded', aiGraded); };
   }, [mode, started]);
 
   useEffect(() => { coachPromptRef.current = coachPrompt; }, [coachPrompt]);
