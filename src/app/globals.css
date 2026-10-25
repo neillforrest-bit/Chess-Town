@@ -752,7 +752,7 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-hr { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 4px; }
 .cs-hr em { font-style: normal; font-size: 11px; letter-spacing: .12em; opacity: .6; }
 /* V2 Orson's Reveal */
-.cs-rev { display: flex; flex-direction: column; gap: 14px; }
+.cs-rev { display: flex; flex-direction: column; gap: 14px; padding-bottom: 84px; } /* bottom clearance: the sticky SEAL MY CALLS button must never cover the call cards */
 .cs-rev-line { display: flex; flex-direction: column; gap: 6px; }
 .cs-rev-line em { font-style: normal; font-size: 11px; letter-spacing: .12em; opacity: .65; }
 .cs-rev-card { cursor: pointer; }
