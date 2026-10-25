@@ -40,9 +40,9 @@ export default function Reveal({ s, pid, send }: { s: State; pid: PID; send: (i:
     <div className="cs-orson">ORSON&apos;S REVEAL</div>
     <p className="cs-say">Two films. Two scoreboards. Before you fight, tell me: which one takes the critics, and which one takes the crowd? Ten chips a call. Wrong costs the same.</p>
     <div className="cs-rev-line"><em>CRITICS · Rotten Tomatoes</em>
-      <div className="cs-vs">{card(f.a, cr === f.a, () => setCr(f.a))}{card(f.b, cr === f.b, () => setCr(f.b))}</div></div>
+      <div className="cs-rev-cards">{card(f.a, cr === f.a, () => setCr(f.a))}{card(f.b, cr === f.b, () => setCr(f.b))}</div></div>
     <div className="cs-rev-line"><em>AUDIENCES · IMDb</em>
-      <div className="cs-vs">{card(f.a, au === f.a, () => setAu(f.a))}{card(f.b, au === f.b, () => setAu(f.b))}</div></div>
+      <div className="cs-rev-cards">{card(f.a, au === f.a, () => setAu(f.a))}{card(f.b, au === f.b, () => setAu(f.b))}</div></div>
     <button className="cs-btn cs-btn--gold" disabled={cr === null || au === null} onClick={() => { buzz(18); if (cr !== null && au !== null) send({ t: 'fcall', pid, cr, au }); }}>SEAL MY CALLS</button>
     <button className="cs-fine" onClick={() => send({ t: 'fskip', pid })}>SKIP THE CEREMONY FOR BOTH OF US</button>
   </div>;

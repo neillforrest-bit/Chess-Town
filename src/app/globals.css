@@ -759,3 +759,5 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-rev-log { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--gold, #d4af37); border-radius: 12px; }
 .cs-score-tile.sealed b { opacity: .9; }
 .cs-scores.is-sealed { cursor: pointer; }
+.cs-rev-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cs-rev-cards .cs-match-card .cs-poster { max-height: 19dvh; }
