@@ -297,7 +297,7 @@ export function ChessGameTools({ helpText, context = '' }: { helpText: string; c
       const history = [...chatMessages.map((m) => ({ role: m.role, text: m.text })), { role: 'user' as const, text: message }];
       let reply: string;
       try { reply = chatReply(message, null, null, history); }
-      catch { reply = await askChesterChat(JSON.stringify({ type: 'chat', message, context })); }
+      catch { reply = 'My chalkboard slipped for a second there. Ask me again - or tap a piece and ask about that move.'; }
       setChatMessages((current) => [...current, { role: 'chester', text: reply, kind: 'chat' }]);
     } catch {
       setChatError('Chester is briefly off the board. Try again.');
