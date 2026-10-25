@@ -119,7 +119,8 @@ export async function executeOrsonPicks(filmA: number, filmB: number): Promise<{
 // ---- Genre Roulette v2: wheel-of-fortune game flow. Each player gets ONE spin and ONE veto. ----
 export const SPIN_MS = 4400;
 export const wheelOpts = (s: State): string[] => {
-  const all: Record<string, number> = {}; for (const m of poolOf(s.kind, s.gm, s.cl)) if (!m.w && m.r >= 6) for (const g of m.g) all[g] = (all[g] || 0) + 1;
+  const xg = s.cons?.xg || [];
+  const all: Record<string, number> = {}; for (const m of poolOf(s.kind, s.gm, s.cl)) if (!m.w && m.r >= 6) for (const g of m.g) if (!xg.includes(g)) all[g] = (all[g] || 0) + 1; // a genre the couple excluded is never on the wheel
   const ok = Object.keys(all).filter((g) => all[g] >= 24).sort();
   return shuffled(ok, s.code, 'wheelopts').slice(0, 10);
 };

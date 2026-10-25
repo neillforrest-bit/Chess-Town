@@ -772,3 +772,4 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-watchpick--mine{border-color:var(--gold);box-shadow:0 0 18px #ffcf4066}
 .cs-watchpick .cs-poster{flex:none;width:100%;max-width:110px;height:auto;aspect-ratio:2/3;object-fit:cover;border-radius:8px}
 .cs-watchpick-tag{color:var(--gold);font-size:10px;font-style:normal;letter-spacing:.08em}
+@media (min-width: 700px){.cs-co-card{max-width:420px}.cs-co-swipe{width:100%;align-items:center}}

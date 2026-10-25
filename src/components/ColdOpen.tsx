@@ -53,8 +53,9 @@ export default function ColdOpen({ s, pid, send }: { s: State; pid: PID; send: (
         <div className="cs-co-chips">{picks.map((p) => <i key={p}>{p}</i>)}</div>
       </div></div>;
   }
-  return <div className="cs-co">{head}
+  return <div className="cs-co">
     <AnimatePresence mode="wait"><motion.div key={beat} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }}>
+      {head}
       {beat === 0 && <div className="cs-co-beat">
         <p className="cs-say">Name one or two actors you would both watch in anything. Or tell me nobody. I respect a blank slate.</p>
         <div className="cs-co-chips">{actors.map((a) => <button key={a} className="cs-co-chip is-on" onClick={() => setActors(actors.filter((x) => x !== a))}>{a} ✕</button>)}</div>
@@ -81,7 +82,7 @@ export default function ColdOpen({ s, pid, send }: { s: State; pid: PID; send: (
         <p className="cs-say">Three posters. Gut calls only. Right means yes.</p>
         <div className="cs-co-swipe">{cards.filter((id) => swiped[id] === undefined).slice(0, 1).map((id) => { const m = BY_ID[id]; return m && <div key={id} className="cs-co-card">
           <Poster id={id} big /><b>{m.t}</b><span className="cs-meta">{m.y} · {m.g.slice(0, 2).join(' · ')}</span>
-          <div className="cs-row"><button className="cs-vsw-no" onClick={() => { buzz(6); setSwiped({ ...swiped, [id]: false }); }}>✕ NO</button><button className="cs-vsw-yes" onClick={() => { buzz(14); setSwiped({ ...swiped, [id]: true }); }}>YES ✓</button></div>
+          <div className="cs-vsw-btns"><button className="cs-vsw-no" onClick={() => { buzz(6); setSwiped({ ...swiped, [id]: false }); }}>✕ NO</button><button className="cs-vsw-yes" onClick={() => { buzz(14); setSwiped({ ...swiped, [id]: true }); }}>YES ✓</button></div>
         </div>; })}
         {cards.every((id) => swiped[id] !== undefined) && <div className="cs-center"><p className="cs-small">{liked.length ? `You swiped right on ${liked.map((id) => BY_ID[id]?.t).filter(Boolean).join(' and ')}.` : 'Nothing moved you. Noted. Coldly.'}</p><button className="cs-fine" onClick={next}>NEXT</button></div>}
         </div>

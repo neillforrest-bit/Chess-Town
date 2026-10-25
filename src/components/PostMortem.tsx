@@ -5,6 +5,7 @@ import type { State } from '@/lib/game';
 /** v2.2 War Chest post-mortem: when a token bout newly resolves, Orson's verdict on the wager math shows for 5 seconds. */
 export default function PostMortem({ s }: { s: State }) {
   const seen = useRef<Set<string> | null>(null); const [id, setId] = useState<string | null>(null);
+  if (s.phase === 'final' || s.phase === 'done') return null; // the Reveal and everything after it own the screen; no stale bout toast
   const resolved = (s.b8?.matches || []).filter((m) => m.status === 'RESOLVED' && m.round > 1 && m.winner !== null);
   const fresh = seen.current ? resolved.find((m) => !seen.current!.has(m.id)) : undefined;
   useEffect(() => {
