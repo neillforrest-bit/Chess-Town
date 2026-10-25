@@ -99,7 +99,7 @@ export async function POST(req: Request) {
     return {
       id: m.id, t: m.title, y: Number((m.release_date || '0').slice(0, 4)), r: Math.round(m.vote_average * 10) / 10,
       g: gs.length ? gs : (m.genre_ids || []).map((x) => GN[x]).filter(Boolean), o: m.overview, p: m.poster_path as string, pop: m.vote_count,
-      rn: det.runtime ?? cat?.rn ?? null, rt: cat?.rt ?? null, imdb: cat?.imdb ?? null, mc: cat?.mc ?? null,
+      rn: det.runtime ?? cat?.rn ?? null, rt: null, imdb: null, mc: null, // RT/IMDb/Metacritic display rights unresolved - suppressed until the licensing review clears them
       why, whyKind, providers, trailer: t ? t.key : null, wild,
     };
   };
