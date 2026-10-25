@@ -1,5 +1,6 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
+import { chatReply } from '@/lib/chester-analyzer';
 import { askChesterChat } from '@/app/actions';
 import { CHESTER_EMOTIONS, getChesterEmotion } from '@/lib/chester-emotions';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
@@ -290,7 +291,13 @@ export function ChessGameTools({ helpText, context = '' }: { helpText: string; c
     setChatMessages((current) => [...current, { role: 'user', text: message }]);
     setIsTyping(true);
     try {
-      const reply = await askChesterChat(JSON.stringify({ type: 'chat', message, context }));
+      // BUILD 183k: unified with the play-chester chat engine (183a) - multi-turn,
+      // deterministic, history-aware. The old single-shot API path repeated its first
+      // answer to every follow-up (his 00:50 feedback).
+      const history = [...chatMessages.map((m) => ({ role: m.role, text: m.text })), { role: 'user' as const, text: message }];
+      let reply: string;
+      try { reply = chatReply(message, null, null, history); }
+      catch { reply = await askChesterChat(JSON.stringify({ type: 'chat', message, context })); }
       setChatMessages((current) => [...current, { role: 'chester', text: reply, kind: 'chat' }]);
     } catch {
       setChatError('Chester is briefly off the board. Try again.');
