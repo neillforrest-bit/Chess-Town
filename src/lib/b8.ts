@@ -404,7 +404,10 @@ function advance8(s: State, now: number) {
   }
   // Final decided: Orson takes over the screen to crown it (script written server-side; winner is fixed by the bracket)
   const w = m.winner as number; const l = w === m.a ? (m.b as number) : (m.a as number);
-  s.phase = 'final'; s.fin = { ...s.fin, a: w, b: l, choice: {}, pitchEnds: now, judging: true, judgeRequested: false, verdict: null, forced: w, rematchUsed: false, loser: null, wpid: null, tie: false };
+  // V2 House Rule: with sealed scores the Reveal ceremony runs first - the verdict is held (judging stays
+  // false, forced keeps the bout winner) until fsettle/fskip hands it to the judge effect.
+  const held = s.hr?.sealed !== false;
+  s.phase = 'final'; s.fin = { ...s.fin, a: w, b: l, choice: {}, pitchEnds: now, judging: !held, judgeRequested: false, verdict: null, forced: w, rematchUsed: false, loser: null, wpid: null, tie: false };
 }
 
 export function rerollVote(s: State, it: { pid: PID; yes: boolean }, now: number) {

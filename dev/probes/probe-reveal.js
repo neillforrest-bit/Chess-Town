@@ -79,5 +79,32 @@ const R = (s, it) => g.reduce(s, it);
   s = R(s, { t: 'fcall', pid: 'A', cr: IDS[0], au: IDS[0] });
   ok(!s.fin.calls.A, 'unsealed: fcall inert');
 }
+
+// 6. b8 finale hold: with sealed scores the championship verdict waits for the Reveal
+{
+  let s = mkFinal(true);
+  s.b8 = { matches: [], cur: 0 }; s.fin.forced = IDS[0]; s.fin.judging = false; // b8 held state
+  s = R(s, { t: 'fcall', pid: 'A', cr: IDS[0], au: IDS[1] });
+  s = R(s, { t: 'fcall', pid: 'B', cr: IDS[0], au: IDS[1] });
+  ok(s.fin.judging === false, 'b8: verdict held before settle');
+  ok(!s.fin.verdict, 'b8: no verdict before settle');
+  s = R(s, { t: 'fsettle', a: { rt: 80, imdb: 7.5 }, b: { rt: 60, imdb: 8.0 } });
+  ok(s.fin.judging === true, 'b8: fsettle hands the held verdict to the judge');
+  ok(s.fin.revealed === true, 'b8: settle reveals');
+}
+{
+  let s = mkFinal(true);
+  s.b8 = { matches: [], cur: 0 }; s.fin.forced = IDS[0]; s.fin.judging = false;
+  s = R(s, { t: 'fskip', pid: 'A' });
+  ok(s.fin.judging === true && s.fin.skipped, 'b8: fskip hands the held verdict to the judge');
+}
+{
+  // unsealed b8 room: forced verdict path untouched (Reveal never mounts)
+  let s = mkFinal(false);
+  s.b8 = { matches: [], cur: 0 }; s.fin.forced = IDS[0]; s.fin.judging = true;
+  s = R(s, { t: 'fcall', pid: 'A', cr: IDS[0], au: IDS[1] });
+  ok(!s.fin.calls.A, 'unsealed: fcall inert');
+  ok(s.fin.judging === true, 'unsealed: judging untouched');
+}
 console.log(`PASS ${pass} FAIL ${fail}`);
 process.exit(fail ? 1 : 0);

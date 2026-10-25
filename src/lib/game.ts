@@ -913,6 +913,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'fskip': {
       if (s.phase !== 'final' || s.fin.revealed || s.fin.verdict) break;
       s.fin.revealed = true; s.fin.skipped = true;
+      if (s.b8 && s.fin.forced !== undefined && !s.fin.verdict) s.fin.judging = true; // b8: the held verdict now goes to the judge
       s.log.unshift(`${s.players[it.pid].name} skipped the Reveal. Straight to the pitch.`);
       s.orson = { line: 'No ceremony? Fine. Some people skip to the last page of books too.', mood: 'smug', n: s.orson.n + 1 };
       break;
@@ -923,6 +924,7 @@ export function reduce(prev: State, it: Intent): State {
       const clean = (x: { rt: number | null; imdb: number | null }) => ({ rt: typeof x?.rt === 'number' && x.rt >= 0 && x.rt <= 100 ? Math.round(x.rt) : null, imdb: typeof x?.imdb === 'number' && x.imdb >= 0 && x.imdb <= 10 ? Math.round(x.imdb * 10) / 10 : null });
       const sa = clean(it.a), sb = clean(it.b);
       s.fin.scores = { a: sa, b: sb }; s.fin.revealed = true; s.fin.callLog = [];
+      if (s.b8 && s.fin.forced !== undefined && !s.fin.verdict) s.fin.judging = true; // b8: calls settled, crown the bout winner
       const STAKE = 10;
       const settle = (label: string, av: number | null, bv: number | null, pick: (c: { cr: number; au: number }) => number) => {
         if (av === null || bv === null) { s.fin.callLog.push(`${label}: a comparable score is missing, so that call is void. No chips move - nobody wins by a missing number.`); return; }

@@ -339,6 +339,12 @@ export default function PlayRoom({ code }: { code: string }) {
     const f = s.fin; const myChoice = f.choice[pid];
     // V2: Orson's Reveal runs before the pick whenever scores were sealed. The engine gates fchoice on it.
     if (s.hr.sealed && !f.revealed && !f.verdict) return shell(<Reveal s={s} pid={pid} send={send as (i: Intent) => void} />);
+    // Envelopes are open: show how the calls settled while Orson writes (or the bout's held verdict lands).
+    if (f.revealed && !f.verdict && (f.callLog.length > 0 || f.skipped)) return shell(<div className="cs-center">
+      <div className="cs-orson">THE ENVELOPES</div>
+      <div className="cs-rev-log">{f.skipped ? <p className="cs-small">Ceremony skipped. Straight to the verdict.</p> : f.callLog.map((l, i) => <p key={i} className="cs-small">✉️ {l}</p>)}</div>
+      {f.scores && <div className="cs-rev-log"><p className="cs-small">🍅 {BY_ID[f.a].t} {f.scores.a.rt ?? '–'}% · {BY_ID[f.b].t} {f.scores.b.rt ?? '–'}%</p><p className="cs-small">IMDb {f.scores.a.imdb ?? '–'} · {f.scores.b.imdb ?? '–'}</p></div>}
+      <Typing text="Orson is writing the verdict" /></div>);
     if (!f.pitchEnds) return shell(<div className="cs-bracket"><div className="cs-round">THE FINAL TWO</div>
       <div className="cs-vs cs-titlecard">{[f.a, f.b].map((id) => <button key={id} className={'cs-match-card' + (myChoice === id ? ' is-mine' : '')} disabled={myChoice !== undefined} onClick={() => send({ t: 'fchoice', pid, id })}><Poster id={id} /><b>{BY_ID[id].t}</b><span>{BY_ID[id].y}</span></button>)}</div>
       {(f.revealed && f.callLog.length > 0 || f.skipped) && <div className="cs-rev-log">{f.skipped ? <p className="cs-small">Ceremony skipped. Straight to the fight.</p> : f.callLog.map((l, i) => <p key={i} className="cs-small">✉️ {l}</p>)}</div>}
