@@ -25,15 +25,16 @@ const PITCHES = [
 export function nextBotIntent(s: State): Intent | null {
   if (!s.solo || !s.players.B.joined) return null;
 
-  // VIBE: sliders first, then the trope swiper, then the taste map confirmation.
+  // VIBE: sliders first, then three direct trope picks (the Cold Open path), then the taste map confirmation.
   if (s.phase === 'vibe') {
     const v = s.vibe;
     if (!v.sl.B) return { t: 'sliders', pid: 'B', v: [35 + ri(40), 30 + ri(45), 40 + ri(35)], actors: '' } as unknown as Intent;
-    if (!v.passed) {
-      const name = TROPE_NAMES.find((n) => v.sw.B[n] === undefined);
-      if (name) return { t: 'vswipe', pid: 'B', name, yes: v.sw.A[name] === true ? true : rnd() < 0.5 } as unknown as Intent;
-      return null; // swiped out, waiting for the lock to pad
+    if (!v.tropes?.B) {
+      const pool = [...TROPE_NAMES].sort((x, y) => x.localeCompare(y));
+      const picks = [pool[ri(pool.length)], pool[ri(pool.length)], pool[ri(pool.length)]];
+      return { t: 'tropes', pid: 'B', picks: Array.from(new Set(picks)).length === 3 ? picks : [pool[0], pool[7], pool[13]] } as unknown as Intent;
     }
+    if (!v.passed) return null; // waiting on the human's Cold Open
     // taste map is derived from the locked tropes; Orson confirms his side immediately
     return { t: 'taste', pid: 'B', tags: v.tastes.B || [], nos: [], actor: '' } as unknown as Intent;
   }
@@ -53,6 +54,17 @@ export function nextBotIntent(s: State): Intent | null {
     const soft = d.q.B.length <= 4 && m.r >= 6.4;
     const yes = own || m.r >= 7.25 || soft;
     return { t: 'swipe', pid: 'B', id: cur, yes, why: [] } as unknown as Intent;
+  }
+
+  // FINAL: Orson's Reveal - he backs the higher-rated finalist with both calls, then pitches as before.
+  if (s.phase === 'final') {
+    const f = s.fin;
+    if (s.hr?.sealed !== false && !f.revealed && !f.calls.B && f.a && f.b) {
+      const fav = (BY_ID[f.a]?.r || 0) >= (BY_ID[f.b]?.r || 0) ? f.a : f.b;
+      const other = fav === f.a ? f.b : f.a;
+      const flip = rnd() < 0.5;
+      return { t: 'fcall', pid: 'B', cr: flip ? fav : fav, au: flip ? fav : fav } as unknown as Intent;
+    }
   }
 
   // WAR ROOM: spread hype on his best three, shield the crown jewel, veto your best, pick a wild card, lock in.

@@ -374,7 +374,7 @@ export type State = {
   phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
   players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
   /** Solo 1v1: B is Orson, driven client-side by the host (soloBot). */ solo?: boolean;
-  vibe: { sw: { A: Record<string, boolean>; B: Record<string, boolean> }; lock: string[]; sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null };
+  vibe: { sw: { A: Record<string, boolean>; B: Record<string, boolean> }; lock: string[]; sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null; tasteReady?: { A: boolean; B: boolean } };
   draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; orson: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
   pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
   vetoed: number[];
@@ -383,7 +383,8 @@ export type State = {
   pool: number[];
   purse: { A: number; B: number };
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
-  fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean };
+  fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean;
+    /** Orson's Reveal: sealed-score calls at the final two. cr/au = the film id each player backs to score higher with critics (RT Tomatometer) / audiences (IMDb). scores = the settled live lookups. */ calls: { A?: { cr: number; au: number }; B?: { cr: number; au: number } }; revealed: boolean; skipped: boolean; scores: { a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | null; callLog: string[] };
   winner: number | null;
   inter: Record<string, string>; asym: { A: string; B: string } | null;
   extra: Movie[]; boost: number[]; reviews: Record<number, { a: string; q: string; r: number | null }>;
@@ -409,7 +410,7 @@ export const newState = (code: string): State => ({
   draft: { gren: { used: false, id: null, votes: {} }, deck: [], orson: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
-  fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false },
+  fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false, calls: {}, revealed: false, skipped: false, scores: null, callLog: [] },
   winner: null, inter: {}, asym: null, extra: [], boost: [], reviews: {}, roast: false,
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
@@ -534,7 +535,7 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' } | { t: 'sab'; pid: PID; kind: SabKey; winner?: number; genre?: string; dead?: number } | { t: 'wheel'; pid: PID; act: 'start' | 'spin' | 'veto' | 'accept' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'hr'; pid: PID; wilds?: boolean; sealed?: boolean } | { t: 'reset' };
+  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'hr'; pid: PID; wilds?: boolean; sealed?: boolean } | { t: 'fcall'; pid: PID; cr: number; au: number } | { t: 'fskip'; pid: PID } | { t: 'fsettle'; a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | { t: 'reset' };
 
 // Orson's Devil's Advocate Pause: when the two taste profiles diverge hard, throw a polarising wildcard at both players. Once per draft.
 function cosProf(a: Prof, b: Prof): number {
@@ -605,6 +606,8 @@ function lockTropes(s: State, now: number) {
   s.vibe.tastes = { A: tasteOf(tr.A), B: tasteOf(tr.B) }; s.vibe.nos = { A: [], B: [] }; s.vibe.subs = { A: {}, B: {} };
   const sl = slAvg(s); if (sl) { s.vibe.target = [Math.max(0, Math.min(10, s.vibe.target[0] * 0.5 + (10 - sl[2] / 10) * 0.5)), Math.max(0, Math.min(10, s.vibe.target[1] * 0.5 + (10 - sl[0] / 10) * 0.5)), s.vibe.target[2], s.vibe.target[3]]; }
   s.vibe.passed = true; s.vibe.doneAt = now;
+  // Cold Open rooms set their three tropes directly (swiper lock stays empty): the explicit 'taste' intent starts the draft.
+  if (s.vibe.lock.length === 0) return;
   if (s.vibe.disc === 'req') { s.vibe.pend = true; s.orson = { ...s.orson, line: 'Your vibes are locked. I am sending a runner to the TMDB archives. Do not touch anything.', mood: 'scheme', n: s.orson.n + 1 }; return; }
   startDraft(s);
 }
@@ -715,7 +718,7 @@ export function reduce(prev: State, it: Intent): State {
       const dn = (q: PID) => Object.keys(v.sw[q]).length >= SWIPER_CAP;
       if (v.lock.length < 3 && dn('A') && dn('B')) { // ran out of cards: pad with what either liked
         for (const n of [...TROPE_NAMES.filter((x) => v.sw.A[x] || v.sw.B[x]), ...TROPE_NAMES]) { if (v.lock.length >= 3) break; if (!v.lock.includes(n)) v.lock.push(n); } }
-      if (v.lock.length >= 3) { const picks = v.lock.slice(0, 3); v.tropes = { A: picks, B: picks }; lockTropes(s, now); }
+      if (v.lock.length >= 3) { const picks = v.lock.slice(0, 3); v.tropes = { A: v.tropes?.A || picks, B: v.tropes?.B || picks }; lockTropes(s, now); }
       break;
     }
     case 'inter': { if (!s.inter[it.key] && it.line) s.inter[it.key] = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 300); break; }
@@ -896,8 +899,49 @@ export function reduce(prev: State, it: Intent): State {
       finishMatch(s, mt, it.id === mt.a ? mt.b : mt.a, `${s.players[it.pid].name} fired a Silver Bullet at ${BY_ID[it.id].t}`, now);
       break;
     }
+    case 'fcall': {
+      if (s.phase !== 'final' || s.hr.sealed === false || s.fin.revealed || s.fin.verdict) break;
+      const { a, b } = s.fin; if (!a || !b) break;
+      if ((it.cr !== a && it.cr !== b) || (it.au !== a && it.au !== b)) break;
+      if (s.fin.calls[it.pid]) break;
+      s.fin.calls[it.pid] = { cr: it.cr, au: it.au };
+      s.log.unshift(`${s.players[it.pid].name} has made their calls. Envelopes at the ready.`);
+      break;
+    }
+    case 'fskip': {
+      if (s.phase !== 'final' || s.fin.revealed || s.fin.verdict) break;
+      s.fin.revealed = true; s.fin.skipped = true;
+      s.log.unshift(`${s.players[it.pid].name} skipped the Reveal. Straight to the pitch.`);
+      s.orson = { line: 'No ceremony? Fine. Some people skip to the last page of books too.', mood: 'smug', n: s.orson.n + 1 };
+      break;
+    }
+    case 'fsettle': {
+      if (s.phase !== 'final' || s.hr.sealed === false || s.fin.revealed || s.fin.verdict) break;
+      if (!s.fin.calls.A || !s.fin.calls.B) break;
+      const clean = (x: { rt: number | null; imdb: number | null }) => ({ rt: typeof x?.rt === 'number' && x.rt >= 0 && x.rt <= 100 ? Math.round(x.rt) : null, imdb: typeof x?.imdb === 'number' && x.imdb >= 0 && x.imdb <= 10 ? Math.round(x.imdb * 10) / 10 : null });
+      const sa = clean(it.a), sb = clean(it.b);
+      s.fin.scores = { a: sa, b: sb }; s.fin.revealed = true; s.fin.callLog = [];
+      const STAKE = 10;
+      const settle = (label: string, av: number | null, bv: number | null, pick: (c: { cr: number; au: number }) => number) => {
+        if (av === null || bv === null) { s.fin.callLog.push(`${label}: a comparable score is missing, so that call is void. No chips move - nobody wins by a missing number.`); return; }
+        if (av === bv) { s.fin.callLog.push(`${label}: dead level at ${av}. A push - chips back, honour intact.`); return; }
+        const winnerId = av > bv ? s.fin.a : s.fin.b;
+        for (const p of ['A', 'B'] as PID[]) {
+          const c = s.fin.calls[p]; if (!c) continue;
+          const won = pick(c) === winnerId;
+          s.purse[p] = Math.max(0, s.purse[p] + (won ? STAKE : -STAKE));
+          if (won) s.fin.callLog.push(`${label}: ${s.players[p].name} called it and takes ${STAKE} chips.`);
+        }
+      };
+      settle('CRITICS (Tomatometer)', sa.rt, sb.rt, (c) => c.cr);
+      settle('AUDIENCES (IMDb)', sa.imdb, sb.imdb, (c) => c.au);
+      s.log.unshift('The Reveal: envelopes opened, calls settled.');
+      s.orson = { line: 'The envelopes are open. Some of you knew your films. Some of you knew only bravado.', mood: 'smug', n: s.orson.n + 1 };
+      break;
+    }
     case 'fchoice': {
       if (s.phase !== 'final') break;
+      if (s.hr.sealed !== false && !s.fin.revealed) break; // the Reveal (or a skip) comes before the pick
       s.fin.choice[it.pid] = it.id;
       const { A, B } = s.fin.choice;
       if (A !== undefined && B !== undefined) {
@@ -944,7 +988,13 @@ export function reduce(prev: State, it: Intent): State {
       s.winner = null; s.phase = 'final'; s.mem.recorded = false;
       break;
     }
-    case 'taste': if (s.phase === 'vibe' && s.vibe.passed) { s.vibe.tastes[it.pid] = it.tags.filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.nos[it.pid] = (it.nos || []).filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.actors[it.pid] = it.actor.slice(0, 30); startDraft(s); } break;
+    case 'taste': if (s.phase === 'vibe' && s.vibe.passed) {
+      s.vibe.tastes[it.pid] = it.tags.filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.nos[it.pid] = (it.nos || []).filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.actors[it.pid] = it.actor.slice(0, 30);
+      s.vibe.tasteReady = { ...(s.vibe.tasteReady || { A: false, B: false }), [it.pid]: true };
+      if (!s.vibe.tasteReady.A || !s.vibe.tasteReady.B) break;
+      if (s.vibe.disc === 'req') { s.vibe.pend = true; s.orson = { ...s.orson, line: 'Your vibes are locked. I am sending a runner to the TMDB archives. Do not touch anything.', mood: 'scheme', n: s.orson.n + 1 }; break; }
+      startDraft(s);
+    } break;
     case 'quip': s.orson = { line: it.line.slice(0, 200), mood: it.mood, n: s.orson.n + 1, emo: it.emo }; break;
     case 'cost': s.cost = { calls: s.cost.calls + 1, inTok: s.cost.inTok + it.inTok, outTok: s.cost.outTok + it.outTok, usd: s.cost.usd + it.usd }; break;
     case 'tick': {
