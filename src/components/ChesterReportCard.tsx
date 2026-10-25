@@ -213,7 +213,7 @@ export default function ChesterReportCard({
 
       {canRetry && <button type="button" className="verdict-share__cta" style={{ background: '#22d3ee' }} onClick={onRetry!}>🔁 RETRY THE MISTAKE<small>replay the position, find the better move</small></button>}
 
-      <div className="chester-report-card__actions" style={{ display: 'grid', gap: 8, margin: '12px 0' }}>
+      <div className="chester-report-card__actions" style={{ display: 'grid', gap: 6, margin: '8px 0' }}>
         {(() => { const hw = WEAKNESS_HOMEWORK[habit.key]; return hw ? <Link href={hw.href} className="verdict-share__cta" style={{ background: '#4ade80', color: '#101418', textDecoration: 'none', display: 'block', textAlign: 'center' }}>🎯 YOUR TARGETED LESSON<small style={{ display: 'block' }}>{hw.text}</small></Link> : null; })()}
         {onRematch && <button type="button" className="verdict-share__cta" style={{ background: '#fbbf24', color: '#101418' }} onClick={onRematch}>⚔️ REMATCH<small style={{ display: 'block' }}>same level, fresh board - run it back</small></button>}
         {onChat && <button type="button" className="verdict-share__cta" style={{ background: '#a78bfa', color: '#101418' }} onClick={onChat}>💬 TALK IT OVER WITH CHESTER<small style={{ display: 'block' }}>ask anything about this game</small></button>}

@@ -3513,3 +3513,17 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
 .chester-report-card__more { margin: .6rem 0; padding: .55rem .65rem; border: 1px solid rgba(167,139,250,.4); border-radius: 6px; background: rgba(167,139,250,.05); }
 .chester-report-card__more summary { cursor: pointer; color: #a78bfa; font-size: .62rem; font-weight: 900; letter-spacing: 1.4px; }
 .chester-report-card__more[open] summary { margin-bottom: .5rem; }
+
+/* BUILD 183n: report action buttons must never run past the modal edge, and the
+   primary screen (result + one learning + actions) must fit one phone viewport
+   (his 25 Oct pixel review). */
+.chester-report-card .verdict-share__cta { box-sizing: border-box; width: 100%; margin-top: 0; }
+.chester-report-card__actions .verdict-share__cta { padding: .5rem .6rem; font-size: .85rem; }
+.chester-report-card__actions .verdict-share__cta small { font-size: .6rem; }
+.chester-report-card > h2 { margin: .25rem 0 .1rem; }
+.chester-report-card__tagline { margin: .15rem 0 .35rem; }
+.chester-report-card__graderow { margin: .3rem 0 .5rem; }
+.chester-report-card__letter b { font-size: 2rem; }
+.chester-report-card__letter { padding: .5rem .4rem; }
+.chester-report-card__habits { margin-top: 0; }
+.chester-report-card__focus { margin: .35rem 0; padding: .45rem .6rem; }
