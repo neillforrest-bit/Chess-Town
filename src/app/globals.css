@@ -761,3 +761,4 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-scores.is-sealed { cursor: pointer; }
 .cs-rev-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cs-rev-cards .cs-match-card .cs-poster { max-height: 19dvh; }
+.cs-co-card .cs-poster { max-height: 42dvh; width: auto; max-width: 100%; }
