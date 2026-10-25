@@ -407,7 +407,7 @@ function advance8(s: State, now: number) {
   // V2 House Rule: with sealed scores the Reveal ceremony runs first - the verdict is held (judging stays
   // false, forced keeps the bout winner) until fsettle/fskip hands it to the judge effect.
   const held = s.hr?.sealed !== false;
-  s.phase = 'final'; s.fin = { ...s.fin, a: w, b: l, choice: {}, pitchEnds: now, judging: !held, judgeRequested: false, verdict: null, forced: w, rematchUsed: false, loser: null, wpid: null, tie: false };
+  s.tonight = null; s.phase = 'final'; s.fin = { ...s.fin, a: w, b: l, watch: {}, choice: {}, pitchEnds: now, judging: !held, judgeRequested: false, verdict: null, forced: w, rematchUsed: false, loser: null, wpid: null, tie: false };
 }
 
 export function rerollVote(s: State, it: { pid: PID; yes: boolean }, now: number) {
@@ -437,7 +437,7 @@ export function nukePick(s: State, it: { pid: PID; which: 'titan' | 'gem' | 'kee
   r.stage = 'done';
   // take it or leave it: both must name the same film, otherwise the crowned winner stands
   if (r.uv.A !== r.uv.B || r.uv.A === 'keep') { s.log.unshift('Nuclear veto defused: original winner stays'); return; }
-  const which = r.uv.A; const id = r.ult[which].id; r.to = id; r.used = true; s.winner = id; s.b8Bonus = { A: 1, B: 1 };
+  const which = r.uv.A; const id = r.ult[which].id; r.to = id; r.used = true; s.winner = id; s.tonight = id; s.b8Bonus = { A: 1, B: 1 }; // both named the same film: that double-agree is the viewing confirmation
   s.fin.verdict = { winner: id, reason: `You both took the ${which === 'titan' ? 'BLOCKBUSTER' : 'HIDDEN GEM'}. ${BY_ID[id].t} it is. Next game you both start with 10 extra hype tokens.` };
   s.log.unshift(`Nuclear veto: ${BY_ID[id].t} (${which})`);
 }

@@ -24,3 +24,17 @@ Design rule (main-endorsed): door 1 = keep the known matchup, door 2 = mystery. 
 - Verification so far: tsc --noEmit clean, next build clean, 63/63 engine probes green (invariant 15, coldopen 17, reveal 17, coldopen-lib 14).
 - NOT yet verified: any live rendering of the new UI (local two-client run next), 820x1000 pass, preview deploy.
 - Debt: SoloRoom Scores left unsealed (legacy solo flow); OMDb-vs-catalogue provenance not surfaced in callLog; licence for scores-as-gameplay-input still unverified (product question, not code).
+
+## 2026-10-25 04:14 GMT ruling (main, load-bearing): viewing confirmation + full seal
+- "chips win bragging rights; you still choose what to watch": bracket/bids keep their champion
+  (s.winner, championship history untouched), but tonight's actual viewing (s.tonight) is set
+  ONLY when both players explicitly pick the same finalist on the post-verdict confirm screen.
+- Split stays visibly unresolved: both picks shown, champion offered on the table, re-pick allowed.
+  No silent force, no autojudge override. Classic pitch result cannot override confirmation either.
+- Nuclear veto double-agree (both name titan or both name gem) IS the confirmation -> sets tonight.
+  Defused veto keeps the champion and leaves tonight unconfirmed.
+- Rematch / new final resets tonight + watch picks.
+- Sealed mode seals ALL numeric ratings (RT, IMDb, Metacritic, TMDB) with tap-to-peek in the Scores
+  tiles; hitlist/bout tapes/nukepick/draft cards show "sealed" instead of numbers. Synopsis, cast and
+  taste fit still explain an unknown film. Do NOT call the mode "fully hidden scores" - peek exists.
+- Probes: dev/probes/probe-fwatch.js (15 checks). Full suite 85/85 green at implementation.

@@ -384,8 +384,10 @@ export type State = {
   purse: { A: number; B: number };
   br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
   fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean;
-    /** Orson's Reveal: sealed-score calls at the final two. cr/au = the film id each player backs to score higher with critics (RT Tomatometer) / audiences (IMDb). scores = the settled live lookups. */ calls: { A?: { cr: number; au: number }; B?: { cr: number; au: number } }; revealed: boolean; skipped: boolean; scores: { a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | null; callLog: string[] };
+    /** Orson's Reveal: sealed-score calls at the final two. cr/au = the film id each player backs to score higher with critics (RT Tomatometer) / audiences (IMDb). scores = the settled live lookups. */ calls: { A?: { cr: number; au: number }; B?: { cr: number; au: number } }; revealed: boolean; skipped: boolean; watch: { A?: number; B?: number }; scores: { a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | null; callLog: string[] };
   winner: number | null;
+  /** V2: tonight's actual viewing, confirmed by BOTH players after the verdict. Never set by chips, bids or the judge. */
+  tonight: number | null;
   inter: Record<string, string>; asym: { A: string; B: string } | null;
   extra: Movie[]; boost: number[]; reviews: Record<number, { a: string; q: string; r: number | null }>;
   roast: boolean;
@@ -412,11 +414,12 @@ export const newState = (code: string): State => ({
   draft: { gren: { used: false, id: null, votes: {} }, deck: [], orson: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
   pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
   purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
-  fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false, calls: {}, revealed: false, skipped: false, scores: null, callLog: [] },
+  fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false, calls: {}, revealed: false, skipped: false, scores: null, callLog: [], watch: {} },
   winner: null, inter: {}, asym: null, extra: [], boost: [], reviews: {}, roast: false,
   mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
   tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
   stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
+  tonight: null,
   cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, sab: newSab(), hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, seenBan: [], seenLoaded: false, hr: { wilds: false, sealed: true }, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
 });
 
@@ -518,7 +521,7 @@ function advance(s: State, now: number) {
   else if (br.round === 2) startRound(s, 3, w);
   else if (br.round === 3) startRound(s, 4, w);
   else {
-    s.phase = 'final'; s.fin = { ...s.fin, a: w[0], b: w[1] };
+    s.tonight = null; s.phase = 'final'; s.fin = { ...s.fin, a: w[0], b: w[1], watch: {} };
   }
   void now;
 }
@@ -537,7 +540,7 @@ export type Intent =
   | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
   | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' } | { t: 'sab'; pid: PID; kind: SabKey; winner?: number; genre?: string; dead?: number } | { t: 'wheel'; pid: PID; act: 'start' | 'spin' | 'veto' | 'accept' }
   | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
-  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'hr'; pid: PID; wilds?: boolean; sealed?: boolean } | { t: 'fcall'; pid: PID; cr: number; au: number } | { t: 'fskip'; pid: PID } | { t: 'fsettle'; a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | { t: 'reset' };
+  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'hr'; pid: PID; wilds?: boolean; sealed?: boolean } | { t: 'fcall'; pid: PID; cr: number; au: number } | { t: 'fskip'; pid: PID } | { t: 'fsettle'; a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | { t: 'fwatch'; pid: PID; id: number } | { t: 'reset' };
 
 // Orson's Devil's Advocate Pause: when the two taste profiles diverge hard, throw a polarising wildcard at both players. Once per draft.
 function cosProf(a: Prof, b: Prof): number {
@@ -989,8 +992,8 @@ export function reduce(prev: State, it: Intent): State {
     case 'rematch': {
       if (s.phase !== 'done' || !s.fin.loser || s.fin.rematchUsed || s.fin.tie) break;
       const cA = s.fin.choice.A, cB = s.fin.choice.B;
-      s.fin = { ...s.fin, choice: { A: cB, B: cA }, pitch: {}, submitted: {}, verdict: null, judging: false, judgeRequested: false, pitchEnds: now, rematchUsed: true, loser: null, wpid: null };
-      s.winner = null; s.phase = 'final'; s.mem.recorded = false;
+      s.fin = { ...s.fin, choice: { A: cB, B: cA }, pitch: {}, submitted: {}, verdict: null, judging: false, judgeRequested: false, pitchEnds: now, rematchUsed: true, loser: null, wpid: null, watch: {} };
+      s.winner = null; s.tonight = null; s.phase = 'final'; s.mem.recorded = false;
       break;
     }
     case 'taste': if (s.phase === 'vibe' && s.vibe.passed) {
@@ -1014,6 +1017,21 @@ export function reduce(prev: State, it: Intent): State {
       }
       if (s.phase === 'final' && s.fin.pitchEnds && !s.fin.verdict && !s.fin.judging) {
         if (now >= s.fin.pitchEnds || (s.fin.submitted.A && s.fin.submitted.B)) s.fin.judging = true;
+      }
+      break;
+    }
+    case 'fwatch': {
+      if (s.phase !== 'done' || s.tonight !== null || !s.fin.verdict) break;
+      const { a, b } = s.fin; if (!a || !b || (it.id !== a && it.id !== b)) break;
+      s.fin.watch[it.pid] = it.id;
+      const wa = s.fin.watch.A, wb = s.fin.watch.B;
+      if (wa !== undefined && wb !== undefined && wa === wb) {
+        s.tonight = wa;
+        const champ = s.winner;
+        s.log.unshift(wa === champ ? `Tonight's watch confirmed: ${BY_ID[wa].t}. The champion is accepted.` : `Tonight's watch confirmed: ${BY_ID[wa].t} - you two overruled the bracket. ${champ !== null && BY_ID[champ] ? BY_ID[champ].t + ' keeps the crown.' : ''}`);
+        s.orson = { line: wa === champ ? 'The champion is accepted. Sensible. I had money on it.' : 'Overruled! The bracket is furious. I am oddly proud.', mood: 'idle', n: s.orson.n + 1 };
+      } else if (wa !== undefined && wb !== undefined) {
+        s.orson = { line: `You want ${BY_ID[wa].t}, they want ${BY_ID[wb].t}. The champion ${BY_ID[s.winner as number]?.t} is on the table. Sort it out.`, mood: 'shock', n: s.orson.n + 1 };
       }
       break;
     }

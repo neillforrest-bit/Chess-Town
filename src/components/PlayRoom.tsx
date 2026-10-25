@@ -146,7 +146,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const mt = s && s.phase === 'bracket' ? s.br.matches[s.br.cur] : null;
   useEffect(() => { const k = mt?.tap ? mt.id : ''; if (k !== tapKey.current) { tapKey.current = k; setTapN(0); if (k) buzz([30, 40, 30]); } }, [mt?.id, mt?.tap]);
   useEffect(() => { if (!s || s.phase !== 'final' || !s.fin.pitchEnds) return; const t = setTimeout(() => send({ t: 'pitch', pid, text: pitchText }), 600); return () => clearTimeout(t); }, [pitchText]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (s?.phase === 'done' && s.winner !== null) loadCard(s.winner, send as (i: Intent) => void, () => bump((x) => x + 1)); }, [s?.phase, s?.winner]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (s?.phase === 'done') { const id = s.tonight !== null ? s.tonight : s.winner; if (id !== null) loadCard(id, send as (i: Intent) => void, () => bump((x) => x + 1)); } }, [s?.phase, s?.winner, s?.tonight]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (det !== null) loadCard(det, send as (i: Intent) => void, () => bump((x) => x + 1)); }, [det]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setBp(''); setAlloc([0, 0, 0]); }, [mt?.id]);
   useEffect(() => { if (!s || s.phase !== 'draft' || s.draft.loading) return; const q = [...s.draft.inbox[pid], ...s.draft.q[pid]]; q.slice(0, 2).forEach((i) => loadCard(i, send as (i: Intent) => void, () => bump((x) => x + 1))); }, [s?.phase, s?.draft.idx?.[pid], s?.draft.loading, s?.draft.inbox?.[pid]?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -227,7 +227,7 @@ export default function PlayRoom({ code }: { code: string }) {
     if (s.draft.loading) return shell(<div className="cs-center"><div className="cs-spin" /><Typing text="Orson is writing a pitch for every film. He is dramatic about it" /></div>);
     if (s.draft.gren.id !== null) { const gm = BY_ID[s.draft.gren.id]; const mine = s.draft.gren.votes[pid];
       return shell(<div className="cs-gren"><div className="cs-orson">UNRESOLVED TENSION</div><p className="cs-say">I&apos;m seeing a lot of unresolved tension. Let&apos;s throw a grenade.</p>
-        <div className="cs-gren-card"><Poster id={gm.id} /><b>{gm.t}</b><span>{gm.y} · {gm.r.toFixed(1)}{!sealed && gm.rt != null ? ` · RT ${gm.rt}%` : ''}</span></div>
+        <div className="cs-gren-card"><Poster id={gm.id} /><b>{gm.t}</b><span>{gm.y}{!sealed ? ` · ${gm.r.toFixed(1)}` : ''}{!sealed && gm.rt != null ? ` · RT ${gm.rt}%` : ''}</span></div>
         {mine === undefined ? <div className="cs-row"><button className="cs-btn cs-btn--no" onClick={() => send({ t: 'grenvote', pid, yes: false })}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'grenvote', pid, yes: true })}>I&apos;LL TAKE IT</button></div> : <p className="cs-small cs-wait">🔒 Locked in. {them.name} is still deciding<span className="cs-dots">...</span></p>}</div>); }
     if (picks.length >= DRAFT_SIZE) return shell(<div className="cs-center"><p className="cs-say">Six drafted and locked. Your picks stay secret.</p><p className="cs-small">{s.draft.picks[other].length >= DRAFT_SIZE ? 'Both done.' : `${them.name} has ${s.draft.picks[other].length}/${DRAFT_SIZE}.`}</p></div>);
     if (id === undefined) return shell(<div className="cs-center">Out of films.</div>);
@@ -358,16 +358,38 @@ export default function PlayRoom({ code }: { code: string }) {
   }
 
   // ---- DONE
-  const w = s.winner !== null ? BY_ID[s.winner] : null;
+  const watchId = s.tonight !== null ? s.tonight : s.winner;
+  const w = watchId !== null ? BY_ID[watchId] : null;
   const r = receipts(s);
   const iLost = s.fin.loser === pid;
   const showTk = !!(s.fin.verdict?.lines?.length) && !s.fin.tie && tkDone !== 'x';
-  if (rrLive(s) && !showTk && w) return shell(<RerollScreen s={s} pid={pid} send={send} />);
-  if (showTk && w) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict?.lines} winner={w.id} onDone={() => setTkDone('x')} />;
+  if (showTk && w) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict?.lines} winner={s.winner as number} onDone={() => setTkDone('x')} />;
+  // V2 ruling: chips crown a champion, but the two of you still choose what you actually watch. Both players must pick the same finalist; a split stays visibly unresolved.
+  if (s.fin.verdict && s.winner !== null && s.tonight === null && s.fin.a && s.fin.b) {
+    const opp: PID = pid === 'A' ? 'B' : 'A';
+    const mine = s.fin.watch?.[pid]; const theirs = s.fin.watch?.[opp];
+    const card = (id: number) => { const m = BY_ID[id];
+      return <button key={id} className={'cs-watchpick' + (mine === id ? ' cs-watchpick--mine' : '')} onClick={() => { buzz(40); send({ t: 'fwatch', pid, id }); }}>
+        <Poster id={id} />
+        <b>{m.t}</b><span className="cs-small">{m.y}</span>
+        <em className="cs-watchpick-tag">{id === s.winner ? '🏆 TOURNAMENT CHAMPION' : 'THE OTHER FINALIST'}</em>
+        {mine === id && <span className="cs-small cs-gold">YOU PICKED THIS</span>}
+        {theirs === id && mine !== id && <span className="cs-small">{s.players[opp].name} picked this</span>}
+      </button>; };
+    return shell(<div className="cs-done">
+      <div className="cs-orson">SO - WHAT ARE YOU ACTUALLY WATCHING?</div>
+      {s.fin.verdict.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
+      <p className="cs-small">Chips won the bragging rights. The sofa is still yours - agree on tonight's film.</p>
+      <div className="cs-watchpick-row">{card(s.fin.a)}{card(s.fin.b)}</div>
+      {mine !== undefined && theirs !== undefined && mine !== theirs && <p className="cs-small cs-gold">You're split. {BY_ID[s.winner].t} is the champion on the table - pick again together.</p>}
+    </div>);
+  }
+  if (rrLive(s) && w) return shell(<RerollScreen s={s} pid={pid} send={send} />);
   return shell(<div className="cs-done">
     <Confetti />
     <div className="cs-orson">TONIGHT YOU WATCH</div>
     {w && <><Poster id={w.id} big cls="cs-poster--win" /><h2>{w.t}</h2></>}
+    {s.tonight !== null && s.winner !== null && s.tonight !== s.winner && <p className="cs-small cs-gold">Tournament champion: {BY_ID[s.winner].t} - overruled for the sofa. The crown stands.</p>}
     {w && <WhereToWatch id={w.id} tv={!!w.sr} />}
     {s.fin.verdict?.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
     {!s.fin.tie && s.fin.loser && <p className="cs-small cs-gold">{s.players[s.fin.loser].name} owes the popcorn. {led || ''}</p>}
