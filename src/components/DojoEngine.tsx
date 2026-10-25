@@ -649,26 +649,6 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             } catch { /* bubble is decorative - never break the game for it */ }
           };
 
-          // BUILD 183l capture payoff: the material value of the taken piece rises off
-          // the capture square ("+3" for a knight) - the capture READS as a gain, not
-          // just motion. Square-based, no container needed: it must fire even when the
-          // captured container lookup missed (freeze re-render) and the fight animation was skipped.
-          const capturePayoffPop = (move: any) => {
-            try {
-              const VALS: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
-              const v = VALS[move.captured] || 0;
-              if (v <= 0) return;
-              const cCol = files.indexOf(move.to[0]);
-              const cRow = ranks.indexOf(move.to[1]);
-              if (cCol < 0 || cRow < 0) return;
-              const px = boardOffset + sx(cCol) * tileSize + tileSize / 2;
-              const py = boardOffset + sy(cRow) * tileSize + tileSize / 2;
-              const gain = scene.add.text(px, py, `+${v}`, { fontFamily: 'Georgia, serif', fontSize: `${Math.round(tileSize * 0.55)}px`, fontStyle: 'bold', color: '#4ade80', stroke: '#0a0e14', strokeThickness: 5 }).setOrigin(0.5).setDepth(33).setScale(0.4);
-              scene.tweens.add({ targets: gain, scaleX: 1, scaleY: 1, duration: 260, ease: 'Back.Out' });
-              scene.tweens.add({ targets: gain, y: py - tileSize * 0.9, alpha: 0, delay: 700, duration: 750, ease: 'Quad.In', onComplete: () => gain.destroy() });
-            } catch { /* the payoff pop is decoration */ }
-          };
-
           const renderAfterCapture = (move: any) => {
             if (!move.captured) {
               renderBoard();
@@ -677,10 +657,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
             const capturedPiece = pieceContainers[move.to];
             if (!capturedPiece) {
-              // Freeze/card re-renders can leave the container lookup empty - the board
-              // still redraws and the payoff pop still fires (his 25 Oct acceptance).
               renderBoard();
-              capturePayoffPop(move);
               return;
             }
 
@@ -731,7 +708,6 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               emitCapture(move);
               renderBoard();
               showCaptureBubble(move);
-              capturePayoffPop(move);
             };
             // His capture spec: the taken piece pops larger, TIPS OVER, then waddles off.
             capturedPiece.setScale(1.08);

@@ -101,13 +101,18 @@ export default function ChesterReportCard({
   // headline reflects the RESULT, and habit data below stands on real moves only. A win
   // with poor habits can still grade low; result and coached habits stay distinct.
   const ungraded = summary?.graded === false;
-  const verdict = ungraded
-    ? won
-      ? { emoji: '🏆', word: 'GAME WON', line: 'The result is real. No engine-scored moves to grade this one honestly - the habits below come from the moves you actually played.' }
-      : lost
-        ? { emoji: '💀', word: 'GAME LOST', line: 'No engine-scored moves to grade this one honestly - the habits below come from the moves you actually played.' }
-        : { emoji: '🤝', word: 'GAME DRAWN', line: 'No engine-scored moves to grade this one honestly - the habits below come from the moves you actually played.' }
-    : overallVerdict(goodRatio);
+  const drawn = /1\/2-1\/2\s*$/.test(pgn || '');
+  // Primary headline is always the RESULT (his 25 Oct review): "STRONG GAME" (a
+  // move-quality ratio) next to a D habits grade read as a contradiction even labelled.
+  // The quality verdict moves into FULL BREAKDOWN with its basis spelled out.
+  const verdict = {
+    emoji: won ? '🏆' : lost ? '💀' : '🤝',
+    word: won ? 'GAME WON' : lost ? 'GAME LOST' : drawn ? 'GAME DRAWN' : 'GAME OVER',
+    line: ungraded
+      ? 'No engine-scored moves to grade this one honestly - the habits below come from the moves you actually played.'
+      : `Habits grade from ${summary?.gradedMoves ?? mine.length} scored move${(summary?.gradedMoves ?? mine.length) === 1 ? '' : 's'} - the result and the habits are judged separately.`,
+  };
+  const qualityVerdict = overallVerdict(goodRatio);
   const best = mine.length ? mine.reduce((a, b) => ((a.centipawnLoss ?? 999) <= (b.centipawnLoss ?? 999) ? a : b)) : null;
   const worst = mine.length ? mine.reduce((a, b) => ((a.centipawnLoss ?? 0) >= (b.centipawnLoss ?? 0) ? a : b)) : null;
 
@@ -223,6 +228,10 @@ export default function ChesterReportCard({
 
       <details className="chester-report-card__more">
         <summary>FULL BREAKDOWN - LADDER, MOMENTS & CHESTER'S REVIEW</summary>
+        {!ungraded && <div className="chester-report-card__moment">
+          <b>{qualityVerdict.emoji} MOVE QUALITY: {qualityVerdict.word}</b>
+          <p>{qualityVerdict.line} Basis: the engine liked {Math.round(goodRatio * 100)}% of your {mine.length} scored moves - a move-quality ratio, separate from the habits grade and the result.</p>
+        </div>}
       {accMath && accMath.length > 0 && <details className="chester-report-card__math"><summary>HOW YOUR ACCURACY % IS COMPUTED</summary><p>Each move is compared with the engine's best. Win% uses Lichess's published conversion from engine eval; move score = 103.16 x e^(-0.0435 x 1.5 x win% lost) - 0.8, adapted from the move-accuracy formula Lichess publishes (lichess.org/page/accuracy) with our 1.5x weighting. When the engine's pre-move search sees a forced mate, Win% reads 100% (being mated 0%) - a theoretical endpoint on this evaluation scale, not a measured human win rate. Your accuracy is the plain average of your move scores - Lichess weights by volatility and chess.com's model is private, so no two sites' numbers match exactly.</p><ul>{accMath.map((mv, i) => <li key={i}><span>{mv.san}<em>{mv.grade}</em></span><span>-{mv.lost}% &rarr; {mv.score}</span></li>)}</ul></details>}
         <div className="chester-report-card__ladder">
           <span className="chester-report-card__ladder-title">SKILL LADDER</span>
