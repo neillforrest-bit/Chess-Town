@@ -773,3 +773,29 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-watchpick .cs-poster{flex:none;width:100%;max-width:110px;height:auto;aspect-ratio:2/3;object-fit:cover;border-radius:8px}
 .cs-watchpick-tag{color:var(--gold);font-size:10px;font-style:normal;letter-spacing:.08em}
 @media (min-width: 700px){.cs-co-card{max-width:420px}.cs-co-swipe{width:100%;align-items:center}}
+
+/* Tonight Mode */
+.cs-tcard{background:#14100e;border:1px solid #3a2f1d;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.cs-tcard--wild{border-style:dashed}
+.cs-twild{font-size:.68rem;letter-spacing:.08em;color:#e8c877;text-transform:uppercase}
+.cs-tmain{display:flex;gap:14px}
+.cs-tmain .cs-poster{width:96px;border-radius:8px;flex:none}
+.cs-tinfo{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cs-tinfo b{font-family:Georgia,serif;font-size:1.15rem;line-height:1.15}
+.cs-tinfo small{opacity:.75}
+.cs-tscores{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.cs-tscores span{font-size:.72rem;border:1px solid #6b5a33;border-radius:20px;padding:3px 9px}
+.cs-twhy{font-size:.9rem;font-style:italic;color:#e8c877;margin:0}
+.cs-tacts{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.cs-ttrailer{font-size:.8rem;border:1px solid #e8c877;color:#e8c877;border-radius:20px;padding:6px 14px;text-decoration:none}
+.cs-tnotrailer{font-size:.75rem;opacity:.5}
+.cs-tprov{font-size:.75rem;opacity:.85;text-align:right}
+.cs-tprov b{display:block;font-size:.62rem;letter-spacing:.08em;opacity:.7}
+.cs-thc{border:1px solid #4a3a6b;border-radius:14px;padding:10px;text-align:center}
+.cs-thc small{font-size:.7rem;letter-spacing:.08em;opacity:.8}
+.cs-treact{border-top:1px solid #3a2f1d;padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.cs-treact small{font-size:.7rem;opacity:.7}
+.cs-chip--mini{min-height:0;padding:8px 10px;font-size:.8rem}
+.cs-btn--sm{min-height:0;padding:10px 14px;font-size:.85rem}
+.cs-link{background:none;border:none;color:#e8c877;text-decoration:underline;cursor:pointer;display:block;margin:0 auto}
+.cs-lab{font-size:.7rem;letter-spacing:.1em;opacity:.7;text-align:left}

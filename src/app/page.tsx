@@ -51,6 +51,7 @@ export default function Home() {
         <button className="cs-btn" disabled={code.length < 4} onClick={() => go(`/play/${code}?p=B&n=${encodeURIComponent(name.trim())}`)}>JOIN</button></div>
       <div className="cs-row"><button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&solo=1${night === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>1V1 VS ORSON</button>
         <button className="cs-btn" onClick={() => go(`/solo?k=${kind}&n=${encodeURIComponent(name.trim())}`)}>SOLO VS ORSON</button></div>
+      <button className="cs-btn cs-btn--gold" onClick={() => { localStorage.setItem('cs-name', name.trim()); go('/tonight'); }}>🌙 TONIGHT: THREE PICKS, ONE TAP</button>
       <div className="cs-row"><button className="cs-btn" onClick={() => { localStorage.setItem('cs-name', name.trim()); go('/discover'); }}>DISCOVERY NIGHT</button>
         <button className="cs-btn" onClick={() => window.dispatchEvent(new CustomEvent('cs-setview', { detail: 'casual' }))}>📚 LIBRARY</button></div>
       {grave.length > 0 && <button className="cs-small" onClick={() => setGv(!gv)}>🪦 Graveyard · {grave.length} buried {gv ? '▴' : '▾'}</button>}
