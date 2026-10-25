@@ -3,7 +3,7 @@
 // same schema later (flag), but this path is the default and the guaranteed fallback so the HUD is never blank.
 import { Chess } from 'chess.js';
 import { hangingPieces } from './tactics';
-import { plainMoveNoun, plainSuggestion, plainWhy } from './move-words';
+import { plainMoveNoun, plainSuggestion, plainWhy, sameMove } from './move-words';
 
 export type MoveGrade = 'BRILLIANT' | 'STRONG' | 'SOLID' | 'SHAKY' | 'BLUNDER' | 'IDLE';
 export type ArrowIntent = 'ENGINE_BEST' | 'OPPONENT_THREAT' | 'PLAYER_MISTAKE';
@@ -251,6 +251,7 @@ function chatReplyBase(message: string, card: WhyCard | null, live: { fen: strin
   if (/undefended|loose|hanging/.test(q)) return und.length ? `Yes: your ${und.join(' and your ')} ${und.length > 1 ? 'are' : 'is'} attacked with no defender. Fix that before anything fancy.` : 'Nothing of yours is hanging right now. Every attacked piece has a defender.';
   if (/lose points|why.*(shaky|last move|lose|brilliant|graded|mistake)|what could i have done|better/.test(q)) {
     if (!card) return 'Make a move first and I will grade it. Then ask me again.';
+    if (noLossCard(card)) return `Good news first: that move did not lose points. ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} If you want a real lesson, ask me about a move I marked with a warning - or ask "what should I play?" for the next idea.`;
     return `${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} ${card.engineBlueprintLine.replace(/^🤖\s*/, '')}`;
   }
   const pieceAsk = q.match(/queen|rook|bishop|knight/);
@@ -365,6 +366,7 @@ function safetyAnswer(card: WhyCard | null, live: { fen: string; bestSan: string
 /** "Why is your idea better than what I played?" - consequence comparison, never the review text repeated. */
 function whyBetterAnswer(card: WhyCard): string {
   const played = formatSanToHuman(card.fenBefore, card.san);
+  if (noLossCard(card)) return `Straight answer: it was not better - you played the engine's own idea with ${played}. Nothing dropped, nothing to retry. Ask me "what should I play?" and I will find the next one.`;
   const idea = card.engineBestSan ? formatSanToHuman(card.fenBefore, card.engineBestSan) : null;
   let moverColor: 'w' | 'b' = 'w';
   try { moverColor = new Chess(card.fenBefore).turn(); } catch { /* ignore */ }
@@ -378,7 +380,16 @@ function whyBetterAnswer(card: WhyCard): string {
   if (afterPlayedLoose.length && !afterIdeaLoose.length) bits.push(`your move (${played}) leaves your ${afterPlayedLoose[0].piece} on ${afterPlayedLoose[0].square} attacked with no defender, and the idea keeps everything covered`);
   else if (card.cp != null && Math.abs(card.cp) >= 40) bits.push(`the engine counts your move (${played}) as giving up about ${(Math.abs(card.cp) / 100).toFixed(1)} pawns of value - nothing drops at once, but the pressure fades`);
   if (!bits.length) return `Short version: ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')}`;
-  return `Here is the difference: ${bits.join(', ')}. That is why I nudged you there - want to try it? Use the Retry pill under my review.`;
+  const retry = card.grade === 'SHAKY' || card.grade === 'BLUNDER';
+  return `Here is the difference: ${bits.join(', ')}. That is why I nudged you there.${retry ? ' Want to try it? Use the Retry pill under my review.' : ''}`;
+}
+
+/** True when the played move matches the engine idea or cost nothing worth a lesson. */
+function noLossCard(card: WhyCard): boolean {
+  if (card.grade === 'BRILLIANT' || card.grade === 'STRONG') return true;
+  if (card.engineBestSan && sameMove(card.fenBefore, card.san, card.engineBestSan)) return true;
+  if (card.cp != null && Math.abs(card.cp) < 25 && card.grade !== 'BLUNDER' && card.grade !== 'SHAKY') return true;
+  return false;
 }
 
 export function chatReply(message: string, card: WhyCard | null, live: { fen: string; bestSan: string | null } | null, history?: ChatTurn[]): string {
