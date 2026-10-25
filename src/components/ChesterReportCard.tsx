@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { phrasesFromPgn, fenBeforePly, describeMove, explainEngineChoice } from '@/lib/move-words';
-import { weakestHabit, getVerdictMemory, recordVerdictMemory, getLadder } from '@/lib/rating';
+import Link from 'next/link';
+import { weakestHabit, WEAKNESS_HOMEWORK, getVerdictMemory, recordVerdictMemory, getLadder } from '@/lib/rating';
 import VerdictShare from './VerdictShare';
 
 export type GradedMove = {
@@ -71,6 +72,8 @@ export default function ChesterReportCard({
   summary,
   onClose,
   onRetry,
+  onRematch = null,
+  onChat = null,
 }: {
   resultLine?: string | null;
   accMath?: { san: string; grade: string; lost: number; score: number }[] | null;  grades: GradedMove[];
@@ -82,6 +85,8 @@ export default function ChesterReportCard({
   summary?: Summary;
   onClose: () => void;
   onRetry?: (() => void) | null;
+  onRematch?: (() => void) | null;
+  onChat?: (() => void) | null;
 }) {
   const mine = grades.filter((entry) => entry.player === 'You');
   const phrases = useMemo(() => phrasesFromPgn(pgn || ''), [pgn]);
@@ -228,6 +233,12 @@ export default function ChesterReportCard({
       </div>
 
       {canRetry && <button type="button" className="verdict-share__cta" style={{ background: '#22d3ee' }} onClick={onRetry!}>🔁 RETRY THE MISTAKE<small>replay the position, find the better move</small></button>}
+
+      <div className="chester-report-card__actions" style={{ display: 'grid', gap: 8, margin: '12px 0' }}>
+        {(() => { const hw = WEAKNESS_HOMEWORK[habit.key]; return hw ? <Link href={hw.href} className="verdict-share__cta" style={{ background: '#4ade80', color: '#101418', textDecoration: 'none', display: 'block', textAlign: 'center' }}>🎯 YOUR TARGETED LESSON<small style={{ display: 'block' }}>{hw.text}</small></Link> : null; })()}
+        {onRematch && <button type="button" className="verdict-share__cta" style={{ background: '#fbbf24', color: '#101418' }} onClick={onRematch}>⚔️ REMATCH<small style={{ display: 'block' }}>same level, fresh board - run it back</small></button>}
+        {onChat && <button type="button" className="verdict-share__cta" style={{ background: '#a78bfa', color: '#101418' }} onClick={onChat}>💬 TALK IT OVER WITH CHESTER<small style={{ display: 'block' }}>ask anything about this game</small></button>}
+      </div>
 
       <p className="chester-report-card__story">{isLoading ? 'Chester is writing his final review...' : review}</p>
       {!isLoading && scouting && scouting.length > 0 && <ul className="chester-report-card__scout" aria-label="Scouting report">{scouting.map((b, i) => <li key={i}>{b}</li>)}</ul>}
