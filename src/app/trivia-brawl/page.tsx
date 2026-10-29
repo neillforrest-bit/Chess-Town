@@ -402,7 +402,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const view = room ? questionText(room.currentQuestion) : { question: '', answers: [] };
   const myCardsUsed = room?.cardsUsed?.[player] || { shakespeare: false, fiftyfifty: false, doubledown: false, pickpocket: false };
   const myActiveCards = room?.activeCards?.[player] || {};
-  const nextRoundReady = room?.phase === 'banter' ? Boolean(room.roundMeta?.[room.round + 1]?.ready) : true;
+  const nextRoundReady = room?.phase === 'banter' ? (room.round + 1 >= MATCH_ROUNDS || room.lastCall ? true : Boolean(room.roundMeta?.[room.round + 1]?.ready)) : true;
 
   return <main className="trivia-brawl-page">
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">← Pub door</Link></header>
@@ -429,7 +429,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         {player !== 'p1' && <p>Awaiting the host to pour the next one...</p>}
       </> : room.phase === 'banter' ? <>
         <p>{room.hostMessage || roundEndLine(room.round, room.names.p1, room.names.p2, room.score.p1, room.score.p2, room.lastCall)}</p>
-        {player === 'p1' && <button className="trivia-brawl-primary" disabled={advancing || !nextRoundReady} onClick={() => void advance()}>{nextRoundReady ? (room.lastCall ? 'LAST CALL - SUDDEN DEATH' : room.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND') : 'CHESTER IS SCRIBBLING...'}</button>}
+        {player === 'p1' && <button className="trivia-brawl-primary" disabled={advancing || !nextRoundReady} onClick={() => void advance()}>{nextRoundReady ? (room.lastCall || (room.round + 1 >= MATCH_ROUNDS && room.score.p1 === room.score.p2) ? 'LAST CALL - SUDDEN DEATH' : room.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND') : 'CHESTER IS SCRIBBLING...'}</button>}
         {player !== 'p1' && <p>Awaiting the host...</p>}
       </> : <>
         <div className="trivia-brawl-answers">{view.answers.map((option, index) => <button key={`${index}-${room.currentQuestion?.answers[index] ?? option}`} onClick={() => void answer(room.currentQuestion?.answers[index] ?? option)} disabled={Boolean(room.answers[player])}>{option}</button>)}</div>
@@ -733,7 +733,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
       <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void next()}>{advancing ? 'POURING...' : match.lastCall ? (match.score.p1 === match.score.p2 ? 'NEXT DECIDER' : 'FINAL CALL') : match.qIndex + 1 >= QUESTIONS_PER_ROUND ? 'ROUND SUMMARY' : 'NEXT QUESTION'}</button></section>}
     {phase === 'roundEnd' && match && <section className="trivia-brawl-question"><h2>Round {match.round + 1} of {MATCH_ROUNDS} poured.</h2>
       <p>The ledger: {nameA} {match.score.p1} - {match.score.p2} {nameB}.</p>
-      <button className="trivia-brawl-primary" disabled={advancing || !match.rounds[match.round + 1]?.ready} onClick={() => void next()}>{advancing ? 'POURING...' : !match.rounds[match.round + 1]?.ready ? 'CHESTER IS SCRIBBLING...' : match.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND'}</button></section>}
+      <button className="trivia-brawl-primary" disabled={advancing || (match.round + 1 < MATCH_ROUNDS && !match.rounds[match.round + 1]?.ready)} onClick={() => void next()}>{advancing ? 'POURING...' : (match.round + 1 < MATCH_ROUNDS && !match.rounds[match.round + 1]?.ready) ? 'CHESTER IS SCRIBBLING...' : match.round + 1 >= MATCH_ROUNDS ? (match.score.p1 === match.score.p2 ? 'LAST CALL - SUDDEN DEATH' : 'FINAL CALL') : 'NEXT ROUND'}</button></section>}
     {phase === 'finished' && match && <section className="trivia-brawl-question"><h2>{match.score.p1} - {match.score.p2}</h2>
       <p className="trivia-series">SERIES · {nameA} {series.a} - {series.b} {nameB}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>
       <button className="trivia-brawl-primary" onClick={rematch}>🔁 REMATCH - NEW CATEGORIES</button></section>}
