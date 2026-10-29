@@ -132,3 +132,72 @@ export const BRAWL_BANTER = {
     'A point separates the brave from the nearly-brave.',
   ],
 };
+
+
+// BUILD 183 - five rounds of five: Chester's temperature rises with the match.
+// All local, all free - the paid brawl commentary stays the premium voice on top.
+
+// Round intros, coldest to hottest. Indexed by round; variants rotate by seed.
+export const ROUND_INTROS: string[][] = [
+  [
+    'Round one - easy pours to open the tab. Confidence is free at this stage.',
+    'First round, gentle glasses. Even the bar dog gets these.',
+  ],
+  [
+    'Round two, still friendly. The pub is watching politely.',
+    'Second round. Chester refills the peanuts and raises one eyebrow.',
+  ],
+  [
+    'Round three - the medium heat. This is where the pub quiz usually turns.',
+    'Halftime approaches and the questions stop being polite.',
+  ],
+  [
+    'Round four. The regulars have gone quiet. Someone here is sweating.',
+    'Fourth round, medium-hot. Chester has stopped polishing glasses to watch.',
+  ],
+  [
+    'LAST CALL. Round five - the hard stuff. Chester dims the lights.',
+    'Final round, top shelf only. The whole pub leans in.',
+  ],
+];
+
+// Per-question reveal quips, tiered by match heat (early / mid / late).
+export const REVEAL_QUIPS: Record<'bothRight' | 'bothWrong' | 'oneRight', string[][]> = {
+  bothRight: [
+    ['Two clean hits. The bar applauds both corners.', 'Nobody blinked. Chester underlines both names.'],
+    ['Both right - this is becoming a proper duel.', 'Two more clean hits. The ledger is getting crowded.'],
+    ['Both right under pressure. Chester is genuinely impressed, which is unsettling.', 'No quarter given, none taken. The finale neither of you asked for.'],
+  ],
+  bothWrong: [
+    ['The bar winces in unison. Nobody speaks of this one again.', 'Two swings, two misses. Chester quietly turns the ledger page.'],
+    ['Both wrong. The medium heat claims its first victims.', 'A shared stumble. Chester pretends not to enjoy this.'],
+    ['Both wrong at the sharp end. The pub gasps - genuinely.', 'Nobody had that. LAST CALL shows no mercy.'],
+  ],
+  oneRight: [
+    ['One clean hit, one swing at the air. The pub loves a gap in the scoreline.', 'A point separates the brave from the nearly-brave.'],
+    ['One of you read the room. The other read something else entirely.', 'A single hit. The gap widens and Chester has opinions.'],
+    ['One stands tall at the business end. The other needs a miracle or a malt.', 'Only one hand stayed steady. This is where tabs are won.'],
+  ],
+};
+
+export function revealQuip(outcome: 'bothRight' | 'bothWrong' | 'oneRight', round: number, seed: number): string {
+  const heat = round <= 1 ? 0 : round <= 3 ? 1 : 2;
+  const pool = REVEAL_QUIPS[outcome][heat];
+  return pool[Math.abs(seed) % pool.length];
+}
+
+// End-of-round summary line: leader-aware, escalating. Names and score do the work.
+export function roundEndLine(roundIndex: number, p1Name: string, p2Name: string, p1Score: number, p2Score: number, lastCall: boolean): string {
+  const margin = Math.abs(p1Score - p2Score);
+  const leader = p1Score === p2Score ? null : p1Score > p2Score ? p1Name : p2Name;
+  const trailer = leader === p1Name ? p2Name : p1Name;
+  if (lastCall) return 'LAST CALL. Dead heat. One hard question at a time until somebody blinks.';
+  if (roundIndex >= 4) {
+    if (!leader) return 'A dead heat after five rounds. Chester refuses a draw - the pub demands LAST CALL.';
+    return `${leader} takes the tab by ${margin}. ${trailer}, the rematch button is right there.`;
+  }
+  const stage = ['One round down', 'Two rounds poured', 'Three rounds in', 'One round to go'][roundIndex] || 'The match rolls on';
+  if (!leader) return `${stage} and dead level at ${p1Score} apiece. Somebody blink soon.`;
+  if (margin === 1) return `${stage}: ${leader} noses in front by a single point. ${trailer} is one clean hit from silence.`;
+  return `${stage}: ${leader} leads by ${margin}. ${trailer}, the regulars believe in a comeback. Chester does not.`;
+}
