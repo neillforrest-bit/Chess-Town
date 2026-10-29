@@ -208,7 +208,6 @@ function FlashResultBrawl({ flash, result, p1Name, p2Name, player, advancing, on
     <h2>{flash.question || flash.prompt}</h2>
     {flash.type === 'duel' ? <p>{flash.resolvedNote === 'void' ? 'The Twenty was called off - no flash points. The rest of the scores stand as they were.' : result.p1Points === result.p2Points ? (result.p1Points ? 'Level baskets - a point each.' : 'The Twenty passed with nothing banked.') : `${result.p1Points > result.p2Points ? p1Name : p2Name} takes The Twenty and banks double.`} {flash.correct ? `The full shelf: ${flash.correct.join(', ')}.` : ''}</p>
       : <p>The answer was <b>{result.correctAnswer}</b>. {result.p1Points === result.p2Points ? (result.p1Points ? 'Both bank double.' : 'Nobody banked it.') : `${result.p1Points > result.p2Points ? p1Name : p2Name} banks ${Math.max(result.p1Points, result.p2Points)}.`}</p>}
-    <p>{FLASH_RESOLVE_LINES[flash.type]}</p>
     {player === 'p1' ? <button className="trivia-brawl-primary" disabled={advancing} onClick={onAdvance}>ROUND SUMMARY</button> : <p>Awaiting the host...</p>}
   </section>;
 }
@@ -622,7 +621,6 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         {player !== 'p1' && <p>Awaiting the host to pour the next one...</p>}
       </> : room.phase === 'banter' ? <>
         <LeaderboardCard p1Name={room.names.p1} p2Name={room.names.p2} score={room.score} history={room.history} streak={room.streak} cardsUsed={room.cardsUsed} />
-        <p>{room.hostMessage || roundEndLine(room.round, room.names.p1, room.names.p2, room.score.p1, room.score.p2, room.lastCall)}</p>
         {player === 'p1' && <button className="trivia-brawl-primary" disabled={advancing || !nextRoundReady} onClick={() => void advance()}>{nextRoundReady ? (room.lastCall || (room.round + 1 >= MATCH_ROUNDS && room.score.p1 === room.score.p2) ? 'LAST CALL - SUDDEN DEATH' : room.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND') : 'CHESTER IS SCRIBBLING...'}</button>}
         {player !== 'p1' && <p>Awaiting the host...</p>}
       </> : <>
