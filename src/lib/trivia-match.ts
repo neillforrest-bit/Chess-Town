@@ -14,7 +14,7 @@ export const QUESTIONS_PER_ROUND = 5;
 export const DIFFICULTY_LADDER: Difficulty[] = ['easy', 'easy', 'medium', 'medium', 'hard'];
 
 export type CategoryPick = { id: number; name: string };
-export type MatchQuestion = { category: string; question: string; correctAnswer: string; answers: string[]; difficulty?: string };
+export type MatchQuestion = { category: string; question: string; correctAnswer: string; answers: string[]; difficulty?: string; roulette?: boolean };
 export type MatchRound = { categoryId: number; categoryName: string; difficulty: Difficulty; questions: MatchQuestion[]; ready: boolean };
 export type QuestionResult = {
   correctAnswer: string;
@@ -23,6 +23,7 @@ export type QuestionResult = {
   p1Points: number;
   p2Points: number;
   double: boolean;
+  roulette?: boolean;
   powerPlayers: Player[];
   p1StreakBonus: boolean;
   p2StreakBonus: boolean;
@@ -44,6 +45,7 @@ export type MatchState = {
   result: QuestionResult | null;
   roundResults: QuestionResult[];
   doubleQuestions: string[];
+  rouletteKey: string | null;
   lastCall: boolean;
 };
 
@@ -98,6 +100,13 @@ export function planMatch(p1Categories: CategoryPick[], p2Categories: CategoryPi
   // Two random questions a match pour double points: one early, one late.
   const early = doubleKey(1 + Math.floor(Math.random() * 2), Math.floor(Math.random() * QUESTIONS_PER_ROUND));
   const late = doubleKey(3 + Math.floor(Math.random() * 2), Math.floor(Math.random() * QUESTIONS_PER_ROUND));
+  // CHESTER'S ROULETTE: one bell-ringer mid-match (rounds 2-4), a mystery house pour
+  // from a category nobody drafted, worth triple. Kept clear of the double slots.
+  let rouletteKey: string | null = null;
+  for (let tries = 0; tries < 12; tries += 1) {
+    const candidate = doubleKey(1 + Math.floor(Math.random() * 3), Math.floor(Math.random() * QUESTIONS_PER_ROUND));
+    if (candidate !== early && candidate !== late) { rouletteKey = candidate; break; }
+  }
   return {
     power,
     rounds,
@@ -114,6 +123,7 @@ export function planMatch(p1Categories: CategoryPick[], p2Categories: CategoryPi
     result: null,
     roundResults: [],
     doubleQuestions: [early, late],
+    rouletteKey,
     lastCall: false,
   };
 }
@@ -247,10 +257,17 @@ export function markRoundLoaded(state: MatchState, roundIndex: number, questions
 
 // --- Scoring ---
 const MAX_MULTIPLIER = 4;
+const MAX_ROULETTE_MULTIPLIER = 6;
 
 export function playerMultiplier(state: MatchState, player: Player, roundIndex: number, qIndex: number): number {
   const round = state.rounds[roundIndex];
   if (!round) return 1;
+  const question = round.questions[qIndex];
+  if (question?.roulette) {
+    let bell = 3;
+    if (state.activeCards[player]?.doubledown) bell *= 2;
+    return Math.min(MAX_ROULETTE_MULTIPLIER, bell);
+  }
   let multiplier = 1;
   if (state.doubleQuestions.includes(doubleKey(roundIndex, qIndex))) multiplier *= 2;
   if (state.power[player] === round.categoryId) multiplier *= 2;
@@ -274,7 +291,7 @@ export function applyAnswer(state: MatchState, player: Player, answer: string): 
 
   const p1Correct = next.answers.p1 === question.correctAnswer;
   const p2Correct = next.answers.p2 === question.correctAnswer;
-  const isDouble = state.doubleQuestions.includes(doubleKey(state.round, state.qIndex));
+  const isDouble = !question.roulette && state.doubleQuestions.includes(doubleKey(state.round, state.qIndex));
   const powerPlayers = (['p1', 'p2'] as Player[]).filter((p) => isPowerRound(state, p, state.round));
   let p1Points = p1Correct ? playerMultiplier(state, 'p1', state.round, state.qIndex) : 0;
   let p2Points = p2Correct ? playerMultiplier(state, 'p2', state.round, state.qIndex) : 0;
@@ -300,7 +317,7 @@ export function applyAnswer(state: MatchState, player: Player, answer: string): 
   next.score.p1 = Math.max(0, next.score.p1 + p1Points - p2Steal);
   next.score.p2 = Math.max(0, next.score.p2 + p2Points - p1Steal);
   next.activeCards = { p1: {}, p2: {} };
-  next.result = { correctAnswer: question.correctAnswer, p1Correct, p2Correct, p1Points, p2Points, double: isDouble, powerPlayers, p1StreakBonus, p2StreakBonus, stolenFrom };
+  next.result = { correctAnswer: question.correctAnswer, p1Correct, p2Correct, p1Points, p2Points, double: isDouble, roulette: Boolean(question.roulette), powerPlayers, p1StreakBonus, p2StreakBonus, stolenFrom };
   next.roundResults = [...state.roundResults, next.result];
   next.phase = 'reveal';
   return { state: next };
@@ -328,6 +345,22 @@ export function lastCallActive(state: MatchState): boolean {
   return state.lastCall || state.round >= MATCH_ROUNDS;
 }
 
+// --- Chester's Roulette: when the bell-ringer question comes up, swap it for a
+// mystery house pour so neither player drafted the category. Same swap for both
+// viewers - it happens in the shared state, never per-viewer.
+function applyRoulette(state: MatchState): MatchState {
+  if (!state.rouletteKey || state.phase !== 'question') return state;
+  const [roundIndex, qIndex] = state.rouletteKey.split(':').map(Number);
+  if (state.round !== roundIndex || state.qIndex !== qIndex) return state;
+  const round = state.rounds[roundIndex];
+  if (!round?.ready || round.questions[qIndex]?.roulette) return state;
+  const [mystery] = drawHouseMixed(1, usedQuestionTexts(state));
+  if (!mystery) return { ...state, rouletteKey: null };
+  const swapped: MatchQuestion = { ...mystery, category: `🎰 Roulette: ${mystery.category}`, roulette: true };
+  const rounds = state.rounds.map((item, index) => (index === roundIndex ? { ...item, questions: item.questions.map((question, qi) => (qi === qIndex ? swapped : question)) } : item));
+  return { ...state, rounds };
+}
+
 export async function advanceMatch(state: MatchState): Promise<{ state: MatchState; error?: string }> {
   if (state.phase === 'reveal') {
     if (state.lastCall) {
@@ -336,13 +369,13 @@ export async function advanceMatch(state: MatchState): Promise<{ state: MatchSta
       try {
         const question = await fetchLastCallQuestion(usedQuestionTexts(state));
         const rounds = state.rounds.map((round, index) => (index === state.round ? { ...round, questions: [question], ready: true } : round));
-        return { state: { ...state, rounds, qIndex: 0, answers: {}, result: null, phase: 'question' } };
+        return { state: applyRoulette({ ...state, rounds, qIndex: 0, answers: {}, result: null, phase: 'question' }) };
       } catch (error) {
         return { state, error: error instanceof Error ? error.message : 'Could not pour a decider' };
       }
     }
     if (state.qIndex + 1 < QUESTIONS_PER_ROUND) {
-      return { state: { ...state, qIndex: state.qIndex + 1, answers: {}, result: null, phase: 'question' } };
+      return { state: applyRoulette({ ...state, qIndex: state.qIndex + 1, answers: {}, result: null, phase: 'question' }) };
     }
     return { state: { ...state, phase: 'banter' } };
   }
@@ -351,7 +384,7 @@ export async function advanceMatch(state: MatchState): Promise<{ state: MatchSta
     if (nextRound < MATCH_ROUNDS) {
       const round = state.rounds[nextRound];
       if (!round?.ready) return { state, error: 'Chester is still scribbling the next round - give him a breath.' };
-      return { state: { ...state, round: nextRound, qIndex: 0, answers: {}, result: null, roundResults: [], phase: 'question' } };
+      return { state: applyRoulette({ ...state, round: nextRound, qIndex: 0, answers: {}, result: null, roundResults: [], phase: 'question' }) };
     }
     if (state.score.p1 !== state.score.p2) return { state: { ...state, phase: 'finished' } };
     // Dead heat after five rounds: LAST CALL, sudden death, hard questions only.
@@ -368,7 +401,7 @@ export async function advanceMatch(state: MatchState): Promise<{ state: MatchSta
 
 // --- Per-viewer question shaping: fifty-fifty trims, Shakespeare disguises.
 // The client renders `disguise` text but always submits the raw answer string.
-export type ViewerQuestion = { category: string; question: string; answers: string[]; difficulty?: string; disguise?: { question: string; answers: string[] } };
+export type ViewerQuestion = { category: string; question: string; answers: string[]; difficulty?: string; roulette?: boolean; disguise?: { question: string; answers: string[] } };
 
 export function viewerQuestion(state: MatchState, viewer: Player): ViewerQuestion | null {
   const question = currentQuestionOf(state);
@@ -378,7 +411,7 @@ export function viewerQuestion(state: MatchState, viewer: Player): ViewerQuestio
     const wrong = shuffle(question.answers.filter((option) => option !== question.correctAnswer))[0];
     answers = shuffle([question.correctAnswer, wrong]);
   }
-  const view: ViewerQuestion = { category: question.category, difficulty: question.difficulty, question: question.question, answers };
+  const view: ViewerQuestion = { category: question.category, difficulty: question.difficulty, question: question.question, answers, roulette: question.roulette };
   if (state.shakespeareTarget === viewer && state.shakespeareRound === state.round) {
     view.disguise = { question: shakespeareify(question.question), answers: answers.map(shakespeareify) };
   }
@@ -393,6 +426,7 @@ export function roundSummary(state: MatchState, _roundIndex: number): { p1Hits: 
   const p1Hits = slice.filter((result) => result.p1Correct).length;
   const p2Hits = slice.filter((result) => result.p2Correct).length;
   if (slice.some((result) => result.double)) events.push('a double-points question landed');
+  if (slice.some((result) => result.roulette)) events.push('Chester rang the roulette bell for a mystery triple pour');
   if (slice.some((result) => result.stolenFrom)) events.push('a point was pickpocketed');
   if (slice.some((result) => result.p1StreakBonus || result.p2StreakBonus)) events.push('someone went on a roll');
   return { p1Hits, p2Hits, events };

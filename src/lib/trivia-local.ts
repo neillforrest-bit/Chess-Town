@@ -138,6 +138,12 @@ export const BRAWL_BANTER = {
 // All local, all free - the paid brawl commentary stays the premium voice on top.
 
 // Round intros, coldest to hottest. Indexed by round; variants rotate by seed.
+export const ROULETTE_LINES = [
+  '*ding ding ding* Chester rings the bell! MYSTERY POUR - a category nobody drafted, and it pays TRIPLE.',
+  'Bell behind the bar! This one is a mystery pour, friends. Triple points, no refunds.',
+  'Chester spins the roulette wheel... mystery category, TRIPLE points. Fortune favours the thirsty.',
+];
+
 export const ROUND_INTROS: string[][] = [
   [
     'Round one - easy pours to open the tab. Confidence is free at this stage.',

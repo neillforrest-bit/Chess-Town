@@ -11,7 +11,7 @@ import {
   type MatchState, type ViewerQuestion, type WildcardId,
 } from '@/lib/trivia-match';
 import { PEER_CONFIG } from '@/lib/p2p';
-import { LOCAL_CATEGORIES, categoryQuip, pickLocalQuestion, revealQuip, roundEndLine, ROUND_INTROS } from '@/lib/trivia-local';
+import { LOCAL_CATEGORIES, categoryQuip, pickLocalQuestion, revealQuip, roundEndLine, ROUND_INTROS, ROULETTE_LINES } from '@/lib/trivia-local';
 
 type Player = 'p1' | 'p2';
 type Category = { id: number; name: string };
@@ -44,9 +44,9 @@ function Scorebug({ p1Name, p2Name, p1Score, p2Score, round, qIndex, lastCall, f
 }
 
 // Badges over the question: heat, doubles, power rounds, streaks.
-function MatchBadges({ difficulty, isDouble, powerForMe, streak, lastCall }: { difficulty?: string; isDouble: boolean; powerForMe: boolean; streak: number; lastCall?: boolean }) {
+function MatchBadges({ difficulty, isDouble, powerForMe, streak, lastCall, roulette }: { difficulty?: string; isDouble: boolean; powerForMe: boolean; streak: number; lastCall?: boolean; roulette?: boolean }) {
   return <div className="trivia-badges">
-    {lastCall ? <span className="trivia-badge trivia-badge--hot">⚡ SUDDEN DEATH</span> : difficulty ? <span className={`trivia-badge trivia-badge--${difficulty}`}>{difficulty === 'house' ? '🏠 HOUSE' : `${difficulty.toUpperCase()} HEAT`}</span> : null}
+    {roulette ? <span className="trivia-badge trivia-badge--roulette">🎰 CHESTER'S ROULETTE · TRIPLE POINTS</span> : lastCall ? <span className="trivia-badge trivia-badge--hot">⚡ SUDDEN DEATH</span> : difficulty ? <span className={`trivia-badge trivia-badge--${difficulty}`}>{difficulty === 'house' ? '🏠 HOUSE' : `${difficulty.toUpperCase()} HEAT`}</span> : null}
     {isDouble && <span className="trivia-badge trivia-badge--double">⭐ WORTH DOUBLE</span>}
     {powerForMe && <span className="trivia-badge trivia-badge--power">🔥 YOUR POWER ROUND</span>}
     {streak >= 2 && <span className="trivia-badge trivia-badge--streak">🎳 ON A ROLL x{streak}</span>}
@@ -85,6 +85,7 @@ function RevealCards({ p1Name, p2Name, answers, result }: { p1Name: string; p2Na
       <span className="trivia-reveal-card__points">
         {points > 0 ? `+${points}` : '+0'}
         {result.double && correct ? ' · ⭐ DOUBLE' : ''}
+        {result.roulette && correct ? ' · 🎰 ROULETTE' : ''}
         {result.powerPlayers.includes(player) && correct ? ' · 🔥 POWER' : ''}
         {streakBonus ? ' · 🎳 ROLL +1' : ''}
         {stole ? ' · 🤑 STOLEN' : ''}
@@ -420,7 +421,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>The categories are locked.</h2><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : 'Awaiting Player One to begin the Brawl.') : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => void patchRoom({ start: true })}>START THE BRAWL</button>}</section>
     : room.phase === 'finished' ? <section className="trivia-brawl-question"><h2>{room.score.p1} - {room.score.p2}</h2><p>{room.score.p1 === room.score.p2 ? 'A dead heat. Chester demands a rematch - the pub insists.' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} wins the tab. Chester raises a glass to you both.`}</p>{(series.p1 + series.p2 + series.draws) > 0 && <p className="trivia-series">SERIES · {room.names.p1} {series.p1} - {series.p2} {room.names.p2}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>}<button className="trivia-brawl-primary" onClick={() => void patchRoom({ rematch: true })}>🔁 REMATCH - SAME PUB, NEW QUESTIONS</button></section>
     : <section className="trivia-brawl-question">
-      <MatchBadges difficulty={room.lastCall ? undefined : room.roundMeta?.[room.round]?.difficulty} isDouble={room.isDoubleQuestion} powerForMe={room.powerRoundFor.includes(player)} streak={room.streak[player]} lastCall={room.lastCall} />
+      <MatchBadges difficulty={room.lastCall ? undefined : room.roundMeta?.[room.round]?.difficulty} isDouble={room.isDoubleQuestion} powerForMe={room.powerRoundFor.includes(player)} streak={room.streak[player]} lastCall={room.lastCall} roulette={Boolean(room.currentQuestion?.roulette)} />
       <span>{room.currentQuestion?.category}</span>
       <h2>{view.question || 'Chester is still scribbling this round...'}</h2>
       {room.phase === 'reveal' && room.result ? <>
@@ -686,6 +687,8 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     if (nextState.qIndex === 0) {
       const intro = nextState.lastCall ? 'LAST CALL. Sudden death - first slip buys the tab.' : ROUND_INTROS[Math.min(nextState.round, ROUND_INTROS.length - 1)][nextState.round % 2];
       setHostLine(`${intro} ${nameA}, you first.`);
+    } else if (currentQuestionOf(nextState)?.roulette) {
+      setHostLine(`${ROULETTE_LINES[nextState.qIndex % ROULETTE_LINES.length]} ${nameA}, you ring it in.`);
     } else {
       setHostLine(`Question ${nextState.qIndex + 1} of ${QUESTIONS_PER_ROUND}. ${nameA}, back to you.`);
     }
@@ -720,7 +723,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
       <button className="trivia-brawl-primary" disabled={picks.b.length !== 3} onClick={() => void buildGame()}>BELLYS UP - START ({picks.b.length}/3)</button></section>}
     {phase === 'building' && <section className="trivia-brawl-question"><h2>Pulling the pints...</h2><p>Hand-written shelves are instant. Online categories take a few seconds each - later rounds pour while you play.</p></section>}
     {(phase === 'askA' || phase === 'askB') && match && q && <section className="trivia-brawl-question">
-      <MatchBadges difficulty={match.lastCall ? undefined : match.rounds[match.round]?.difficulty} isDouble={match.doubleQuestions.includes(`${match.round}:${match.qIndex}`)} powerForMe={match.power[activePlayer] === match.rounds[match.round]?.categoryId} streak={match.streak[activePlayer]} lastCall={match.lastCall} />
+      <MatchBadges difficulty={match.lastCall ? undefined : match.rounds[match.round]?.difficulty} isDouble={match.doubleQuestions.includes(`${match.round}:${match.qIndex}`)} powerForMe={match.power[activePlayer] === match.rounds[match.round]?.categoryId} streak={match.streak[activePlayer]} lastCall={match.lastCall} roulette={Boolean(activeView?.roulette)} />
       <span>{q.category} · {answeringName} to answer</span><h2>{view.question}</h2>
       <div className="trivia-brawl-answers">{view.answers.map((option, index) => { const raw = activeView?.answers[index] ?? option; return <button key={`${index}-${raw}`} onClick={() => answerFor(activePlayer, raw)}>{option}</button>; })}</div>
       <WildcardBar cardsUsed={match.cardsUsed[activePlayer]} activeCards={match.activeCards[activePlayer]} canPlayAnswers={!match.answers[activePlayer] && Boolean(q)} canShakespeare={!match.lastCall && match.round < MATCH_ROUNDS - 1} onPlay={(card) => playCard(activePlayer, card)} />

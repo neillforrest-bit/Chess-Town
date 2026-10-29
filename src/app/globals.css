@@ -3474,6 +3474,7 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
 .trivia-badge--medium { border-color: rgba(255,216,77,.65); background: rgba(255,216,77,.12); color: var(--arena-gold); }
 .trivia-badge--hard, .trivia-badge--hot { border-color: rgba(244,63,122,.7); background: rgba(244,63,122,.14); color: #ffb8d9; }
 .trivia-badge--double { border-color: var(--arena-gold); background: rgba(255,216,77,.22); color: #fff4bd; animation: pulse 1.6s ease-in-out infinite; }
+.trivia-badge--roulette { border-color: #ff5ad9; background: rgba(255,90,217,.22); color: #ffd3f4; animation: pulse 1.1s ease-in-out infinite; letter-spacing: .04em; }
 .trivia-badge--power { border-color: #fb923c; background: rgba(251,146,60,.16); color: #ffd0a1; }
 .trivia-badge--streak { border-color: #34d399; background: rgba(52,211,153,.16); color: #a7f3d0; }
 .trivia-scorebug__q { display: block; margin-top: .15rem; color: var(--arena-paper); opacity: .75; font-size: .55rem; letter-spacing: .6px; }
