@@ -694,8 +694,11 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
 
   const rematch = () => { setPicks({ a: [], b: [] }); setPower({ a: null, b: null }); matchRef.current = null; setMatch(null); setError(''); setPhase('draftA'); setHostLine(`Rematch! ${nameA}, choose three new categories - and star your POWER round. ${nameB}, eyes shut.`); };
 
-  const view = match ? questionText(viewerQuestion(match, phase === 'askB' ? 'p2' : 'p1')) : { question: '', answers: [] };
   const activePlayer: Player = phase === 'askB' ? 'p2' : 'p1';
+  // One viewerQuestion per render: it shuffles and trims, so a second call inside the
+  // answer map can disagree with what is displayed and submit the wrong raw answer.
+  const activeView = match ? viewerQuestion(match, activePlayer) : null;
+  const view = activeView ? questionText(activeView) : { question: '', answers: [] };
   const answeringName = phase === 'askB' ? nameB : nameA;
   const q = match ? currentQuestionOf(match) : null;
 
@@ -719,7 +722,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     {(phase === 'askA' || phase === 'askB') && match && q && <section className="trivia-brawl-question">
       <MatchBadges difficulty={match.lastCall ? undefined : match.rounds[match.round]?.difficulty} isDouble={match.doubleQuestions.includes(`${match.round}:${match.qIndex}`)} powerForMe={match.power[activePlayer] === match.rounds[match.round]?.categoryId} streak={match.streak[activePlayer]} lastCall={match.lastCall} />
       <span>{q.category} · {answeringName} to answer</span><h2>{view.question}</h2>
-      <div className="trivia-brawl-answers">{view.answers.map((option, index) => { const view2 = viewerQuestion(match, activePlayer); const raw = view2?.answers[index] ?? option; return <button key={`${index}-${raw}`} onClick={() => answerFor(activePlayer, raw)}>{option}</button>; })}</div>
+      <div className="trivia-brawl-answers">{view.answers.map((option, index) => { const raw = activeView?.answers[index] ?? option; return <button key={`${index}-${raw}`} onClick={() => answerFor(activePlayer, raw)}>{option}</button>; })}</div>
       <WildcardBar cardsUsed={match.cardsUsed[activePlayer]} activeCards={match.activeCards[activePlayer]} canPlayAnswers={!match.answers[activePlayer] && Boolean(q)} canShakespeare={!match.lastCall && match.round < MATCH_ROUNDS - 1} onPlay={(card) => playCard(activePlayer, card)} />
     </section>}
     {phase === 'cover' && <section className="trivia-brawl-question"><h2>🔒 Answer locked</h2><p>Pass the phone to {nameB}. The question is hidden until you take it.</p>
