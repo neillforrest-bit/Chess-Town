@@ -732,7 +732,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
       <RevealCards p1Name={nameA} p2Name={nameB} answers={match.answers} result={match.result} />
       <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void next()}>{advancing ? 'POURING...' : match.lastCall ? (match.score.p1 === match.score.p2 ? 'NEXT DECIDER' : 'FINAL CALL') : match.qIndex + 1 >= QUESTIONS_PER_ROUND ? 'ROUND SUMMARY' : 'NEXT QUESTION'}</button></section>}
     {phase === 'roundEnd' && match && <section className="trivia-brawl-question"><h2>Round {match.round + 1} of {MATCH_ROUNDS} poured.</h2>
-      <p>{roundEndLine(match.round, nameA, nameB, match.score.p1, match.score.p2, match.lastCall)}</p>
+      <p>The ledger: {nameA} {match.score.p1} - {match.score.p2} {nameB}.</p>
       <button className="trivia-brawl-primary" disabled={advancing || !match.rounds[match.round + 1]?.ready} onClick={() => void next()}>{advancing ? 'POURING...' : !match.rounds[match.round + 1]?.ready ? 'CHESTER IS SCRIBBLING...' : match.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND'}</button></section>}
     {phase === 'finished' && match && <section className="trivia-brawl-question"><h2>{match.score.p1} - {match.score.p2}</h2>
       <p className="trivia-series">SERIES · {nameA} {series.a} - {series.b} {nameB}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>
