@@ -67,8 +67,8 @@ function shuffle<T>(arr: T[]): T[] {
 // Teams of 3, some of 2 when the headcount needs it, never more than 4 teams.
 export function sortIntoTeams(players: TeamPlayer[]): Team[] {
   const n = players.length;
-  let nTeams = Math.min(4, Math.max(2, Math.round(n / 3)));
-  while (nTeams > 2 && Math.ceil(n / nTeams) < 2) nTeams -= 1;
+  // Teams of 3, with 2s where the headcount needs them, never more than 4 teams.
+  const nTeams = Math.min(4, Math.max(2, Math.ceil(n / 3)));
   const shuffled = shuffle(players);
   const buckets: string[][] = Array.from({ length: nTeams }, () => []);
   shuffled.forEach((p, i) => buckets[i % nTeams].push(p.id));
