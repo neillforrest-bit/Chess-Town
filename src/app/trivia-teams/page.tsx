@@ -119,7 +119,7 @@ function CategoriesView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost
       {room.categoryIds.map((cid, i) => (
         <div key={cid} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '11px 4px', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.1)' : 'none', fontSize: 18, fontWeight: 800 }}>
           <span style={{ fontFamily: "'Lilita One', system-ui, sans-serif", color: '#ffd93b', width: 26 }}>{i + 1}</span>
-          {categoryName(cid)}
+          {displayCategory(cid)}
         </div>
       ))}
       {isHost && <button style={CSS.btn} onClick={onNext}>START ROUND 1</button>}
@@ -134,7 +134,7 @@ function QuestionView({ room, pid, isHost, secondsLeft, onAnswer, onReveal }: { 
   return (
     <>
       <div style={{ ...CSS.card, textAlign: 'center' }}>
-        <div style={{ fontSize: 14, opacity: 0.85 }}>Round {room.round + 1} of 5 - {categoryName(room.categoryIds[room.round])} - Question {room.qIndex + 1} of 5</div>
+        <div style={{ fontSize: 14, opacity: 0.85 }}>Round {room.round + 1} of 5 - {displayCategory(room.categoryIds[room.round])} - Question {room.qIndex + 1} of 5</div>
         <div style={{ fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 42, color: secondsLeft <= 5 ? '#ff6b6b' : '#ffd93b', marginTop: 4 }}>{secondsLeft}</div>
         <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.35, marginTop: 8 }}>{room.current?.question}</div>
         <div style={{ marginTop: 10, fontSize: 14, opacity: 0.9 }}>
@@ -145,7 +145,7 @@ function QuestionView({ room, pid, isHost, secondsLeft, onAnswer, onReveal }: { 
         {room.current?.options.map((opt, i) => {
           const picked = isHost ? false : undefined;
           return (
-            <button key={i} style={CSS.option(answered ? 'dim' : 'idle')} disabled={!captain || answered} onClick={() => onAnswer?.(i)}>
+            <button key={i} style={CSS.option((!captain || answered) ? 'dim' : 'idle')} disabled={!captain || answered} onClick={() => onAnswer?.(i)}>
               {String.fromCharCode(65 + i)}. {opt}
             </button>
           );
@@ -182,14 +182,27 @@ function RevealView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost: bo
   );
 }
 
+function rankRows(teams: { name: string; score: number; roundScores: number[]; playerIds: string[] }[]) {
+  const order = teams.map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
+  const top = order[0]?.t.score;
+  const tiedTop = order.filter((x) => x.t.score === top).length > 1;
+  let lastScore: number | null = null;
+  let lastRank = 0;
+  return order.map(({ t, i }, idx) => {
+    const rank = t.score === lastScore ? lastRank : idx + 1;
+    lastScore = t.score; lastRank = rank;
+    return { t, i, rank, soleLeader: rank === 1 && !tiedTop };
+  });
+}
+
 function ScoreboardView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost: boolean; onNext?: () => void }) {
-  const order = room.teams.map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
+  const rows = rankRows(room.teams);
   return (
     <div style={{ ...CSS.card, width: '100%', maxWidth: 430, boxSizing: 'border-box' }}>
       <div style={CSS.h2}>Scoreboard after round {room.round + 1}</div>
-      {order.map(({ t, i }, rank) => (
-        <div key={t.name} style={CSS.scoreRow(rank === 0)}>
-          <span>{rank === 0 ? '👑 ' : `${rank + 1}. `}{t.name}</span>
+      {rows.map(({ t, rank, soleLeader }) => (
+        <div key={t.name} style={CSS.scoreRow(soleLeader)}>
+          <span>{soleLeader ? '👑 ' : `${rank}. `}{t.name}</span>
           <span>{t.score} pts <span style={{ opacity: 0.7, fontWeight: 600, fontSize: 14 }}>(+{t.roundScores[room.round] ?? 0})</span></span>
         </div>
       ))}
@@ -199,16 +212,16 @@ function ScoreboardView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost
 }
 
 function FinalView({ room, isHost, onAgain }: { room: PublicTeamRoom; isHost: boolean; onAgain?: () => void }) {
-  const order = room.teams.map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
-  const top = order[0]?.t;
-  const tied = order.length > 1 && order[1].t.score === top?.score;
+  const rows = rankRows(room.teams);
+  const tied = rows.filter((r) => r.rank === 1).length > 1;
+  const winners = rows.filter((r) => r.rank === 1).map((r) => r.t.name);
   return (
     <div style={{ ...CSS.card, width: '100%', maxWidth: 430, boxSizing: 'border-box', textAlign: 'center' }}>
       <div style={{ fontSize: 54 }}>{tied ? '🤝' : '🏆'}</div>
-      <div style={CSS.h1}>{tied ? "IT'S A TIE!" : `${top?.name} WIN!`}</div>
-      {order.map(({ t }, rank) => (
-        <div key={t.name} style={CSS.scoreRow(rank === 0)}>
-          <span>{rank === 0 ? '👑 ' : `${rank + 1}. `}{t.name}</span><span>{t.score} pts</span>
+      <div style={CSS.h1}>{tied ? "IT'S A TIE!" : `${winners[0]} WIN!`}</div>
+      {rows.map(({ t, rank, soleLeader }) => (
+        <div key={t.name} style={CSS.scoreRow(soleLeader || (tied && rank === 1))}>
+          <span>{soleLeader ? '👑 ' : `${rank}. `}{t.name}</span><span>{t.score} pts</span>
         </div>
       ))}
       {isHost && <button style={CSS.btn} onClick={onAgain}>PLAY AGAIN - NEW TEAMS</button>}
@@ -363,7 +376,7 @@ function TeamTriviaInner() {
   };
   const hostStartRound = (roundIdx: number) => {
     const r = roomRef.current; if (!r) return;
-    const next: TeamRoom = { ...r, phase: 'question', round: roundIdx, qIndex: 0, answers: {}, hostLine: line(LINES.ROUND_LINES, { n: String(roundIdx + 1), cat: categoryName(r.categoryIds[roundIdx]) }) };
+    const next: TeamRoom = { ...r, phase: 'question', round: roundIdx, qIndex: 0, answers: {}, hostLine: line(LINES.ROUND_LINES, { n: String(roundIdx + 1), cat: displayCategory(r.categoryIds[roundIdx]) }) };
     setHostRoom(next);
     startQuestionTimer(next);
   };
@@ -502,14 +515,18 @@ function TeamTriviaInner() {
   } else if (isHost && room) {
     body = (
       <>
-        <div style={CSS.card}>
-          <div style={{ fontSize: 15, opacity: 0.85, textAlign: 'center' }}>Everyone joins on their phone at</div>
-          <div style={{ ...CSS.code, fontSize: 22, letterSpacing: 2, wordBreak: 'break-all' }}>{shareUrl.replace('https://', '')}</div>
-          <div style={{ textAlign: 'center', fontSize: 14, opacity: 0.85 }}>or enter the code</div>
-          <div style={CSS.code}>{room.code}</div>
-          <button style={CSS.btnGhost} onClick={doShare}>SHARE INVITE LINK</button>
-          {shareMsg && <div style={{ textAlign: 'center', marginTop: 8, color: '#78e08f', fontWeight: 800 }}>{shareMsg}</div>}
-        </div>
+        {(room.phase === 'lobby' || room.phase === 'teams') ? (
+          <div style={CSS.card}>
+            <div style={{ fontSize: 15, opacity: 0.85, textAlign: 'center' }}>Everyone joins on their phone at</div>
+            <div style={{ ...CSS.code, fontSize: 22, letterSpacing: 2, wordBreak: 'break-all' }}>{shareUrl.replace('https://', '')}</div>
+            <div style={{ textAlign: 'center', fontSize: 14, opacity: 0.85 }}>or enter the code</div>
+            <div style={CSS.code}>{room.code}</div>
+            <button style={CSS.btnGhost} onClick={doShare}>SHARE INVITE LINK</button>
+            {shareMsg && <div style={{ textAlign: 'center', marginTop: 8, color: '#78e08f', fontWeight: 800 }}>{shareMsg}</div>}
+          </div>
+        ) : (
+          <div style={{ marginTop: 10, fontSize: 14, opacity: 0.75 }}>Room code <b style={{ letterSpacing: 2 }}>{room.code}</b> - <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={doShare}>{shareMsg || 'share link'}</span></div>
+        )}
         {room.phase === 'lobby' && <LobbyView room={shown!} isHost onSort={hostSort} onRemove={hostRemove} onJoinHost={hostJoinAsPlayer} onLeaveHost={hostLeaveAsPlayer} hostName={hostName} setHostName={setHostName} />}
         {room.phase === 'teams' && <TeamsView room={shown!} isHost onNext={hostShowCategories} />}
         {room.phase === 'categories' && <CategoriesView room={shown!} isHost onNext={() => hostStartRound(0)} />}
@@ -550,6 +567,10 @@ function TeamTriviaInner() {
       {error && agreed && <div style={{ marginTop: 10, color: '#ffb0b0', fontWeight: 700, maxWidth: 430 }}>{error}</div>}
     </div>
   );
+}
+
+function displayCategory(id: number): string {
+  return categoryName(id).replace(/^[^A-Za-z0-9]+/, '');
 }
 
 export default function TeamTriviaPage() {

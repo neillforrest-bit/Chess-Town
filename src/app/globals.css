@@ -1218,6 +1218,8 @@ body {
 /* Broadcast-room treatment for the board and Chester's commentary surfaces. */
 .portal-card--violet {
   --portal: #c8a6ff;
+  position: relative;
+  padding-top: 2rem !important;
   background: linear-gradient(135deg, rgba(200, 166, 255, .2), #13091d 58%, rgba(255, 216, 77, .1));
 }
 .portal-card--violet::after {
