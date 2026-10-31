@@ -474,7 +474,9 @@ function TeamTriviaInner() {
   };
   const hostStartRound = (roundIdx: number) => {
     const r = roomRef.current; if (!r) return;
-    const next: TeamRoom = { ...r, phase: 'question', round: roundIdx, qIndex: 0, answers: {}, hostLine: line(LINES.ROUND_LINES, { n: String(roundIdx + 1), cat: displayCategory(r.categoryIds[roundIdx]) }) };
+    // Round lines are indexed to the round (the fifth says "Final round") - never random.
+    const roundLine = LINES.ROUND_LINES[Math.min(roundIdx, LINES.ROUND_LINES.length - 1)].replaceAll('{n}', String(roundIdx + 1)).replaceAll('{cat}', displayCategory(r.categoryIds[roundIdx]));
+    const next: TeamRoom = { ...r, phase: 'question', round: roundIdx, qIndex: 0, answers: {}, hostLine: roundLine };
     setHostRoom(next);
     startQuestionTimer(next);
   };
