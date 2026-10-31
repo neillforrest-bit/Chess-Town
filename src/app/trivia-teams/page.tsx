@@ -145,7 +145,7 @@ function QuestionView({ room, pid, isHost, secondsLeft, onAnswer, onReveal }: { 
         {room.current?.options.map((opt, i) => {
           const picked = isHost ? false : undefined;
           return (
-            <button key={i} style={CSS.option(answered && !isHost ? 'dim' : 'idle')} disabled={isHost || !captain || answered} onClick={() => onAnswer?.(i)}>
+            <button key={i} style={CSS.option(answered ? 'dim' : 'idle')} disabled={!captain || answered} onClick={() => onAnswer?.(i)}>
               {String.fromCharCode(65 + i)}. {opt}
             </button>
           );
@@ -400,6 +400,12 @@ function TeamTriviaInner() {
     const r = roomRef.current; if (!r || r.phase !== 'lobby') return;
     setHostRoom({ ...r, players: r.players.filter((p) => p.id !== HOST_PLAYER_ID) });
   };
+  // Fallback: the sort always moves the host behind a teammate, but if the host
+  // is ever their team's captain, they can answer here without losing host controls.
+  const hostAnswer = (choice: number) => {
+    const r = roomRef.current; if (!r) return;
+    hostApply({ type: 'answer', pid: HOST_PLAYER_ID, teamIdx: teamOf(r, HOST_PLAYER_ID), choice }, null);
+  };
   const hostRemove = (pid: string) => {
     const r = roomRef.current; if (!r || r.phase !== 'lobby') return;
     setHostRoom({ ...r, players: r.players.filter((p) => p.id !== pid) });
@@ -507,7 +513,7 @@ function TeamTriviaInner() {
         {room.phase === 'lobby' && <LobbyView room={shown!} isHost onSort={hostSort} onRemove={hostRemove} onJoinHost={hostJoinAsPlayer} onLeaveHost={hostLeaveAsPlayer} hostName={hostName} setHostName={setHostName} />}
         {room.phase === 'teams' && <TeamsView room={shown!} isHost onNext={hostShowCategories} />}
         {room.phase === 'categories' && <CategoriesView room={shown!} isHost onNext={() => hostStartRound(0)} />}
-        {room.phase === 'question' && <QuestionView room={shown!} pid={null} isHost secondsLeft={secondsLeft} onReveal={hostReveal} />}
+        {room.phase === 'question' && <QuestionView room={shown!} pid={room.players.some((p) => p.id === HOST_PLAYER_ID) ? HOST_PLAYER_ID : null} isHost secondsLeft={secondsLeft} onReveal={() => hostReveal()} onAnswer={hostAnswer} />}
         {room.phase === 'reveal' && <RevealView room={shown!} isHost onNext={hostNextAfterReveal} />}
         {room.phase === 'scoreboard' && <ScoreboardView room={shown!} isHost onNext={hostNextAfterScore} />}
         {room.phase === 'final' && <FinalView room={shown!} isHost onAgain={hostAgain} />}
