@@ -255,8 +255,8 @@ function TeamTriviaInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const hostReveal = useCallback(() => {
-    const r = roomRef.current;
+  const hostReveal = useCallback((base?: TeamRoom) => {
+    const r = base || roomRef.current;
     if (!r || r.phase !== 'question') return;
     clearTimer();
     const q = roundsRef.current?.[r.round]?.[r.qIndex];
@@ -300,8 +300,8 @@ function TeamTriviaInner() {
       (window as any).__qa.push({ t: Date.now(), dir: 'accept', pid: msg.pid, teamIdx: t, choice: msg.choice });
       const next = { ...r, answers: { ...r.answers, [t]: msg.choice } };
       setHostRoom(next);
-      // All teams locked in? Reveal early.
-      if (next.teams.every((_, i) => (next.answers[i] ?? null) !== null)) hostReveal();
+      // All teams locked in? Reveal early - score from `next`, not the stale ref.
+      if (next.teams.every((_, i) => (next.answers[i] ?? null) !== null)) hostReveal(next);
       return;
     }
   }, [broadcast, hostReveal, setHostRoom]);
