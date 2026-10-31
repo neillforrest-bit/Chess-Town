@@ -18,6 +18,7 @@ import {
 
 const QUESTION_SECONDS = 25;
 const MAX_PLAYERS = 12;
+const HOST_PLAYER_ID = 'HOST-DEVICE';
 const MIN_PLAYERS = 4;
 
 type GuestMsg =
@@ -58,7 +59,7 @@ function Chester({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LobbyView({ room, isHost, onSort, onRemove }: { room: PublicTeamRoom; isHost: boolean; onSort?: () => void; onRemove?: (pid: string) => void }) {
+function LobbyView({ room, isHost, onSort, onRemove, onJoinHost, onLeaveHost, hostName, setHostName }: { room: PublicTeamRoom; isHost: boolean; onSort?: () => void; onRemove?: (pid: string) => void; onJoinHost?: (n: string) => void; onLeaveHost?: () => void; hostName?: string; setHostName?: (v: string) => void }) {
   return (
     <>
       <div style={CSS.card}>
@@ -68,6 +69,19 @@ function LobbyView({ room, isHost, onSort, onRemove }: { room: PublicTeamRoom; i
         ))}
         {!room.players.length && <div style={{ opacity: 0.7 }}>Waiting for players to join...</div>}
       </div>
+      {isHost && onJoinHost && (
+        <div style={{ ...CSS.card }}>
+          <div style={{ fontSize: 15, opacity: 0.9, marginBottom: 6 }}>Playing too, host? Add yourself - you run the board, so your team's captain taps for you.</div>
+          {!room.players.some((p) => p.id === HOST_PLAYER_ID) ? (
+            <>
+              <input style={CSS.input} placeholder="Your name (optional)" maxLength={16} value={hostName || ''} onChange={(e) => setHostName?.(e.target.value)} />
+              <button style={{ ...CSS.btnGhost, opacity: (hostName || '').trim() ? 1 : 0.5 }} disabled={!(hostName || '').trim()} onClick={() => onJoinHost(hostName || '')}>JOIN AS A PLAYER</button>
+            </>
+          ) : (
+            <button style={CSS.btnGhost} onClick={onLeaveHost}>You're in as {room.players.find((p) => p.id === HOST_PLAYER_ID)?.name} - tap to leave</button>
+          )}
+        </div>
+      )}
       {isHost && (
         <button style={{ ...CSS.btn, opacity: room.players.length >= MIN_PLAYERS ? 1 : 0.5 }} disabled={room.players.length < MIN_PLAYERS} onClick={onSort}>
           SORT INTO TEAMS
@@ -215,6 +229,7 @@ function TeamTriviaInner() {
   const [agreed, setAgreed] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(QUESTION_SECONDS);
   const [shareMsg, setShareMsg] = useState('');
+  const [hostName, setHostName] = useState('');
 
   const pidRef = useRef<string>('');
   if (!pidRef.current) pidRef.current = typeof window !== 'undefined' ? (sessionStorage.getItem('ct-teams-pid') || (() => { const v = uid(); sessionStorage.setItem('ct-teams-pid', v); return v; })()) : uid();
@@ -230,9 +245,7 @@ function TeamTriviaInner() {
   // ---------- HOST ----------
   const broadcast = useCallback((r: TeamRoom) => {
     const pub = publicView(r, roundsRef.current);
-    let sent = 0;
-    for (const [pid, link] of linksRef.current.entries()) { try { link.send({ type: 'room', room: pub }); sent += 1; } catch { /* gone */ } }
-    if (typeof window !== 'undefined') { (window as any).__qa = (window as any).__qa || []; (window as any).__qa.push({ t: Date.now(), dir: 'tx', phase: r.phase, round: r.round, q: r.qIndex, sent, links: linksRef.current.size }); }
+    for (const link of linksRef.current.values()) { try { link.send({ type: 'room', room: pub }); } catch { /* gone */ } }
   }, []);
 
   const setHostRoom = useCallback((r: TeamRoom) => {
@@ -273,7 +286,6 @@ function TeamTriviaInner() {
 
   const hostApply = useCallback((msg: GuestMsg, link: any) => {
     const r = roomRef.current;
-    if (typeof window !== 'undefined') { (window as any).__qa = (window as any).__qa || []; (window as any).__qa.push({ t: Date.now(), dir: 'rx', msg: msg?.type, pid: (msg as any)?.pid, phase: r?.phase, answers: r ? JSON.stringify(r.answers) : '-' }); }
     if (!r) return;
     if (msg.type === 'ping') { try { link?.send({ type: 'pong' }); } catch { /* gone */ } return; }
     if (msg.type === 'join') {
@@ -291,13 +303,11 @@ function TeamTriviaInner() {
       return;
     }
     if (msg.type === 'answer') {
-      const qa = (reason: string) => { if (typeof window !== 'undefined') { (window as any).__qa.push({ t: Date.now(), dir: 'reject', reason, pid: msg.pid, teamIdx: msg.teamIdx, phase: r.phase, answers: JSON.stringify(r.answers) }); } };
-      if (r.phase !== 'question') { qa('phase'); return; }
+      if (r.phase !== 'question') return;
       const t = teamOf(r, msg.pid);
-      if (t < 0 || t !== msg.teamIdx) { qa('team-mismatch t=' + t); return; }
-      if (!isCaptain(r, msg.pid)) { qa('not-captain'); return; }
-      if ((r.answers[t] ?? null) !== null) { qa('already-answered'); return; }
-      (window as any).__qa.push({ t: Date.now(), dir: 'accept', pid: msg.pid, teamIdx: t, choice: msg.choice });
+      if (t < 0 || t !== msg.teamIdx) return;
+      if (!isCaptain(r, msg.pid)) return;
+      if ((r.answers[t] ?? null) !== null) return;
       const next = { ...r, answers: { ...r.answers, [t]: msg.choice } };
       setHostRoom(next);
       // All teams locked in? Reveal early - score from `next`, not the stale ref.
@@ -336,7 +346,14 @@ function TeamTriviaInner() {
   // ---------- HOST flow actions ----------
   const hostSort = () => {
     const r = roomRef.current; if (!r) return;
-    setHostRoom({ ...r, phase: 'teams', teams: sortIntoTeams(r.players), hostLine: line(LINES.TEAM_LINES) });
+    // The host device runs the reveal controls, so a host who plays never captains:
+    // move them to the back of their team so a phone-holding teammate taps answers.
+    const teams = sortIntoTeams(r.players).map((t) => {
+      const i = t.playerIds.indexOf(HOST_PLAYER_ID);
+      if (i === 0 && t.playerIds.length > 1) return { ...t, playerIds: [...t.playerIds.slice(1), t.playerIds[0]] };
+      return t;
+    });
+    setHostRoom({ ...r, phase: 'teams', teams, hostLine: line(LINES.TEAM_LINES) });
   };
   const hostShowCategories = () => {
     const r = roomRef.current; if (!r) return;
@@ -373,6 +390,16 @@ function TeamTriviaInner() {
     roundsRef.current = null;
     setHostRoom({ ...freshRoom(r.code), players: r.players, asked, hostLine: 'Same legends, fresh teams! Sorting when you are ready.' });
   };
+  const hostJoinAsPlayer = (hostName: string) => {
+    const r = roomRef.current; if (!r || r.phase !== 'lobby') return;
+    if (r.players.some((p) => p.id === HOST_PLAYER_ID)) return;
+    if (r.players.length >= MAX_PLAYERS) return;
+    setHostRoom({ ...r, players: [...r.players, { id: HOST_PLAYER_ID, name: hostName.trim().slice(0, 16) || 'Host' }] });
+  };
+  const hostLeaveAsPlayer = () => {
+    const r = roomRef.current; if (!r || r.phase !== 'lobby') return;
+    setHostRoom({ ...r, players: r.players.filter((p) => p.id !== HOST_PLAYER_ID) });
+  };
   const hostRemove = (pid: string) => {
     const r = roomRef.current; if (!r || r.phase !== 'lobby') return;
     setHostRoom({ ...r, players: r.players.filter((p) => p.id !== pid) });
@@ -392,7 +419,6 @@ function TeamTriviaInner() {
           link.send({ type: 'join', pid: pidRef.current, name });
         });
         link.on('data', (msg: any) => {
-          if (typeof window !== 'undefined') { (window as any).__qa = (window as any).__qa || []; (window as any).__qa.push({ t: Date.now(), dir: 'guest-rx', msg: msg?.type, phase: msg?.room?.phase, round: msg?.room?.round, q: msg?.room?.qIndex }); }
           if (msg?.type === 'room') setView(msg.room as PublicTeamRoom);
           if (msg?.type === 'guest-error') setError(String(msg.message || 'Could not join that quiz.'));
           if (msg?.type === 'ping') { try { link.send({ type: 'pong' }); } catch { /* gone */ } }
@@ -478,7 +504,7 @@ function TeamTriviaInner() {
           <button style={CSS.btnGhost} onClick={doShare}>SHARE INVITE LINK</button>
           {shareMsg && <div style={{ textAlign: 'center', marginTop: 8, color: '#78e08f', fontWeight: 800 }}>{shareMsg}</div>}
         </div>
-        {room.phase === 'lobby' && <LobbyView room={shown!} isHost onSort={hostSort} onRemove={hostRemove} />}
+        {room.phase === 'lobby' && <LobbyView room={shown!} isHost onSort={hostSort} onRemove={hostRemove} onJoinHost={hostJoinAsPlayer} onLeaveHost={hostLeaveAsPlayer} hostName={hostName} setHostName={setHostName} />}
         {room.phase === 'teams' && <TeamsView room={shown!} isHost onNext={hostShowCategories} />}
         {room.phase === 'categories' && <CategoriesView room={shown!} isHost onNext={() => hostStartRound(0)} />}
         {room.phase === 'question' && <QuestionView room={shown!} pid={null} isHost secondsLeft={secondsLeft} onReveal={hostReveal} />}
