@@ -15,11 +15,65 @@ type GameReport = { gradeHistory: GradedMove[] };
 function PlayChesterGame() {
   const searchParams = useSearchParams();
   const requestedMode = searchParams.get('mode');
-  const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
+  const challengeRoom = (searchParams.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
+  const isRemoteDuel = requestedMode === '1v1' && challengeRoom.length > 0;
+  const mode = isRemoteDuel ? 'PVP_REMOTE' : requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
+  const [remoteRole, setRemoteRole] = useState<'w' | 'b' | null>(null);
+  const [remoteStatus, setRemoteStatus] = useState(isRemoteDuel ? 'OPENING CHALLENGE ROOM...' : '');
+
+  useEffect(() => {
+    if (!isRemoteDuel) return;
+    let cancelled = false;
+    let peer: any = null;
+    let connection: any = null;
+    const configure = (conn: any, role: 'w' | 'b') => {
+      connection = conn;
+      conn.on('open', () => {
+        if (cancelled) return;
+        setRemoteRole(role);
+        setRemoteStatus(role === 'w' ? 'CHALLENGER CONNECTED - YOU ARE WHITE' : 'CONNECTED - YOU ARE BLACK');
+      });
+      conn.on('data', (data: any) => {
+        if (data?.type === 'move') window.dispatchEvent(new CustomEvent('remote-chess-move', { detail: data }));
+      });
+      conn.on('close', () => { if (!cancelled) setRemoteStatus('OPPONENT DISCONNECTED'); });
+      conn.on('error', () => { if (!cancelled) setRemoteStatus('CONNECTION INTERRUPTED - REOPEN THE LINK'); });
+    };
+    const sendLocal = (event: Event) => connection?.open && connection.send({ type: 'move', ...(event as CustomEvent).detail });
+    window.addEventListener('local-chess-move', sendLocal);
+    void import('peerjs').then(({ default: Peer }) => {
+      if (cancelled) return;
+      // First device to claim the room id hosts (plays white); the second joins as black.
+      peer = new Peer(`chess-town-${challengeRoom}`);
+      peer.on('open', () => { if (!cancelled) setRemoteStatus('ROOM OPEN - SHARE THE LINK, YOU ARE WHITE'); });
+      peer.on('connection', (conn: any) => configure(conn, 'w'));
+      peer.on('error', (err: any) => {
+        if (cancelled) return;
+        if (err?.type === 'unavailable-id') {
+          peer?.destroy?.();
+          peer = new Peer();
+          peer.on('open', () => {
+            if (cancelled) return;
+            setRemoteStatus('JOINING CHALLENGE...');
+            configure(peer.connect(`chess-town-${challengeRoom}`, { reliable: true }), 'b');
+          });
+          peer.on('error', () => { if (!cancelled) setRemoteStatus('COULD NOT JOIN - ASK FOR A FRESH LINK'); });
+        } else {
+          setRemoteStatus('COULD NOT OPEN THE ROOM - TRY AGAIN');
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.removeEventListener('local-chess-move', sendLocal);
+      try { connection?.close?.(); } catch {}
+      try { peer?.destroy?.(); } catch {}
+    };
+  }, [isRemoteDuel, challengeRoom]);
   // Onboarding skill (set on /chess): tailors Chester's opening and the engine level.
   const skill = searchParams.get('skill') || '';
   const difficulty = skill === 'good' ? 'EXPERT' : skill === 'decent' ? 'INTERMEDIATE' : 'BEGINNER';
-  const opponentLabel = mode === 'PVP_LOCAL' ? 'YOUR RIVAL' : mode === '2V2' ? "CHESTER'S CHAOS CREW" : 'CHESTER';
+  const opponentLabel = mode === 'PVP_REMOTE' ? 'REMOTE CHALLENGER' : mode === 'PVP_LOCAL' ? 'YOUR RIVAL' : mode === '2V2' ? "CHESTER'S CHAOS CREW" : 'CHESTER';
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const openingLines: Record<string, string> = {
     never: "Welcome! Tap any white piece and I'll light up where it can move. I'll coach you through your very first game.",
@@ -65,8 +119,8 @@ function PlayChesterGame() {
   }, [report]);
 
   return <>
-    <ChessGameBoardShell capturedPieces={capturedPieces} commentary={commentary} isThinking={isThinking} opponentLabel={opponentLabel} opponentStatus={mode === 'PVP_LOCAL' ? 'LOCAL 1V1 DUEL' : mode === '2V2' ? '2V2 CHAOS' : 'LIVE ENGINE'} helpText="Start with checks, captures, and threats. Then choose the move that improves your center control or development without exposing your king." chatContext={`Chess Town game mode: ${mode}.`}>
-      <DojoEngine mode={mode} difficulty={difficulty} />
+    <ChessGameBoardShell capturedPieces={capturedPieces} commentary={commentary} isThinking={isThinking} opponentLabel={opponentLabel} opponentStatus={mode === 'PVP_REMOTE' ? (remoteStatus || 'CONNECTING...') : mode === 'PVP_LOCAL' ? 'LOCAL 1V1 DUEL' : mode === '2V2' ? '2V2 CHAOS' : 'LIVE ENGINE'} helpText="Start with checks, captures, and threats. Then choose the move that improves your center control or development without exposing your king." chatContext={`Chess Town game mode: ${mode}.`}>
+      <DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? remoteRole : null} difficulty={difficulty} />
     </ChessGameBoardShell>
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} onClose={() => setReport(null)} />}
   </>;

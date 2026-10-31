@@ -383,8 +383,13 @@ function TeamTriviaInner() {
   const hostNextAfterReveal = () => {
     const r = roomRef.current; if (!r) return;
     if (r.qIndex >= 4) {
-      const leader = [...r.teams].sort((a, b) => b.score - a.score)[0];
-      setHostRoom({ ...r, phase: 'scoreboard', hostLine: line(LINES.SCORE_LINES, { n: String(r.round + 1), leader: leader?.name || 'Nobody' }) });
+      const sorted = [...r.teams].sort((a, b) => b.score - a.score);
+      const leader = sorted[0];
+      const tied = sorted.length > 1 && sorted[1].score === leader?.score;
+      const hostLine = tied
+        ? `Scores after round ${r.round + 1}: dead level at the top. Nothing in it.`
+        : line(LINES.SCORE_LINES, { n: String(r.round + 1), leader: leader?.name || 'Nobody' });
+      setHostRoom({ ...r, phase: 'scoreboard', hostLine });
       return;
     }
     const next = { ...r, phase: 'question' as const, qIndex: r.qIndex + 1, answers: {}, hostLine: '' };
