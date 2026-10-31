@@ -15,6 +15,7 @@ export type DrawnQuestion = { question: string; options: string[]; correctIndex:
 
 export type TeamRoomPhase =
   | 'lobby'        // players joining
+  | 'sorting'      // dramatic shuffle in progress
   | 'teams'        // teams revealed, single screen
   | 'categories'   // the night's 5 categories, single screen
   | 'question'     // live question, captains answering
@@ -33,6 +34,7 @@ export type TeamRoom = {
   answers: Record<number, number | null>; // teamIdx -> option idx
   asked: string[];         // question texts already served (no repeats)
   hostLine: string;        // Chester's current line
+  expected?: number;       // host's expected headcount (joined vs missing)
   startedAt: number;
   updatedAt: number;
 };

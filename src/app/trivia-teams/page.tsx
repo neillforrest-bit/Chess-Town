@@ -59,11 +59,11 @@ function Chester({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LobbyView({ room, isHost, onSort, onRemove, onJoinHost, onLeaveHost, hostName, setHostName }: { room: PublicTeamRoom; isHost: boolean; onSort?: () => void; onRemove?: (pid: string) => void; onJoinHost?: (n: string) => void; onLeaveHost?: () => void; hostName?: string; setHostName?: (v: string) => void }) {
+function LobbyView({ room, isHost, onSort, onRemove, onJoinHost, onLeaveHost, hostName, setHostName, onExpected }: { room: PublicTeamRoom; isHost: boolean; onSort?: () => void; onRemove?: (pid: string) => void; onJoinHost?: (n: string) => void; onLeaveHost?: () => void; hostName?: string; setHostName?: (v: string) => void; onExpected?: (n: number) => void }) {
   return (
     <>
       <div style={CSS.card}>
-        <div style={{ fontSize: 15, opacity: 0.85, marginBottom: 6 }}>Players in the room ({room.players.length}/{MAX_PLAYERS})</div>
+        <div style={{ fontSize: 15, opacity: 0.85, marginBottom: 6 }}>{room.expected ? `${room.players.length} of ${room.expected} expected players in` : `Players in the room (${room.players.length}/${MAX_PLAYERS})`}{room.expected && room.players.length < room.expected ? ` - waiting on ${room.expected - room.players.length}` : room.expected ? ' - everyone is here!' : ''}</div>
         {room.players.map((p) => (
           <span key={p.id} style={CSS.pill}>{p.name}{isHost && onRemove ? <button onClick={() => onRemove(p.id)} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#ff9c9c', fontWeight: 900, cursor: 'pointer' }} aria-label={`Remove ${p.name}`}>x</button> : null}</span>
         ))}
@@ -82,13 +82,38 @@ function LobbyView({ room, isHost, onSort, onRemove, onJoinHost, onLeaveHost, ho
           )}
         </div>
       )}
+      {isHost && onExpected && (
+        <div style={{ ...CSS.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ fontSize: 15, opacity: 0.9 }}>How many players tonight?</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button style={{ ...CSS.btnGhost, width: 'auto', marginTop: 0, padding: '8px 14px' }} onClick={() => onExpected(Math.max(MIN_PLAYERS, (room.expected || MIN_PLAYERS) - 1))} aria-label="One fewer expected player">-</button>
+            <span style={{ fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 24, color: '#ffd93b', minWidth: 28, textAlign: 'center' }}>{room.expected || MIN_PLAYERS}</span>
+            <button style={{ ...CSS.btnGhost, width: 'auto', marginTop: 0, padding: '8px 14px' }} onClick={() => onExpected(Math.min(MAX_PLAYERS, (room.expected || MIN_PLAYERS) + 1))} aria-label="One more expected player">+</button>
+          </div>
+        </div>
+      )}
       {isHost && (
         <button style={{ ...CSS.btn, opacity: room.players.length >= MIN_PLAYERS ? 1 : 0.5 }} disabled={room.players.length < MIN_PLAYERS} onClick={onSort}>
-          SORT INTO TEAMS
+          {room.expected && room.players.length < room.expected ? `SORT ANYWAY (${room.expected - room.players.length} MISSING)` : 'SORT INTO TEAMS'}
         </button>
       )}
       {isHost && room.players.length < MIN_PLAYERS && <div style={{ marginTop: 8, fontSize: 14, opacity: 0.75 }}>Need at least {MIN_PLAYERS} players for teams.</div>}
     </>
+  );
+}
+
+function SortingView({ room }: { room: PublicTeamRoom }) {
+  const names = room.players.map((p) => p.name);
+  return (
+    <div style={{ ...CSS.card, width: '100%', maxWidth: 430, boxSizing: 'border-box', textAlign: 'center' }}>
+      <div style={{ fontSize: 54 }}>🎲</div>
+      <div style={CSS.h1}>SHUFFLING...</div>
+      <div style={{ fontSize: 16, opacity: 0.9, minHeight: 28 }}>
+        <span key={Math.floor(Date.now() / 300)} style={{ fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 22, color: '#ffd93b' }}>{names.length ? names[Math.floor(Date.now() / 300) % names.length] : ''}</span>
+      </div>
+      <div style={{ marginTop: 10, fontSize: 14, opacity: 0.75 }}>Teams, captains and names land together in a moment...</div>
+      <style>{`@keyframes ctShake{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}`}</style>
+    </div>
   );
 }
 
@@ -233,8 +258,10 @@ function TeamTriviaInner() {
   const params = useSearchParams();
   const router = useRouter();
   const joinCode = (params.get('room') || '').toUpperCase();
+  const isDemo = params.get('demo') === '1';
 
   const [role, setRole] = useState<'choose' | 'host' | 'guest'>(joinCode ? 'guest' : 'choose');
+  const [demoSeeded, setDemoSeeded] = useState(false);
   const [room, setRoom] = useState<TeamRoom | null>(null);        // host: full room
   const [view, setView] = useState<PublicTeamRoom | null>(null);  // guest: public view
   const [error, setError] = useState('');
@@ -251,6 +278,8 @@ function TeamTriviaInner() {
   const linksRef = useRef<Map<string, any>>(new Map()); // host: pid -> conn
   const guestLinkRef = useRef<any>(null);
   const roomRef = useRef<TeamRoom | null>(null);
+  const demoRef = useRef(false);
+  demoRef.current = isDemo;
   const roundsRef = useRef<DrawnQuestion[][] | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   roomRef.current = room;
@@ -359,14 +388,19 @@ function TeamTriviaInner() {
   // ---------- HOST flow actions ----------
   const hostSort = () => {
     const r = roomRef.current; if (!r) return;
-    // The host device runs the reveal controls, so a host who plays never captains:
-    // move them to the back of their team so a phone-holding teammate taps answers.
-    const teams = sortIntoTeams(r.players).map((t) => {
-      const i = t.playerIds.indexOf(HOST_PLAYER_ID);
-      if (i === 0 && t.playerIds.length > 1) return { ...t, playerIds: [...t.playerIds.slice(1), t.playerIds[0]] };
-      return t;
-    });
-    setHostRoom({ ...r, phase: 'teams', teams, hostLine: line(LINES.TEAM_LINES) });
+    // Drumroll first: everyone watches the shuffle, then teams land together.
+    setHostRoom({ ...r, phase: 'sorting', hostLine: 'Drumroll... Chester is shuffling the room!' });
+    setTimeout(() => {
+      const cur = roomRef.current; if (!cur || cur.phase !== 'sorting') return;
+      // The host device runs the reveal controls, so a host who plays never captains:
+      // move them to the back of their team so a phone-holding teammate taps answers.
+      const teams = sortIntoTeams(cur.players).map((t) => {
+        const i = t.playerIds.indexOf(HOST_PLAYER_ID);
+        if (i === 0 && t.playerIds.length > 1) return { ...t, playerIds: [...t.playerIds.slice(1), t.playerIds[0]] };
+        return t;
+      });
+      setHostRoom({ ...cur, phase: 'teams', teams, hostLine: line(LINES.TEAM_LINES) });
+    }, 4500);
   };
   const hostShowCategories = () => {
     const r = roomRef.current; if (!r) return;
@@ -398,7 +432,7 @@ function TeamTriviaInner() {
   };
   const hostNextAfterScore = () => {
     const r = roomRef.current; if (!r) return;
-    if (r.round >= 4) { setHostRoom({ ...r, phase: 'final', hostLine: 'What a quiz! Give the winners a huge cheer - and the losers a drink.' }); return; }
+    if (demoRef.current || r.round >= 4) { setHostRoom({ ...r, phase: 'final', hostLine: demoRef.current ? 'And that is how a quiz night flows! Host a real room to play for keeps.' : 'What a quiz! Give the winners a huge cheer - and the losers a drink.' }); return; }
     hostStartRound(r.round + 1);
   };
   const hostAgain = () => {
@@ -406,7 +440,7 @@ function TeamTriviaInner() {
     const asked = [...r.asked];
     roundsRef.current?.flat().forEach((q) => asked.push(q.question));
     roundsRef.current = null;
-    setHostRoom({ ...freshRoom(r.code), players: r.players, asked, hostLine: 'Same legends, fresh teams! Sorting when you are ready.' });
+    setHostRoom({ ...freshRoom(r.code), players: r.players, expected: r.expected, asked, hostLine: demoRef.current ? 'Demo reset - same pretend crowd, fresh teams!' : 'Same legends, fresh teams! Sorting when you are ready.' });
   };
   const hostJoinAsPlayer = (hostName: string) => {
     const r = roomRef.current; if (!r || r.phase !== 'lobby') return;
@@ -491,6 +525,19 @@ function TeamTriviaInner() {
 
   useEffect(() => () => { clearTimer(); try { peerRef.current?.destroy(); } catch { /* gone */ } }, []);
 
+  // Demo mode: pretend players answer on their own so the walkthrough flows.
+  useEffect(() => {
+    if (!isDemo || room?.phase !== 'question') return;
+    const t = setTimeout(() => {
+      const r = roomRef.current; if (!r || r.phase !== 'question') return;
+      const answers: Record<number, number | null> = {};
+      r.teams.forEach((_, i) => { answers[i] = Math.floor(Math.random() * 4); });
+      setHostRoom({ ...r, answers, hostLine: 'Huddles are locking in...' });
+    }, 5000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemo, room?.phase, room?.round, room?.qIndex]);
+
   // ---------- RENDER ----------
   const shown: PublicTeamRoom | null = role === 'host' && room ? publicView(room, roundsRef.current) : view;
   const isHost = role === 'host';
@@ -504,6 +551,11 @@ function TeamTriviaInner() {
         <div style={CSS.h2}>Team Trivia</div>
         <p style={{ margin: '6px 0 0', fontSize: 16, lineHeight: 1.5 }}>One phone hosts, everyone else joins on theirs. Random teams, five rounds, Chester in charge of the mic.</p>
         <button style={CSS.btn} onClick={startHost}>HOST A QUIZ</button>
+        <button style={CSS.btnGhost} onClick={() => {
+          setDemoSeeded(true);
+          setRole('host');
+          setRoom({ ...freshRoom('DEMO'), expected: 8, players: ['Jemma', 'Alfie', 'Grandma Pat', 'Uncle Rob', 'Sophie', 'Grandad Joe', 'Maisie', 'Tom'].map((n, i) => ({ id: `demo-${i}`, name: n })), hostLine: 'Demo night! This is a pretend room - nothing here is live.' });
+        }}>WATCH A DEMO (pretend players)</button>
         <button style={CSS.btnGhost} onClick={() => router.push('/trivia')}>Back to trivia menu</button>
       </div>
     );
@@ -520,7 +572,8 @@ function TeamTriviaInner() {
   } else if (isHost && room) {
     body = (
       <>
-        {(room.phase === 'lobby' || room.phase === 'teams') ? (
+        {isDemo && <div style={{ ...CSS.card, border: '2px dashed #ffd93b', textAlign: 'center', fontFamily: "'Lilita One', system-ui, sans-serif", color: '#ffd93b' }}>DEMO - pretend players, nothing here is live</div>}
+        {!isDemo && (room.phase === 'lobby' || room.phase === 'teams') ? (
           <div style={CSS.card}>
             <div style={{ fontSize: 15, opacity: 0.85, textAlign: 'center' }}>Everyone joins on their phone at</div>
             <div style={{ ...CSS.code, fontSize: 22, letterSpacing: 2, wordBreak: 'break-all' }}>{shareUrl.replace('https://', '')}</div>
@@ -532,7 +585,8 @@ function TeamTriviaInner() {
         ) : (
           <div style={{ marginTop: 10, fontSize: 14, opacity: 0.75 }}>Room code <b style={{ letterSpacing: 2 }}>{room.code}</b> - <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={doShare}>{shareMsg || 'share link'}</span></div>
         )}
-        {room.phase === 'lobby' && <LobbyView room={shown!} isHost onSort={hostSort} onRemove={hostRemove} onJoinHost={hostJoinAsPlayer} onLeaveHost={hostLeaveAsPlayer} hostName={hostName} setHostName={setHostName} />}
+        {room.phase === 'lobby' && <LobbyView room={shown!} isHost onSort={hostSort} onRemove={hostRemove} onJoinHost={hostJoinAsPlayer} onLeaveHost={hostLeaveAsPlayer} hostName={hostName} setHostName={setHostName} onExpected={(n) => { const r = roomRef.current; if (r && r.phase === 'lobby') setHostRoom({ ...r, expected: n }); }} />}
+        {room.phase === 'sorting' && <SortingView room={shown!} />}
         {room.phase === 'teams' && <TeamsView room={shown!} isHost onNext={hostShowCategories} />}
         {room.phase === 'categories' && <CategoriesView room={shown!} isHost onNext={() => hostStartRound(0)} />}
         {room.phase === 'question' && <QuestionView room={shown!} pid={room.players.some((p) => p.id === HOST_PLAYER_ID) ? HOST_PLAYER_ID : null} isHost secondsLeft={secondsLeft} onReveal={() => hostReveal()} onAnswer={hostAnswer} />}
@@ -551,6 +605,7 @@ function TeamTriviaInner() {
             <LobbyView room={shown} isHost={false} />
           </div>
         )}
+        {shown.phase === 'sorting' && <SortingView room={shown} />}
         {shown.phase === 'teams' && <TeamsView room={shown} isHost={false} />}
         {shown.phase === 'categories' && <CategoriesView room={shown} isHost={false} />}
         {shown.phase === 'question' && <QuestionView room={shown} pid={pid} isHost={false} secondsLeft={secondsLeft} onAnswer={guestAnswer} />}
