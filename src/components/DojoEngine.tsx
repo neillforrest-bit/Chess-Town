@@ -838,7 +838,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
                   const isWhite = piece.color === 'w';
                   const isMovedPiece = !isLastMoveInvisible && gameRef.current.lastMove?.to === squareName;
-                  const glowColor = isWhite ? '#39ff14' : '#ff007f';
+                  // Piece theme: 'metallic' (traditional black-v-white, his Oct 25 revision) is the
+                  // default across every mode; 'neon' keeps the original glow for anyone who picks it.
+                  const pieceTheme = (typeof window !== 'undefined' && window.localStorage.getItem('ct-piece-theme')) || 'metallic';
+                  const isMetallic = pieceTheme !== 'neon';
+                  const glowColor = isMetallic ? (isWhite ? '#e8edf2' : '#8a919c') : (isWhite ? '#39ff14' : '#ff007f');
                   const isNeonBlind = gameRef.current.neonBlindnessColor === piece.color;
                   const displayPieceType = gameRef.current.trojanPawnSquare === squareName ? 'p' : piece.type;
                   const royalTexture = displayPieceType === piece.type && (piece.type === 'q' || piece.type === 'k') ? royalCatTextures[piece.type] : undefined;
@@ -848,14 +852,14 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                       fontFamily: 'Georgia, Times New Roman, serif',
                       fontSize: '88px',
                       fontStyle: 'bold',
-                      color: isWhite ? '#dfffda' : '#ff4eb1',
-                      stroke: '#050008',
-                      strokeThickness: 7,
+                      color: isMetallic ? (isWhite ? '#f5f7fa' : '#2b2b31') : (isWhite ? '#dfffda' : '#ff4eb1'),
+                      stroke: isMetallic ? (isWhite ? '#6f7680' : '#c8cdd5') : '#050008',
+                      strokeThickness: isMetallic ? 4 : 7,
                       shadow: { blur: 34, color: glowColor, fill: true, offsetX: 0, offsetY: 0 },
                     }).setOrigin(0.5);
 
-                  const glowColorNumber = isWhite ? 0x39ff14 : 0xff007f;
-                  const glow = scene.add.circle(0, 0, tileSize * 0.44, glowColorNumber, 0.28);
+                  const glowColorNumber = isMetallic ? (isWhite ? 0xdde4ec : 0x565d68) : (isWhite ? 0x39ff14 : 0xff007f);
+                  const glow = scene.add.circle(0, 0, tileSize * 0.44, glowColorNumber, isMetallic ? 0.18 : 0.28);
                   
                   if (!isInvisible) {
                     container.add(isNeonBlind ? [glow] : [glow, pieceVisual]);

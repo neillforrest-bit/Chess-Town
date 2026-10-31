@@ -16,9 +16,19 @@ function PlayChesterGame() {
   const searchParams = useSearchParams();
   const requestedMode = searchParams.get('mode');
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode || 'COACH_OPENING';
+  // Onboarding skill (set on /chess): tailors Chester's opening and the engine level.
+  const skill = searchParams.get('skill') || '';
+  const difficulty = skill === 'good' ? 'EXPERT' : skill === 'decent' ? 'INTERMEDIATE' : 'BEGINNER';
   const opponentLabel = mode === 'PVP_LOCAL' ? 'YOUR RIVAL' : mode === '2V2' ? "CHESTER'S CHAOS CREW" : 'CHESTER';
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
-  const [commentary, setCommentary] = useState('Your board is live. Claim the center and make Chester work for his lunch.');
+  const openingLines: Record<string, string> = {
+    never: "Welcome! Tap any white piece and I'll light up where it can move. I'll coach you through your very first game.",
+    bit: "Welcome back to the board! I'll coach as we go - tap a piece to see your options.",
+    hard: "Deep breath - chess is just one good move at a time. Tap a piece, I'll show your options, and I'll explain every step.",
+    decent: 'A proper game, then. I play fair, I coach light, and I grade honestly. Your move.',
+    good: 'No mercy tonight. Full-strength Chester, honest grading. Show me what you have.',
+  };
+  const [commentary, setCommentary] = useState(openingLines[skill] || 'Your board is live. Claim the center and make Chester work for his lunch.');
   const [isThinking, setIsThinking] = useState(false);
   const [report, setReport] = useState<GameReport | null>(null);
   const [review, setReview] = useState('');
@@ -56,7 +66,7 @@ function PlayChesterGame() {
 
   return <>
     <ChessGameBoardShell capturedPieces={capturedPieces} commentary={commentary} isThinking={isThinking} opponentLabel={opponentLabel} opponentStatus={mode === 'PVP_LOCAL' ? 'LOCAL 1V1 DUEL' : mode === '2V2' ? '2V2 CHAOS' : 'LIVE ENGINE'} helpText="Start with checks, captures, and threats. Then choose the move that improves your center control or development without exposing your king." chatContext={`Chess Town game mode: ${mode}.`}>
-      <DojoEngine mode={mode} difficulty="INTERMEDIATE" />
+      <DojoEngine mode={mode} difficulty={difficulty} />
     </ChessGameBoardShell>
     {report && <ChesterReportCard grades={report.gradeHistory} review={review} isLoading={reviewLoading} onClose={() => setReport(null)} />}
   </>;

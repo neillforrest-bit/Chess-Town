@@ -15,7 +15,7 @@ export const LOCAL_CATEGORIES: LocalCategory[] = [
   ...SEASON_TWO_CATEGORIES,
 ];
 
-const BASE_QUESTIONS: Record<number, LocalQuestion[]> = {
+export const BASE_QUESTIONS: Record<number, LocalQuestion[]> = {
   [-1]: [
     { question: 'How many squares are there on a standard chessboard?', correct: '64', wrong: ['48', '72', '81'] },
     { question: 'Which piece can only ever move diagonally?', correct: 'The bishop', wrong: ['The knight', 'The rook', 'The queen'] },
