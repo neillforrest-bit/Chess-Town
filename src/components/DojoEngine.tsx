@@ -317,6 +317,8 @@ function getChesterDifficulty(difficulty: string) {
 
 export default function DojoEngine({ mode = 'STANDBY', playerColor = null, difficulty = 'INTERMEDIATE' }: { mode?: string; playerColor?: 'w' | 'b' | null; difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'CASUAL' | 'PRO' }) {
   const { p1Difficulty, p2Difficulty, setActiveChaosEvent } = useBrawlState();
+  const playerColorRef = useRef<'w' | 'b' | null>(playerColor);
+  playerColorRef.current = playerColor;
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserRef = useRef<Phaser.Game | null>(null);
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -343,6 +345,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
       phaserRef.current.destroy(true);
       phaserRef.current = null;
     }
+    containerRef.current.querySelectorAll('canvas').forEach((canvas) => canvas.remove());
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
@@ -742,7 +745,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const canControlPiece = (pieceColor: string) => {
             if (gameRef.current.isGameOver || pieceColor !== gameRef.current.chess.turn()) return false;
-            if (mode === 'PVP_REMOTE') return pieceColor === playerColor;
+            if (mode === 'PVP_REMOTE') return pieceColor === playerColorRef.current;
             if (mode === 'PVP_LOCAL') return true;
             return pieceColor === 'w';
           };
@@ -1102,7 +1105,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const handleRemoteMove = (event: any) => {
             if (mode !== 'PVP_REMOTE') return;
             const { from, to, fen } = event.detail || {};
-            if (from && to && gameRef.current.chess.turn() !== playerColor) {
+            if (from && to && gameRef.current.chess.turn() !== playerColorRef.current) {
               playUserMove(from, to, true);
               if (fen && gameRef.current.chess.fen() !== fen) {
                 gameRef.current.chess.load(fen);
@@ -1179,7 +1182,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
         phaserRef.current = null;
       }
     };
-  }, [mode, playerColor]);
+  }, [mode]);
 
   return <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} />;
 }
