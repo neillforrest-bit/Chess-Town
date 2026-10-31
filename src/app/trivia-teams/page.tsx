@@ -489,7 +489,8 @@ function TeamTriviaInner() {
       const winners = r.suddenDeath.tied.filter((i) => (r.answers[i] ?? null) === q?.correctIndex);
       if (winners.length === 1) { setHostRoom({ ...r, phase: 'final', hostLine: `${r.teams[winners[0]]?.name} steal it in sudden death! What a finish!` }); return; }
       const used = new Set<string>([...r.asked, ...(roundsRef.current || []).flat().map((x) => x.question)]);
-      const cid = r.categoryIds[Math.floor(Math.random() * r.categoryIds.length)];
+      const anyCat = LOCAL_CATEGORIES.map((c) => c.id).filter((id) => id !== BRAINBOX_ID);
+      const cid = anyCat[Math.floor(Math.random() * anyCat.length)];
       const q2 = drawOne(cid, used);
       if (!q2) { setHostRoom({ ...r, phase: 'final', suddenDeath: null, hostLine: 'Honours even - share the trophy and the trifle!' }); return; }
       roundsRef.current![5].push(q2);
@@ -514,7 +515,8 @@ function TeamTriviaInner() {
   };
   const hostStartSuddenDeath = (r: TeamRoom, tied: number[]) => {
     const used = new Set<string>([...r.asked, ...(roundsRef.current || []).flat().map((q) => q.question)]);
-    const cid = r.categoryIds[Math.floor(Math.random() * r.categoryIds.length)];
+    const anyCat = LOCAL_CATEGORIES.map((c) => c.id).filter((id) => id !== BRAINBOX_ID);
+    const cid = anyCat[Math.floor(Math.random() * anyCat.length)];
     const q = drawOne(cid, used);
     if (!q) { setHostRoom({ ...r, phase: 'final', suddenDeath: null, hostLine: 'What a quiz! Give the winners a huge cheer - and the losers a drink.' }); return; }
     if (!roundsRef.current) roundsRef.current = [];
