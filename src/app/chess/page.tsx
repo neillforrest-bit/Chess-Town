@@ -53,8 +53,7 @@ export default function ChessOnboarding() {
           <div style={CSS.card}>
             <div style={{ fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 20, color: '#ffd93b' }}>Choose your game</div>
             <Link href={`/play-chester?skill=${SKILL_PARAM[skill]}`} style={CSS.modeBtn}>Play Chester<span style={{ display: 'block', fontSize: 13, fontWeight: 600, opacity: 0.75 }}>Full game, coached to your level</span></Link>
-            <Link href="/road" style={CSS.modeBtn}>Road to Joseph<span style={{ display: 'block', fontSize: 13, fontWeight: 600, opacity: 0.75 }}>The story climb through Chess-Town</span></Link>
-            <Link href="/arena" style={CSS.modeBtn}>The Arena<span style={{ display: 'block', fontSize: 13, fontWeight: 600, opacity: 0.75 }}>Mini games, challenges and the full town</span></Link>
+            <Link href="/arena" style={CSS.modeBtn}>The Arena<span style={{ display: 'block', fontSize: 13, fontWeight: 600, opacity: 0.75 }}>Challenge a friend on two devices, mini games, daily challenges and the full town</span></Link>
           </div>
           <button style={{ marginTop: 12, background: 'none', border: 'none', color: 'rgba(255,255,255,0.65)', textDecoration: 'underline', cursor: 'pointer', fontSize: 14 }} onClick={() => { window.localStorage.removeItem('ct-chess-skill'); setSkill(null); }}>Change my level</button>
         </>
