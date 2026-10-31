@@ -423,6 +423,8 @@ function TeamTriviaInner() {
       const peer = new Peer(`ct-teams-${code}`, PEER_CONFIG as any);
       peerRef.current = peer;
       peer.on('open', () => {
+        // Fires again after a broker reconnect - never wipe a live room.
+        if (roomRef.current) return;
         const r = freshRoom(code);
         setRoom(r);
         setRole('host');
