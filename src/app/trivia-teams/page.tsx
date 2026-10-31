@@ -182,7 +182,7 @@ function QuestionView({ room, pid, isHost, secondsLeft, onAnswer, onReveal }: { 
   );
 }
 
-function RevealView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost: boolean; onNext?: () => void }) {
+function RevealView({ room, isHost, onNext, demo }: { room: PublicTeamRoom; isHost: boolean; onNext?: () => void; demo?: boolean }) {
   const reveal = room.reveal;
   if (!reveal || !room.current) return null;
   return (
@@ -202,7 +202,7 @@ function RevealView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost: bo
           );
         })}
       </div>
-      {isHost && <button style={CSS.btn} onClick={onNext}>{room.qIndex >= 4 ? 'TEAM SCOREBOARD' : 'NEXT QUESTION'}</button>}
+      {isHost && <button style={CSS.btn} onClick={onNext}>{demo ? 'SEE THE SCOREBOARD' : room.qIndex >= 4 ? 'TEAM SCOREBOARD' : 'NEXT QUESTION'}</button>}
     </>
   );
 }
@@ -220,7 +220,7 @@ function rankRows(teams: { name: string; score: number; roundScores: number[]; p
   });
 }
 
-function ScoreboardView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost: boolean; onNext?: () => void }) {
+function ScoreboardView({ room, isHost, onNext, demo }: { room: PublicTeamRoom; isHost: boolean; onNext?: () => void; demo?: boolean }) {
   const rows = rankRows(room.teams);
   return (
     <div style={{ ...CSS.card, width: '100%', maxWidth: 430, boxSizing: 'border-box' }}>
@@ -231,7 +231,7 @@ function ScoreboardView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost
           <span>{t.score} pts <span style={{ opacity: 0.7, fontWeight: 600, fontSize: 14 }}>(+{t.roundScores[room.round] ?? 0})</span></span>
         </div>
       ))}
-      {isHost && <button style={CSS.btn} onClick={onNext}>{room.round >= 4 ? 'FINAL RESULTS' : `START ROUND ${room.round + 2}`}</button>}
+      {isHost && <button style={CSS.btn} onClick={onNext}>{demo ? 'WRAP UP THE DEMO' : room.round >= 4 ? 'FINAL RESULTS' : `START ROUND ${room.round + 2}`}</button>}
     </div>
   );
 }
@@ -590,8 +590,8 @@ function TeamTriviaInner() {
         {room.phase === 'teams' && <TeamsView room={shown!} isHost onNext={hostShowCategories} />}
         {room.phase === 'categories' && <CategoriesView room={shown!} isHost onNext={() => hostStartRound(0)} />}
         {room.phase === 'question' && <QuestionView room={shown!} pid={room.players.some((p) => p.id === HOST_PLAYER_ID) ? HOST_PLAYER_ID : null} isHost secondsLeft={secondsLeft} onReveal={() => hostReveal()} onAnswer={hostAnswer} />}
-        {room.phase === 'reveal' && <RevealView room={shown!} isHost onNext={hostNextAfterReveal} />}
-        {room.phase === 'scoreboard' && <ScoreboardView room={shown!} isHost onNext={hostNextAfterScore} />}
+        {room.phase === 'reveal' && <RevealView room={shown!} isHost onNext={hostNextAfterReveal} demo={isDemo} />}
+        {room.phase === 'scoreboard' && <ScoreboardView room={shown!} isHost onNext={hostNextAfterScore} demo={isDemo} />}
         {room.phase === 'final' && <FinalView room={shown!} isHost onAgain={hostAgain} />}
       </>
     );
