@@ -230,7 +230,9 @@ function TeamTriviaInner() {
   // ---------- HOST ----------
   const broadcast = useCallback((r: TeamRoom) => {
     const pub = publicView(r, roundsRef.current);
-    for (const link of linksRef.current.values()) { try { link.send({ type: 'room', room: pub }); } catch { /* gone */ } }
+    let sent = 0;
+    for (const [pid, link] of linksRef.current.entries()) { try { link.send({ type: 'room', room: pub }); sent += 1; } catch { /* gone */ } }
+    if (typeof window !== 'undefined') { (window as any).__qa = (window as any).__qa || []; (window as any).__qa.push({ t: Date.now(), dir: 'tx', phase: r.phase, round: r.round, q: r.qIndex, sent, links: linksRef.current.size }); }
   }, []);
 
   const setHostRoom = useCallback((r: TeamRoom) => {
@@ -271,6 +273,7 @@ function TeamTriviaInner() {
 
   const hostApply = useCallback((msg: GuestMsg, link: any) => {
     const r = roomRef.current;
+    if (typeof window !== 'undefined') { (window as any).__qa = (window as any).__qa || []; (window as any).__qa.push({ t: Date.now(), dir: 'rx', msg: msg?.type, pid: (msg as any)?.pid, phase: r?.phase, answers: r ? JSON.stringify(r.answers) : '-' }); }
     if (!r) return;
     if (msg.type === 'ping') { try { link?.send({ type: 'pong' }); } catch { /* gone */ } return; }
     if (msg.type === 'join') {
@@ -288,11 +291,13 @@ function TeamTriviaInner() {
       return;
     }
     if (msg.type === 'answer') {
-      if (r.phase !== 'question') return;
+      const qa = (reason: string) => { if (typeof window !== 'undefined') { (window as any).__qa.push({ t: Date.now(), dir: 'reject', reason, pid: msg.pid, teamIdx: msg.teamIdx, phase: r.phase, answers: JSON.stringify(r.answers) }); } };
+      if (r.phase !== 'question') { qa('phase'); return; }
       const t = teamOf(r, msg.pid);
-      if (t < 0 || t !== msg.teamIdx) return;
-      if (!isCaptain(r, msg.pid)) return;
-      if ((r.answers[t] ?? null) !== null) return;
+      if (t < 0 || t !== msg.teamIdx) { qa('team-mismatch t=' + t); return; }
+      if (!isCaptain(r, msg.pid)) { qa('not-captain'); return; }
+      if ((r.answers[t] ?? null) !== null) { qa('already-answered'); return; }
+      (window as any).__qa.push({ t: Date.now(), dir: 'accept', pid: msg.pid, teamIdx: t, choice: msg.choice });
       const next = { ...r, answers: { ...r.answers, [t]: msg.choice } };
       setHostRoom(next);
       // All teams locked in? Reveal early.
@@ -387,6 +392,7 @@ function TeamTriviaInner() {
           link.send({ type: 'join', pid: pidRef.current, name });
         });
         link.on('data', (msg: any) => {
+          if (typeof window !== 'undefined') { (window as any).__qa = (window as any).__qa || []; (window as any).__qa.push({ t: Date.now(), dir: 'guest-rx', msg: msg?.type, phase: msg?.room?.phase, round: msg?.room?.round, q: msg?.room?.qIndex }); }
           if (msg?.type === 'room') setView(msg.room as PublicTeamRoom);
           if (msg?.type === 'guest-error') setError(String(msg.message || 'Could not join that quiz.'));
           if (msg?.type === 'ping') { try { link.send({ type: 'pong' }); } catch { /* gone */ } }
