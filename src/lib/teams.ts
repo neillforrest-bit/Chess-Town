@@ -13,6 +13,45 @@ export type TeamPlayer = { id: string; name: string };
 export type Team = { name: string; playerIds: string[]; score: number; roundScores: number[] };
 export type DrawnQuestion = { question: string; options: string[]; correctIndex: number };
 
+// Wildcards, ported from Forrest's 29-30 Oct asks (double-value flashes, mystery
+// triple, fifty-fifty, riddles dropped in, sudden death). Keys are 'round-qIndex'.
+export type WildState = {
+  doubles: string[];                     // two questions a night pay double
+  tripleKey: string | null;              // Chester's Choice mystery question, pays triple
+  tripleCat: string | null;              // its real category, named only at the reveal
+  flash: string[];                       // one Brainbox riddle/teaser per round, dropped in
+  fiftyUsed: Record<number, boolean>;    // teamIdx -> lifeline spent
+  fiftyHidden: Record<number, number[]>; // teamIdx -> option indexes hidden on the current question
+};
+
+export function qkey(round: number, qIndex: number): string { return `${round}-${qIndex}`; }
+
+// Pick tonight's wildcard slots: one double early, one double late, one mystery
+// triple kept clear of them, one flash riddle per round clear of both.
+export function planWild(): WildState {
+  const pick = (rounds: number[]) => qkey(rounds[Math.floor(Math.random() * rounds.length)], Math.floor(Math.random() * 5));
+  const taken = new Set<string>();
+  const grab = (rounds: number[]) => { let k = pick(rounds); let guard = 0; while (taken.has(k) && guard++ < 40) k = pick(rounds); taken.add(k); return k; };
+  const doubles = [grab([0, 1]), grab([2, 3, 4])];
+  const tripleKey = grab([1, 2, 3]);
+  const flash: string[] = [];
+  for (let r = 0; r < 5; r += 1) flash.push(grab([r]));
+  return { doubles, tripleKey, tripleCat: null, flash, fiftyUsed: {}, fiftyHidden: {} };
+}
+
+export function wildKind(wild: WildState | undefined, round: number, qIndex: number): 'double' | 'triple' | 'flash' | null {
+  if (!wild) return null;
+  const k = qkey(round, qIndex);
+  if (wild.tripleKey === k) return 'triple';
+  if (wild.doubles.includes(k)) return 'double';
+  if (wild.flash.includes(k)) return 'flash';
+  return null;
+}
+
+export function wildPoints(kind: 'double' | 'triple' | 'flash' | null): number {
+  return kind === 'triple' ? 3 : kind === 'double' ? 2 : 1;
+}
+
 export type TeamRoomPhase =
   | 'lobby'        // players joining
   | 'sorting'      // dramatic shuffle in progress
@@ -33,6 +72,8 @@ export type TeamRoom = {
   qIndex: number;          // 0..4
   answers: Record<number, number | null>; // teamIdx -> option idx
   asked: string[];         // question texts already served (no repeats)
+  wild?: WildState;        // tonight's wildcards (set when categories are drawn)
+  suddenDeath?: { tied: number[] } | null; // tied final: only these teams answer
   hostLine: string;        // Chester's current line
   expected?: number;       // host's expected headcount (joined vs missing)
   startedAt: number;
@@ -147,7 +188,7 @@ export const LINES = { INTRO_LINES, TEAM_LINES, ROUND_LINES, REVEAL_RIGHT, REVEA
 
 // --- Room helpers (host side) ---
 export function freshRoom(code: string): TeamRoom {
-  return { code, phase: 'lobby', players: [], teams: [], categoryIds: [], round: 0, qIndex: 0, answers: {}, asked: [], hostLine: line(INTRO_LINES), startedAt: Date.now(), updatedAt: Date.now() };
+  return { code, phase: 'lobby', players: [], teams: [], categoryIds: [], round: 0, qIndex: 0, answers: {}, asked: [], wild: undefined, suddenDeath: null, hostLine: line(INTRO_LINES), startedAt: Date.now(), updatedAt: Date.now() };
 }
 
 export function publicView(room: TeamRoom, rounds: DrawnQuestion[][] | null): PublicTeamRoom {

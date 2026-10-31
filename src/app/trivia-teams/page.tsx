@@ -13,10 +13,40 @@ import {
 import { SEASON_TWO_QUESTIONS } from '@/lib/trivia-packs';
 import {
   DrawnQuestion, LINES, PublicTeamRoom, TeamRoom, categoryName, drawRounds,
-  freshRoom, line, pickCategories, publicView, roomCode, sortIntoTeams, uid,
+  freshRoom, line, pickCategories, planWild, publicView, qkey, roomCode, sortIntoTeams, uid, wildKind, wildPoints,
 } from '@/lib/teams';
 
 const QUESTION_SECONDS = 25;
+const BRAINBOX_ID = -5;
+
+// Draw one fresh question (shuffled options) from a category bank, dodging repeats.
+function drawOne(categoryId: number, used: Set<string>): DrawnQuestion | null {
+  const bank = (BASE_QUESTIONS as any)[categoryId] || (SEASON_TWO_QUESTIONS as any)[categoryId] || [];
+  const pool = bank.filter((q: any) => !used.has(q.question));
+  if (!pool.length) return null;
+  const q = pool[Math.floor(Math.random() * pool.length)];
+  used.add(q.question);
+  const opts = [q.correct, ...q.wrong].sort(() => Math.random() - 0.5);
+  return { question: q.question, options: opts, correctIndex: opts.indexOf(q.correct) };
+}
+
+// Swap tonight's wildcard slots for their special questions: a Brainbox riddle or
+// brain teaser per round (his 30 Oct ask), one mystery Chester's Choice triple.
+function applyWildcards(rounds: DrawnQuestion[][], categoryIds: number[], wild: NonNullable<TeamRoom['wild']>, asked: string[]) {
+  const used = new Set([...asked, ...rounds.flat().map((q) => q.question)]);
+  wild.flash.forEach((k) => {
+    const [r, qi] = k.split('-').map(Number);
+    const q = drawOne(BRAINBOX_ID, used);
+    if (q) rounds[r][qi] = q;
+  });
+  if (wild.tripleKey) {
+    const [r, qi] = wild.tripleKey.split('-').map(Number);
+    const others = LOCAL_CATEGORIES.map((c) => c.id).filter((id) => !categoryIds.includes(id) && id !== BRAINBOX_ID);
+    const cid = others[Math.floor(Math.random() * others.length)];
+    const q = drawOne(cid, used);
+    if (q) { rounds[r][qi] = q; wild.tripleCat = categoryName(cid); }
+  }
+}
 const MAX_PLAYERS = 12;
 const HOST_PLAYER_ID = 'HOST-DEVICE';
 const MIN_PLAYERS = 4;
@@ -24,6 +54,7 @@ const MIN_PLAYERS = 4;
 type GuestMsg =
   | { type: 'join'; pid: string; name: string }
   | { type: 'answer'; pid: string; teamIdx: number; choice: number }
+  | { type: 'fifty'; pid: string; teamIdx: number }
   | { type: 'ping' };
 
 function teamOf(room: TeamRoom | PublicTeamRoom, pid: string): number {
@@ -152,14 +183,19 @@ function CategoriesView({ room, isHost, onNext }: { room: PublicTeamRoom; isHost
   );
 }
 
-function QuestionView({ room, pid, isHost, secondsLeft, onAnswer, onReveal }: { room: PublicTeamRoom; pid: string | null; isHost: boolean; secondsLeft: number; onAnswer?: (choice: number) => void; onReveal?: () => void }) {
+function QuestionView({ room, pid, isHost, secondsLeft, onAnswer, onReveal, onFifty }: { room: PublicTeamRoom; pid: string | null; isHost: boolean; secondsLeft: number; onAnswer?: (choice: number) => void; onReveal?: () => void; onFifty?: () => void }) {
   const myTeam = pid ? teamOf(room, pid) : -1;
   const captain = pid ? isCaptain(room, pid) : false;
   const answered = pid && myTeam >= 0 ? room.answers[myTeam] : false;
+  const kind = room.suddenDeath ? null : wildKind(room.wild, room.round, room.qIndex);
+  const hidden = myTeam >= 0 ? (room.wild?.fiftyHidden?.[myTeam] || []) : [];
+  const canFifty = captain && !answered && !room.suddenDeath && !!room.wild && !room.wild.fiftyUsed?.[myTeam];
+  const tiedNames = room.suddenDeath ? room.suddenDeath.tied.map((i) => room.teams[i]?.name).join(' vs ') : '';
   return (
     <>
       <div style={{ ...CSS.card, textAlign: 'center' }}>
-        <div style={{ fontSize: 14, opacity: 0.85 }}>Round {room.round + 1} of 5 - {displayCategory(room.categoryIds[room.round])} - Question {room.qIndex + 1} of 5</div>
+        <div style={{ fontSize: 14, opacity: 0.85 }}>{room.suddenDeath ? `SUDDEN DEATH - ${tiedNames} - first ahead wins` : `Round ${room.round + 1} of 5 - ${kind === 'triple' ? "CHESTER'S CHOICE ???" : displayCategory(room.categoryIds[room.round])} - Question ${room.qIndex + 1} of 5`}</div>
+        {kind && <div style={{ marginTop: 6, display: 'inline-block', padding: '4px 14px', borderRadius: 999, background: kind === 'flash' ? 'rgba(155,89,255,0.25)' : 'rgba(255,217,59,0.2)', border: `2px solid ${kind === 'flash' ? '#9b59ff' : '#ffd93b'}`, fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 18, color: kind === 'flash' ? '#c9a4ff' : '#ffd93b' }}>{kind === 'double' ? '⭐ DOUBLE POINTS!' : kind === 'triple' ? "❓ CHESTER'S CHOICE - TRIPLE POINTS!" : '🧩 WILDCARD RIDDLE!'}</div>}
         <div style={{ fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 42, color: secondsLeft <= 5 ? '#ff6b6b' : '#ffd93b', marginTop: 4 }}>{secondsLeft}</div>
         <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.35, marginTop: 8 }}>{room.current?.question}</div>
         <div style={{ marginTop: 10, fontSize: 14, opacity: 0.9 }}>
@@ -168,13 +204,14 @@ function QuestionView({ room, pid, isHost, secondsLeft, onAnswer, onReveal }: { 
       </div>
       <div style={{ width: '100%', maxWidth: 430 }}>
         {room.current?.options.map((opt, i) => {
-          const picked = isHost ? false : undefined;
+          if (hidden.includes(i)) return <button key={i} style={{ ...CSS.option('dim'), opacity: 0.35, fontStyle: 'italic' }} disabled>— gone —</button>;
           return (
             <button key={i} style={CSS.option((!captain || answered) ? 'dim' : 'idle')} disabled={!captain || answered} onClick={() => onAnswer?.(i)}>
               {String.fromCharCode(65 + i)}. {opt}
             </button>
           );
         })}
+        {canFifty && <button style={{ ...CSS.btnGhost, borderColor: '#9b59ff', color: '#c9a4ff' }} onClick={onFifty}>🍸 FIFTY-FIFTY - bin two wrong answers (once a night)</button>}
         {!isHost && pid && !captain && myTeam >= 0 && <div style={{ marginTop: 10, textAlign: 'center', fontSize: 14, opacity: 0.85 }}>Huddle! Your captain ★ taps the answer.</div>}
         {isHost && <button style={CSS.btn} onClick={onReveal}>REVEAL ANSWER</button>}
       </div>
@@ -194,10 +231,12 @@ function RevealView({ room, isHost, onNext, demo }: { room: PublicTeamRoom; isHo
       <div style={{ width: '100%', maxWidth: 430 }}>
         {room.teams.map((t, i) => {
           const r = reveal.perTeam.find((x) => x.teamIdx === i);
+          const captainName = room.players.find((pl) => pl.id === t.playerIds[0])?.name || 'Captain';
+          const pts = r?.correct ? wildPoints(room.suddenDeath ? null : wildKind(room.wild, room.round, room.qIndex)) : 0;
           return (
             <div key={t.name} style={CSS.scoreRow(!!r?.correct)}>
-              <span>{r?.correct ? '✅' : '❌'} {t.name}</span>
-              <span>{r?.picked === null || r?.picked === undefined ? 'no answer' : room.current!.options[r.picked]}</span>
+              <span>{r?.correct ? '✅' : '❌'} {t.name}{r?.correct && pts > 1 ? ` (+${pts})` : ''}</span>
+              <span>{r?.picked === null || r?.picked === undefined ? `★ ${captainName} passed` : `★ ${captainName} locked in: ${room.current!.options[r.picked]}`}</span>
             </div>
           );
         })}
@@ -315,15 +354,18 @@ function TeamTriviaInner() {
     if (!r || r.phase !== 'question') return;
     clearTimer();
     const q = roundsRef.current?.[r.round]?.[r.qIndex];
+    const kind = r.suddenDeath ? null : wildKind(r.wild, r.round, r.qIndex);
+    const pts = wildPoints(kind);
     const teams = r.teams.map((t, i) => {
       const picked = r.answers[i] ?? null;
       const right = picked !== null && picked === q?.correctIndex;
       const roundScores = [...t.roundScores];
-      if (right) { roundScores[r.round] = (roundScores[r.round] ?? 0) + 1; }
-      return { ...t, score: t.score + (right ? 1 : 0), roundScores };
+      if (right) { roundScores[r.round] = (roundScores[r.round] ?? 0) + pts; }
+      return { ...t, score: t.score + (right ? pts : 0), roundScores };
     });
     const anyRight = teams.some((t, i) => (r.answers[i] ?? null) === q?.correctIndex);
-    setHostRoom({ ...r, teams, phase: 'reveal', hostLine: anyRight ? line(LINES.REVEAL_RIGHT) : line(LINES.REVEAL_WRONG) });
+    const catNote = kind === 'triple' && r.wild?.tripleCat ? ` It was ${r.wild.tripleCat} all along - and it pays TRIPLE!` : kind === 'double' ? ' That one was worth DOUBLE!' : '';
+    setHostRoom({ ...r, teams, phase: 'reveal', hostLine: (anyRight ? line(LINES.REVEAL_RIGHT) : line(LINES.REVEAL_WRONG)) + catNote });
   }, [setHostRoom]);
 
   const hostApply = useCallback((msg: GuestMsg, link: any) => {
@@ -344,16 +386,31 @@ function TeamTriviaInner() {
       setHostRoom({ ...r, players: [...r.players, { id: msg.pid, name: clean }] });
       return;
     }
+    if (msg.type === 'fifty') {
+      // Fifty-Fifty: once per team per night, captain only, before they answer.
+      if (r.phase !== 'question' || r.suddenDeath) return;
+      const t = teamOf(r, msg.pid);
+      if (t < 0 || t !== msg.teamIdx || !isCaptain(r, msg.pid)) return;
+      const wild = r.wild; if (!wild || wild.fiftyUsed[t]) return;
+      if ((r.answers[t] ?? null) !== null) return;
+      const q = roundsRef.current?.[r.round]?.[r.qIndex]; if (!q) return;
+      const wrong = q.options.map((_, i) => i).filter((i) => i !== q.correctIndex).sort(() => Math.random() - 0.5).slice(0, 2);
+      const nextWild = { ...wild, fiftyUsed: { ...wild.fiftyUsed, [t]: true }, fiftyHidden: { ...wild.fiftyHidden, [t]: wrong } };
+      setHostRoom({ ...r, wild: nextWild, hostLine: `${r.teams[t]?.name} played their Fifty-Fifty - two wrong answers are gone!` });
+      return;
+    }
     if (msg.type === 'answer') {
       if (r.phase !== 'question') return;
       const t = teamOf(r, msg.pid);
       if (t < 0 || t !== msg.teamIdx) return;
       if (!isCaptain(r, msg.pid)) return;
+      if (r.suddenDeath && !r.suddenDeath.tied.includes(t)) return;
       if ((r.answers[t] ?? null) !== null) return;
       const next = { ...r, answers: { ...r.answers, [t]: msg.choice } };
       setHostRoom(next);
-      // All teams locked in? Reveal early - score from `next`, not the stale ref.
-      if (next.teams.every((_, i) => (next.answers[i] ?? null) !== null)) hostReveal(next);
+      // All (tied, in sudden death) teams locked in? Reveal early - score from `next`, not the stale ref.
+      const eligible = next.suddenDeath ? next.suddenDeath.tied : next.teams.map((_, i) => i);
+      if (eligible.every((i) => (next.answers[i] ?? null) !== null)) hostReveal(next);
       return;
     }
   }, [broadcast, hostReveal, setHostRoom]);
@@ -406,7 +463,14 @@ function TeamTriviaInner() {
     const r = roomRef.current; if (!r) return;
     const categoryIds = pickCategories(5);
     roundsRef.current = drawRounds(categoryIds, 5, r.asked);
-    setHostRoom({ ...r, phase: 'categories', categoryIds });
+    const wild = planWild();
+    if (demoRef.current) { // demo's single question shows the DOUBLE POINTS badge
+      wild.doubles = [qkey(0, 0), wild.doubles.find((k) => k !== qkey(0, 0)) || qkey(4, 4)];
+      wild.flash = wild.flash.filter((k) => k !== qkey(0, 0));
+      if (wild.tripleKey === qkey(0, 0)) wild.tripleKey = null;
+    }
+    applyWildcards(roundsRef.current, categoryIds, wild, r.asked);
+    setHostRoom({ ...r, phase: 'categories', categoryIds, wild, suddenDeath: null });
   };
   const hostStartRound = (roundIdx: number) => {
     const r = roomRef.current; if (!r) return;
@@ -416,6 +480,20 @@ function TeamTriviaInner() {
   };
   const hostNextAfterReveal = () => {
     const r = roomRef.current; if (!r) return;
+    if (r.suddenDeath) {
+      const q = roundsRef.current?.[5]?.[r.qIndex];
+      const winners = r.suddenDeath.tied.filter((i) => (r.answers[i] ?? null) === q?.correctIndex);
+      if (winners.length === 1) { setHostRoom({ ...r, phase: 'final', hostLine: `${r.teams[winners[0]]?.name} steal it in sudden death! What a finish!` }); return; }
+      const used = new Set<string>([...r.asked, ...(roundsRef.current || []).flat().map((x) => x.question)]);
+      const cid = r.categoryIds[Math.floor(Math.random() * r.categoryIds.length)];
+      const q2 = drawOne(cid, used);
+      if (!q2) { setHostRoom({ ...r, phase: 'final', suddenDeath: null, hostLine: 'Honours even - share the trophy and the trifle!' }); return; }
+      roundsRef.current![5].push(q2);
+      const next: TeamRoom = { ...r, phase: 'question', qIndex: r.qIndex + 1, answers: {}, hostLine: winners.length > 1 ? 'Still level! Sudden death continues...' : 'Nobody had it! Another sudden-death question...' };
+      setHostRoom(next);
+      startQuestionTimer(next);
+      return;
+    }
     if (r.qIndex >= 4 || demoRef.current) {
       const sorted = [...r.teams].sort((a, b) => b.score - a.score);
       const leader = sorted[0];
@@ -430,9 +508,28 @@ function TeamTriviaInner() {
     setHostRoom(next);
     startQuestionTimer(next);
   };
+  const hostStartSuddenDeath = (r: TeamRoom, tied: number[]) => {
+    const used = new Set<string>([...r.asked, ...(roundsRef.current || []).flat().map((q) => q.question)]);
+    const cid = r.categoryIds[Math.floor(Math.random() * r.categoryIds.length)];
+    const q = drawOne(cid, used);
+    if (!q) { setHostRoom({ ...r, phase: 'final', suddenDeath: null, hostLine: 'What a quiz! Give the winners a huge cheer - and the losers a drink.' }); return; }
+    if (!roundsRef.current) roundsRef.current = [];
+    roundsRef.current[5] = [q];
+    const next: TeamRoom = { ...r, phase: 'question', round: 5, qIndex: 0, answers: {}, suddenDeath: { tied }, hostLine: `DEAD LEVEL! Sudden death between ${tied.map((i) => r.teams[i]?.name).join(' and ')} - first team to pull ahead takes the night!` };
+    setHostRoom(next);
+    startQuestionTimer(next);
+  };
   const hostNextAfterScore = () => {
     const r = roomRef.current; if (!r) return;
-    if (demoRef.current || r.round >= 4) { setHostRoom({ ...r, phase: 'final', hostLine: demoRef.current ? 'And that is how a quiz night flows! Host a real room to play for keeps.' : 'What a quiz! Give the winners a huge cheer - and the losers a drink.' }); return; }
+    if (demoRef.current || r.round >= 4) {
+      if (!demoRef.current) {
+        const top = Math.max(...r.teams.map((t) => t.score));
+        const tied = r.teams.map((t, i) => (t.score === top ? i : -1)).filter((i) => i >= 0);
+        if (tied.length > 1) { hostStartSuddenDeath(r, tied); return; }
+      }
+      setHostRoom({ ...r, phase: 'final', hostLine: demoRef.current ? 'And that is how a quiz night flows! Host a real room to play for keeps.' : 'What a quiz! Give the winners a huge cheer - and the losers a drink.' });
+      return;
+    }
     hostStartRound(r.round + 1);
   };
   const hostAgain = () => {
@@ -494,6 +591,13 @@ function TeamTriviaInner() {
     }
   }, [joinCode, name]);
 
+  const guestFifty = () => {
+    if (!view || pidRef.current == null) return;
+    const t = teamOf(view, pidRef.current);
+    if (t < 0) return;
+    try { guestLinkRef.current?.send({ type: 'fifty', pid: pidRef.current, teamIdx: t }); } catch { /* gone */ }
+  };
+
   const guestAnswer = (choice: number) => {
     if (!view || pidRef.current == null) return;
     const t = teamOf(view, pidRef.current);
@@ -531,7 +635,8 @@ function TeamTriviaInner() {
     const t = setTimeout(() => {
       const r = roomRef.current; if (!r || r.phase !== 'question') return;
       const answers: Record<number, number | null> = {};
-      r.teams.forEach((_, i) => { answers[i] = Math.floor(Math.random() * 4); });
+      const eligible = r.suddenDeath ? r.suddenDeath.tied : r.teams.map((_, i) => i);
+      eligible.forEach((i) => { answers[i] = Math.floor(Math.random() * 4); });
       setHostRoom({ ...r, answers, hostLine: 'Huddles are locking in...' });
     }, 5000);
     return () => clearTimeout(t);
@@ -554,7 +659,7 @@ function TeamTriviaInner() {
         <button style={CSS.btnGhost} onClick={() => {
           setDemoSeeded(true);
           setRole('host');
-          setRoom({ ...freshRoom('DEMO'), expected: 8, players: ['Jemma', 'Alfie', 'Grandma Pat', 'Uncle Rob', 'Sophie', 'Grandad Joe', 'Maisie', 'Tom'].map((n, i) => ({ id: `demo-${i}`, name: n })), hostLine: 'Demo night! This is a pretend room - nothing here is live.' });
+          setRoom({ ...freshRoom('DEMO'), expected: 8, players: ['Jemma', 'Alfie', 'Grandma Pat', 'Uncle Rob', 'Sophie', 'Grandad Joe', 'Maisie', 'Tom'].map((n, i) => ({ id: `demo-${i}`, name: n })), hostLine: 'Demo night! Pretend players, and tonight\'s real game has wildcards: DOUBLE POINTS flashes, a mystery Chester\'s Choice triple, riddles, one Fifty-Fifty per team - only captains tap.' });
         }}>WATCH A DEMO (pretend players)</button>
         <button style={CSS.btnGhost} onClick={() => router.push('/trivia')}>Back to trivia menu</button>
       </div>
@@ -589,7 +694,7 @@ function TeamTriviaInner() {
         {room.phase === 'sorting' && <SortingView room={shown!} />}
         {room.phase === 'teams' && <TeamsView room={shown!} isHost onNext={hostShowCategories} />}
         {room.phase === 'categories' && <CategoriesView room={shown!} isHost onNext={() => hostStartRound(0)} />}
-        {room.phase === 'question' && <QuestionView room={shown!} pid={room.players.some((p) => p.id === HOST_PLAYER_ID) ? HOST_PLAYER_ID : null} isHost secondsLeft={secondsLeft} onReveal={() => hostReveal()} onAnswer={hostAnswer} />}
+        {room.phase === 'question' && <QuestionView room={shown!} pid={room.players.some((p) => p.id === HOST_PLAYER_ID) ? HOST_PLAYER_ID : null} isHost secondsLeft={secondsLeft} onReveal={() => hostReveal()} onAnswer={hostAnswer} onFifty={() => hostApply({ type: 'fifty', pid: HOST_PLAYER_ID, teamIdx: teamOf(room, HOST_PLAYER_ID) }, null)} />}
         {room.phase === 'reveal' && <RevealView room={shown!} isHost onNext={hostNextAfterReveal} demo={isDemo} />}
         {room.phase === 'scoreboard' && <ScoreboardView room={shown!} isHost onNext={hostNextAfterScore} demo={isDemo} />}
         {room.phase === 'final' && <FinalView room={shown!} isHost onAgain={hostAgain} />}
@@ -608,7 +713,7 @@ function TeamTriviaInner() {
         {shown.phase === 'sorting' && <SortingView room={shown} />}
         {shown.phase === 'teams' && <TeamsView room={shown} isHost={false} />}
         {shown.phase === 'categories' && <CategoriesView room={shown} isHost={false} />}
-        {shown.phase === 'question' && <QuestionView room={shown} pid={pid} isHost={false} secondsLeft={secondsLeft} onAnswer={guestAnswer} />}
+        {shown.phase === 'question' && <QuestionView room={shown} pid={pid} isHost={false} secondsLeft={secondsLeft} onAnswer={guestAnswer} onFifty={guestFifty} />}
         {shown.phase === 'reveal' && <RevealView room={shown} isHost={false} />}
         {shown.phase === 'scoreboard' && <ScoreboardView room={shown} isHost={false} />}
         {shown.phase === 'final' && <FinalView room={shown} isHost={false} />}
