@@ -35,7 +35,7 @@ function isCaptain(room: TeamRoom | PublicTeamRoom, pid: string): boolean {
 }
 
 const CSS: any = {
-  page: { minHeight: '100dvh', background: '#120b2e', color: '#fff', fontFamily: "'Nunito', system-ui, sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '18px 16px 40px' },
+  page: { minHeight: '100dvh', background: '#120b2e', color: '#fff', fontFamily: "'Nunito', system-ui, sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '18px 16px 110px', overflowY: 'auto' as const, height: '100dvh', boxSizing: 'border-box' as const },
   card: { width: '100%', maxWidth: 430, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 18, padding: '18px 16px', marginTop: 14 },
   h1: { fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 34, letterSpacing: 1, margin: '10px 0 0', textAlign: 'center', color: '#ffd93b', textShadow: '0 3px 0 rgba(0,0,0,0.35)' },
   h2: { fontFamily: "'Lilita One', system-ui, sans-serif", fontSize: 24, margin: '0 0 8px', color: '#ffd93b' },
@@ -416,7 +416,7 @@ function TeamTriviaInner() {
   };
   const hostNextAfterReveal = () => {
     const r = roomRef.current; if (!r) return;
-    if (r.qIndex >= 4) {
+    if (r.qIndex >= 4 || demoRef.current) {
       const sorted = [...r.teams].sort((a, b) => b.score - a.score);
       const leader = sorted[0];
       const tied = sorted.length > 1 && sorted[1].score === leader?.score;
@@ -583,7 +583,7 @@ function TeamTriviaInner() {
             {shareMsg && <div style={{ textAlign: 'center', marginTop: 8, color: '#78e08f', fontWeight: 800 }}>{shareMsg}</div>}
           </div>
         ) : (
-          <div style={{ marginTop: 10, fontSize: 14, opacity: 0.75 }}>Room code <b style={{ letterSpacing: 2 }}>{room.code}</b> - <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={doShare}>{shareMsg || 'share link'}</span></div>
+          (!isDemo && <div style={{ marginTop: 10, fontSize: 14, opacity: 0.75 }}>Room code <b style={{ letterSpacing: 2 }}>{room.code}</b> - <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={doShare}>{shareMsg || 'share link'}</span></div>)
         )}
         {room.phase === 'lobby' && <LobbyView room={shown!} isHost onSort={hostSort} onRemove={hostRemove} onJoinHost={hostJoinAsPlayer} onLeaveHost={hostLeaveAsPlayer} hostName={hostName} setHostName={setHostName} onExpected={(n) => { const r = roomRef.current; if (r && r.phase === 'lobby') setHostRoom({ ...r, expected: n }); }} />}
         {room.phase === 'sorting' && <SortingView room={shown!} />}
