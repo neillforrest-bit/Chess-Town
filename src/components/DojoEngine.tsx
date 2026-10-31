@@ -406,6 +406,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const jailX = 716;
           const jailY = 16;
+          const jailTheme = (typeof window !== 'undefined' && window.localStorage.getItem('ct-piece-theme')) || 'metallic';
+          const jailIsMetallic = jailTheme !== 'neon';
           const jailPanel = scene.add.rectangle(jailX, jailY, 136, 24, 0x240019, 0.95)
             .setStrokeStyle(2, 0xff007f, 0.9)
             .setDepth(20);
@@ -417,8 +419,6 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             color: jailIsMetallic ? '#c8cdd5' : '#ffb6dc',
           }).setOrigin(0.5).setDepth(21);
           const greenJailX = 84;
-          const jailTheme = (typeof window !== 'undefined' && window.localStorage.getItem('ct-piece-theme')) || 'metallic';
-          const jailIsMetallic = jailTheme !== 'neon';
           scene.add.rectangle(greenJailX, jailY, 136, 24, jailIsMetallic ? 0x14181e : 0x08200d, 0.95).setStrokeStyle(2, jailIsMetallic ? 0xc8cdd5 : 0x39ff14, 0.9).setDepth(20);
           scene.add.text(greenJailX, jailY, jailIsMetallic ? 'WHITE JAIL' : 'GREEN JAIL', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: jailIsMetallic ? '#e8edf2' : '#dfffda' }).setOrigin(0.5).setDepth(21);
 
