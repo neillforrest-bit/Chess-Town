@@ -3574,3 +3574,7 @@ body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
 @media (max-width:860px) {
   .chester-game .chester-teach { position: static !important; width: 100%; max-height: none !important; }
 }
+
+/* BUILD 185: nav avatar glyph survives mobile span-hiding; teach pills monochrome */
+.global-nav > div:first-child .chester-avatar-glyph { display: inline !important; }
+.chester-teach .chester-pill--primary, .chester-game .chester-teleprompter .chester-pill--primary { background: #ededed !important; color: #141414 !important; border-color: #ededed !important; }
