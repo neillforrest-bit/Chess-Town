@@ -188,8 +188,20 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     }
     if (inp.provisional) return ` You played ${human}. The quick engine read calls this a slip, but the deeper check did not finish - treat this grade as unconfirmed.`;
     if (hang.length) return ` You played ${human}, leaving your ${hang[0].piece} on ${hang[0].square} undefended${punishSan ? ` - I can take it with ${punishSan}` : ''}.`;
-    if (/queen/i.test(human) && inp.ply <= 12) return ` You played ${human}. Bringing the queen out this early gives me free development: I can chase her with my knights and pawns while you spend your moves rescuing her.`;
-    return ` You played ${human} to ${plainWhy(inp.fenBefore, inp.san)} - but the position called for a different idea.`;
+    const better = bestHuman && best.text ? ` The stronger idea here was ${bestHuman} - it ${best.text}.` : bestHuman ? ` The stronger idea here was ${bestHuman}.` : '';
+    if (/queen/i.test(human) && inp.ply <= 12) return ` You played ${human}. Bringing the queen out this early gives me free development: I can chase her with my knights and pawns while you spend your moves rescuing her.${better}`;
+    if (/king/i.test(human)) {
+      const rights = (f: string) => (f.split(' ')[2] || '-');
+      let moverW = true; let pieces = 0;
+      try { const b = new Chess(inp.fenBefore); moverW = b.turn() === 'w'; for (const row of new Chess(inp.fenAfter).board()) for (const sq of row as any[]) if (sq) pieces++; } catch { /* fall through */ }
+      const mine = moverW ? /[KQ]/ : /[kq]/;
+      const lostCastle = mine.test(rights(inp.fenBefore)) && !mine.test(rights(inp.fenAfter));
+      if (lostCastle) return ` You played ${human}. That forfeits your right to castle for the rest of this game - and with ${pieces > 24 ? 'almost every piece' : 'most pieces'} still on the board, your king is safest tucked behind his pawns.${better}`;
+      if (pieces > 14) return ` You played ${human}. With ${pieces > 24 ? 'almost every piece' : 'most pieces'} still on the board, an early king walk gives me targets to aim at.${better}`;
+      return ` You played ${human}. In the endgame an active king is right - the engine simply found a sharper square for him.${better}`;
+    }
+    if (better) return ` You played ${human}. No piece is left hanging, but it misses a stronger idea.${better}`;
+    return ` You played ${human}. No piece is left hanging, but a stronger move existed.`;
   })();
 
   const eng = inp.provisional && !term

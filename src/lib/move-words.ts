@@ -298,7 +298,11 @@ export function plainWhy(fenBefore: string, m: string): string {
       if ((mv.piece === 'n' || mv.piece === 'b') && mv.from[1] === homeRank) why.push(`bring your ${name} into the game`);
       else if (mv.piece === 'p' && 'de'.includes(mv.to[0]) && '45'.includes(mv.to[1])) why.push('grab space in the centre');
       else if ((mv.piece === 'r' || mv.piece === 'q') && isOpenFile(after, mv.to.charCodeAt(0) - 97)) why.push(`use the open ${mv.to[0]}-file`);
-      else if (mv.piece === 'k') why.push('make your king more useful now the board is emptier');
+      else if (mv.piece === 'k') {
+        let pc = 0; try { for (const row of after.board()) for (const sq of row as any[]) if (sq) pc++; } catch { /* ignore */ }
+        if (pc <= 14) why.push('activate your king for the endgame');
+        else why.push('move your king while the board is still full of pieces');
+      }
       else {
         // quiet move: say something concrete about the piece's new reach
         let reach = 0, reachBefore = 0;

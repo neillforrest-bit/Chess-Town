@@ -37,34 +37,7 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
       )}
       
         
-      {/* Cartoon Horse Jester Mask */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', zIndex: 10 }}>
-        {/* Horse Head */}
-        <span style={{ 
-          fontSize: size === 'large' ? '4rem' : size === 'small' ? '1.5rem' : '2.5rem', 
-          lineHeight: 1, 
-          position: 'absolute', 
-          bottom: size === 'large' ? '-5px' : '0',
-          animation: isThinking ? 'jester-talk 0.3s infinite ease-in-out' : 'jester-bounce 3s infinite ease-in-out',
-          filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))'
-        }}>
-          {'\u265E'}
-        </span>
-        {/* Jester Hat attached to head */}
-        <span style={{ 
-          fontSize: size === 'large' ? '2.5rem' : size === 'small' ? '1rem' : '1.5rem', 
-          position: 'absolute', 
-          top: size === 'large' ? '-10px' : '-5px',
-          left: size === 'large' ? '12px' : '5px',
-          transform: 'rotate(-15deg)',
-          animation: isThinking ? 'jester-bell 0.2s infinite' : 'jester-bell 2s infinite ease-in-out',
-          filter: 'drop-shadow(0 0 8px var(--arena-pink))'
-        }}>
-          
-        </span>
-      </div>
-
-
+      <span style={{ fontSize: size === 'large' ? '3rem' : size === 'small' ? '1.2rem' : '2rem', lineHeight: 1, zIndex: 10 }}>{'\u265E'}</span>
     </div>
   );
 }

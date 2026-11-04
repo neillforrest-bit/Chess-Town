@@ -2752,7 +2752,7 @@ body:has(.chester-chatsheet) .chester-fab { display: none; }
 .chester-freezebox__ghost { border: 1px solid rgba(255,255,255,.28); background: transparent; color: #b8c8cc; }
 /* spotlight: Tailwind utilities do not compile in this stack, so the same values (red-950 at 80%) live here */
 .chester-spotlight { position: absolute; inset: 0; z-index: 30; width: 100%; height: 100%; pointer-events: auto; }
-.chester-spotlight__dim { fill: rgba(69, 10, 10, .8); }
+.chester-spotlight__dim { fill: rgba(0, 0, 0, .35); }
 @media (max-height: 1100px) {
   .chester-freezebox > b, .chester-freezebox em { display: none; }
   .chester-freezebox p { font-size: .74rem; line-height: 1.22; }
@@ -3531,7 +3531,7 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
 /* BUILD 184 (4 Nov 2026): gothic simplification - one screen, unique black & white.
    Filter guarantees no stray colour survives in chrome; the board itself is a true
    GOTHIC theme so squares/pieces are designed B&W, not washed out. */
-.chester-start-screen, .chester-game { filter: grayscale(1); }
+
 .chester-game .fighthud__you { background: linear-gradient(180deg,#ffffff,#d8d8d8) !important; }
 .chester-game .fighthud__opp { background: linear-gradient(180deg,#2e2e2e,#000000) !important; }
 .chester-game .fighthud__pct--you { color:#0a0a0a !important; text-shadow:none !important; }
@@ -3547,7 +3547,7 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
 @media (min-width:861px) { .chester-game .chester-teleprompter__body { max-height:180px; overflow-y:auto; } }
 
 /* BUILD 184 corrective: whole-page gothic (nav chrome + scrollbar included), picker fits one screen */
-body:has(.chester-game), body:has(.chester-start-screen) { filter: grayscale(1); color-scheme: dark; }
+body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
 .chester-start-screen { overflow-x: hidden !important; }
 .chester-start-screen .road-intro, .chester-start-screen .road-strip { max-width: min(92vw, 430px); box-sizing: border-box; margin-left: auto; margin-right: auto; }
 .chester-start-screen .road-intro__boss-name { font-size: clamp(1.05rem, 4.6vw, 1.6rem) !important; overflow-wrap: anywhere; }
@@ -3557,3 +3557,15 @@ body:has(.chester-game), body:has(.chester-start-screen) { filter: grayscale(1);
 .chester-start-screen { place-items: center; }
 .chester-start-screen h1 { font-size: clamp(1.9rem, 8.5vw, 4rem) !important; text-align: center; max-width: 92vw; }
 .chester-start-screen .road-strip ol { display: flex; flex-wrap: wrap; justify-content: center; }
+
+/* BUILD 184 final: monochrome chrome, verdict colour reserved for teaching (his call: red vs green for bad vs good) */
+.global-nav, .chester-start-screen, .chester-game .chester-hud, .chester-game .fighthud, .chester-game .chester-board-frame, .chester-game .chester-console, .chester-game .hero-jail-row, .chester-game .chester-banter, .chester-game .chester-endbanner, .chester-game .style-sheet { filter: grayscale(1); }
+/* two-tone verdict: green good, red bad - on teleprompter and teach card */
+.chester-hud--solid { background: rgba(2,44,34,.92) !important; border-color: #34d399 !important; box-shadow: 0 0 16px rgba(16,185,129,.25) !important; }
+.chester-hud--shaky { background: rgba(76,5,25,.95) !important; border-color: #f43f5e !important; box-shadow: 0 0 22px rgba(244,63,94,.4) !important; }
+.chester-teach--solid { border-color: #34d399 !important; background: linear-gradient(180deg, rgba(4,52,40,.98), rgba(3,26,20,.97)) !important; }
+.chester-teach--shaky { border-color: #f43f5e !important; background: linear-gradient(180deg, rgba(76,5,25,.98), rgba(38,3,12,.97)) !important; box-shadow: 0 0 30px rgba(244,63,94,.4), 0 18px 50px rgba(0,0,0,.65) !important; }
+.chester-hud--brilliant .chester-why__grade, .chester-hud--strong .chester-why__grade, .chester-hud--solid .chester-why__grade,
+.chester-teach--brilliant .chester-why__grade, .chester-teach--strong .chester-why__grade, .chester-teach--solid .chester-why__grade { color: #34d399 !important; }
+.chester-hud--shaky .chester-why__grade, .chester-hud--blunder .chester-why__grade,
+.chester-teach--shaky .chester-why__grade, .chester-teach--blunder .chester-why__grade { color: #f43f5e !important; }
