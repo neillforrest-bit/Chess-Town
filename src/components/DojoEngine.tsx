@@ -26,7 +26,7 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 };
 
 const BOARD_THEMES = {
-  GOTHIC: [0xf4f4f4, 0x141414],
+  GOTHIC: [0xededed, 0x232323],
   NEON: [0xfffaf0, 0xecd9b0],
   RETRO: [0xe8d9b5, 0x4a3728],
   // Batch 183: more looks, available from the start (trophy skins below stay boss-gated).

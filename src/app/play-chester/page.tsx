@@ -839,7 +839,7 @@ function PlayChesterGame() {
             {boss && <div className="road-intro__boss" aria-label={`Boss fight: ${boss.name}`}>
               <div className="road-intro__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={72} /></div>
               <p className="road-intro__boss-name">BOSS FIGHT: {boss.name}</p>
-              <p className="road-intro__boss-arch">{boss.archetype} · {eloForLevel(roadLevel) ? `difficulty setting ~${eloForLevel(roadLevel)}` : 'no difficulty limit'} · exam mode, 2 wild cards</p>
+              <p className="road-intro__boss-arch">{boss.archetype} · {eloForLevel(roadLevel) ? `difficulty setting ~${eloForLevel(roadLevel)}` : 'no difficulty limit'} · exam mode · 2 take-backs</p>
               <p className="road-intro__boss-focus">{BOSS_FOCUS[roadLevel]?.focus}</p>
             </div>}
             {!boss && roadActive && <div className="road-intro__boss">
@@ -847,7 +847,7 @@ function PlayChesterGame() {
               <p className="road-intro__boss-focus">{levelFocus(roadLevel)}</p>
             </div>}
             {!boss && <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>}
-            {boss ? <p>This one actually plays. No power-ups on this board - just you, your two wild cards, and whatever you have learned. Do not waste my time.</p> : <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>}
+            {boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>}
             <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
           </div>
         </div>
@@ -858,7 +858,7 @@ function PlayChesterGame() {
           {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
           <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
           <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
-          <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two wild cards for hints or take-backs - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = (roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${(roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel)}).`}</p>
+          <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two take-backs for hints or retries - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = (roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${(roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel)}).`}</p>
           {roadLevel < roadMaxFor(roadVariant) && <p className="road-strip__top">At the top waits <b>{roadVariant === 'brendo' ? 'BRENDO' : 'JOSEPH'}</b>: {roadVariant === 'brendo' ? 'the loudest rival in town, waiting on the rooftop' : 'a grandmaster at full engine strength, the hardest opponent here'}. Each rung is a real step up.</p>}
         </div>
       )}
@@ -1065,10 +1065,7 @@ function PlayChesterGame() {
           {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b> SHIELD</b><small>{loot.shield} LEFT</small></button>}
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
           <button type="button" className="chester-console__pill chester-console__pill--style" onClick={() => { dismissHeroTip(); setStyleOpen((v) => !v); }} aria-label="Change board and piece style" aria-expanded={styleOpen}><b> STYLE</b><small>{skinNow}</small></button>
-          <div className="chester-taunts" role="group" aria-label="Taunt Chester">
-            {['', '', '', ''].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
-          </div>
-        </div>
+                  </div>
         {styleOpen && (() => {
           const SWATCHES: Record<string, [string, string]> = { NEON: ['#fffaf0', '#ecd9b0'], RETRO: ['#e8d9b5', '#4a3728'], FOREST: ['#eaf3e2', '#2f6b3a'], OCEAN: ['#e2f0f7', '#1c4f7a'], ROYAL: ['#efe4f5', '#5c2b7a'], EMBER: ['#ffe8c9', '#9a4a1c'], SHADOW: ['#cfc3e8', '#3d2b5c'], CRIMSON: ['#f5d0d0', '#7a1020'], FROST: ['#eaf7ff', '#5c93b8'], GOLD: ['#fff3c2', '#8a6a1c'] };
           let earned: string[] = [];

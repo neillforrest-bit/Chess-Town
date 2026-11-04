@@ -3545,3 +3545,10 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
 }
 /* BUILD 184: cap the teaching strip on tall screens so the board stays the focus */
 @media (min-width:861px) { .chester-game .chester-teleprompter__body { max-height:180px; overflow-y:auto; } }
+
+/* BUILD 184 corrective: whole-page gothic (nav chrome + scrollbar included), picker fits one screen */
+body:has(.chester-game), body:has(.chester-start-screen) { filter: grayscale(1); color-scheme: dark; }
+.chester-start-screen { overflow-x: hidden !important; }
+.chester-start-screen .road-intro, .chester-start-screen .road-strip { max-width: min(92vw, 430px); box-sizing: border-box; margin-left: auto; margin-right: auto; }
+.chester-start-screen .road-intro__boss-name { font-size: clamp(1.05rem, 4.6vw, 1.6rem) !important; overflow-wrap: anywhere; }
+.chester-start-screen .road-intro__boss-arch, .chester-start-screen .road-intro p { font-size: clamp(.82rem, 3.6vw, 1rem) !important; line-height: 1.45; overflow-wrap: anywhere; }

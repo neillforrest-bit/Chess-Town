@@ -29,7 +29,7 @@ export type PieceTheme = 'metallic' | 'neon' | 'gothic';
 const THEME_GRADIENTS: Record<PieceTheme, { frost: [string, string, string]; flame: [string, string, string] }> = {
   neon: { frost: ['#f2f9ff', '#63a5f2', '#1c48b0'], flame: ['#ffe27a', '#ff8a1f', '#c21807'] },
   metallic: { frost: ['#ffffff', '#dfe5ec', '#8a93a3'], flame: ['#cfd6df', '#5a626e', '#14161a'] },
-  gothic: { frost: ['#ffffff', '#ececec', '#8a8a8a'], flame: ['#5c5c5c', '#161616', '#000000'] },
+  gothic: { frost: ['#ffffff', '#f0f0f0', '#555555'], flame: ['#c9c9c9', '#3d3d3d', '#000000'] },
 };
 
 export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288, theme: PieceTheme = 'neon'): string | null {
