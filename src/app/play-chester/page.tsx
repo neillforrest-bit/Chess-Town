@@ -854,7 +854,7 @@ function PlayChesterGame() {
       )}
       {!isFriendMode && roadActive && (
         <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
-          <p className="road-strip__title">ROAD TO JOSEPH · LEVEL {roadLevel}/{ROAD_MAX}</p>
+          <p className="road-strip__title">{roadVariant === 'brendo' ? 'TIME TO BEAT BRENDO' : 'ROAD TO JOSEPH'} · LEVEL {roadLevel}/{roadMaxFor(roadVariant)}</p>
           {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
           <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
           <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
