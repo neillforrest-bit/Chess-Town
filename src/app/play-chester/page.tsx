@@ -843,7 +843,7 @@ function PlayChesterGame() {
               <p className="road-intro__boss-focus">{BOSS_FOCUS[roadLevel]?.focus}</p>
             </div>}
             {!boss && roadActive && <div className="road-intro__boss">
-              <p className="road-intro__boss-name">LEVEL {roadLevel}/{ROAD_MAX} · difficulty setting ~{eloForLevel(roadLevel)}</p>
+              <p className="road-intro__boss-name">LEVEL {roadLevel}/{roadMaxFor(roadVariant)} · difficulty setting ~{eloForLevel(roadLevel)}</p>
               <p className="road-intro__boss-focus">{levelFocus(roadLevel)}</p>
             </div>}
             {!boss && <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>}
