@@ -25,7 +25,20 @@ export function levelFocus(level: number): string {
   return 'TRAINING FOCUS: precision - calculate every forcing move: checks, captures, threats.';
 }
 export const isBossLevel = (level: number) => level % 3 === 0;
-export const bossFor = (level: number): RoadBoss | null => (isBossLevel(level) ? BOSS_ROSTER[level] || null : null);
+export const bossFor = (level: number, variant: RoadVariant = 'joseph'): RoadBoss | null =>
+  isBossLevel(level) ? (variant === 'brendo' ? BRENDO_ROSTER : BOSS_ROSTER)[level] || null : null;
+
+export type RoadVariant = 'joseph' | 'brendo';
+
+/** BUILD 184 (4 Nov 2026): Time to Beat Brendo - a shorter, friendlier road cloned from Road to Joseph for Brendo. */
+export const BRENDO_MAX = 9;
+export const BRENDO_ROSTER: Record<number, RoadBoss> = {
+  3: { name: 'Little Brendo', archetype: 'The Eager Challenger' },
+  6: { name: 'Brendo Prime', archetype: 'The Trash-Talking Tactician' },
+  9: { name: 'BRENDO', archetype: 'The One To Beat' },
+};
+export const roadMaxFor = (variant: RoadVariant = 'joseph'): number => (variant === 'brendo' ? BRENDO_MAX : ROAD_MAX);
+const ROAD_KEYS: Record<RoadVariant, string> = { joseph: 'ct-road-level-v1', brendo: 'ct-brendo-level-v1' };
 /** Nominal strength. Levels 1-14 interpolate 800..3190 Elo. Level 15 is unlimited (null): Joseph plays at full grandmaster strength. */
 export const ROAD_FLOOR_ELO = 600;
 // Batch 176 (his steering): the old ramp hit ~2271 by level 9 of 15 - far too steep for a
@@ -71,11 +84,10 @@ export function movetimeForLevel(level: number): number {
 export function tierForLevel(level: number): 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' {
   return level <= 4 ? 'BEGINNER' : level <= 8 ? 'INTERMEDIATE' : level <= 12 ? 'ADVANCED' : 'EXPERT';
 }
-const KEY = 'ct-road-level-v1';
-export function getRoadLevel(): number {
-  try { const n = parseInt(window.localStorage.getItem(KEY) || '1', 10); return Math.min(ROAD_MAX, Math.max(1, n || 1)); } catch { return 1; }
+export function getRoadLevel(variant: RoadVariant = 'joseph'): number {
+  try { const n = parseInt(window.localStorage.getItem(ROAD_KEYS[variant]) || '1', 10); return Math.min(roadMaxFor(variant), Math.max(1, n || 1)); } catch { return 1; }
 }
-export function setRoadLevel(n: number) { try { window.localStorage.setItem(KEY, String(Math.min(ROAD_MAX, Math.max(1, n)))); } catch { /* storage unavailable */ } }
+export function setRoadLevel(n: number, variant: RoadVariant = 'joseph') { try { window.localStorage.setItem(ROAD_KEYS[variant], String(Math.min(roadMaxFor(variant), Math.max(1, n)))); } catch { /* storage unavailable */ } }
 export function bossTauntPrompt(boss: RoadBoss, playerName = 'Forrest'): string {
   return `You are ${boss.name}, a ${boss.archetype}. You are playing a boss match against ${playerName}. Generate a 1-sentence hostile taunt based on the engine evaluation swing. Do not offer advice.${boss.name === 'Joseph' ? " If the boss is 'Joseph', return an empty string." : ''}`;
 }

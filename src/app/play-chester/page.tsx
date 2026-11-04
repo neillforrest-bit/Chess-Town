@@ -21,7 +21,7 @@ import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/s
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
-import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, bossTauntPrompt, BOSS_FOCUS, levelFocus } from '@/lib/road';
+import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, roadMaxFor, bossTauntPrompt, BOSS_FOCUS, levelFocus, type RoadVariant } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { getStockfishClient } from '@/lib/stockfish';
@@ -65,7 +65,9 @@ function PlayChesterGame() {
   const requestedMode = searchParams.get('mode');
   const requestedLevel = searchParams.get('level');
   const bossNode = searchParams.get('boss');
-  const roadActive = searchParams.get('road') === '1';
+  const roadParam = searchParams.get('road');
+  const roadVariant: RoadVariant = roadParam === 'brendo' ? 'brendo' : 'joseph';
+  const roadActive = roadParam === '1' || roadParam === 'brendo';
   const requestedRoom = (searchParams.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
   const requestedSeat: 'w' | 'b' = searchParams.get('host') === '1' ? 'w' : 'b';
   const warMode = requestedMode === 'duel' && searchParams.get('war') === '1';
@@ -78,7 +80,7 @@ function PlayChesterGame() {
   // Road to Joseph: 15 levels, every 3rd is a boss fight (exam mode).
   const [roadLevel, setRoadLevelState] = useState(1);
   const rushActive = roadActive && searchParams.get('rush') === '1';
-  useEffect(() => { if (roadActive) setRoadLevelState(rushActive ? RUSH_LEVELS[getRush().step] : getRoadLevel()); }, [roadActive, rushActive]);
+  useEffect(() => { if (roadActive) setRoadLevelState(rushActive ? RUSH_LEVELS[getRush().step] : getRoadLevel(roadVariant)); }, [roadActive, rushActive, roadVariant]);
   const [rushMsg, setRushMsg] = useState<{ kind: 'win'; step: number; complete: boolean } | { kind: 'loss' } | null>(null);
   const [victoryState, setVictoryState] = useState<'none' | 'cleared' | 'boss_defeated'>('none');
   const [introOpen, setIntroOpen] = useState(false);
@@ -87,8 +89,8 @@ function PlayChesterGame() {
   const boss = isBossFight ? bossFor(roadLevel) : null;
   const bossRef = useRef<{ on: boolean; boss: ReturnType<typeof bossFor> }>({ on: false, boss: null });
   bossRef.current = { on: isBossFight, boss };
-  const roadRef = useRef({ active: false, level: 1 });
-  roadRef.current = { active: roadActive, level: roadLevel };
+  const roadRef = useRef({ active: false, level: 1, variant: 'joseph' as RoadVariant });
+  roadRef.current = { active: roadActive, level: roadLevel, variant: roadVariant };
   useEffect(() => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = roadActive ? roadLevel : null; return () => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = null; }; }, [roadActive, roadLevel]);
   const bp = useBlueprint(); const bpRef = useRef(bp); bpRef.current = bp;
   const [armoryOpen, setArmoryOpen] = useState(false);
@@ -296,10 +298,10 @@ function PlayChesterGame() {
   // BUILD 128 fork: ACCEPT = Chester replies at once; REWIND = take back the move (1 ply) and try again.
   const acceptConsequences = () => { (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
   const handleNextLevel = () => {
-    const atTop = roadLevel >= ROAD_MAX;
+    const atTop = roadLevel >= roadMaxFor(roadVariant);
     if (rushActive) { window.location.href = '/boss-rush'; return; }
-    const next = atTop ? 1 : roadLevel + 1; // beating Joseph restarts the climb at level 1
-    setRoadLevel(next); setRoadLevelState(next);
+    const next = atTop ? 1 : roadLevel + 1; // beating the final boss restarts the climb at level 1
+    setRoadLevel(next, roadVariant); setRoadLevelState(next);
     setVictoryState('none'); setReport(null); setReportOpen(false); setScrubIdx(null); setMatchOver(false); setCoachPrompt(null); setCoachReply(''); setFreeze(null); setBanter(''); setCapturedPieces([]); setEndBanner(null); setPendingCard(null); setTeachOpen(false); setTeachPage(0); setFinalResult(null); setAccLog([]);
     (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false;
     window.dispatchEvent(new CustomEvent('chester-clear-better'));
@@ -544,7 +546,7 @@ function PlayChesterGame() {
       }
       if (roadRef.current.active && !isFriendMode && new URLSearchParams(window.location.search).get('rush') === '1' && detail.pgn) {
         if (/1-0\s*$/.test(detail.pgn)) { const r = rushWin(); setRushMsg({ kind: 'win', step: r.step, complete: r.complete }); setVictoryState('boss_defeated'); if (r.complete) { try { burstConfetti(); } catch { /* */ } } } else { rushLoss(); setRushMsg({ kind: 'loss' }); }
-      } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(ROAD_MAX, lv + 1)); try { window.localStorage.setItem('ct-road-level-v1-seen', String(Math.min(ROAD_MAX, lv + 1))); } catch { /* */ } setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); if (isBossLevel(lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
+      } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(roadMaxFor(roadRef.current.variant), lv + 1), roadRef.current.variant); try { window.localStorage.setItem(roadRef.current.variant === 'brendo' ? 'ct-brendo-level-v1-seen' : 'ct-road-level-v1-seen', String(Math.min(roadMaxFor(roadRef.current.variant), lv + 1))); } catch { /* */ } setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); if (isBossLevel(lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);
