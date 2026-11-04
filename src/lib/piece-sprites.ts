@@ -25,10 +25,11 @@ const PIECES_SVG: Record<string, string> = {
 // gradients. 'neon' is the classic frost-blue vs flame-orange skin. 'metallic' is the
 // traditional black-vs-white identity with a polished metal sheen (silver vs gunmetal),
 // per his arena feedback - clear sides first, spectacle second.
-export type PieceTheme = 'metallic' | 'neon';
+export type PieceTheme = 'metallic' | 'neon' | 'gothic';
 const THEME_GRADIENTS: Record<PieceTheme, { frost: [string, string, string]; flame: [string, string, string] }> = {
   neon: { frost: ['#f2f9ff', '#63a5f2', '#1c48b0'], flame: ['#ffe27a', '#ff8a1f', '#c21807'] },
   metallic: { frost: ['#ffffff', '#dfe5ec', '#8a93a3'], flame: ['#cfd6df', '#5a626e', '#14161a'] },
+  gothic: { frost: ['#ffffff', '#ececec', '#8a8a8a'], flame: ['#5c5c5c', '#161616', '#000000'] },
 };
 
 export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288, theme: PieceTheme = 'neon'): string | null {

@@ -9,7 +9,7 @@ import { PEER_CONFIG } from '@/lib/p2p';
 import { askChesterChat, chesterUsageByReply } from '@/app/actions';
 import { GEMINI_MODEL } from '@/lib/gemini-model';
 import QAFlagButton from '@/components/QAFlagButton';
-import { CaptureShowcase, CaptureStrip, HeroScoreboard, LiveAccuracy, splitMaterial, type CapturedPiece } from '@/components/CapturedPieceJails';
+import {CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece} from '@/components/CapturedPieceJails';
 import { buildGameRecord, recordGameToFile } from '@/lib/player-file';
 import { getProfile, saveProfile } from '@/lib/profile';
 import { recordMillMistake, loadMill } from '@/lib/puzzle-mill';
@@ -41,7 +41,7 @@ type GameReport = { gradeHistory: GradedMove[]; pgn?: string; grade?: string | n
 type CoachPrompt = { evaluationMateAfter?: number | null; evaluationMateBefore?: number | null; kind: 'move' | 'help' | 'howler'; move?: string; movePhrase?: string | null; bestMovePhrase?: string | null; fen: string; fenBefore?: string | null; bestMove?: string | null; continuation?: string[]; engineLine?: string[] | null; sacrificePiece?: string | null; evaluation?: number | string | null; classification?: string | null; pending?: boolean; evalDelta?: number | null; evaluationBefore?: number | null; evaluationAfter?: number | null; captured?: string | null; check?: boolean; mate?: boolean; ply?: number; provisional?: boolean; color?: 'w' | 'b'; principleKey?: string | null; principleFollowed?: boolean | null; exchangeLost?: string | null; exchangeWon?: string | null; exchangeNet?: number | null };
 // BUILD 94: giant emoji move reviews replace the static horse avatar on graded moves.
 // (The horse stays for the idle/thinking coach persona - Chester IS a knight.)
-const GRADE_EMOJI: Record<string, string> = { BRILLIANT: '👑', BEST: '🎯', GREAT: '🔥', GOOD: '✅', INACCURACY: '😬', MISTAKE: '⚠️', BLUNDER: '💥' };
+const GRADE_EMOJI: Record<string, string> = { BRILLIANT: '', BEST: '', GREAT: '', GOOD: '', INACCURACY: '', MISTAKE: '⚠', BLUNDER: '' };
 const LEVELS: { value: Difficulty; label: string; note: string }[] = [
   { value: 'BEGINNER', label: 'ROOKIE', note: 'Chester leaves the door open' },
   { value: 'INTERMEDIATE', label: 'CLUB', note: 'A fair fight with teeth' },
@@ -86,7 +86,7 @@ function PlayChesterGame() {
   const [introOpen, setIntroOpen] = useState(false);
   useEffect(() => { if (roadActive) setIntroOpen(true); }, [roadActive]);
   const isBossFight = roadActive && isBossLevel(roadLevel);
-  const boss = isBossFight ? bossFor(roadLevel) : null;
+  const boss = isBossFight ? bossFor(roadLevel, roadVariant) : null;
   const bossRef = useRef<{ on: boolean; boss: ReturnType<typeof bossFor> }>({ on: false, boss: null });
   bossRef.current = { on: isBossFight, boss };
   const roadRef = useRef({ active: false, level: 1, variant: 'joseph' as RoadVariant });
@@ -119,12 +119,12 @@ function PlayChesterGame() {
     fireReact(t, 1600);
     const lastCls = (moveTrail[moveTrail.length - 1]?.classification || '').toUpperCase();
     const LINES: Record<string, string[]> = {
-      '😏': ['I invented that smirk.', 'Smirking already? The board disagrees.'],
-      '😤': ['Save the steam - you will need it for the ending.', 'Anger is just calculation with worse posture.'],
-      '🤯': ['Mind blown? I have not even started.', 'Yes, I saw that too. Obviously.'],
-      '💪': ['Muscles do not move pieces. Shame.', 'Flex all you like - the eval bar is mine.'],
+      '': ['I invented that smirk.', 'Smirking already? The board disagrees.'],
+      '': ['Save the steam - you will need it for the ending.', 'Anger is just calculation with worse posture.'],
+      '': ['Mind blown? I have not even started.', 'Yes, I saw that too. Obviously.'],
+      '': ['Muscles do not move pieces. Shame.', 'Flex all you like - the eval bar is mine.'],
     };
-    let pool = LINES[t] || LINES['😏'];
+    let pool = LINES[t] || LINES[''];
     if (lastCls === 'BLUNDER' || lastCls === 'MISTAKE') pool = ['Bold talk from someone who just gift-wrapped a piece.', 'Taunt me when the move list stops glowing red.'];
     else if (lastCls === 'BRILLIANT' || lastCls === 'BEST') pool = ['One good move and he grows a crown. Do it again.', 'Fine. That one stung. Again.'];
     const line = pool[Math.floor(Math.random() * pool.length)];
@@ -256,7 +256,7 @@ function PlayChesterGame() {
     window.addEventListener('engine-evaluation', onEval);
     return () => window.removeEventListener('engine-evaluation', onEval);
   }, [isJosephFight]);
-  useEffect(() => { const onCalc = (e: Event) => { const d = (e as CustomEvent).detail; if (d?.on && !calcCycle.current) setWhyFresh(false); calcCycle.current = !!d?.on; setCalculating(!!d?.on); setDeepThought(!!d?.on && !!d?.deep); if (d?.on) { window.clearTimeout(leanT.current); } else { window.clearTimeout(leanT.current); leanT.current = window.setTimeout(() => { setReaction('🧐'); window.clearTimeout(reactT.current); reactT.current = window.setTimeout(() => setReaction(null), 2400); }, 7000); } }; window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
+  useEffect(() => { const onCalc = (e: Event) => { const d = (e as CustomEvent).detail; if (d?.on && !calcCycle.current) setWhyFresh(false); calcCycle.current = !!d?.on; setCalculating(!!d?.on); setDeepThought(!!d?.on && !!d?.deep); if (d?.on) { window.clearTimeout(leanT.current); } else { window.clearTimeout(leanT.current); leanT.current = window.setTimeout(() => { setReaction(''); window.clearTimeout(reactT.current); reactT.current = window.setTimeout(() => setReaction(null), 2400); }, 7000); } }; window.addEventListener('chester-calculating', onCalc); return () => window.removeEventListener('chester-calculating', onCalc); }, []);
   useEffect(() => { const el = teleRef.current; if (el) el.scrollTop = 0; }, [whyCard]); // a fresh card starts at its first line - never auto-jump to the bottom (his 12:47 playtest)
   useEffect(() => { setMutedState(isMuted()); }, []);
   const [coachReply, setCoachReply] = useState('');
@@ -483,14 +483,7 @@ function PlayChesterGame() {
   const modeKicker = mode === 'PVP_LOCAL' ? 'FRIENDLY DUEL' : mode === '2V2' ? 'TAG MATCH' : mode === 'PVP_REMOTE' ? 'LIVE DUEL' : 'PLAYING CHESTER';
   const modeTitle = mode === 'PVP_LOCAL' ? 'PASS & PLAY' : mode === '2V2' ? '2V2 CHAOS' : mode === 'PVP_REMOTE' ? (requestedSeat === 'w' ? 'YOU ARE WHITE' : 'YOU ARE BLACK') : selectedLevel.label;
   const isFriendMode = mode === 'PVP_LOCAL' || mode === '2V2' || mode === 'PVP_REMOTE';
-  const placePowerups = () => {
-    if (roadActive && !isBossFight && !isFriendMode) {
-      const squares = ['d4', 'e4', 'c4', 'f4', 'd5', 'e5', 'c5', 'f5', 'c3', 'f3', 'c6', 'f6'];
-      const pick = () => squares.splice(Math.floor(Math.random() * squares.length), 1)[0];
-      powerupsRef.current = [{ sq: pick(), kind: 'torch' }, { sq: pick(), kind: 'shield' }];
-      setPowerups(powerupsRef.current);
-    } else { powerupsRef.current = []; setPowerups([]); }
-  };
+  const placePowerups = () => { powerupsRef.current = []; setPowerups([]); }; // BUILD 184: gimmicks removed
   useEffect(() => { setLoot({ torch: 0, shield: 0 }); placePowerups(); }, [started, roadLevel, roadActive, isBossFight, isFriendMode]);
   useEffect(() => {
     const collect = (e: Event) => {
@@ -502,7 +495,7 @@ function PlayChesterGame() {
       setPowerups(powerupsRef.current);
       setLoot((l) => ({ ...l, [hit.kind]: l[hit.kind] + 1 }));
       playSfx('win');
-      setBanter(hit.kind === 'torch' ? '⭐ POWER-UP: TORCH collected. Cash it in for the full engine answer, free.' : '⭐ POWER-UP: SHIELD collected. Cash it in for a free take-back, no questions asked.');
+      setBanter(hit.kind === 'torch' ? ' POWER-UP: TORCH collected. Cash it in for the full engine answer, free.' : ' POWER-UP: SHIELD collected. Cash it in for a free take-back, no questions asked.');
     };
     const reload = () => { setLoot({ torch: 0, shield: 0 }); placePowerups(); };
     window.addEventListener('chester-move-squares', collect);
@@ -561,8 +554,8 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { if (detail.pending) { setPendingCard({ ply: detail.ply || 0, san: detail.move || '', movePhrase: detail.movePhrase || null }); setWhyCard(null); setWhyFresh(false); setTeachOpen(false); setTeachPage(0); } else { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured, provisional: detail.provisional === true }); setWhyCard(wc); setWhyFresh(true); cardsRef.current = [...cardsRef.current.slice(-59), wc]; if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '❌' : '✅'} ${j.whatHappenedLine}`, engineBlueprintLine: `🤖 ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (!endBannerRef.current && wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on && !(d.ui_action === 'freeze_red' && bossCardsRef.current > 0)) { setFreeze(null); setBanter(''); } else if (!endBannerRef.current && d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (!endBannerRef.current && d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && (detail.evalDelta != null || (detail.evaluationMateBefore != null && detail.evaluationMateBefore !== 0)) && detail.ply != null && !detail.provisional) { const mv = detail.color || (detail.ply % 2 === 1 ? 'w' : 'b'); const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); const mateB = detail.evaluationMateBefore; const mateA = detail.evaluationMateAfter; const afterWin = afterMover != null ? winProbOf(afterMover) : mateA != null && mateA !== 0 ? ((mv === 'w') === (mateA > 0) ? 100 : 0) : 50; const pts = detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : mateB != null && mateB !== 0 ? Math.max(0, ((mateB > 0 ? 100 : 0) - afterWin) * 1.5) : accPointsFromDelta(detail.evalDelta!); /* mate path: real pre-move search found the forced mate; 100/0 is the app's published mate convention (same as the live meter), never a material guess */ const clsLabel = (detail.classification || 'OK').toUpperCase(); bumpAcc(mv, pts); if (mv === 'w' && detail.move) { const sc = Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * Math.max(0, pts)) - 0.8))); setAccLog((lg) => [...lg.slice(-99), { san: detail.move!, grade: clsLabel, lost: Math.round(pts / 1.5), score: sc }]); /* row shows raw win% lost; the 1.5x weighting lives in the published score formula */ } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact('😏'); else if (rc === 'BRILLIANT') fireReact('😲'); setPendingCard(null); if (!bossRef.current.on && !endBannerRef.current) { setTeachOpen(true); setTeachPage(0); } } } };
-    const aiGraded = (event: Event) => { const d = (event as CustomEvent<{ evalDelta: number | null }>).detail; if (d && d.evalDelta != null) { bumpAcc('b', accPointsFromDelta(d.evalDelta)); if (d.evalDelta >= 250) fireReact('😬'); } if (bossRef.current.on) setBossStrike(Date.now()); };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { if (detail.pending) { setPendingCard({ ply: detail.ply || 0, san: detail.move || '', movePhrase: detail.movePhrase || null }); setWhyCard(null); setWhyFresh(false); setTeachOpen(false); setTeachPage(0); } else { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured, provisional: detail.provisional === true }); setWhyCard(wc); setWhyFresh(true); cardsRef.current = [...cardsRef.current.slice(-59), wc]; if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '' : ''} ${j.whatHappenedLine}`, engineBlueprintLine: ` ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (!endBannerRef.current && wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on && !(d.ui_action === 'freeze_red' && bossCardsRef.current > 0)) { setFreeze(null); setBanter(''); } else if (!endBannerRef.current && d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (!endBannerRef.current && d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && (detail.evalDelta != null || (detail.evaluationMateBefore != null && detail.evaluationMateBefore !== 0)) && detail.ply != null && !detail.provisional) { const mv = detail.color || (detail.ply % 2 === 1 ? 'w' : 'b'); const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); const mateB = detail.evaluationMateBefore; const mateA = detail.evaluationMateAfter; const afterWin = afterMover != null ? winProbOf(afterMover) : mateA != null && mateA !== 0 ? ((mv === 'w') === (mateA > 0) ? 100 : 0) : 50; const pts = detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : mateB != null && mateB !== 0 ? Math.max(0, ((mateB > 0 ? 100 : 0) - afterWin) * 1.5) : accPointsFromDelta(detail.evalDelta!); /* mate path: real pre-move search found the forced mate; 100/0 is the app's published mate convention (same as the live meter), never a material guess */ const clsLabel = (detail.classification || 'OK').toUpperCase(); bumpAcc(mv, pts); if (mv === 'w' && detail.move) { const sc = Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * Math.max(0, pts)) - 0.8))); setAccLog((lg) => [...lg.slice(-99), { san: detail.move!, grade: clsLabel, lost: Math.round(pts / 1.5), score: sc }]); /* row shows raw win% lost; the 1.5x weighting lives in the published score formula */ } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact(''); else if (rc === 'BRILLIANT') fireReact(''); setPendingCard(null); if (!bossRef.current.on && !endBannerRef.current) { setTeachOpen(true); setTeachPage(0); } } } };
+    const aiGraded = (event: Event) => { const d = (event as CustomEvent<{ evalDelta: number | null }>).detail; if (d && d.evalDelta != null) { bumpAcc('b', accPointsFromDelta(d.evalDelta)); if (d.evalDelta >= 250) fireReact(''); } if (bossRef.current.on) setBossStrike(Date.now()); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
     const restored = (event: Event) => { const r = (event as CustomEvent<CapturedPiece>).detail; setCapturedPieces((pieces) => { const i = pieces.findLastIndex((p) => p.color === r.color && p.type === r.type); return i < 0 ? pieces : pieces.filter((_, k) => k !== i); }); };
@@ -579,7 +572,7 @@ function PlayChesterGame() {
         const h = d.hanging!;
         const first = `your ${h[0].piece} on ${h[0].square} is loose - ${h[0].attackerPiece === 'pawn' ? 'a pawn' : `the ${h[0].attackerPiece}`} on ${h[0].attackerSquare} can just take it`;
         const second = h[1] ? `, and the ${h[1].piece} on ${h[1].square} is hanging too` : '';
-        setBanter(`⚠️ Look - ${first}${second}.`);
+        setBanter(`⚠ Look - ${first}${second}.`);
       }, 2600);
     };
     window.addEventListener('chester-risk-reveal', riskReveal);
@@ -829,17 +822,17 @@ function PlayChesterGame() {
     <span className={`duel-clock-chip ${turnColor === requestedSeat && !matchOver ? 'is-active' : ''} ${clocks[requestedSeat] <= 30 ? 'is-low' : ''}`}>YOU {fmtClock(clocks[requestedSeat])}</span>
     <span className={`duel-clock-chip ${turnColor !== requestedSeat && !matchOver ? 'is-active' : ''} ${clocks[rivalSeat] <= 30 ? 'is-low' : ''}`}>RIVAL {fmtClock(clocks[rivalSeat])}</span>
   </div> : null;
-  const flagBanner = flagResult ? <div className={`duel-flag-banner ${flagResult === 'won' ? 'is-won' : 'is-lost'}`} role="status">{flagResult === 'won' ? '⚡ FLAG FALL - rival ran out of time. You win on the clock!' : '⏱ FLAG FALL - your clock hit zero. Rival wins on time.'}</div> : null;
+  const flagBanner = flagResult ? <div className={`duel-flag-banner ${flagResult === 'won' ? 'is-won' : 'is-lost'}`} role="status">{flagResult === 'won' ? '⚡ FLAG FALL - rival ran out of time. You win on the clock!' : ' FLAG FALL - your clock hit zero. Rival wins on time.'}</div> : null;
 
   const torchReady = () => { const l = liveRef.current; return Boolean(l.fen && l.fen === liveFen && l.bestUci && l.fen.split(' ')[1] === 'w'); };
-  const spendTorch = () => { if (!loot.torch || !torchReady()) { setBanter('🔦 Torch not ready - wait for your turn while Chester reads the position.'); return; } setLoot((l) => ({ ...l, torch: l.torch - 1 })); dismissHeroTip(); const uci = liveRef.current.bestUci!; setHintStage(3); setChipArrow({ from: uci.slice(0, 2), to: uci.slice(2, 4) }); };
+  const spendTorch = () => { if (!loot.torch || !torchReady()) { setBanter(' Torch not ready - wait for your turn while Chester reads the position.'); return; } setLoot((l) => ({ ...l, torch: l.torch - 1 })); dismissHeroTip(); const uci = liveRef.current.bestUci!; setHintStage(3); setChipArrow({ from: uci.slice(0, 2), to: uci.slice(2, 4) }); };
   const spendShield = () => { if (!loot.shield) return; setLoot((l) => ({ ...l, shield: l.shield - 1 })); rewindAndRetry(); };
   const help = () => { if (isThinking) return; if (bossRef.current.on) { if (!bossCardsRef.current) return; bossCardsRef.current -= 1; setBossCards(bossCardsRef.current); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
     <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
-      {!isFriendMode && drill && <p className="chester-drill">🎯 TODAY'S DRILL: {drill.drill}{drill.hanging ? ` Last game: ${drill.hanging} loose piece${drill.hanging === 1 ? '' : 's'} left hanging.` : drill.missed ? ` Last game: ${drill.missed} winning tactic${drill.missed === 1 ? '' : 's'} missed.` : ''}</p>}
-      {!isFriendMode && ladder.lastLevel && <p className="chester-remembers">🧠 CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
+      {!isFriendMode && drill && <p className="chester-drill"> TODAY'S DRILL: {drill.drill}{drill.hanging ? ` Last game: ${drill.hanging} loose piece${drill.hanging === 1 ? '' : 's'} left hanging.` : drill.missed ? ` Last game: ${drill.missed} winning tactic${drill.missed === 1 ? '' : 's'} missed.` : ''}</p>}
+      {!isFriendMode && ladder.lastLevel && <p className="chester-remembers"> CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
       {introOpen && !started && (
         <div className="road-intro" role="dialog" aria-modal="true" aria-label="Chester">
           <div className={boss ? 'road-intro__card road-intro__card--boss' : 'road-intro__card'}>
@@ -865,16 +858,16 @@ function PlayChesterGame() {
           {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
           <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
           <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
-          <p className="road-strip__who">{roadLevel >= ROAD_MAX ? 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.' : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two wild cards for hints or take-backs - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = [3, 6, 9, 12, 15].find((b) => b >= roadLevel); return nb ? bossFor(nb)?.name : ''; })()} (level ${[3, 6, 9, 12, 15].find((b) => b >= roadLevel)}).`}</p>
-          {roadLevel < ROAD_MAX && <p className="road-strip__top">At the top waits <b>JOSEPH</b>: a grandmaster at full engine strength, the hardest opponent here. Each rung is a real step up.</p>}
+          <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two wild cards for hints or take-backs - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = (roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${(roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel)}).`}</p>
+          {roadLevel < roadMaxFor(roadVariant) && <p className="road-strip__top">At the top waits <b>{roadVariant === 'brendo' ? 'BRENDO' : 'JOSEPH'}</b>: {roadVariant === 'brendo' ? 'the loudest rival in town, waiting on the rooftop' : 'a grandmaster at full engine strength, the hardest opponent here'}. Each rung is a real step up.</p>}
         </div>
       )}
       {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/play-chester?road=1"><b>ROAD TO JOSEPH</b><small>15 levels · a boss every 3rd · your level is saved</small></a>}
       {!isFriendMode && requestedLevel && <p style={{ margin: '.2rem 0 .6rem', color: '#ffd84d', fontWeight: 900, letterSpacing: '1px' }}>OPPONENT: {selectedLevel.label} · {selectedLevel.note}</p>}
-      {!isFriendMode && !requestedLevel && !roadActive && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? '🔒 ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small>{!locked && (() => { const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return rec?.games ? <i className="chester-level-stars">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}{rec.bestGrade ? ` · best ${rec.bestGrade}` : ''}</i> : null; })()}</button>; })}</div>}
+      {!isFriendMode && !requestedLevel && !roadActive && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? ' ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small>{!locked && (() => { const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return rec?.games ? <i className="chester-level-stars">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}{rec.bestGrade ? ` · best ${rec.bestGrade}` : ''}</i> : null; })()}</button>; })}</div>}
       {!isFriendMode && !requestedLevel && !roadActive && <div className="bp-armory">
         <button className={`bp-toggle${bp.opening ? ' is-on' : ''}`} style={bp.opening ? { borderColor: bp.opening.color, color: bp.opening.color } : undefined} onClick={() => { if (bp.opening) bp.disarm(); else setArmoryOpen((v) => !v); }}>
-          ⚔ GUIDED OPENING{bp.opening ? `: ${bp.opening.name} ✕` : armoryOpen ? ' ▲' : ' ▼'}
+          ⚔ GUIDED OPENING{bp.opening ? `: ${bp.opening.name} ` : armoryOpen ? ' ▲' : ' ▼'}
         </button>
         {armoryOpen && !bp.opening && <div className="bp-drawer">
           {ARMORY.map((o) => <button key={o.id} className="bp-card" style={{ borderColor: o.color }} onClick={() => { bp.arm(o.id); setArmoryOpen(false); }}>
@@ -902,11 +895,11 @@ function PlayChesterGame() {
   const tugNow = winOddsPct(coachPrompt?.kind === 'move' ? coachPrompt.evaluationAfter : null, viewerSeat, coachPrompt?.kind === 'move' ? coachPrompt.evaluationMateAfter : null);
   if (tugNow !== null) lastTugRef.current = tugNow; // never snap to 50 while the verdict is pending
   const tugPct = tugNow ?? lastTugRef.current;
-  const gradeEmoji = coachPrompt?.kind === 'move' ? GRADE_EMOJI[(coachPrompt.classification || '').toUpperCase()] || '♟️' : null;
+  const gradeEmoji = coachPrompt?.kind === 'move' ? GRADE_EMOJI[(coachPrompt.classification || '').toUpperCase()] || '♟' : null;
   const verdictStyle = coachPrompt?.kind === 'move' ? ({ '--verdict-color': getVerdict(coachPrompt.classification).color } as React.CSSProperties) : undefined;
-  const moodEmoji = material.lead > 0 ? '🦄' : material.lead < 0 ? '🐴💦' : '🐴';
+  const moodEmoji = material.lead > 0 ? '' : material.lead < 0 ? '' : '';
   const verdictKey = coachPrompt ? `${coachPrompt.move}-${coachPrompt.classification}-${isThinking ? 'think' : 'say'}` : `idle-${moodEmoji}`;
-  const verdictEmoji = isThinking && coachPrompt ? '🐴💭' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : moodEmoji;
+  const verdictEmoji = isThinking && coachPrompt ? '' : coachPrompt?.kind === 'move' ? getVerdict(coachPrompt.classification).emoji : moodEmoji;
   const verdictKicker = isThinking ? 'CHESTER LIVE - READING THE BOARD…' : 'CHESTER LIVE';
   const verdictTitle = coachPrompt?.kind === 'help' ? 'Try this idea' : coachPrompt ? <>On {coachPrompt.movePhrase || coachPrompt.move} <i key={verdictKey} className="chester-verdict grade-pop">{coachPrompt.provisional ? 'FIRST TAKE' : getVerdict(coachPrompt.classification).word}</i></> : lesson.title;
   const coachMovePrompt = coachPrompt?.kind === 'move' && !isThinking ? coachPrompt : null;
@@ -933,18 +926,13 @@ function PlayChesterGame() {
       </div>
     </header>
     <section className="chester-game__board">
-      {heroTipOpen && <div className="hero-tip" role="status">
-        <span><Ico n="wave" /> <b>New here?</b> HINT shows you the best move. <Ico n="chat" /> CHESTER answers any chess question.</span>
-        <button type="button" onClick={dismissHeroTip}>GOT IT</button>
-      </div>}
-      {clockBar}
+            {clockBar}
       {flagBanner}
       <div className="hero-jail-row" aria-label="Captured pieces">
         <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
         <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
       </div>
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : 'CHESTER')} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
-      <LiveAccuracy extra={challenge ? <span className={`chester-challenge${challenge.done ? ' is-done' : ''}`} role="status"><b>{challenge.done ? '✓ CHALLENGE · +150' : `CHALLENGE: ${challenge.label}`}</b>{!challenge.done && <i>{challenge.n}/{challenge.target}</i>}</span> : undefined} rows={(['w', 'b'] as const).map((c) => { const a = accuracy[c]; return { label: c === 'w' ? (isFriendMode ? 'P1' : 'YOU') : (isFriendMode ? 'P2' : (boss ? 'BOSS' : 'CHESTER')), side: c === 'w' ? 'you' as const : 'opp' as const, pct: a.n === 0 ? 100 : Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * (a.loss / a.n))) - 0.8)) }; })} />
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {bp.line && bp.opening && <div className="bp-line" style={{ borderColor: bp.opening.color }}>
@@ -953,15 +941,15 @@ function PlayChesterGame() {
         </div>}
         {victoryState !== 'none' && !endBanner && !(reportOpen && finalResult) && (() => {
           const finalWin = roadLevel >= ROAD_MAX;
-          const bossName = bossFor(roadLevel)?.name || 'THE BOSS';
+          const bossName = bossFor(roadLevel, roadVariant)?.name || 'THE BOSS';
           const rw = rushActive && rushMsg?.kind === 'win' ? rushMsg : null;
           const title = rw ? (rw.complete ? 'BOSS RUSH COMPLETE.' : `${bossName.toUpperCase()} DOWN.`) : finalWin ? 'JOSEPH DETHRONED.' : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
-          const sub = rw ? (rw.complete ? '🏆 Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. One loss resets the run.`) : finalWin ? 'You beat the Final Mastermind. The Road to Joseph is complete.' : victoryState === 'boss_defeated' ? 'Joseph felt that. Keep climbing.' : 'The ladder gets steeper.';
+          const sub = rw ? (rw.complete ? ' Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. One loss resets the run.`) : finalWin ? (roadVariant === 'brendo' ? 'You beat BRENDO. Time to Beat Brendo: complete.' : 'You beat the Final Mastermind. The Road to Joseph is complete.') : victoryState === 'boss_defeated' ? (roadVariant === 'brendo' ? 'Brendo felt that. Keep climbing.' : 'Joseph felt that. Keep climbing.') : 'The ladder gets steeper.';
           return (
             <div className={`road-victory road-victory--${victoryState}`} role="dialog" aria-live="polite">
               <h2>{title}</h2>
               <p style={{ maxWidth: '100%', overflowWrap: 'anywhere', padding: '0 8px', boxSizing: 'border-box' }}>{sub}</p>
-              {skinUnlocked && <p className="road-victory__skin">🏆 SKIN UNLOCKED: {skinUnlocked} — wear it from ☰ MENU → BOARD SKIN.</p>}
+              {skinUnlocked && <p className="road-victory__skin"> SKIN UNLOCKED: {skinUnlocked} — wear it from ☰ MENU → BOARD SKIN.</p>}
               <button type="button" className="road-victory__next" onClick={handleNextLevel}>{rw ? (rw.complete ? 'SEE MY TROPHY' : 'NEXT BOSS') : finalWin ? 'CLIMB AGAIN' : 'NEXT RUNG'}</button>
               <a href="/road/chess" className="road-victory__next" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', margin: '8px auto 0', boxSizing: 'border-box', width: 'min(100%, 240px)' }}>BACK TO THE MAP</a>
             </div>
@@ -976,19 +964,19 @@ function PlayChesterGame() {
         {powerups.length > 0 && <PowerupOverlay items={powerups} />}
         <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
         {endBanner && typeof document !== 'undefined' && createPortal(<div className={`chester-endbanner chester-endbanner--${endBanner.outcome}`} role="alertdialog" aria-label="Game over" onClick={() => { setEndBanner(null); setReportOpen(true); }}>
-          {endBanner.outcome === 'you' && <span className="chester-endbanner__confetti" aria-hidden="true">🎉 ✨ 🏆 ✨ 🎉</span>}
-          <b>{endBanner.outcome === 'draw' ? '🤝 DRAW' : endBanner.outcome === 'you' ? '🏆 YOU WIN' : '💀 CHESTER WINS'}</b>
+          {endBanner.outcome === 'you' && <span className="chester-endbanner__confetti" aria-hidden="true">    </span>}
+          <b>{endBanner.outcome === 'draw' ? ' DRAW' : endBanner.outcome === 'you' ? ' YOU WIN' : ' CHESTER WINS'}</b>
           <span>{endBanner.outcome === 'draw' ? `by ${endBanner.cause}` : endBanner.cause === 'resignation' ? 'by resignation' : `by ${endBanner.cause}`}</span>
           <small>tap to see the full report</small>
         </div>, document.body)}
-        {inCheckSide && !mateNow && <div className="chester-check-banner" role="status">⚠️ CHECK!</div>}
-        {mateNow && !endBanner && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔️ CHECKMATE - YOU WIN!' : '🛡️ CHECKMATE - CHESTER WINS!'}</div>}
+        {inCheckSide && !mateNow && <div className="chester-check-banner" role="status">⚠ CHECK!</div>}
+        {mateNow && !endBanner && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔ CHECKMATE - YOU WIN!' : ' CHECKMATE - CHESTER WINS!'}</div>}
         {mateStage === 2 && mateNow && !endBanner && !(reportOpen && finalResult) && <div className="chester-turning" role="dialog" aria-label="Match debrief">
-          <b>{mateNow.you ? '🏆 WELL PLAYED' : 'CRITICAL TURNING POINT'}</b>
+          <b>{mateNow.you ? ' WELL PLAYED' : 'CRITICAL TURNING POINT'}</b>
           {mateNow.you ? <p>{cardsRef.current.filter((c) => c.grade === 'BRILLIANT' || c.grade === 'STRONG').length} engine-grade moves. Chester wants a rematch.</p>
-            : turning ? <p>Move {turning.moveNo}: {turning.san} cost {(turning.cp! / 100).toFixed(1)} pawns. {turning.engineBlueprintLine.replace(/^🤖\s*/, '')}</p> : <p>No single big mistake. It was a slow squeeze: take the engine-grade move more often.</p>}
+            : turning ? <p>Move {turning.moveNo}: {turning.san} cost {(turning.cp! / 100).toFixed(1)} pawns. {turning.engineBlueprintLine.replace(/^\s*/, '')}</p> : <p>No single big mistake. It was a slow squeeze: take the engine-grade move more often.</p>}
           <div className="chester-hud-actions">
-            {!mateNow.you && turning && <button type="button" className="chester-pill chester-pill--primary" onClick={() => { setMateStage(0); window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode, fen: turning.fenBefore } })); }}>🔄 Replay from turning point</button>}
+            {!mateNow.you && turning && <button type="button" className="chester-pill chester-pill--primary" onClick={() => { setMateStage(0); window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode, fen: turning.fenBefore } })); }}> Replay from turning point</button>}
             <button type="button" className="chester-pill" onClick={() => setMateStage(0)}>Close</button>
           </div>
         </div>}
@@ -996,7 +984,6 @@ function PlayChesterGame() {
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
-      <CaptureShowcase material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : 'CHESTER')} />
       {whyCard && teachOpen && !endBanner && !isFriendMode && (() => {
         // Readable staged teaching (his #4): full text at reading size, no autoscroll, no hidden
         // scroll. Long feedback paginates with NEXT; GOT IT returns to the compact strip.
@@ -1015,8 +1002,8 @@ function PlayChesterGame() {
           <p className="chester-teach__line">{pages[pg]}</p>
           {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
           <div className="chester-teach__actions">
-            {whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
-            {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}>⏪ Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
+            {whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}> {arrowsOn ? 'Hide line' : 'Show line'}</button>}
+            {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}> Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
             {!last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => setTeachPage(pg + 1)}>NEXT ▸</button>}
             {last && <button type="button" className="chester-pill chester-pill--primary" onClick={() => { setTeachOpen(false); if (freeze?.tone === 'green') releaseFreeze(); }}>GOT IT ▸</button>}
           </div>
@@ -1037,7 +1024,7 @@ function PlayChesterGame() {
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
           {pendingCard
             ? <div className="chester-why chester-why--pending" key={`pending-${pendingCard.ply}`}>
-                <div className="chester-why__head"><span className="chester-why__san">{pendingCard.san}</span><span className="chester-why__grade">⏳ GRADING…</span></div>
+                <div className="chester-why__head"><span className="chester-why__san">{pendingCard.san}</span><span className="chester-why__grade"> GRADING…</span></div>
                 <p className="chester-why__row">You played {pendingCard.movePhrase || pendingCard.san}. Chester is grading this move<span className="chester-teleprompter__cursor">▮</span></p>
               </div>
             : (isThinking || calculating) && !(whyFresh && whyCard && !isThinking)
@@ -1047,17 +1034,17 @@ function PlayChesterGame() {
                 <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
                 <p className="chester-why__row">{whyCard.whatHappenedLine}</p>
                 <p className="chester-why__row chester-why__row--eng">{whyCard.engineBlueprintLine}</p>
-                {!isFriendMode && <button type="button" className="chester-chat-nudge" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }}>{whyCard.grade === 'BLUNDER' || whyCard.grade === 'SHAKY' ? '💬 Not sure why? Ask Chester to explain' : '💬 Want more? Ask Chester about this move'}</button>}
+                {!isFriendMode && <button type="button" className="chester-chat-nudge" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }}>{whyCard.grade === 'BLUNDER' || whyCard.grade === 'SHAKY' ? ' Not sure why? Ask Chester to explain' : ' Want more? Ask Chester about this move'}</button>}
               </div>
             : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt && coachReply ? coachReply : lesson.body || 'Make a move. I will grade it here, in plain English, with the exact squares.'}</p>}
-          {hintStage > 0 && <p className="chester-why__hint" aria-live="polite">💡 HINT {hintStage}/3 - {hintFor(hintInfo, hintStage as 1 | 2 | 3)}</p>}
+          {hintStage > 0 && <p className="chester-why__hint" aria-live="polite"> HINT {hintStage}/3 - {hintFor(hintInfo, hintStage as 1 | 2 | 3)}</p>}
         </div>
         {!endBanner && <div className="chester-hud-actions" role="group" aria-label="Chester actions">
-          {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}>⏪ Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
+          {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}> Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
           {freeze?.tone === 'green' && <button type="button" className="chester-pill chester-pill--primary" onClick={releaseFreeze}>Continue ▸</button>}
-          {whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}>👁️ {arrowsOn ? 'Hide line' : 'Show line'}</button>}
-          {whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}>🔎 Read</button>}
-          {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}>💬 Ask why</button>}
+          {whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}> {arrowsOn ? 'Hide line' : 'Show line'}</button>}
+          {whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}> Read</button>}
+          {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}> Ask why</button>}
         </div>}
       </div>}
 
@@ -1074,12 +1061,12 @@ function PlayChesterGame() {
         </div>
         <div className="chester-console__lifelines">
           <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); const next = (hintStage < 3 ? hintStage + 1 : 3) as 1 | 2 | 3; if (next === 3 && hintStage !== 3) { if (isBossFight) { if (!bossCards) return; bossCardsRef.current = bossCards - 1; setBossCards(bossCards - 1); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); } setHintStage(next); }} disabled={hintStage === 2 && (isBossFight ? !bossCards : !helpRemaining)} title={undefined} aria-label={`Hint from Chester, ${isBossFight ? bossCards : helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{isBossFight ? bossCards : helpRemaining} LEFT</small></button>
-          {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} disabled={!torchReady()} aria-label="Use torch power-up for the full engine answer"><b>🔦 TORCH</b><small>{loot.torch} LEFT</small></button>}
-          {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b>🛡️ SHIELD</b><small>{loot.shield} LEFT</small></button>}
+          {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} disabled={!torchReady()} aria-label="Use torch power-up for the full engine answer"><b> TORCH</b><small>{loot.torch} LEFT</small></button>}
+          {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b> SHIELD</b><small>{loot.shield} LEFT</small></button>}
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
-          <button type="button" className="chester-console__pill chester-console__pill--style" onClick={() => { dismissHeroTip(); setStyleOpen((v) => !v); }} aria-label="Change board and piece style" aria-expanded={styleOpen}><b>🎨 STYLE</b><small>{skinNow}</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--style" onClick={() => { dismissHeroTip(); setStyleOpen((v) => !v); }} aria-label="Change board and piece style" aria-expanded={styleOpen}><b> STYLE</b><small>{skinNow}</small></button>
           <div className="chester-taunts" role="group" aria-label="Taunt Chester">
-            {['😏', '😤', '🤯', '💪'].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
+            {['', '', '', ''].map((t) => <button key={t} type="button" className="chester-taunt" onClick={() => sendTaunt(t)} aria-label={`Taunt Chester with ${t}`}>{t}</button>)}
           </div>
         </div>
         {styleOpen && (() => {
@@ -1090,7 +1077,7 @@ function PlayChesterGame() {
           const pickBoard = (name: string) => { window.dispatchEvent(new CustomEvent('set-board-theme', { detail: { name } })); setSkinNow(name); playSfx('select'); };
           const pickPieces = (name: 'neon' | 'metallic') => { window.dispatchEvent(new CustomEvent('set-piece-theme', { detail: { name } })); setPieceThemeNow(name); playSfx('select'); };
           return <div className="style-sheet" role="dialog" aria-label="Board and piece style">
-            <div className="style-sheet__head"><span>🎨 STYLE</span><button type="button" onClick={() => setStyleOpen(false)} aria-label="Close style picker">✕</button></div>
+            <div className="style-sheet__head"><span> STYLE</span><button type="button" onClick={() => setStyleOpen(false)} aria-label="Close style picker"></button></div>
             <div className="style-sheet__label">BOARD</div>
             <div className="style-sheet__grid">
               {Object.entries(SWATCHES).map(([name, [light, dark]]) => {
@@ -1098,14 +1085,14 @@ function PlayChesterGame() {
                 return <button key={name} type="button" className={`style-swatch ${skinNow === name ? 'is-current' : ''} ${unlocked ? '' : 'is-locked'}`} aria-label={`${name} board${unlocked ? '' : ' (locked - beat a road boss)'}`}
                   onClick={() => { if (unlocked) pickBoard(name); }}>
                   <span className="style-swatch__board" aria-hidden="true"><i style={{ background: light }} /><i style={{ background: dark }} /><i style={{ background: dark }} /><i style={{ background: light }} /></span>
-                  <b>{unlocked ? name : `🔒 ${name}`}</b>
+                  <b>{unlocked ? name : ` ${name}`}</b>
                 </button>;
               })}
             </div>
             <div className="style-sheet__label">PIECES</div>
             <div className="style-sheet__grid style-sheet__grid--pieces">
               {(['neon', 'metallic'] as const).map((name) => <button key={name} type="button" className={`style-swatch ${pieceThemeNow === name ? 'is-current' : ''}`} onClick={() => pickPieces(name)} aria-label={`${name} pieces`}>
-                <span className="style-swatch__pieces" aria-hidden="true">{name === 'neon' ? '♞🔥' : '♞❄️'}</span>
+                <span className="style-swatch__pieces" aria-hidden="true">{name === 'neon' ? '♞' : '♞'}</span>
                 <b>{name.toUpperCase()}</b>
               </button>)}
             </div>
@@ -1126,8 +1113,8 @@ function PlayChesterGame() {
           <p>{wm.whatHappenedLine}</p>
           <p>{wm.engineBlueprintLine}</p>
           <div className="chester-why-modal__actions">
-            <button type="button" className="chester-pill" onClick={() => { setWhyModal(null); setCommOpen(true); }}>📜 History</button>
-            <button type="button" className="chester-pill" onClick={() => { setWhyModal(null); setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${wm.grade.toLowerCase()}?`); }}>💬 Ask why</button>
+            <button type="button" className="chester-pill" onClick={() => { setWhyModal(null); setCommOpen(true); }}> History</button>
+            <button type="button" className="chester-pill" onClick={() => { setWhyModal(null); setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${wm.grade.toLowerCase()}?`); }}> Ask why</button>
             <button type="button" className="chester-pill chester-pill--primary" onClick={() => setWhyModal(null)}>Got it</button>
           </div>
         </section>
@@ -1147,7 +1134,7 @@ function PlayChesterGame() {
     </div>}
     <aside className="chester-game__coach chester-game__coach--route">
       <span>TONIGHT’S TRAINING ROUTE</span><h2>LEARN WHILE YOU PLAY</h2><p>Chester’s notes arrive beside the live board. No pop-ups, no dismissing, no break in the game.</p>
-      <ol>{LESSONS.map((item, index) => <li key={item.title} className={index === lessonStep ? 'is-active' : index < lessonStep ? 'is-done' : ''}><i>{index < lessonStep ? '✓' : index + 1}</i><span>{item.title}</span></li>)}</ol>
+      <ol>{LESSONS.map((item, index) => <li key={item.title} className={index === lessonStep ? 'is-active' : index < lessonStep ? 'is-done' : ''}><i>{index < lessonStep ? '' : index + 1}</i><span>{item.title}</span></li>)}</ol>
     </aside>
     {chatOpen && <div className="chester-chatsheet" role="dialog" aria-label="Chat with Chester">
       <header><b>CHAT WITH CHESTER</b><button type="button" onClick={() => setChatOpen(false)} aria-label="Close">×</button></header>
@@ -1162,7 +1149,7 @@ function PlayChesterGame() {
     {hintOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Hint from Chester">
       <div className="chess-game-sheet__backdrop" onClick={() => setHintOpen(false)} />
       <section className="chess-game-sheet__content chester-line-sheet">
-        <header><b>💡 CHESTER / HINT · {helpRemaining} LEFT</b><button type="button" onClick={() => setHintOpen(false)} aria-label="Close">×</button></header>
+        <header><b> CHESTER / HINT · {helpRemaining} LEFT</b><button type="button" onClick={() => setHintOpen(false)} aria-label="Close">×</button></header>
         <div className="chester-line-sheet__body" onClick={() => setHintOpen(false)}>
           <b>{coachPrompt?.kind === 'help' && isThinking ? 'Reading the board…' : 'Try this idea'}</b>
           <p>{coachPrompt?.kind === 'help' && isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : (coachPrompt?.kind === 'help' && coachReply ? coachReply : (lastHintReply || 'Tap the ? for a hint and Chester’s idea will wait for you here.'))}</p>
@@ -1175,19 +1162,19 @@ function PlayChesterGame() {
         <header><b>☰ MATCH CONTROL</b><button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); }} aria-label="Close">×</button></header>
         {!isFriendMode && <div className="chester-navdrawer__tier">
           <span>YOUR LADDER</span>
-          <ul>{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return <li key={level.value} className={`${level.value === difficulty ? 'is-current' : ''} ${locked ? 'is-locked' : ''}`}><b>{locked ? '🔒 ' : level.value === difficulty ? '▶ ' : ''}{level.label}</b><small>{locked ? `beat ${LEVELS[index - 1].label}` : `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}${rec?.bestGrade ? ` · best ${rec.bestGrade}` : ''}`}</small></li>; })}</ul>
+          <ul>{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return <li key={level.value} className={`${level.value === difficulty ? 'is-current' : ''} ${locked ? 'is-locked' : ''}`}><b>{locked ? ' ' : level.value === difficulty ? '▶ ' : ''}{level.label}</b><small>{locked ? `beat ${LEVELS[index - 1].label}` : `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}${rec?.bestGrade ? ` · best ${rec.bestGrade}` : ''}`}</small></li>; })}</ul>
         </div>}
         <div className="chester-navdrawer__toggles">
-          <button type="button" onClick={() => { const next = !muted; setMuted(next); setMutedState(next); if (!next) playSfx('select'); }}><b>{muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'}</b><small>tap to {muted ? 'unmute' : 'mute'}</small></button>
-          <button type="button" onClick={() => { const next = !haptics; setHaptics(next); setHapticsState(next); if (next) buzz(18); }}><b>{haptics ? '📳 HAPTICS: ON' : '📴 HAPTICS: OFF'}</b><small>tap to {haptics ? 'disable' : 'enable'}</small></button>
-          <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent('toggle-board-theme')); window.setTimeout(() => { try { setSkinNow(localStorage.getItem('ct-board-theme') || 'NEON'); } catch { /* */ } }, 150); }}><b>🎨 BOARD SKIN: {skinNow}</b><small>beat road bosses to unlock more</small></button>
+          <button type="button" onClick={() => { const next = !muted; setMuted(next); setMutedState(next); if (!next) playSfx('select'); }}><b>{muted ? ' SOUND: OFF' : ' SOUND: ON'}</b><small>tap to {muted ? 'unmute' : 'mute'}</small></button>
+          <button type="button" onClick={() => { const next = !haptics; setHaptics(next); setHapticsState(next); if (next) buzz(18); }}><b>{haptics ? ' HAPTICS: ON' : ' HAPTICS: OFF'}</b><small>tap to {haptics ? 'disable' : 'enable'}</small></button>
+          <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent('toggle-board-theme')); window.setTimeout(() => { try { setSkinNow(localStorage.getItem('ct-board-theme') || 'NEON'); } catch { /* */ } }, 150); }}><b> BOARD SKIN: {skinNow}</b><small>beat road bosses to unlock more</small></button>
         </div>
         <div className="chester-navdrawer__actions">
           {resignArmed
             ? <button type="button" className="is-confirm" onClick={() => { setMenuOpen(false); setResignArmed(false); window.dispatchEvent(new CustomEvent('request-resign')); }}><b>⚠ CONFIRM RESIGN?</b><small>ends the match, shows your report</small></button>
-            : <button type="button" onClick={() => setResignArmed(true)}><b>🏳 RESIGN MATCH</b><small>asks again before it fires</small></button>}
-          {!isFriendMode && <button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); setStarted(false); }}><b>🎓 CHANGE LEVEL</b><small>back to the level select</small></button>}
-          <Link href="/" className="chester-navdrawer__link" onClick={() => setMenuOpen(false)}><b>🏠 BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
+            : <button type="button" onClick={() => setResignArmed(true)}><b> RESIGN MATCH</b><small>asks again before it fires</small></button>}
+          {!isFriendMode && <button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); setStarted(false); }}><b> CHANGE LEVEL</b><small>back to the level select</small></button>}
+          <Link href="/" className="chester-navdrawer__link" onClick={() => setMenuOpen(false)}><b> BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
         </div>
       </aside>
     </div>}
@@ -1205,7 +1192,7 @@ function PlayChesterGame() {
         </div>
       </section>
     </div>}
-    {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill">🏭 {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
+    {report && millCount > 0 && <Link href="/puzzle-mill" className="puzzle-mill-pill"> {millCount} of your slips banked in the PUZZLE MILL - fix them →</Link>}
     {report && reportOpen && (victoryState === 'none' || finalResult) && <ChesterReportCard resultLine={finalResult} accMath={accLog} grades={report.gradeHistory} review={review} scouting={scouting} isLoading={reviewLoading} pgn={report.pgn} difficulty={difficulty} summary={{ grade: report.grade, score: report.score, accuracy: report.accuracy, graded: report.graded, gradedMoves: report.gradedMoves, development: report.development, kingSafety: report.kingSafety, tactics: report.tactics, habits: report.habits }} onClose={() => { setReportOpen(false); setFinalResult(null); }} onRetry={isFriendMode ? null : retryMistake} onRematch={isFriendMode ? null : () => { setReportOpen(false); setFinalResult(null); setEndBanner(null); window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })); }} onChat={isFriendMode ? null : () => { setReportOpen(false); setChatOpen(true); }} />}
     {breakdownVisible && pivot && !endBanner && !(reportOpen && finalResult) && (
       <div className="breakdown" role="dialog" aria-label="Chester's breakdown">
@@ -1254,7 +1241,7 @@ function PowerupOverlay({ items }: { items: { sq: string; kind: 'torch' | 'shiel
   const ctr = (sq: string) => { const c = sq.charCodeAt(0) - 97; const r = 8 - Number(sq[1]); return [30 + c * 92 + 46, 30 + r * 92 + 46] as const; };
   if (!items.length) return null;
   return <svg className="chester-arrows chester-powerups" viewBox="0 0 796 796" aria-hidden="true">
-    {items.map((p) => { const [x, y] = ctr(p.sq); return <g key={p.sq} data-square={p.sq} className="chester-powerup"><circle className="chester-powerup__ring" cx={x} cy={y} r={40} /><text className="chester-powerup__glyph" x={x} y={y + 16} textAnchor="middle" fontSize={48}>{p.kind === 'torch' ? '🔦' : '🛡️'}</text></g>; })}
+    {items.map((p) => { const [x, y] = ctr(p.sq); return <g key={p.sq} data-square={p.sq} className="chester-powerup"><circle className="chester-powerup__ring" cx={x} cy={y} r={40} /><text className="chester-powerup__glyph" x={x} y={y + 16} textAnchor="middle" fontSize={48}>{p.kind === 'torch' ? '' : ''}</text></g>; })}
   </svg>;
 }
 
@@ -1285,10 +1272,11 @@ function ArrowOverlay({ arrows, rings, kingSq, mate }: { arrows: { from: string;
       <marker id="ca-cyan" markerWidth="6" markerHeight="6" refX="4.2" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#22d3ee" /></marker>
       <marker id="ca-red" markerWidth="6" markerHeight="6" refX="4.2" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#f43f5e" /></marker>
     </defs>
-    {kingSq && (() => { const [x, y] = ctr(kingSq); return <g><rect className="chester-king-aura" x={x - 46} y={y - 46} width={92} height={92} rx={10} /><text x={x} y={y + 14} textAnchor="middle" fontSize="44">{mate ? '👑' : ''}</text></g>; })()}
+    {kingSq && (() => { const [x, y] = ctr(kingSq); return <g><rect className="chester-king-aura" x={x - 46} y={y - 46} width={92} height={92} rx={10} /><text x={x} y={y + 14} textAnchor="middle" fontSize="44">{mate ? '' : ''}</text></g>; })()}
     {rings.map((sq) => { const [x, y] = ctr(sq); return <circle key={sq} className="chester-ring" cx={x} cy={y} r={44} />; })}
     {arrows.map((a, i) => { const [x1, y1] = ctr(a.from); const [x2, y2] = ctr(a.to); const cyan = a.intent === 'ENGINE_BEST'; return <line key={i} className={cyan ? 'chester-arrow chester-arrow--cyan' : 'chester-arrow chester-arrow--red'} x1={x1} y1={y1} x2={x2} y2={y2} markerEnd={`url(#${cyan ? 'ca-cyan' : 'ca-red'})`} />; })}
   </svg>;
 }
 
 export default function PlayChesterPage() { return <Suspense fallback={<main className="chester-start-screen" />}><BlueprintProvider><PlayChesterGame /></BlueprintProvider></Suspense>; }
+

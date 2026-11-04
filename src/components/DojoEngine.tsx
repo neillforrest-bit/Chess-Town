@@ -26,6 +26,7 @@ const DEMO_SEQUENCES: Record<string, string[]> = {
 };
 
 const BOARD_THEMES = {
+  GOTHIC: [0xf4f4f4, 0x141414],
   NEON: [0xfffaf0, 0xecd9b0],
   RETRO: [0xe8d9b5, 0x4a3728],
   // Batch 183: more looks, available from the start (trophy skins below stay boss-gated).
@@ -43,11 +44,11 @@ const BOARD_THEME_ORDER = Object.keys(BOARD_THEMES);
 const unlockedBoardThemes = (): string[] => {
   let skins: string[] = [];
   try { skins = JSON.parse(window.localStorage.getItem('ct-skins') || '[]'); } catch { /* */ }
-  return BOARD_THEME_ORDER.filter((t) => t === 'NEON' || t === 'RETRO' || t === 'FOREST' || t === 'OCEAN' || t === 'ROYAL' || skins.includes(t));
+  return BOARD_THEME_ORDER.filter((t) => t === 'GOTHIC' || t === 'NEON' || t === 'RETRO' || t === 'FOREST' || t === 'OCEAN' || t === 'ROYAL' || skins.includes(t));
 };
 
 const AI_TAGS: Record<string, { player: string; rival: string; title: string }> = {
-  SIMULATION: { player: 'Neill', rival: 'Brendan 🦸‍♂️', title: 'Neill vs. Brendan 🦸‍♂️' },
+  SIMULATION: { player: 'Neill', rival: 'Brendan ‍♂', title: 'Neill vs. Brendan ‍♂' },
   '2V2': { player: 'Neill + Brendan', rival: 'Gabe + Z-Man', title: 'Heroes vs. Villains Tag Match' },
   COACH_OPENING: { player: 'You', rival: 'Chester', title: 'Chester Mini Game: Own the Center' },
   COACH_PRACTICE_OPENING: { player: 'You', rival: 'Chester', title: 'Chester Assessment: Practice Your Opening' },
@@ -437,8 +438,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     timeline: [],
     isGameOver: false,
     ply: 0,
-    boardTheme: (() => { try { return window.localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } })(),
-    pieceTheme: (() => { try { return window.localStorage.getItem('ct-piece-theme') === 'metallic' ? 'metallic' : 'neon'; } catch { return 'neon'; } })(),
+    boardTheme: 'GOTHIC',
+    pieceTheme: 'gothic',
     coachMarks: [] as any[],
   });
 
@@ -691,7 +692,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
             const impact = scene.add.circle(capturedPiece.x, capturedPiece.y, tileSize * 0.42, targetColor, 0).setDepth(29);
             scene.tweens.add({ targets: impact, scale: 2.7, alpha: { from: 0.65, to: 0 }, duration: 520, delay: trotMs, ease: 'Quad.Out', onComplete: () => impact.destroy() });
-            const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '🦵', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2).setAlpha(0);
+            const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2).setAlpha(0);
             scene.tweens.add({ targets: legs, alpha: 1, duration: 120, delay: trotMs });
             scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 1250, delay: trotMs + 480, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
 
@@ -729,7 +730,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               onComplete: () => {
                 settleCapture();
                 if (domJails) return;
-                const lock = scene.add.text(targetX, targetY, '🔒', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
+                const lock = scene.add.text(targetX, targetY, '', { fontSize: '24px' }).setOrigin(0.5).setDepth(31);
                 scene.tweens.add({
                   targets: lock,
                   alpha: 0,
@@ -787,13 +788,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           // light green, shaky = amber, blunder = red. Pieces keep their own sprites.
           const armyTintFor = (label: string | null | undefined): number | null => {
             switch (label) {
-              case 'BRILLIANT': return 0x39ff14;
-              case 'BEST': return 0x86efac;
-              case 'GREAT': return 0x4ade80;
-              case 'GOOD': return 0xbbf7d0;
-              case 'INACCURACY': return 0xfbbf24;
-              case 'MISTAKE': return 0xf97316;
-              case 'BLUNDER': return 0xfb7185;
+              case 'BRILLIANT': return 0xffffff;
+              case 'BEST': return 0xffffff;
+              case 'GREAT': return 0xf5f5f5;
+              case 'GOOD': return 0xe5e5e5;
+              case 'INACCURACY': return 0x9ca3af;
+              case 'MISTAKE': return 0x4b5563;
+              case 'BLUNDER': return 0x0a0a0a;
               default: return null;
             }
           };
@@ -1223,7 +1224,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                     if (wCol >= 0 && wRow >= 0) {
                       const wx = boardOffset + sx(wCol) * tileSize + tileSize / 2;
                       const wy = boardOffset + sy(wRow) * tileSize + tileSize / 2;
-                      const crown = scene.add.text(wx, wy - tileSize * 0.7, '👑', { fontSize: `${Math.round(tileSize * 0.6)}px` }).setOrigin(0.5).setDepth(31).setScale(0.1);
+                      const crown = scene.add.text(wx, wy - tileSize * 0.7, '', { fontSize: `${Math.round(tileSize * 0.6)}px` }).setOrigin(0.5).setDepth(31).setScale(0.1);
                       scene.tweens.add({ targets: crown, scaleX: 1, scaleY: 1, y: wy - tileSize * 0.95, duration: 600, ease: 'Back.Out', delay: 380 });
                       scene.tweens.add({ targets: crown, alpha: 0, delay: 2800, duration: 500, ease: 'Quad.In', onComplete: () => crown.destroy() });
                     }
@@ -1314,7 +1315,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {
                 const isCheckmate = gameRef.current.chess.isCheckmate();
                 const status = isCheckmate ? 'CHECKMATE — The AI closes the book!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — Equilibrium achieved.' : 'DRAW — Respect all around.';
-                finishGame(`🏁 ${status} The ${AI_TAGS[mode]?.title} just defined an entire era.`, isCheckmate ? 'checkmate' : 'draw');
+                finishGame(` ${status} The ${AI_TAGS[mode]?.title} just defined an entire era.`, isCheckmate ? 'checkmate' : 'draw');
               }
               renderAfterCapture(result);
               // Batch 93: the page derives its turn chip + Jumbotron possession underline
@@ -1371,7 +1372,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             if (gameRef.current.chess.isCheckmate() || gameRef.current.chess.isStalemate() || gameRef.current.chess.isDraw()) {
               const isCheckmate = gameRef.current.chess.isCheckmate();
               const status = isCheckmate ? 'CHECKMATE — You bent the board to your will!' : gameRef.current.chess.isStalemate() ? 'STALEMATE — The board called a truce.' : 'DRAW — The league just locked in a peace treaty.';
-              finishGame(`🏁 ${status} ${AI_TAGS[mode]?.title} just delivered a full season arc.`, isCheckmate ? 'checkmate' : 'draw');
+              finishGame(` ${status} ${AI_TAGS[mode]?.title} just delivered a full season arc.`, isCheckmate ? 'checkmate' : 'draw');
               renderAfterCapture(moveResult);
               return;
             }
@@ -1871,7 +1872,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               new CustomEvent('dojo-banter', {
                 detail: {
                   type: 'summary',
-                  message: `🎬 CHESTER: Systems locked. Prepare for LIVE chess theatre. ${AI_TAGS[mode]?.title} is LEGENDARY.`,
+                  message: ` CHESTER: Systems locked. Prepare for LIVE chess theatre. ${AI_TAGS[mode]?.title} is LEGENDARY.`,
                 },
               })
             );
@@ -1891,7 +1892,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   new CustomEvent('dojo-banter', {
                     detail: {
                       type: 'summary',
-                      message: `🏆 FINAL WHISTLE. The board just delivered HISTORY. ${AI_TAGS[mode]?.title} will be remembered forever.`,
+                      message: ` FINAL WHISTLE. The board just delivered HISTORY. ${AI_TAGS[mode]?.title} will be remembered forever.`,
                     },
                   })
                 );
@@ -1980,7 +1981,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           window.addEventListener('replay-step', handleReplayStep);
           const handleRequestResign = () => {
             if (gameRef.current.isGameOver) return;
-            finishGame('🏳️ RESIGNATION — The board is conceded before the final blow lands.', 'resigned');
+            finishGame(' RESIGNATION — The board is conceded before the final blow lands.', 'resigned');
           };
           const handleHelpRequest = () => {
             const fen = gameRef.current.chess.fen();

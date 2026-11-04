@@ -3527,3 +3527,19 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
 .chester-report-card__letter { padding: .5rem .4rem; }
 .chester-report-card__habits { margin-top: 0; }
 .chester-report-card__focus { margin: .35rem 0; padding: .45rem .6rem; }
+
+/* BUILD 184 (4 Nov 2026): gothic simplification - one screen, unique black & white.
+   Filter guarantees no stray colour survives in chrome; the board itself is a true
+   GOTHIC theme so squares/pieces are designed B&W, not washed out. */
+.chester-start-screen, .chester-game { filter: grayscale(1); }
+.chester-game .fighthud__you { background: linear-gradient(180deg,#ffffff,#d8d8d8) !important; }
+.chester-game .fighthud__opp { background: linear-gradient(180deg,#2e2e2e,#000000) !important; }
+.chester-game .fighthud__pct--you { color:#0a0a0a !important; text-shadow:none !important; }
+.chester-game .fighthud__pct--opp { color:#ffffff !important; }
+.chester-game .fighthud__bar { border-color:#e5e5e5 !important; }
+.chester-game .chester-board-frame { border-color:#e5e5e5 !important; box-shadow:0 0 24px rgba(255,255,255,.16) !important; }
+/* one-screen fit on phones: reserve room for header + tug bar + captures + teaching strip */
+@media (max-width:860px) {
+  .chester-game .chester-board-frame { width:min(100cqw, max(240px, calc(100cqh - 300px))) !important; }
+  .chester-game .chester-teleprompter__body { max-height:none !important; overflow:visible !important; }
+}

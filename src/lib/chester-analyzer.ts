@@ -67,7 +67,7 @@ export function terminalInfo(fenAfter: string): { kind: 'mate' | 'stalemate' | '
   } catch { return null; }
 }
 
-const BADGE_ICON: Record<MoveGrade, string> = { BRILLIANT: '👑', STRONG: '🎯', SOLID: '✅', SHAKY: '😬', BLUNDER: '🚨', IDLE: '♞' };
+const BADGE_ICON: Record<MoveGrade, string> = { BRILLIANT: '', STRONG: '', SOLID: '', SHAKY: '', BLUNDER: '', IDLE: '♞' };
 export const gradeIcon = (g: MoveGrade) => BADGE_ICON[g];
 
 // Rolling anti-repetition memory (PRD FR-4.2 rule 6): never reuse a phrasing shown in the last 6 cards.
@@ -184,11 +184,11 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
       else if (tactic.kingTakes && grade === 'BRILLIANT') parts.push(`sacrificing ${inp.captured ? 'it' : `the ${tactic.piece}`} to drag their king into the open`);
       const why = parts.length ? parts.join(' and ') : inp.check ? 'with check, so my reply is forced' : grade === 'BRILLIANT' ? 'and the engine rates it as the strongest idea here' : `to ${plainWhy(inp.fenBefore, inp.san)}`;
       const glue = parts.length && /taking|captures/i.test(human) ? ' and ' : ' ';
-      return `✅ ${verb} ${human}${glue}${why}.`;
+      return ` ${verb} ${human}${glue}${why}.`;
     }
-    if (inp.provisional) return `❓ You played ${human}. The quick engine read calls this a slip, but the deeper check did not finish - treat this grade as unconfirmed.`;
-    if (hang.length) return `❌ You played ${human}, leaving your ${hang[0].piece} on ${hang[0].square} undefended${punishSan ? ` - I can take it with ${punishSan}` : ''}.`;
-    return `❌ You played ${human}, and it gives up ground: the engine had a clearly better idea.`;
+    if (inp.provisional) return ` You played ${human}. The quick engine read calls this a slip, but the deeper check did not finish - treat this grade as unconfirmed.`;
+    if (hang.length) return ` You played ${human}, leaving your ${hang[0].piece} on ${hang[0].square} undefended${punishSan ? ` - I can take it with ${punishSan}` : ''}.`;
+    return ` You played ${human}, and it gives up ground: the engine had a clearly better idea.`;
   })();
 
   const eng = inp.provisional && !term
@@ -203,9 +203,9 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
         : '\ud83e\udd16 The game is drawn - there is nothing left to analyse.')
     : inp.bestSan
     ? (!good || grade === 'SOLID')
-      ? `🤖 Before your move, the stronger idea was: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
-      : `🤖 ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : ` - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}`}.`
-    : '🤖 Engine line loading - the move above is graded on the board facts.';
+      ? ` Before your move, the stronger idea was: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
+      : ` ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : ` - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}`}.`
+    : ' Engine line loading - the move above is graded on the board facts.';
 
   const arrows: WhyCard['boardOverlayArrows'] = [];
   if (best.uci && (!good || grade === 'SOLID')) arrows.push({ from: best.uci.slice(0, 2), to: best.uci.slice(2, 4), intent: 'ENGINE_BEST' });
@@ -256,8 +256,8 @@ function chatReplyBase(message: string, card: WhyCard | null, live: { fen: strin
   if (/undefended|loose|hanging/.test(q)) return und.length ? `Yes: your ${und.join(' and your ')} ${und.length > 1 ? 'are' : 'is'} attacked with no defender. Fix that before anything fancy.` : 'Nothing of yours is hanging right now. Every attacked piece has a defender.';
   if (/lose points|why.*(shaky|last move|lose|brilliant|graded|mistake)|what could i have done|better/.test(q)) {
     if (!card) return 'Make a move first and I will grade it. Then ask me again.';
-    if (noLossCard(card)) return `Good news first: that move did not lose points. ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} If you want a real lesson, ask me about a move I marked with a warning - or ask "what should I play?" for the next idea.`;
-    return `${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} ${card.engineBlueprintLine.replace(/^🤖\s*/, '')}`;
+    if (noLossCard(card)) return `Good news first: that move did not lose points. ${card.whatHappenedLine.replace(/^[]\s*/, '')} If you want a real lesson, ask me about a move I marked with a warning - or ask "what should I play?" for the next idea.`;
+    return `${card.whatHappenedLine.replace(/^[]\s*/, '')} ${card.engineBlueprintLine.replace(/^\s*/, '')}`;
   }
   const pieceAsk = q.match(/queen|rook|bishop|knight/);
   if (pieceAsk && /lose|safe|attacked|take|hang|blunder/.test(q) && live?.fen) {
@@ -299,7 +299,7 @@ function chatReplyBase(message: string, card: WhyCard | null, live: { fen: strin
     return engLine || 'Look for checks, captures and threats in that order, then pick the safest of them.';
   }
   if (/tactic/.test(q)) return 'Three questions before every move: what is loose, what can be forked, what does my move leave undefended? Tonight the third one wins you games.';
-  return engLine || (card ? `About your last move: ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')} Ask me "what should I do next?" for a fresh idea.` : 'Ask me about your last move, a threat, or what to play next.');
+  return engLine || (card ? `About your last move: ${card.whatHappenedLine.replace(/^[]\s*/, '')} Ask me "what should I do next?" for a fresh idea.` : 'Ask me about your last move, a threat, or what to play next.');
 }
 
 // ---- BUILD 183: multi-turn Chester chat -------------------------------------
@@ -384,7 +384,7 @@ function whyBetterAnswer(card: WhyCard): string {
   if (idea) bits.push(`the idea was ${idea}`);
   if (afterPlayedLoose.length && !afterIdeaLoose.length) bits.push(`your move (${played}) leaves your ${afterPlayedLoose[0].piece} on ${afterPlayedLoose[0].square} attacked with no defender, and the idea keeps everything covered`);
   else if (card.cp != null && Math.abs(card.cp) >= 40) bits.push(`the engine counts your move (${played}) as giving up about ${(Math.abs(card.cp) / 100).toFixed(1)} pawns of value - nothing drops at once, but the pressure fades`);
-  if (!bits.length) return `Short version: ${card.whatHappenedLine.replace(/^[✅❌]\s*/, '')}`;
+  if (!bits.length) return `Short version: ${card.whatHappenedLine.replace(/^[]\s*/, '')}`;
   const retry = card.grade === 'SHAKY' || card.grade === 'BLUNDER';
   return `Here is the difference: ${bits.join(', ')}. That is why I nudged you there.${retry ? ' Want to try it? Use the Retry pill under my review.' : ''}`;
 }
