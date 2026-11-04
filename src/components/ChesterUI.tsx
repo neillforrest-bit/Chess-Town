@@ -48,7 +48,7 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
           animation: isThinking ? 'jester-talk 0.3s infinite ease-in-out' : 'jester-bounce 3s infinite ease-in-out',
           filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))'
         }}>
-          🐴
+          
         </span>
         {/* Jester Hat attached to head */}
         <span style={{ 
@@ -60,7 +60,7 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
           animation: isThinking ? 'jester-bell 0.2s infinite' : 'jester-bell 2s infinite ease-in-out',
           filter: 'drop-shadow(0 0 8px var(--arena-pink))'
         }}>
-          🃏
+          
         </span>
       </div>
 
@@ -72,7 +72,7 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
 export function ChesterTeleprompter({ text, isThinking, isMobile }: { text: string, isThinking: boolean, isMobile?: boolean }) {
   const engineEvaluation = useEngineEvaluation();
   const messageRef = useRef<HTMLDivElement>(null);
-  const message = text.replace(/^🎙️ CHESTER:\s*/, '');
+  const message = text.replace(/^ CHESTER:\s*/, '');
   const emotion = isThinking ? 'thinking' : getChesterEmotion(message);
 
   useEffect(() => {
@@ -309,8 +309,8 @@ export function ChessGameTools({ helpText, context = '' }: { helpText: string; c
 
   return <>
     <div className="chess-game-tools" aria-label="Chess game tools">
-      <button type="button" onClick={() => setActivePanel('chat')}>💬 Chat with Chester</button>
-      <button type="button" onClick={() => setActivePanel('help')}>💡 Ask for Help</button>
+      <button type="button" onClick={() => setActivePanel('chat')}> Chat with Chester</button>
+      <button type="button" onClick={() => setActivePanel('help')}> Ask for Help</button>
     </div>
     {activePanel && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label={activePanel === 'chat' ? 'Chat with Chester' : 'Chess help'}>
       <div className="chess-game-sheet__backdrop" onClick={() => setActivePanel(null)} />

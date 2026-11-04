@@ -3543,3 +3543,5 @@ body.battle-route .build-badge{bottom:calc(.5rem + env(safe-area-inset-bottom));
   .chester-game .chester-board-frame { width:min(100cqw, max(240px, calc(100cqh - 300px))) !important; }
   .chester-game .chester-teleprompter__body { max-height:none !important; overflow:visible !important; }
 }
+/* BUILD 184: cap the teaching strip on tall screens so the board stays the focus */
+@media (min-width:861px) { .chester-game .chester-teleprompter__body { max-height:180px; overflow-y:auto; } }
