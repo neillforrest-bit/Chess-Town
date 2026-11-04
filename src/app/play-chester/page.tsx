@@ -847,17 +847,17 @@ function PlayChesterGame() {
               <p className="road-intro__boss-focus">{levelFocus(roadLevel)}</p>
             </div>}
             {!boss && <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>}
-            {boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>&ldquo;You actually think you&rsquo;re ready for him? Fine. But don&rsquo;t expect me to hold your hand when the real players sit down at the board. Let&rsquo;s see if you can even survive the pawns.&rdquo;</p>}
+            {boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>One game, one lesson. Play your moves and I will explain each one - the strong ones and the loose ones - so every rung up the road teaches you something real.</p>}
             <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
           </div>
         </div>
       )}
       {!isFriendMode && roadActive && (
-        <div className="road-strip" aria-label={`Road to Joseph, level ${roadLevel} of ${ROAD_MAX}`}>
+        <div className="road-strip" aria-label={`${roadVariant === 'brendo' ? 'Time to Beat Brendo' : 'Road to Joseph'}, level ${roadLevel} of ${roadMaxFor(roadVariant)}`}>
           <p className="road-strip__title">{roadVariant === 'brendo' ? 'TIME TO BEAT BRENDO' : 'ROAD TO JOSEPH'} · LEVEL {roadLevel}/{roadMaxFor(roadVariant)}</p>
           {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
-          <ol>{Array.from({ length: ROAD_MAX }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
-          <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= ROAD_MAX ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
+          <ol>{Array.from({ length: roadMaxFor(roadVariant) }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
+          <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= roadMaxFor(roadVariant) ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
           <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two take-backs for hints or retries - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = (roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${(roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel)}).`}</p>
           {roadLevel < roadMaxFor(roadVariant) && <p className="road-strip__top">At the top waits <b>{roadVariant === 'brendo' ? 'BRENDO' : 'JOSEPH'}</b>: {roadVariant === 'brendo' ? 'the loudest rival in town, waiting on the rooftop' : 'a grandmaster at full engine strength, the hardest opponent here'}. Each rung is a real step up.</p>}
         </div>
@@ -997,7 +997,7 @@ function PlayChesterGame() {
         const pg = Math.min(teachPage, pages.length - 1);
         const last = pg === pages.length - 1;
         return <div className={`chester-teach chester-teach--${whyCard.grade.toLowerCase()}`} role="dialog" aria-label="Chester explains your move">
-          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span></div>
+          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}</span></div>
           <b className="chester-teach__headline">{whyCard.headlineBadge}</b>
           <p className="chester-teach__line">{pages[pg]}</p>
           {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
@@ -1031,7 +1031,7 @@ function PlayChesterGame() {
             ? <p className="chester-teleprompter__calculating">{deepThought ? 'CHESTER IS DEEP IN THOUGHT' : 'CHESTER IS CALCULATING'}<span className="chester-teleprompter__cursor">▮</span></p>
             : whyCard
             ? <div className="chester-why" key={`${whyCard.ply}-${whyCard.san}`}>
-                <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}{whyCard.cp != null && whyCard.grade !== 'STRONG' && whyCard.grade !== 'BRILLIANT' ? ` (-${(whyCard.cp / 100).toFixed(1)})` : ''}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
+                <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
                 <p className="chester-why__row">{whyCard.whatHappenedLine}</p>
                 <p className="chester-why__row chester-why__row--eng">{whyCard.engineBlueprintLine}</p>
                 {!isFriendMode && <button type="button" className="chester-chat-nudge" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }}>{whyCard.grade === 'BLUNDER' || whyCard.grade === 'SHAKY' ? ' Not sure why? Ask Chester to explain' : ' Want more? Ask Chester about this move'}</button>}

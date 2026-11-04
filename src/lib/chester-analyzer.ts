@@ -188,7 +188,8 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     }
     if (inp.provisional) return ` You played ${human}. The quick engine read calls this a slip, but the deeper check did not finish - treat this grade as unconfirmed.`;
     if (hang.length) return ` You played ${human}, leaving your ${hang[0].piece} on ${hang[0].square} undefended${punishSan ? ` - I can take it with ${punishSan}` : ''}.`;
-    return ` You played ${human}, and it gives up ground: the engine had a clearly better idea.`;
+    if (/queen/i.test(human) && inp.ply <= 12) return ` You played ${human}. Bringing the queen out this early gives me free development: I can chase her with my knights and pawns while you spend your moves rescuing her.`;
+    return ` You played ${human} to ${plainWhy(inp.fenBefore, inp.san)} - but the position called for a different idea.`;
   })();
 
   const eng = inp.provisional && !term
@@ -203,7 +204,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
         : '\ud83e\udd16 The game is drawn - there is nothing left to analyse.')
     : inp.bestSan
     ? (!good || grade === 'SOLID')
-      ? ` Before your move, the stronger idea was: ${plainSuggestion(inp.fenBefore, inp.bestSan) || best.text || 'a move that keeps your pieces safer'}.`
+      ? ` The stronger idea here was ${bestHuman || inp.bestSan}: ${best.text || plainSuggestion(inp.fenBefore, inp.bestSan) || 'a move that keeps your pieces safer'}.`
       : ` ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : ` - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}`}.`
     : ' Engine line loading - the move above is graded on the board facts.';
 

@@ -48,7 +48,7 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
           animation: isThinking ? 'jester-talk 0.3s infinite ease-in-out' : 'jester-bounce 3s infinite ease-in-out',
           filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))'
         }}>
-          
+          {'\u265E'}
         </span>
         {/* Jester Hat attached to head */}
         <span style={{ 
