@@ -37,7 +37,7 @@ export function ChesterAvatar({ isThinking, size = 'default' }: { isThinking: bo
       )}
       
         
-      <span style={{ fontSize: size === 'large' ? '3rem' : size === 'small' ? '1.2rem' : '2rem', lineHeight: 1, zIndex: 10 }}>{'\u265E'}</span>
+      <span style={{ fontSize: size === 'large' ? '3rem' : size === 'small' ? '1.2rem' : '2rem', lineHeight: 1, zIndex: 10, color: '#f5f5f5' }}>{'\u265E'}</span>
     </div>
   );
 }

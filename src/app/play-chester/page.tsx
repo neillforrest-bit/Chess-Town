@@ -992,7 +992,7 @@ function PlayChesterGame() {
         const sentences = full.match(/[^.]+\.s*|[^.]+$/g) || [full];
         const pages: string[] = [];
         let curPg = '';
-        for (const snt of sentences) { if (curPg && (curPg + snt).length > 150) { pages.push(curPg.trim()); curPg = snt; } else curPg += snt; }
+        for (const snt of sentences) { if (curPg && (curPg + snt).length > 240) { pages.push(curPg.trim()); curPg = snt; } else curPg += snt; }
         if (curPg.trim()) pages.push(curPg.trim());
         const pg = Math.min(teachPage, pages.length - 1);
         const last = pg === pages.length - 1;

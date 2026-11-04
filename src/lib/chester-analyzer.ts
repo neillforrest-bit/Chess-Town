@@ -196,7 +196,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
       try { const b = new Chess(inp.fenBefore); moverW = b.turn() === 'w'; for (const row of new Chess(inp.fenAfter).board()) for (const sq of row as any[]) if (sq) pieces++; } catch { /* fall through */ }
       const mine = moverW ? /[KQ]/ : /[kq]/;
       const lostCastle = mine.test(rights(inp.fenBefore)) && !mine.test(rights(inp.fenAfter));
-      if (lostCastle) return ` You played ${human}. That forfeits your right to castle for the rest of this game - and with ${pieces > 24 ? 'almost every piece' : 'most pieces'} still on the board, your king is safest tucked behind his pawns.${better}`;
+      if (lostCastle) return ` You played ${human} - that forfeits your right to castle for the rest of this game. With ${pieces > 24 ? 'almost every piece' : 'most pieces'} still on the board, your king is safest tucked behind his pawns.${better}`;
       if (pieces > 14) return ` You played ${human}. With ${pieces > 24 ? 'almost every piece' : 'most pieces'} still on the board, an early king walk gives me targets to aim at.${better}`;
       return ` You played ${human}. In the endgame an active king is right - the engine simply found a sharper square for him.${better}`;
     }

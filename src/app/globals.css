@@ -3569,3 +3569,8 @@ body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
 .chester-teach--brilliant .chester-why__grade, .chester-teach--strong .chester-why__grade, .chester-teach--solid .chester-why__grade { color: #34d399 !important; }
 .chester-hud--shaky .chester-why__grade, .chester-hud--blunder .chester-why__grade,
 .chester-teach--shaky .chester-why__grade, .chester-teach--blunder .chester-why__grade { color: #f43f5e !important; }
+
+/* BUILD 184 final: teach card sits in flow directly under the board (no dead gap) */
+@media (max-width:860px) {
+  .chester-game .chester-teach { position: static !important; width: 100%; max-height: none !important; }
+}
