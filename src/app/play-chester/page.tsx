@@ -597,17 +597,22 @@ function PlayChesterGame() {
       const bs = bossRef.current.boss; const p = coachPrompt;
       if (bs.name === 'Joseph') { setBanter(''); return; }
       if (roadVariant === 'rost') {
-        // Deterministic PJ banter - no LLM, 0p, specific to the invite road.
+        // Deterministic PJ banter - no LLM, 0p, specific to the invite road. The banter
+        // bubble is the visible channel (the whyCard owns the teleprompter); the bubble
+        // already prefixes the boss name, so strip the pool's "PJ: " marker.
         const cls = (p.classification || '').toUpperCase();
         const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? ROST_PJ_TAUNTS.bad : /BRILLIANT|GREAT|STRONG/.test(cls) ? ROST_PJ_TAUNTS.good : ROST_PJ_TAUNTS.calm;
-        setCoachReply(pool[(p.ply || 0) % pool.length]);
+        const line = pool[(p.ply || 0) % pool.length].replace(/^PJ: /, '');
+        setBanter(line); setCoachReply(line);
         return;
       }
       if (roadVariant === 'brendo') {
         // Deterministic Brendo-road boss banter - boss speaks, cast gets named. No LLM.
+        // Banter bubble is the visible channel and prefixes the boss name itself.
         const cls = (p.classification || '').toUpperCase();
         const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? BRENDO_BOSS_TAUNTS.bad : /BRILLIANT|GREAT|STRONG|BEST/.test(cls) ? BRENDO_BOSS_TAUNTS.good : BRENDO_BOSS_TAUNTS.calm;
-        setCoachReply(`${bs.name}: ${pool[(p.ply || 0) % pool.length]}`);
+        const line = pool[(p.ply || 0) % pool.length];
+        setBanter(line); setCoachReply(`${bs.name}: ${line}`);
         return;
       }
       void askChesterChat(JSON.stringify({ type: 'boss-taunt', message: bossTauntPrompt(bs, 'Forrest'), evalDelta: p.evalDelta ?? null, evaluationBefore: p.evaluationBefore ?? null, evaluationAfter: p.evaluationAfter ?? null, fen: p.fen }))
@@ -631,7 +636,7 @@ function PlayChesterGame() {
           const cls = (prompt.classification || '').toUpperCase();
           const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? BRENDO_CAST_TAUNTS.bad : /BRILLIANT|GREAT|STRONG|BEST/.test(cls) ? BRENDO_CAST_TAUNTS.good : BRENDO_CAST_TAUNTS.calm;
           const line = pool[(prompt.ply || 0) % pool.length];
-          setTeleprompterLlm({ key: `${prompt.ply}-${prompt.move}`, text: line });
+          setBanter(line);
           if (!isFriendMode && mode !== 'PVP_REMOTE') setChatMessages((prev) => [...prev.slice(-30), { role: 'chester', text: line, kind: 'reaction' }]);
           return;
         }
