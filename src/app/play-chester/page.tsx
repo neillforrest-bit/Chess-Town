@@ -153,6 +153,10 @@ function PlayChesterGame() {
   const [pendingCard, setPendingCard] = useState<{ ply: number; san: string; movePhrase: string | null } | null>(null);
   const [teachOpen, setTeachOpen] = useState(false);
   const [teachPage, setTeachPage] = useState(0);
+  useEffect(() => {
+    (window as any).__ctReading = teachOpen;
+    return () => { (window as any).__ctReading = false; };
+  }, [teachOpen]);
   const [endBanner, setEndBanner] = useState<{ outcome: 'you' | 'opp' | 'draw'; cause: string } | null>(null);
   const endBannerRef = useRef(false);
   useEffect(() => {
@@ -1032,7 +1036,7 @@ function PlayChesterGame() {
         const pg = Math.min(teachPage, pages.length - 1);
         const last = pg === pages.length - 1;
         return <div className={`chester-teach chester-teach--${whyCard.grade.toLowerCase()}`} role="dialog" aria-label="Chester explains your move">
-          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{whyCard.grade === 'IDLE' ? 'UNCONFIRMED' : `${gradeIcon(whyCard.grade)} ${whyCard.grade}`}</span></div>
+          <div className="chester-teach__head"><span className="chester-why__san">YOUR MOVE · {whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{whyCard.grade === 'IDLE' ? 'UNCONFIRMED' : `${gradeIcon(whyCard.grade)} ${whyCard.grade}`}</span></div>
           <b className="chester-teach__headline">{whyCard.headlineBadge}</b>
           <p className="chester-teach__line">{pages[pg]}</p>
           {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
@@ -1046,7 +1050,7 @@ function PlayChesterGame() {
         </div>;
       })()}
 
-      {!endBanner && !(teachOpen && whyCard) && <div className={`chester-teleprompter chester-teleprompter--tappable${whyCard && !pendingCard && !replyNow ? ` chester-hud chester-hud--${whyCard.grade.toLowerCase()}` : ' chester-hud chester-hud--idle'}`} key={whyCard ? `hud-${whyCard.ply}-${whyCard.grade}` : 'hud-idle'} role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; if (whyCard) setWhyModal(whyCard); else setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
+      {!endBanner && !(teachOpen && whyCard) && <div className={`chester-teleprompter chester-teleprompter--tappable${whyCard && !pendingCard ? ` chester-hud chester-hud--${whyCard.grade.toLowerCase()}` : ' chester-hud chester-hud--idle'}`} key={whyCard ? `hud-${whyCard.ply}-${whyCard.grade}` : 'hud-idle'} role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; if (whyCard) setWhyModal(whyCard); else setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
         <div className="chester-teleprompter__head">
           <i className="chester-teleprompter__beacon" aria-hidden="true" />
           <span>CHESTER SAYS</span><span className="chester-teleprompter__expand" aria-hidden="true">⤢ TAP TO READ</span>
@@ -1058,7 +1062,8 @@ function PlayChesterGame() {
           }} />}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          {replyNow && !pendingCard ? <div className="chester-reply-now"><b>{boss?.name || 'Chester'} played {replyNow.san}{replyNow.check ? ' - check' : ''}. Your move.</b>{replyNow.check && <p>Your king is in check. Move the king, capture the checking piece, or block the check.</p>}{whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}>Review your previous move ({whyCard.san})</button>}</div> : pendingCard
+          {replyNow && <div className="chester-reply-now"><b>{boss?.name || 'Chester'} played {replyNow.san}. Your move.</b>{replyNow.check && <p>Your king is in check. Answer the check before following any earlier suggestion.</p>}</div>}
+          {pendingCard
             ? <div className="chester-why chester-why--pending" key={`pending-${pendingCard.ply}`}>
                 <div className="chester-why__head"><span className="chester-why__san">{pendingCard.san}</span><span className="chester-why__grade"> GRADING…</span></div>
                 <p className="chester-why__row">You played {pendingCard.movePhrase || pendingCard.san}. Chester is grading this move<span className="chester-teleprompter__cursor">▮</span></p>
@@ -1067,7 +1072,7 @@ function PlayChesterGame() {
             ? <p className="chester-teleprompter__calculating">{deepThought ? 'CHESTER IS DEEP IN THOUGHT' : 'CHESTER IS CALCULATING'}<span className="chester-teleprompter__cursor">▮</span></p>
             : whyCard
             ? <div className="chester-why" key={`${whyCard.ply}-${whyCard.san}`}>
-                <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{whyCard.grade === 'IDLE' ? 'UNCONFIRMED' : `${gradeIcon(whyCard.grade)} ${whyCard.grade}`}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
+                <div className="chester-why__head"><span className="chester-why__san">YOUR MOVE · {whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{whyCard.grade === 'IDLE' ? 'UNCONFIRMED' : `${gradeIcon(whyCard.grade)} ${whyCard.grade}`}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
                 <p className="chester-why__row">{whyCard.whatHappenedLine}</p>
                 <p className="chester-why__row chester-why__row--eng">{whyCard.engineBlueprintLine}</p>
                 {castLine && castLine.key === `${whyCard.ply}-${whyCard.san}` && <p className="chester-why__row chester-why__row--cast">{castLine.text}</p>}
@@ -1080,8 +1085,8 @@ function PlayChesterGame() {
           {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}> Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
           {freeze?.tone === 'green' && <button type="button" className="chester-pill chester-pill--primary" onClick={releaseFreeze}>Continue ▸</button>}
           {!replyNow && whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}> {arrowsOn ? 'Hide line' : 'Show line'}</button>}
-          {!replyNow && whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}> Read</button>}
-          {!replyNow && whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}> Ask why</button>}
+          {whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}> Read</button>}
+          {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}> Ask why</button>}
         </div>}
       </div>}
 

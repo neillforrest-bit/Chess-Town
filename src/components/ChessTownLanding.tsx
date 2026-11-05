@@ -10,6 +10,7 @@ import { getRoadLevel, ROAD_MAX, bossFor, isBossLevel } from '@/lib/road';
 import { loadPlayerFile, analyse, type Analysis } from '@/lib/player-file';
 
 const doors = DOORS.map((d) => ({ ...d, first: d.id === 'play', top: d.id === 'road' }));
+doors.splice(1, 0, { id: 'road', title: 'MAIN STREET TO BRENDO', href: '/road/brendo', icon: '♚', accent: '#51d6a0', copy: 'PJ → Rost → Andy → Byron → Brendo. Five opponents, one climb.', first: false, top: false });
 const OPENINGS = [
   { name: 'Italian Game', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4', why: 'Quick development and an early eye on f7.' },
   { name: 'Queen\u2019s Gambit', moves: '1.d4 d5 2.c4', why: 'Offer a pawn, take the centre.' },

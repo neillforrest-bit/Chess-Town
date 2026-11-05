@@ -705,7 +705,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const flash = scene.add.rectangle(fp.x, fp.y, tileSize * 0.94, tileSize * 0.94, 0xffd84d, 0).setDepth(28);
               scene.tweens.add({ targets: flash, alpha: 0.75, duration: 150, delay: i * 18, yoyo: true, ease: 'Quad.Out', onComplete: () => flash.destroy() });
             });
-            const trotMs = 160;
+            const trotMs = mode === 'COACH_OPENING' && move.color === 'b' ? 850 : 160;
             if (attackingPiece) {
               const dest = centerOf(move.to);
               attackingPiece.setDepth(32);
@@ -765,6 +765,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
             moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => settleCapture());
             scene.time.delayedCall(trotMs + 500, settleCapture);
+            window.setTimeout(settleCapture, trotMs + 650);
           };
 
           // Engine line in words: walk the PV from the resulting position and phrase each
@@ -1288,7 +1289,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const w = window as any;
               for (let t = 0; t < 120 && w.__ctPending; t++) await sleep(100); // wait out slow deep grading so a freeze can land before Chester replies
               w.__ctPending = false;
-              for (let t = 0; t < 150 && w.__ctFreeze; t++) await sleep(100);
+              for (let t = 0; (t < 150 && w.__ctFreeze) || w.__ctReading; t++) {
+                if (!scene.sys?.isActive() || (w.__ctAiEpoch || 0) !== aiEpoch) return;
+                await sleep(100);
+              }
+              if (mode === 'COACH_OPENING') await sleep(1800); // reading beat AFTER the player's real verdict/freeze
               if (!scene.sys?.isActive() || (w.__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               const fastReply = !!w.__ctFastReply; w.__ctFastReply = false; // ACCEPT CONSEQUENCES: Chester answers at once
               if (!fastReply && !gameRef.current.isGameOver && difficulty && mode !== 'COACH_OPENING') {
@@ -1595,7 +1600,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                   const tRow = ranks.indexOf(gameRef.current.lastMove.to[1]);
                   if (fCol >= 0 && fRow >= 0 && tCol >= 0 && tRow >= 0) {
                     const spark = scene.add.circle(boardOffset + sx(fCol) * tileSize + tileSize / 2, boardOffset + sy(fRow) * tileSize + tileSize / 2, tileSize * 0.16, 0x22d3ee, 0.95).setDepth(30);
-                    scene.tweens.add({ targets: spark, x: boardOffset + sx(tCol) * tileSize + tileSize / 2, y: boardOffset + sy(tRow) * tileSize + tileSize / 2, duration: 420, ease: 'Cubic.Out', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
+                    const motionMs = mode === 'COACH_OPENING' && gameRef.current.lastMove.color === 'b' ? 850 : 420;
+                    scene.tweens.add({ targets: spark, x: boardOffset + sx(tCol) * tileSize + tileSize / 2, y: boardOffset + sy(tRow) * tileSize + tileSize / 2, duration: motionMs, ease: 'Sine.InOut', onComplete: () => scene.tweens.add({ targets: spark, alpha: 0, scale: 2.2, duration: 260, onComplete: () => spark.destroy() }) });
                     // Batch 92 "Play Made" feedback: capture shatter (a glowing flash +
                     // particle burst reads as the taken piece breaking) just before the
                     // attacker lands, then the landing ripple exactly on the snap.
@@ -1741,16 +1747,22 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                       // above), so the board is always true even if a tween never runs. The old
                       // glide tweened the piece container itself from the origin square - any
                       // killed or throttled tween stranded the piece at its origin until a tap.
-                      // Motion now comes from a translucent echo that slides over and dies.
+                      // Human moves use a translucent echo; bot moves use an opaque travelling visual.
                       gameRef.current.glideMove = null;
                       const gCol = files.indexOf(glide.from[0]);
                       const gRow = ranks.indexOf(glide.from[1]);
                       if (gCol >= 0 && gRow >= 0) {
                         try {
+                          const slowBot = mode === 'COACH_OPENING' && piece.color === 'b';
                           const echo = scene.add.image(boardOffset + sx(gCol) * tileSize + tileSize / 2, boardOffset + sy(gRow) * tileSize + tileSize / 2, royalTexture || `piece-${gameRef.current.pieceTheme}-${piece.color}-${displayPieceType}`)
-                            .setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5).setAlpha(0.55).setDepth(28);
-                          scene.tweens.add({ targets: echo, x: posX, y: posY, duration: 400, ease: 'Cubic.Out', onComplete: () => { try { echo.destroy(); } catch { /* gone */ } } });
-                          scene.time.delayedCall(900, () => { try { echo.destroy(); } catch { /* gone */ } });
+                            .setDisplaySize(tileSize * 1.08, tileSize * 1.08).setOrigin(0.5).setAlpha(slowBot ? 1 : 0.55).setDepth(28);
+                          // Keep the container/hit target at the correct destination. Only its
+                          // visual waits for the travelling sprite. A wall-clock backstop restores
+                          // it even if a mobile browser throttles or kills Phaser's tween.
+                          if (slowBot) pieceVisual.setAlpha(0);
+                          const settleVisual = () => { try { pieceVisual.setAlpha(1); echo.destroy(); } catch { /* recreated by a redraw */ } };
+                          scene.tweens.add({ targets: echo, x: posX, y: posY, duration: slowBot ? 850 : 400, ease: 'Sine.InOut', onComplete: settleVisual });
+                          window.setTimeout(settleVisual, slowBot ? 1000 : 900);
                         } catch { /* the echo is decoration; the real piece is already home */ }
                       }
                     } else {

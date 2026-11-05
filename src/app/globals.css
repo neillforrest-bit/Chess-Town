@@ -3697,3 +3697,7 @@ body:has(.chester-game) .global-nav,body:has(.chester-game) .chester-fab { displ
 .chester-game .chester-teleprompter .chester-teleprompter__head { flex:0 0 18px !important; min-height:18px !important; }
 .chester-game .chester-teleprompter .chester-hud-actions { flex:0 0 auto !important; }
 .chester-game .chester-teach__actions { flex-wrap:wrap; }
+/* BUILD 189: current opponent reply is a small status; the player's analysis stays. */
+.chester-game .chester-reply-now { font:12px/1.3 Arial,sans-serif; padding:3px 2px 6px; margin-bottom:5px; border-bottom:1px solid #8195aa66; color:#c9d6e6; }
+.chester-game .chester-reply-now p { margin:4px 0 0; color:#ffd78c; }
+.chester-game .chester-why__san { white-space:normal; }
