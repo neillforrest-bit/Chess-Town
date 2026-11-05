@@ -262,6 +262,7 @@ function PlayChesterGame() {
   const [coachReply, setCoachReply] = useState('');
   const qaMatchId = useRef(`qa-${Math.random().toString(36).slice(2, 10)}`);
   const [teleprompterLlm, setTeleprompterLlm] = useState<{ key: string; text: string } | null>(null);
+  const [castLine, setCastLine] = useState<{ key: string; text: string } | null>(null);
   const [helpRemaining, setHelpRemaining] = useState(3);
   // Batch 177 (stage 2 RPG): Mario-style board power-ups on normal road levels; none spawn on bosses (exam mode stays bare).
   const [powerups, setPowerups] = useState<{ sq: string; kind: 'torch' | 'shield' }[]>([]);
@@ -636,6 +637,7 @@ function PlayChesterGame() {
           const cls = (prompt.classification || '').toUpperCase();
           const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? BRENDO_CAST_TAUNTS.bad : /BRILLIANT|GREAT|STRONG|BEST/.test(cls) ? BRENDO_CAST_TAUNTS.good : BRENDO_CAST_TAUNTS.calm;
           const line = pool[(prompt.ply || 0) % pool.length];
+          setCastLine({ key: `${prompt.ply}-${prompt.move}`, text: line });
           setBanter(line);
           if (!isFriendMode && mode !== 'PVP_REMOTE') setChatMessages((prev) => [...prev.slice(-30), { role: 'chester', text: line, kind: 'reaction' }]);
           return;
@@ -1063,6 +1065,7 @@ function PlayChesterGame() {
                 <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
                 <p className="chester-why__row">{whyCard.whatHappenedLine}</p>
                 <p className="chester-why__row chester-why__row--eng">{whyCard.engineBlueprintLine}</p>
+                {castLine && castLine.key === `${whyCard.ply}-${whyCard.san}` && <p className="chester-why__row chester-why__row--cast">{castLine.text}</p>}
                 {!isFriendMode && <button type="button" className="chester-chat-nudge" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }}>{whyCard.grade === 'BLUNDER' || whyCard.grade === 'SHAKY' ? ' Not sure why? Ask Chester to explain' : ' Want more? Ask Chester about this move'}</button>}
               </div>
             : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt && coachReply ? coachReply : lesson.body || 'Make a move. I will grade it here, in plain English, with the exact squares.'}</p>}

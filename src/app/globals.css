@@ -3592,3 +3592,5 @@ body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
   .town-night--doors .town-doors { gap: .3rem; }
   .town-night--doors .town-door { padding: .4rem .8rem; }
 }
+/* BUILD 187: cast commentary row inside the CHESTER SAYS card - italic, warm, clearly a voice line */
+.chester-why__row--cast { margin-top: .3rem; padding-top: .3rem; border-top: 1px dashed rgba(238,252,255,.22); font-style: italic; color: #ffe9a8; }
