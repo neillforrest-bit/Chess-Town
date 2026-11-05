@@ -427,7 +427,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     legalTargets: [],
     lastMove: null,
     lastVerdict: null as string | null,
-    lastVerdictPly: null as number | null,
+    lastVerdictFrom: null as string | null,
+    lastVerdictTo: null as string | null,
     coachSuggestion: null,
     betterHint: null as any,
     blueprintHint: null as any,
@@ -498,7 +499,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // His ask: bright green good / red bad ON BOARD, in line with the commentary
             // grade. The analyzer verdict arrives a beat after the move; only tint while
             // it still names the current ply (stale verdicts from earlier moves drop out).
-            const verdict = gameRef.current.lastVerdictPly === gameRef.current.ply ? gameRef.current.lastVerdict : null;
+            const verdict = gameRef.current.lastVerdict && lastMove.from === gameRef.current.lastVerdictFrom && lastMove.to === gameRef.current.lastVerdictTo ? gameRef.current.lastVerdict : null;
 
             [lastMove.from, lastMove.to].forEach((squareName) => {
               const col = files.indexOf(squareName[0]);
@@ -518,9 +519,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           const onMoveVerdict = (ev: Event) => {
-            const d = ((ev as CustomEvent).detail || {}) as { ply?: number; grade?: string };
+            const d = ((ev as CustomEvent).detail || {}) as { grade?: string; from?: string; to?: string };
             gameRef.current.lastVerdict = d.grade || null;
-            gameRef.current.lastVerdictPly = typeof d.ply === 'number' ? d.ply : null;
+            gameRef.current.lastVerdictFrom = d.from || null;
+            gameRef.current.lastVerdictTo = d.to || null;
             updateSpotlights();
           };
           window.addEventListener('chester-move-verdict', onMoveVerdict);
