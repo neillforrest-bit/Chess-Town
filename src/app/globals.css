@@ -3608,4 +3608,6 @@ body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
   /* teach card open: shrink the board so the full card (text + cast line + actions) fits without clipping */
   .chester-game:has(.chester-teach) .chester-board-frame { width: min(100%, 316px) !important; }
   .chester-game__board .chester-teach { flex-shrink: 0; }
+  /* post-Accept the lifeline pills reappear under the card; tighten the card ~20px so pills stay on screen */
+  .chester-game .chester-teach { padding: .45rem .6rem .4rem !important; gap: .28rem !important; }
 }
