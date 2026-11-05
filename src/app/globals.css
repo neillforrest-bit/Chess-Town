@@ -3610,4 +3610,6 @@ body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
   .chester-game__board .chester-teach { flex-shrink: 0; }
   /* post-Accept the lifeline pills reappear under the card; tighten the card ~20px so pills stay on screen */
   .chester-game .chester-teach { padding: .45rem .6rem .4rem !important; gap: .28rem !important; }
+  /* compact height cannot fit card + pills: keep pills hidden until the card is dismissed (same as during freeze) */
+  .chester-game:has(.chester-teach) .chester-console__lifelines { display: none !important; }
 }
