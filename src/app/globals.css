@@ -3559,7 +3559,7 @@ body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
 .chester-start-screen .road-strip ol { display: flex; flex-wrap: wrap; justify-content: center; }
 
 /* BUILD 184 final: monochrome chrome, verdict colour reserved for teaching (his call: red vs green for bad vs good) */
-.global-nav, .chester-start-screen, .chester-game .chester-hud, .chester-game .fighthud, .chester-game .chester-board-frame, .chester-game .chester-console, .chester-game .hero-jail-row, .chester-game .chester-banter, .chester-game .chester-endbanner, .chester-game .style-sheet { filter: grayscale(1); }
+.global-nav, .chester-start-screen, .chester-game .chester-hud, .chester-game .fighthud, .chester-game .chester-console, .chester-game .hero-jail-row, .chester-game .chester-banter, .chester-game .chester-endbanner, .chester-game .style-sheet { filter: grayscale(1); }
 /* two-tone verdict: green good, red bad - on teleprompter and teach card */
 .chester-hud--solid { background: rgba(2,44,34,.92) !important; border-color: #34d399 !important; box-shadow: 0 0 16px rgba(16,185,129,.25) !important; }
 .chester-hud--shaky { background: rgba(76,5,25,.95) !important; border-color: #f43f5e !important; box-shadow: 0 0 22px rgba(244,63,94,.4) !important; }
