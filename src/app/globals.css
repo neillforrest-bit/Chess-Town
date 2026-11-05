@@ -3613,3 +3613,7 @@ body:has(.chester-game), body:has(.chester-start-screen) { color-scheme: dark; }
   /* compact height cannot fit card + pills: keep pills hidden until the card is dismissed (same as during freeze) */
   .chester-game:has(.chester-teach) .chester-console__lifelines { display: none !important; }
 }
+
+/* BUILD 187 (his ask): board verdict tint - bright green good / bright red bad, in line with the commentary grade */
+.square-spotlight[data-verdict="good"] { background: radial-gradient(circle, rgba(52,211,153,.78), rgba(52,211,153,.24) 42%, transparent 72%) !important; box-shadow: inset 0 0 0 3px rgba(52,211,153,.95), 0 0 26px rgba(52,211,153,.8) !important; }
+.square-spotlight[data-verdict="bad"] { background: radial-gradient(circle, rgba(244,63,94,.78), rgba(244,63,94,.24) 42%, transparent 72%) !important; box-shadow: inset 0 0 0 3px rgba(244,63,94,.95), 0 0 26px rgba(244,63,94,.8) !important; }

@@ -426,6 +426,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     selectedSquare: null,
     legalTargets: [],
     lastMove: null,
+    lastVerdict: null as string | null,
+    lastVerdictPly: null as number | null,
     coachSuggestion: null,
     betterHint: null as any,
     blueprintHint: null as any,
@@ -493,6 +495,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             spotlightLayer.replaceChildren();
             const lastMove = gameRef.current.lastMove;
             if (!lastMove) return;
+            // His ask: bright green good / red bad ON BOARD, in line with the commentary
+            // grade. The analyzer verdict arrives a beat after the move; only tint while
+            // it still names the current ply (stale verdicts from earlier moves drop out).
+            const verdict = gameRef.current.lastVerdictPly === gameRef.current.ply ? gameRef.current.lastVerdict : null;
 
             [lastMove.from, lastMove.to].forEach((squareName) => {
               const col = files.indexOf(squareName[0]);
@@ -501,6 +507,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               const spotlight = document.createElement('div');
               spotlight.className = 'square-spotlight';
               spotlight.dataset.grade = lastMove.grade || 'A';
+              if (verdict) spotlight.dataset.verdict = /BLUNDER|SHAKY|MISTAKE|INACCURACY|MISS/i.test(verdict) ? 'bad' : 'good';
               spotlight.dataset.square = squareName === lastMove.to ? 'to' : 'from';
               spotlight.style.left = `${((boardOffset + sx(col) * tileSize) / 800) * 100}%`;
               spotlight.style.top = `${((boardOffset + sy(row) * tileSize) / 800) * 100}%`;
@@ -509,6 +516,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               spotlightLayer.appendChild(spotlight);
             });
           };
+
+          const onMoveVerdict = (ev: Event) => {
+            const d = ((ev as CustomEvent).detail || {}) as { ply?: number; grade?: string };
+            gameRef.current.lastVerdict = d.grade || null;
+            gameRef.current.lastVerdictPly = typeof d.ply === 'number' ? d.ply : null;
+            updateSpotlights();
+          };
+          window.addEventListener('chester-move-verdict', onMoveVerdict);
+          scene.events.once('destroy', () => window.removeEventListener('chester-move-verdict', onMoveVerdict));
 
           const loadRoyalCatTextures = () => {
             (['q', 'k'] as const).forEach((pieceType) => {
