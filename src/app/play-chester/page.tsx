@@ -21,7 +21,7 @@ import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/s
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
-import { ROAD_MAX, bossFor, isBossLevel, eloForLevel, tierForLevel, getRoadLevel, setRoadLevel, roadMaxFor, bossTauntPrompt, BOSS_FOCUS, levelFocus, type RoadVariant } from '@/lib/road';
+import { ROAD_MAX, bossFor, isBossLevel, isBossFor, eloForLevel, eloForLevelV, effectiveLevelFor, tierForLevel, getRoadLevel, setRoadLevel, roadMaxFor, bossTauntPrompt, BOSS_FOCUS, BOSS_LEVELS, ROST_PJ_TAUNTS, levelFocus, type RoadVariant } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { getStockfishClient } from '@/lib/stockfish';
@@ -66,8 +66,8 @@ function PlayChesterGame() {
   const requestedLevel = searchParams.get('level');
   const bossNode = searchParams.get('boss');
   const roadParam = searchParams.get('road');
-  const roadVariant: RoadVariant = roadParam === 'brendo' ? 'brendo' : 'joseph';
-  const roadActive = roadParam === '1' || roadParam === 'brendo';
+  const roadVariant: RoadVariant = roadParam === 'brendo' ? 'brendo' : roadParam === 'rost' ? 'rost' : 'joseph';
+  const roadActive = roadParam === '1' || roadParam === 'brendo' || roadParam === 'rost';
   const requestedRoom = (searchParams.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
   const requestedSeat: 'w' | 'b' = searchParams.get('host') === '1' ? 'w' : 'b';
   const warMode = requestedMode === 'duel' && searchParams.get('war') === '1';
@@ -85,13 +85,13 @@ function PlayChesterGame() {
   const [victoryState, setVictoryState] = useState<'none' | 'cleared' | 'boss_defeated'>('none');
   const [introOpen, setIntroOpen] = useState(false);
   useEffect(() => { if (roadActive) setIntroOpen(true); }, [roadActive]);
-  const isBossFight = roadActive && isBossLevel(roadLevel);
+  const isBossFight = roadActive && isBossFor(roadVariant, roadLevel);
   const boss = isBossFight ? bossFor(roadLevel, roadVariant) : null;
   const bossRef = useRef<{ on: boolean; boss: ReturnType<typeof bossFor> }>({ on: false, boss: null });
   bossRef.current = { on: isBossFight, boss };
   const roadRef = useRef({ active: false, level: 1, variant: 'joseph' as RoadVariant });
   roadRef.current = { active: roadActive, level: roadLevel, variant: roadVariant };
-  useEffect(() => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = roadActive ? roadLevel : null; return () => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = null; }; }, [roadActive, roadLevel]);
+  useEffect(() => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = roadActive ? effectiveLevelFor(roadVariant, roadLevel) : null; return () => { (window as unknown as { __ctRoadLevel?: number | null }).__ctRoadLevel = null; }; }, [roadActive, roadLevel]);
   const bp = useBlueprint(); const bpRef = useRef(bp); bpRef.current = bp;
   const [armoryOpen, setArmoryOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>(roadActive ? 'BEGINNER' : requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
@@ -539,7 +539,7 @@ function PlayChesterGame() {
       }
       if (roadRef.current.active && !isFriendMode && new URLSearchParams(window.location.search).get('rush') === '1' && detail.pgn) {
         if (/1-0\s*$/.test(detail.pgn)) { const r = rushWin(); setRushMsg({ kind: 'win', step: r.step, complete: r.complete }); setVictoryState('boss_defeated'); if (r.complete) { try { burstConfetti(); } catch { /* */ } } } else { rushLoss(); setRushMsg({ kind: 'loss' }); }
-      } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(roadMaxFor(roadRef.current.variant), lv + 1), roadRef.current.variant); try { window.localStorage.setItem(roadRef.current.variant === 'brendo' ? 'ct-brendo-level-v1-seen' : 'ct-road-level-v1-seen', String(Math.min(roadMaxFor(roadRef.current.variant), lv + 1))); } catch { /* */ } setVictoryState(isBossLevel(lv) ? 'boss_defeated' : 'cleared'); if (isBossLevel(lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
+      } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(roadMaxFor(roadRef.current.variant), lv + 1), roadRef.current.variant); try { window.localStorage.setItem(roadRef.current.variant === 'brendo' ? 'ct-brendo-level-v1-seen' : roadRef.current.variant === 'rost' ? 'ct-rost-level-v1-seen' : 'ct-road-level-v1-seen', String(Math.min(roadMaxFor(roadRef.current.variant), lv + 1))); } catch { /* */ } setVictoryState(isBossFor(roadRef.current.variant, lv) ? 'boss_defeated' : 'cleared'); if (isBossFor(roadRef.current.variant, lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);
@@ -596,6 +596,13 @@ function PlayChesterGame() {
       setIsThinking(false); setCoachReply(''); setTeleprompterLlm(null);
       const bs = bossRef.current.boss; const p = coachPrompt;
       if (bs.name === 'Joseph') { setBanter(''); return; }
+      if (roadVariant === 'rost') {
+        // Deterministic PJ banter - no LLM, 0p, specific to the invite road.
+        const cls = (p.classification || '').toUpperCase();
+        const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? ROST_PJ_TAUNTS.bad : /BRILLIANT|GREAT|STRONG/.test(cls) ? ROST_PJ_TAUNTS.good : ROST_PJ_TAUNTS.calm;
+        setCoachReply(pool[(p.ply || 0) % pool.length]);
+        return;
+      }
       void askChesterChat(JSON.stringify({ type: 'boss-taunt', message: bossTauntPrompt(bs, 'Forrest'), evalDelta: p.evalDelta ?? null, evaluationBefore: p.evaluationBefore ?? null, evaluationAfter: p.evaluationAfter ?? null, fen: p.fen }))
         .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setCoachReply(reply.trim()); })
         .catch(() => undefined);
@@ -839,27 +846,27 @@ function PlayChesterGame() {
             {boss && <div className="road-intro__boss" aria-label={`Boss fight: ${boss.name}`}>
               <div className="road-intro__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={72} /></div>
               <p className="road-intro__boss-name">BOSS FIGHT: {boss.name}</p>
-              <p className="road-intro__boss-arch">{boss.archetype} · {eloForLevel(roadLevel) ? `difficulty setting ~${eloForLevel(roadLevel)}` : 'no difficulty limit'} · exam mode · 2 take-backs</p>
-              <p className="road-intro__boss-focus">{BOSS_FOCUS[roadLevel]?.focus}</p>
+              <p className="road-intro__boss-arch">{boss.archetype} · {eloForLevelV(roadVariant, roadLevel) ? `difficulty setting ~${eloForLevelV(roadVariant, roadLevel)}` : 'no difficulty limit'} · exam mode · 2 take-backs</p>
+              <p className="road-intro__boss-focus">{roadVariant === 'rost' ? 'TRAINING FOCUS: PJ is a step up from Rost - calculate checks, captures and threats before every move.' : BOSS_FOCUS[roadLevel]?.focus}</p>
             </div>}
             {!boss && roadActive && <div className="road-intro__boss">
-              <p className="road-intro__boss-name">LEVEL {roadLevel}/{roadMaxFor(roadVariant)} · difficulty setting ~{eloForLevel(roadLevel)}</p>
-              <p className="road-intro__boss-focus">{levelFocus(roadLevel)}</p>
+              <p className="road-intro__boss-name">LEVEL {roadLevel}/{roadMaxFor(roadVariant)} · difficulty setting ~{eloForLevelV(roadVariant, roadLevel)}</p>
+              <p className="road-intro__boss-focus">{roadVariant === 'rost' ? 'TRAINING FOCUS: medium-strength chess, no gifts - protect every piece before you attack, and Castle early.' : levelFocus(roadLevel)}</p>
             </div>}
             {!boss && <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>}
-            {boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>One game, one lesson. Play your moves and I will explain each one - the strong ones and the loose ones - so every rung up the road teaches you something real.</p>}
+            {roadVariant === 'rost' ? <p className="road-intro__invite"><b>is this simpler mofo? You’re playing from David Rost mode</b></p> : boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>One game, one lesson. Play your moves and I will explain each one - the strong ones and the loose ones - so every rung up the road teaches you something real.</p>}
             <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
           </div>
         </div>
       )}
       {!isFriendMode && roadActive && (
-        <div className="road-strip" aria-label={`${roadVariant === 'brendo' ? 'Time to Beat Brendo' : 'Road to Joseph'}, level ${roadLevel} of ${roadMaxFor(roadVariant)}`}>
-          <p className="road-strip__title">{roadVariant === 'brendo' ? 'TIME TO BEAT BRENDO' : 'ROAD TO JOSEPH'} · LEVEL {roadLevel}/{roadMaxFor(roadVariant)}</p>
+        <div className="road-strip" aria-label={`${roadVariant === 'brendo' ? 'Time to Beat Brendo' : roadVariant === 'rost' ? 'David Rost mode' : 'Road to Joseph'}, level ${roadLevel} of ${roadMaxFor(roadVariant)}`}>
+          <p className="road-strip__title">{roadVariant === 'brendo' ? 'TIME TO BEAT BRENDO' : roadVariant === 'rost' ? 'DAVID ROST MODE' : 'ROAD TO JOSEPH'} · LEVEL {roadLevel}/{roadMaxFor(roadVariant)}</p>
           {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
           <ol>{Array.from({ length: roadMaxFor(roadVariant) }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
-          <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= roadMaxFor(roadVariant) ? 100 : (((eloForLevel(roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
-          <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevel(roadLevel)}. Two take-backs for hints or retries - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevel(roadLevel)} this level. Next boss: ${(() => { const nb = (roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${(roadVariant === 'brendo' ? [3, 6, 9] : [3, 6, 9, 12, 15]).find((b) => b >= roadLevel)}).`}</p>
-          {roadLevel < roadMaxFor(roadVariant) && <p className="road-strip__top">At the top waits <b>{roadVariant === 'brendo' ? 'BRENDO' : 'JOSEPH'}</b>: {roadVariant === 'brendo' ? 'the loudest rival in town, waiting on the rooftop' : 'a grandmaster at full engine strength, the hardest opponent here'}. Each rung is a real step up.</p>}
+          <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= roadMaxFor(roadVariant) ? 100 : (((eloForLevelV(roadVariant, roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
+          <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : roadVariant === 'rost' ? 'PJ. The harder test. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevelV(roadVariant, roadLevel)}. Two take-backs for hints or retries - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevelV(roadVariant, roadLevel)} this level. Next boss: ${(() => { const nb = BOSS_LEVELS[roadVariant].find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${BOSS_LEVELS[roadVariant].find((b) => b >= roadLevel)}).`}</p>
+          {roadLevel < roadMaxFor(roadVariant) && <p className="road-strip__top">At the top waits <b>{roadVariant === 'brendo' ? 'BRENDO' : roadVariant === 'rost' ? 'PJ' : 'JOSEPH'}</b>: {roadVariant === 'brendo' ? 'the loudest rival in town, waiting on the rooftop' : roadVariant === 'rost' ? 'the harder test, one rung up' : 'a grandmaster at full engine strength, the hardest opponent here'}. Each rung is a real step up.</p>}
         </div>
       )}
       {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/play-chester?road=1"><b>ROAD TO JOSEPH</b><small>15 levels · a boss every 3rd · your level is saved</small></a>}
@@ -932,7 +939,7 @@ function PlayChesterGame() {
         <CaptureStrip pieces={material.youTook} tone="you" label={`${isFriendMode ? 'P1' : 'YOU'} TOOK`} />
         <CaptureStrip pieces={material.oppTook} tone="opp" label={`${isFriendMode ? 'P2' : 'CHESTER'} TOOK`} />
       </div>
-      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : 'CHESTER')} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
+      <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : roadVariant === 'rost' ? 'DAVID ROST' : 'CHESTER')} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
       <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
         {bp.line && bp.opening && <div className="bp-line" style={{ borderColor: bp.opening.color }}>
@@ -943,8 +950,8 @@ function PlayChesterGame() {
           const finalWin = roadLevel >= ROAD_MAX;
           const bossName = bossFor(roadLevel, roadVariant)?.name || 'THE BOSS';
           const rw = rushActive && rushMsg?.kind === 'win' ? rushMsg : null;
-          const title = rw ? (rw.complete ? 'BOSS RUSH COMPLETE.' : `${bossName.toUpperCase()} DOWN.`) : finalWin ? 'JOSEPH DETHRONED.' : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
-          const sub = rw ? (rw.complete ? ' Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. One loss resets the run.`) : finalWin ? (roadVariant === 'brendo' ? 'You beat BRENDO. Time to Beat Brendo: complete.' : 'You beat the Final Mastermind. The Road to Joseph is complete.') : victoryState === 'boss_defeated' ? (roadVariant === 'brendo' ? 'Brendo felt that. Keep climbing.' : 'Joseph felt that. Keep climbing.') : 'The ladder gets steeper.';
+          const title = rw ? (rw.complete ? 'BOSS RUSH COMPLETE.' : `${bossName.toUpperCase()} DOWN.`) : finalWin ? (roadVariant === 'rost' ? 'PJ DETHRONED.' : 'JOSEPH DETHRONED.') : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
+          const sub = rw ? (rw.complete ? ' Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. One loss resets the run.`) : finalWin ? (roadVariant === 'brendo' ? 'You beat BRENDO. Time to Beat Brendo: complete.' : roadVariant === 'rost' ? 'You beat PJ. David Rost mode: complete.' : 'You beat the Final Mastermind. The Road to Joseph is complete.') : victoryState === 'boss_defeated' ? (roadVariant === 'brendo' ? 'Brendo felt that. Keep climbing.' : roadVariant === 'rost' ? 'PJ felt that. The road is yours.' : 'Joseph felt that. Keep climbing.') : (roadVariant === 'rost' ? 'David Rost is beaten. Next: PJ - harder, exam mode, two take-backs.' : 'The ladder gets steeper.');
           return (
             <div className={`road-victory road-victory--${victoryState}`} role="dialog" aria-live="polite">
               <h2>{title}</h2>
@@ -980,7 +987,7 @@ function PlayChesterGame() {
             <button type="button" className="chester-pill" onClick={() => setMateStage(0)}>Close</button>
           </div>
         </div>}
-        {!endBanner && !freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : 'CHESTER'}</b> {banter}</div>}
+        {!endBanner && !freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : roadVariant === 'rost' ? 'DAVID ROST' : 'CHESTER'}</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>

@@ -25,10 +25,36 @@ export function levelFocus(level: number): string {
   return 'TRAINING FOCUS: precision - calculate every forcing move: checks, captures, threats.';
 }
 export const isBossLevel = (level: number) => level % 3 === 0;
-export const bossFor = (level: number, variant: RoadVariant = 'joseph'): RoadBoss | null =>
-  isBossLevel(level) ? (variant === 'brendo' ? BRENDO_ROSTER : BOSS_ROSTER)[level] || null : null;
+export const bossFor = (level: number, variant: RoadVariant = 'joseph'): RoadBoss | null => {
+  if (variant === 'rost') return ROST_ROSTER[level] || null;
+  return isBossLevel(level) ? (variant === 'brendo' ? BRENDO_ROSTER : BOSS_ROSTER)[level] || null : null;
+};
+/** Variant-aware boss test: on the Rost road, PJ (level 2) is the boss; David Rost (level 1) is a full-teaching medium level. */
+export const isBossFor = (variant: RoadVariant, level: number): boolean => (variant === 'rost' ? level === 2 : isBossLevel(level));
+/** Boss level numbers per variant, for "next boss" copy. */
+export const BOSS_LEVELS: Record<RoadVariant, number[]> = { joseph: [3, 6, 9, 12, 15], brendo: [3, 6, 9], rost: [2] };
 
-export type RoadVariant = 'joseph' | 'brendo';
+export type RoadVariant = 'joseph' | 'brendo' | 'rost';
+
+/** BUILD 186 (5 Nov 2026): David Rost mode - his invite road for Brendo. Level 1: David Rost at a
+   medium engine setting with full teaching; Level 2: boss PJ, harder. 2 levels, both named. */
+export const ROST_MAX = 2;
+export const ROST_ROSTER: Record<number, RoadBoss> = {
+  2: { name: 'PJ', archetype: 'The Harder Test' },
+};
+/** Displayed difficulty SETTINGS per level (settings, not measured human Elo). */
+export const ROST_LEVEL_ELO: Record<number, number> = { 1: 1300, 2: 1850 };
+/** Effective global-ramp level the engine actually plays at (medium ~L6, harder ~L10). */
+const ROST_EFFECTIVE: Record<number, number> = { 1: 6, 2: 10 };
+export const effectiveLevelFor = (variant: RoadVariant, level: number): number => (variant === 'rost' ? (ROST_EFFECTIVE[level] || 6) : level);
+/** Variant-aware displayed difficulty setting. */
+export const eloForLevelV = (variant: RoadVariant, level: number): number | null => (variant === 'rost' ? (ROST_LEVEL_ELO[level] ?? null) : eloForLevel(level));
+/** Deterministic PJ banter (exam mode, no LLM): hostile on player mistakes, grudging on strong moves, needling otherwise. */
+export const ROST_PJ_TAUNTS = {
+  bad: ['PJ: Rost was the warm-up. I am the exam.', 'PJ: That move just made my job easier.', 'PJ: Simpler, remember? You are making it simpler for ME.'],
+  good: ['PJ: Fine. That one was real. Do it again.', 'PJ: Okay. You have been practising.'],
+  calm: ['PJ: Rost told me you were quick. Show me.', 'PJ: Medium is behind you. This is harder.'],
+} as const;
 
 /** BUILD 184 (4 Nov 2026): Time to Beat Brendo - a shorter, friendlier road cloned from Road to Joseph for Brendo. */
 export const BRENDO_MAX = 9;
@@ -37,8 +63,8 @@ export const BRENDO_ROSTER: Record<number, RoadBoss> = {
   6: { name: 'Brendo Prime', archetype: 'The Trash-Talking Tactician' },
   9: { name: 'BRENDO', archetype: 'The One To Beat' },
 };
-export const roadMaxFor = (variant: RoadVariant = 'joseph'): number => (variant === 'brendo' ? BRENDO_MAX : ROAD_MAX);
-const ROAD_KEYS: Record<RoadVariant, string> = { joseph: 'ct-road-level-v1', brendo: 'ct-brendo-level-v1' };
+export const roadMaxFor = (variant: RoadVariant = 'joseph'): number => (variant === 'brendo' ? BRENDO_MAX : variant === 'rost' ? ROST_MAX : ROAD_MAX);
+const ROAD_KEYS: Record<RoadVariant, string> = { joseph: 'ct-road-level-v1', brendo: 'ct-brendo-level-v1', rost: 'ct-rost-level-v1' };
 /** Nominal strength. Levels 1-14 interpolate 800..3190 Elo. Level 15 is unlimited (null): Joseph plays at full grandmaster strength. */
 export const ROAD_FLOOR_ELO = 600;
 // Batch 176 (his steering): the old ramp hit ~2271 by level 9 of 15 - far too steep for a

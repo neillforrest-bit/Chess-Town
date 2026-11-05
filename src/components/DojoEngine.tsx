@@ -439,7 +439,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
     isGameOver: false,
     ply: 0,
     boardTheme: 'GOTHIC',
-    pieceTheme: 'gothic',
+    pieceTheme: 'fossil',
     coachMarks: [] as any[],
   });
 

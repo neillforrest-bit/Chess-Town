@@ -25,11 +25,24 @@ const PIECES_SVG: Record<string, string> = {
 // gradients. 'neon' is the classic frost-blue vs flame-orange skin. 'metallic' is the
 // traditional black-vs-white identity with a polished metal sheen (silver vs gunmetal),
 // per his arena feedback - clear sides first, spectacle second.
-export type PieceTheme = 'metallic' | 'neon' | 'gothic';
+export type PieceTheme = 'metallic' | 'neon' | 'gothic' | 'fossil';
 const THEME_GRADIENTS: Record<PieceTheme, { frost: [string, string, string]; flame: [string, string, string] }> = {
   neon: { frost: ['#f2f9ff', '#63a5f2', '#1c48b0'], flame: ['#ffe27a', '#ff8a1f', '#c21807'] },
   metallic: { frost: ['#ffffff', '#dfe5ec', '#8a93a3'], flame: ['#cfd6df', '#5a626e', '#14161a'] },
   gothic: { frost: ['#ffffff', '#f0f0f0', '#555555'], flame: ['#c9c9c9', '#3d3d3d', '#000000'] },
+  // BUILD 186 (5 Nov, his screenshot): fossil-green shading on BOTH armies so pieces lift off
+  // the monochrome squares by hue, with white band accents on every piece. Sides stay
+  // unmistakable: light sage vs deep moss.
+  fossil: { frost: ['#eef4e2', '#a9bd93', '#46573c'], flame: ['#9ab386', '#445c3b', '#16210f'] },
+};
+/** White band accent paths per piece type (cburnett 45x45 grid), injected for the fossil theme. */
+const FOSSIL_BANDS: Record<string, string> = {
+  p: '<path fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" d="M11.8 37h21.4"/>',
+  r: '<path fill="none" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" d="M14 22.5h17M12 33.5h21"/>',
+  n: '<path fill="#ffffff" stroke="none" d="m24.55 10.4-.45 1.45.5.15c3.15 1 5.65 2.49 7.9 6.75S35.75 29.06 35.25 39l-.05.5h2.25l.05-.5c.5-10.06-.88-16.85-3.25-21.34s-5.79-6.64-9.19-7.16z"/>',
+  b: '<path fill="none" stroke="#ffffff" stroke-width="1.6" d="M17.5 26h10M15 30h15"/>',
+  q: '<path fill="none" stroke="#ffffff" stroke-width="1.6" d="M11.5 30c3.5-1 18.5-1 22 0M11 38.5a35 35 1 0 0 23 0"/>',
+  k: '<path fill="none" stroke="#ffffff" stroke-width="1.6" d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0M22.5 11.63V6M20 8h5"/>',
 };
 
 export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288, theme: PieceTheme = 'neon'): string | null {
@@ -39,6 +52,13 @@ export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288
     const from = color === 'w' ? THEME_GRADIENTS.neon.frost : THEME_GRADIENTS.neon.flame;
     const to = (color === 'w' ? THEME_GRADIENTS[theme].frost : THEME_GRADIENTS[theme].flame);
     for (let i = 0; i < 3; i++) svg = svg.split(from[i]).join(to[i]);
+  }
+  if (theme === 'fossil') {
+    // Existing cream accents become pure white bands; every piece also gets an explicit
+    // white band. Black pieces already carry accent bands - only the black pawn needs one added.
+    svg = svg.split('#fff3c2').join('#ffffff');
+    const band = FOSSIL_BANDS[type] || FOSSIL_BANDS.p;
+    if (color === 'w' || type === 'p') svg = svg.replace(/<\/svg>\s*$/, `${band}</svg>`);
   }
   // BUILD 128: light drop shadow (0 2px 4px, white; strengthened at his request to 55%) lifts black pieces off dark squares.
   // Phaser draws the board, so the Tailwind drop-shadow utility cannot reach the pieces; same values baked into the SVG.
