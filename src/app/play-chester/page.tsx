@@ -1032,6 +1032,7 @@ function PlayChesterGame() {
           <b className="chester-teach__headline">{whyCard.headlineBadge}</b>
           <p className="chester-teach__line">{pages[pg]}</p>
           {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
+          {castLine && castLine.key === `${whyCard.ply}-${whyCard.san}` && <p className="chester-teach__line chester-why__row--cast">{castLine.text}</p>}
           <div className="chester-teach__actions">
             {whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}> {arrowsOn ? 'Hide line' : 'Show line'}</button>}
             {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}> Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
