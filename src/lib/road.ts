@@ -57,6 +57,23 @@ export const ROST_PJ_TAUNTS = {
 } as const;
 
 /** BUILD 184 (4 Nov 2026): Time to Beat Brendo - a shorter, friendlier road cloned from Road to Joseph for Brendo. */
+/** BUILD 187 (5 Nov, his cast list): the Brendo road's commentary cast - Concord Academy,
+ *  Neillo, Aidan the maiden, David Rost, Ayres, Andy, Gabe, Danny, jay bird. Deterministic,
+ *  reacting to the chess only (no invented personal facts about real people). Used on the
+ *  shareable Brendo and Rost invite flows. */
+export const BRENDO_CAST_TAUNTS = {
+  bad: ['Aidan the maiden spotted that threat before you moved.', 'David Rost would never have given that piece away.', 'Concord Academy rule one: check what they attack before you move. That one gets homework.'],
+  good: ['Neillo will hear about that move. Yes, that one.', 'Ayres just stood up. That was proper chess.', 'jay bird is telling everyone. Lovely move.'],
+  calm: ['Andy says breathe. Take the steady square.', 'Gabe rates your position here. Do not spoil it.', 'Danny has seen games turn on less than this. Concentrate.'],
+} as const;
+
+/** Boss-flavoured lines on the Brendo road: the boss speaks, the cast gets named. */
+export const BRENDO_BOSS_TAUNTS = {
+  bad: ['The whole of Concord Academy is watching, and you play THAT?', 'Danny saw that blunder from the back row.'],
+  good: ['Okay. Gabe saw that one. Do it again.', 'Fine. Ayres taught someone well.'],
+  calm: ['Andy and Neillo both said you were quick. Show me.', 'jay bird is commentating for the Academy. Make it worth his time.'],
+} as const;
+
 export const BRENDO_MAX = 9;
 export const BRENDO_ROSTER: Record<number, RoadBoss> = {
   3: { name: 'Little Brendo', archetype: 'The Eager Challenger' },

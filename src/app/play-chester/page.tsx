@@ -21,7 +21,7 @@ import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/s
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
-import { ROAD_MAX, bossFor, isBossLevel, isBossFor, eloForLevel, eloForLevelV, effectiveLevelFor, tierForLevel, getRoadLevel, setRoadLevel, roadMaxFor, bossTauntPrompt, BOSS_FOCUS, BOSS_LEVELS, ROST_PJ_TAUNTS, levelFocus, type RoadVariant } from '@/lib/road';
+import { ROAD_MAX, bossFor, isBossLevel, isBossFor, eloForLevel, eloForLevelV, effectiveLevelFor, tierForLevel, getRoadLevel, setRoadLevel, roadMaxFor, bossTauntPrompt, BOSS_FOCUS, BOSS_LEVELS, ROST_PJ_TAUNTS, BRENDO_CAST_TAUNTS, BRENDO_BOSS_TAUNTS, levelFocus, type RoadVariant } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { getStockfishClient } from '@/lib/stockfish';
@@ -603,6 +603,13 @@ function PlayChesterGame() {
         setCoachReply(pool[(p.ply || 0) % pool.length]);
         return;
       }
+      if (roadVariant === 'brendo') {
+        // Deterministic Brendo-road boss banter - boss speaks, cast gets named. No LLM.
+        const cls = (p.classification || '').toUpperCase();
+        const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? BRENDO_BOSS_TAUNTS.bad : /BRILLIANT|GREAT|STRONG|BEST/.test(cls) ? BRENDO_BOSS_TAUNTS.good : BRENDO_BOSS_TAUNTS.calm;
+        setCoachReply(`${bs.name}: ${pool[(p.ply || 0) % pool.length]}`);
+        return;
+      }
       void askChesterChat(JSON.stringify({ type: 'boss-taunt', message: bossTauntPrompt(bs, 'Forrest'), evalDelta: p.evalDelta ?? null, evaluationBefore: p.evaluationBefore ?? null, evaluationAfter: p.evaluationAfter ?? null, fen: p.fen }))
         .then((reply) => { if (reply && !/messenger|delayed|unavailable/i.test(reply)) setCoachReply(reply.trim()); })
         .catch(() => undefined);
@@ -618,6 +625,16 @@ function PlayChesterGame() {
       const bigGrade = /blunder|mistake|brilliant|great/i.test(coachPrompt.classification || '');
       const prompt = coachPrompt;
       if (bigGrade || loss >= 200) {
+        if (roadVariant === 'brendo' || roadVariant === 'rost') {
+          // BUILD 187: deterministic cast commentary on the shareable invite flows -
+          // Concord Academy crew reacts to value moments. No LLM, no invented facts.
+          const cls = (prompt.classification || '').toUpperCase();
+          const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? BRENDO_CAST_TAUNTS.bad : /BRILLIANT|GREAT|STRONG|BEST/.test(cls) ? BRENDO_CAST_TAUNTS.good : BRENDO_CAST_TAUNTS.calm;
+          const line = pool[(prompt.ply || 0) % pool.length];
+          setTeleprompterLlm({ key: `${prompt.ply}-${prompt.move}`, text: line });
+          if (!isFriendMode && mode !== 'PVP_REMOTE') setChatMessages((prev) => [...prev.slice(-30), { role: 'chester', text: line, kind: 'reaction' }]);
+          return;
+        }
         // Anchor the LLM to the SAME descriptor the WWCD line prints
           // (explainEngineChoice) - one move, one wording, no divergence.
           const anchorIdea = (prompt.fenBefore && prompt.bestMove ? explainEngineChoice(prompt.fenBefore, prompt.bestMove) : null) || prompt.bestMovePhrase || 'unknown';
@@ -854,7 +871,7 @@ function PlayChesterGame() {
               <p className="road-intro__boss-focus">{roadVariant === 'rost' ? 'TRAINING FOCUS: medium-strength chess, no gifts - protect every piece before you attack, and Castle early.' : levelFocus(roadLevel)}</p>
             </div>}
             {!boss && <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>}
-            {roadVariant === 'rost' ? <p className="road-intro__invite"><b>is this simpler mofo? You’re playing from David Rost mode</b></p> : boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>One game, one lesson. Play your moves and I will explain each one - the strong ones and the loose ones - so every rung up the road teaches you something real.</p>}
+            {roadVariant === 'rost' ? <p className="road-intro__invite"><b>is this simpler mofo? You’re playing from David Rost mode</b></p> : roadVariant === 'brendo' ? <p className="road-intro__invite"><b>Time to Beat Brendo - with Concord Academy, Neillo, Aidan the maiden, David Rost, Ayres, Andy, Gabe, Danny and jay bird in the commentary</b></p> : boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>One game, one lesson. Play your moves and I will explain each one - the strong ones and the loose ones - so every rung up the road teaches you something real.</p>}
             <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
           </div>
         </div>

@@ -30,10 +30,10 @@ const THEME_GRADIENTS: Record<PieceTheme, { frost: [string, string, string]; fla
   neon: { frost: ['#f2f9ff', '#63a5f2', '#1c48b0'], flame: ['#ffe27a', '#ff8a1f', '#c21807'] },
   metallic: { frost: ['#ffffff', '#dfe5ec', '#8a93a3'], flame: ['#cfd6df', '#5a626e', '#14161a'] },
   gothic: { frost: ['#ffffff', '#f0f0f0', '#555555'], flame: ['#c9c9c9', '#3d3d3d', '#000000'] },
-  // BUILD 186 (5 Nov, his screenshot): fossil-green shading on BOTH armies so pieces lift off
-  // the monochrome squares by hue, with white band accents on every piece. Sides stay
-  // unmistakable: light sage vs deep moss.
-  fossil: { frost: ['#eef4e2', '#a9bd93', '#46573c'], flame: ['#9ab386', '#445c3b', '#16210f'] },
+  // BUILD 187 (5 Nov, his live screenshot: two greens indistinguishable on his phone): clearly
+  // different families - light army warm ivory/bone, dark army deep forest moss. Band accents
+  // flip per side (dark ink on ivory, white on moss) so every piece keeps its stripe.
+  fossil: { frost: ['#f7f0dc', '#dcc99b', '#6d5a38'], flame: ['#8fae6f', '#3f6234', '#0f1e0c'] },
 };
 /** White band accent paths per piece type (cburnett 45x45 grid), injected for the fossil theme. */
 const FOSSIL_BANDS: Record<string, string> = {
@@ -54,10 +54,12 @@ export function getPieceSpriteDataUrl(color: 'w' | 'b', type: string, size = 288
     for (let i = 0; i < 3; i++) svg = svg.split(from[i]).join(to[i]);
   }
   if (theme === 'fossil') {
-    // Existing cream accents become pure white bands; every piece also gets an explicit
-    // white band. Black pieces already carry accent bands - only the black pawn needs one added.
-    svg = svg.split('#fff3c2').join('#ffffff');
-    const band = FOSSIL_BANDS[type] || FOSSIL_BANDS.p;
+    // Band accents flip per side so the stripe reads on both families: white on the deep-moss
+    // army, dark ink on the ivory army. Black pieces already carry accent bands from the swap;
+    // white pieces and the black pawn get an explicit injected band.
+    const ink = color === 'w' ? '#6d5a38' : '#ffffff';
+    svg = svg.split('#fff3c2').join(ink);
+    const band = (FOSSIL_BANDS[type] || FOSSIL_BANDS.p).split('#ffffff').join(ink);
     if (color === 'w' || type === 'p') svg = svg.replace(/<\/svg>\s*$/, `${band}</svg>`);
   }
   // BUILD 128: light drop shadow (0 2px 4px, white; strengthened at his request to 55%) lifts black pieces off dark squares.

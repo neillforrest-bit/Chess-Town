@@ -2393,9 +2393,11 @@ body:has(.chester-chatsheet) .chester-fab { display: none; }
 .chester-console__pill { display: grid; gap: 1px; place-items: center; align-content: center; min-width: 74px; padding: .35rem .6rem; border-radius: 12px; border: 2px solid; cursor: pointer; }
 .chester-console__pill b { font: 900 .85rem/1 Arial, sans-serif; letter-spacing: .5px; }
 .chester-console__pill small { font: 900 .52rem Arial, sans-serif; letter-spacing: 1px; opacity: .85; }
-.chester-console__pill--hint { background: linear-gradient(180deg, #ffd84d, #e2ac1f); border-color: #fff0b3; color: #241a02; box-shadow: 0 0 14px rgba(255,216,77,.4); }
+/* BUILD 187: stronger highlight - hot border + double glow so the hint reads at a glance on a phone */
+.chester-console__pill--hint { background: linear-gradient(180deg, #ffe97a, #f2b01e); border: 3px solid #fffbe6; color: #241a02; box-shadow: 0 0 26px rgba(255,216,77,.8), 0 0 8px rgba(255,216,77,.55), inset 0 1px 0 rgba(255,255,255,.55); text-shadow: 0 1px 0 rgba(255,255,255,.35); }
 .chester-console__pill--hint:disabled { opacity: .5; }
-.chester-console__pill--chat { background: linear-gradient(180deg, #22d3ee, #0e9db8); border-color: #b5f3ff; color: #03262e; box-shadow: 0 0 14px rgba(34,211,238,.4); }
+/* BUILD 187: stronger highlight - hot border + double glow, matches the hint pill's weight */
+.chester-console__pill--chat { background: linear-gradient(180deg, #5ce9ff, #0ea5c6); border: 3px solid #e6fbff; color: #03262e; box-shadow: 0 0 26px rgba(34,211,238,.8), 0 0 8px rgba(34,211,238,.55), inset 0 1px 0 rgba(255,255,255,.5); text-shadow: 0 1px 0 rgba(255,255,255,.3); }
 .chester-console__pill:active { transform: scale(.94); }
 @media (max-width: 420px) {
   .chester-console__pill { min-width: 64px; padding: .3rem .45rem; }

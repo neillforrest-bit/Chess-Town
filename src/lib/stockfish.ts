@@ -95,6 +95,11 @@ export class StockfishClient {
   private worker: Worker | null = null;
   private ready: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
+  /** A search that hit its wall-clock cap was stopped but never awaited: its bestmove can
+   *  arrive after the NEXT search's listener attaches and be read as that search's verdict
+   *  (the stale bestSan behind the impossible "matches the engine" card). Tracked so every
+   *  new search drains the old one first. */
+  private searchOutstanding = false;
 
   private async initialize() {
     if (this.ready) return this.ready;
@@ -136,12 +141,28 @@ export class StockfishClient {
       await this.initialize();
       const worker = this.worker;
       if (!worker) throw new Error('Stockfish worker is unavailable');
+      if (this.searchOutstanding) {
+        await new Promise<void>((resolve) => {
+          const drainTimeout = window.setTimeout(() => { worker.removeEventListener('message', onDrain); resolve(); }, 1500);
+          const onDrain = (event: MessageEvent<string>) => {
+            if (typeof event.data === 'string' && event.data.startsWith('bestmove ')) {
+              window.clearTimeout(drainTimeout);
+              worker.removeEventListener('message', onDrain);
+              resolve();
+            }
+          };
+          worker.addEventListener('message', onDrain);
+          worker.postMessage('stop');
+        });
+        this.searchOutstanding = false;
+      }
       const preset = PRESETS[difficulty];
       return new Promise<Analysis>((resolve, reject) => {
         const latest: Analysis = { score: null, mate: null, pv: [], bestMove: null, lines: {} };
         const timeout = window.setTimeout(() => {
           worker.removeEventListener('message', onMessage);
           worker.postMessage('stop');
+          this.searchOutstanding = true; // the engine may still answer; the next call drains it
           reject(new Error('Stockfish analysis timed out'));
         }, 9000);
         const onMessage = (event: MessageEvent<string>) => {
@@ -163,7 +184,21 @@ export class StockfishClient {
           if (line.startsWith('bestmove ')) {
             window.clearTimeout(timeout);
             worker.removeEventListener('message', onMessage);
-            latest.bestMove = line.split(' ')[1] || null;
+            this.searchOutstanding = false;
+            const bm = line.split(' ')[1] || null;
+            // Stale-verdict guard: a bestmove that is not even legal in the requested
+            // position belongs to an older search - discard the whole result rather than
+            // grade or teach from it. Downstream treats nulls as "no engine opinion".
+            if (bm && bm !== '(none)') {
+              try {
+                const legal = new Chess(fen).moves({ verbose: true }) as any[];
+                if (!legal.some((m) => `${m.from}${m.to}${m.promotion || ''}` === bm)) {
+                  resolve({ score: null, mate: null, pv: [], bestMove: null, lines: {} });
+                  return;
+                }
+              } catch { /* bad fen: leave the engine output untouched */ }
+            }
+            latest.bestMove = bm;
             resolve(latest);
           }
         };
@@ -189,6 +224,7 @@ export class StockfishClient {
         // reset explicitly on every run, or a grading call's MultiPV 2 leaks into play strength.
         worker.postMessage(`setoption name MultiPV value ${multiPv}`);
         worker.postMessage(`position fen ${fen}`);
+        this.searchOutstanding = true;
         worker.postMessage(road?.movetime ? `go depth ${depthOverride ?? preset.depth} movetime ${road.movetime}` : capMs ? `go depth ${depthOverride ?? preset.depth} movetime ${capMs}` : `go depth ${depthOverride ?? preset.depth}`);
       });
     });

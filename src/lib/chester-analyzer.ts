@@ -217,7 +217,14 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     : inp.bestSan
     ? (!good || grade === 'SOLID')
       ? ` The stronger idea here was ${bestHuman || inp.bestSan}: ${best.text || plainSuggestion(inp.fenBefore, inp.bestSan) || 'a move that keeps your pieces safer'}.`
-      : ` ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : ` - a good way to ${plainWhy(inp.fenBefore, inp.bestSan)}`}.`
+      : sameMove(inp.fenBefore, inp.san, inp.bestSan)
+        // Identity-checked: the engine's best move IS the played move in this exact
+        // position, so the explanation may describe the played move with engine credit.
+        ? ` ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : ` - a good way to ${plainWhy(inp.fenBefore, inp.san)}`}.`
+        // The engine line does not match the played move in this position (stale async
+        // telemetry): never attribute the engine's idea to the played move. Describe the
+        // played move only, from verified position facts.
+        : ` The idea: ${plainWhy(inp.fenBefore, inp.san)} - graded on the board facts, no engine credit claimed.`
     : ' Engine line loading - the move above is graded on the board facts.';
 
   const arrows: WhyCard['boardOverlayArrows'] = [];
