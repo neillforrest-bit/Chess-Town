@@ -189,8 +189,14 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     if (inp.provisional) return ` You played ${human}. The quick engine read calls this a slip, but the deeper check did not finish - treat this grade as unconfirmed.`;
     if (hang.length) return ` You played ${human}, leaving your ${hang[0].piece} on ${hang[0].square} undefended${punishSan ? ` - I can take it with ${punishSan}` : ''}.`;
     const better = bestHuman && best.text ? ` The stronger idea here was ${bestHuman} - it ${best.text}.` : bestHuman ? ` The stronger idea here was ${bestHuman}.` : '';
-    if (/queen/i.test(human) && inp.ply <= 12) return ` You played ${human}. Bringing the queen out this early gives me free development: I can chase her with my knights and pawns while you spend your moves rescuing her.${better}`;
-    if (/king/i.test(human)) {
+    // Gate on the actual moved piece from SAN, never the English noun: "the king's pawn" and
+    // "the queen's knight" contain king/queen and used to trigger the king-walk/early-queen
+    // templates for ordinary pawn and knight moves (the f6 "early king walk" false teaching).
+    const movedLetter = (inp.san || '')[0];
+    const isQueenMove = movedLetter === 'Q';
+    const isKingMove = movedLetter === 'K' || (inp.san || '').startsWith('O-O');
+    if (isQueenMove && inp.ply <= 12) return ` You played ${human}. Bringing the queen out this early gives me free development: I can chase her with my knights and pawns while you spend your moves rescuing her.${better}`;
+    if (isKingMove) {
       const rights = (f: string) => (f.split(' ')[2] || '-');
       let moverW = true; let pieces = 0;
       try { const b = new Chess(inp.fenBefore); moverW = b.turn() === 'w'; for (const row of new Chess(inp.fenAfter).board()) for (const sq of row as any[]) if (sq) pieces++; } catch { /* fall through */ }
@@ -217,14 +223,18 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
     : inp.bestSan
     ? (!good || grade === 'SOLID')
       ? ` The stronger idea here was ${bestHuman || inp.bestSan}: ${best.text || plainSuggestion(inp.fenBefore, inp.bestSan) || 'a move that keeps your pieces safer'}.`
-      : sameMove(inp.fenBefore, inp.san, inp.bestSan)
+      : (() => {
+        const playedWhy = plainWhy(inp.fenBefore, inp.san);
+        const whyDup = playedWhy.length > 3 && did.toLowerCase().includes(playedWhy.toLowerCase());
+        return sameMove(inp.fenBefore, inp.san, inp.bestSan)
         // Identity-checked: the engine's best move IS the played move in this exact
         // position, so the explanation may describe the played move with engine credit.
-        ? ` ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : ` - a good way to ${plainWhy(inp.fenBefore, inp.san)}`}.`
+        ? ` ${grade === 'BRILLIANT' ? 'The engine agrees' : 'That matches the engine'}${tactic.caps.length >= 2 && !tactic.enPrise ? ' - the fork is the point' : tactic.kingTakes && grade === 'BRILLIANT' ? ' - the material comes second; the exposed king is the point, and the deep search backs the attack' : whyDup ? '' : ` - a good way to ${playedWhy}`}.`
         // The engine line does not match the played move in this position (stale async
         // telemetry): never attribute the engine's idea to the played move. Describe the
         // played move only, from verified position facts.
-        : ` The idea: ${plainWhy(inp.fenBefore, inp.san)} - graded on the board facts, no engine credit claimed.`
+        : whyDup ? ' Graded on the board facts - the engine line was not trusted for this move.' : ` The idea: ${playedWhy} - graded on the board facts, no engine credit claimed.`;
+      })()
     : ' Engine line loading - the move above is graded on the board facts.';
 
   const arrows: WhyCard['boardOverlayArrows'] = [];

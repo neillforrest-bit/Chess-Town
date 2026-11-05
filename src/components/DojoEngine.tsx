@@ -1052,6 +1052,10 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               difficulty: getChesterDifficulty(difficulty),
               suspectSacrifice: !!pendingSac,
             }).then((telemetry) => {
+              // Identity guard: engine output is only used when it provably belongs to this
+              // exact position and move. SAN equality alone is not move identity - the same
+              // SAN can be legal in different positions, and async telemetry can arrive late.
+              if (!telemetry || telemetry.fenBefore !== fenBeforeMove || telemetry.uci !== uci) return;
               const quality = { label: applyMaterialReality(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
               // Delicate grading for genuine learner moves (ROOKIE only): a move that follows a
               // real opening principle and costs less than a pawn is taught, not scolded.

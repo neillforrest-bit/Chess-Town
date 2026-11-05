@@ -53,7 +53,7 @@ export const eloForLevelV = (variant: RoadVariant, level: number): number | null
 export const ROST_PJ_TAUNTS = {
   bad: ['PJ: Rost was the warm-up. I am the exam.', 'PJ: That move just made my job easier.', 'PJ: Simpler, remember? You are making it simpler for ME.'],
   good: ['PJ: Fine. That one was real. Do it again.', 'PJ: Okay. You have been practising.'],
-  calm: ['PJ: Rost told me you were quick. Show me.', 'PJ: Medium is behind you. This is harder.'],
+  calm: ['PJ: Rost told me you were quick. Show me.', 'PJ: Rost is behind you. This is harder.'],
 } as const;
 
 /** BUILD 184 (4 Nov 2026): Time to Beat Brendo - a shorter, friendlier road cloned from Road to Joseph for Brendo. */
