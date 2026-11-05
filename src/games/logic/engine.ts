@@ -1,0 +1,32 @@
+import { buildDeck, type Puzzle } from './bank';
+export type Card = 'lantern'|'double'|'shield';
+export type Contestant = { id:string; name:string; score:number; connected:boolean; ready:boolean; cards:Card[]; active:Card|null; streak:number };
+export type Result = { questionId:string; round:number; index:number; answer:string; explanation:string; points:Record<string,number>; correct:Record<string,boolean> };
+export type Room = { id:string; revision:number; phase:'lobby'|'question'|'reveal'|'roundEnd'|'finished'; players:Contestant[]; round:number; index:number; deck:Puzzle[]; answers:Record<string,string>; history:Result[]; level:number; mode:'solo'|'pass'|'battle'|'road'; };
+export type PublicRoom = Omit<Room,'deck'|'answers'> & { question:Omit<Puzzle,'correct'|'explanation'>|null; answered:string[]; result:Result|null };
+export const ROAD_KEY='ct-logic-road-v1';
+export function createLogicRoom(id:string,mode:Room['mode'],level=1):Room {return {id,revision:0,phase:'lobby',players:[],round:0,index:0,deck:[],answers:{},history:[],level,mode};}
+export function addPlayer(room:Room,id:string,name:string):boolean {const old=room.players.find(p=>p.id===id);if(old){old.connected=true;old.name=cleanName(name)||old.name;return true;}if(room.phase!=='lobby'||room.players.length>=6)return false;room.players.push({id,name:cleanName(name)||`Player ${room.players.length+1}`,score:0,connected:true,ready:false,cards:['lantern','double','shield'],active:null,streak:0});return true;}
+export function cleanName(s:unknown):string {return typeof s==='string'?s.replace(/[<>\x00-\x1F]/g,'').trim().slice(0,18):'';}
+export function questionOf(r:Room):Puzzle|undefined{return r.deck[r.round*6+r.index];}
+export function questionPoints(r:Room):number{return r.index===5?3:r.index===4?2:1;}
+export function publicRoom(r:Room):PublicRoom {const{deck:_d,answers:_a,...rest}=r;const q=questionOf(r);return {...JSON.parse(JSON.stringify(rest)),question:q?{id:q.id,category:q.category,difficulty:q.difficulty,prompt:q.prompt,options:q.options}:null,answered:Object.keys(r.answers),result:r.phase==='question'||r.phase==='lobby'?null:r.history.at(-1)||null};}
+function reveal(r:Room){const q=questionOf(r);if(!q)return;const points:Record<string,number>={},correct:Record<string,boolean>={};for(const p of r.players){const right=r.answers[p.id]===q.correct;correct[p.id]=right;p.streak=right?p.streak+1:0;let pts=right?questionPoints(r)*(p.active==='double'?2:1)+(p.streak===3?1:0):p.active==='shield'?1:0;points[p.id]=pts;p.score+=pts;p.active=null;}r.history.push({questionId:q.id,round:r.round,index:r.index,answer:q.correct,explanation:q.explanation,points,correct});r.phase='reveal';}
+export function act(r:Room,id:string,action:Record<string,unknown>):string|null {
+ const p=r.players.find(x=>x.id===id);if(!p)return 'Join the table first.';
+ if(action.type==='ready'&&r.phase==='lobby'){p.ready=true;return null;}
+ if(action.type==='start'){if(id!==r.players[0]?.id||r.phase!=='lobby')return 'Only the host can start.';if(r.players.length<2||r.players.some(x=>!x.ready||!x.connected))return 'At least two players must be connected and ready.';r.deck=buildDeck(r.level);r.phase='question';return null;}
+ if(action.type==='card'){const card=action.card as Card;if(r.phase!=='question'||r.answers[id]||!p.cards.includes(card)||p.active)return 'Play one unused wildcard before answering.';p.cards=p.cards.filter(x=>x!==card);p.active=card;return null;}
+ if(action.type==='answer'){const q=questionOf(r);if(r.phase!=='question'||r.answers[id]||typeof action.answer!=='string'||!q?.options.includes(action.answer))return 'That answer cannot be locked now.';r.answers[id]=action.answer;if(r.players.every(x=>r.answers[x.id]))reveal(r);return null;}
+ if(action.type==='skip'){if(id!==r.players[0]?.id||r.phase!=='question')return 'Only the host may close answers.';for(const x of r.players)if(!r.answers[x.id])r.answers[x.id]='[no answer]';reveal(r);return null;}
+ if(action.type==='next'){if(id!==r.players[0]?.id)return 'Only the host moves the table forward.';if(r.phase==='reveal'){if(r.index===5){r.phase='roundEnd';return null;}r.index++;}else if(r.phase==='roundEnd'){if(r.round===4){r.phase='finished';return null;}r.round++;r.index=0;}else return 'Reveal the answer first.';r.answers={};r.phase='question';return null;}
+ if(action.type==='rematch'&&id===r.players[0]?.id&&r.phase==='finished'){r.phase='lobby';r.round=0;r.index=0;r.history=[];r.deck=[];r.answers={};for(const x of r.players){x.score=0;x.ready=false;x.cards=['lantern','double','shield'];x.active=null;x.streak=0;}return null;}
+ return 'That action is not available now.';
+}
+export function hostLine(r:PublicRoom):string {
+ if(r.phase==='lobby')return 'Chester has opened the Thinking Parlour. Five rounds, five questions each, then a bonus riddle after every round. Leave the search engine at the door.';
+ if(r.phase==='question')return r.index===5?'THE LOCKBOX. One last puzzle for 3 points. Everyone answers; speed never breaks a tie.':r.index===4?'DOUBLE TROUBLE. This question pays 2 points. A correct Double Down pays 4. Read every word.':`Round ${r.round+1}: ${r.question?.category}. ${['Warm up those suspicious minds.','The obvious answer has hired a lawyer.','Reason it out. Confidence is not evidence.','I have hidden the trap in plain sight.','Last round. Keep your nerve.'][r.round]}`;
+ if(r.phase==='reveal')return `The answer is ${r.result?.answer}. ${r.result?.explanation}`;
+ if(r.phase==='roundEnd')return `Round ${r.round+1} closed. Check the ledger. ${r.round===4?'Time to settle the final scores.':'Fresh room, fresh traps. Wildcards do not replenish.'}`;
+ const max=Math.max(...r.players.map(x=>x.score));const winners=r.players.filter(x=>x.score===max).map(x=>x.name);return winners.length>1?`A shared crown for ${winners.join(' and ')}. A draw is a draw. Chester refuses to invent a winner.`:`${winners[0]} takes the crown. I shall inspect the furniture for hidden calculators.`;
+}

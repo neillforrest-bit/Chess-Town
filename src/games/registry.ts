@@ -1,5 +1,5 @@
 // One app, one codebase. Each game is declared here; its code lives in its own folder under src/games/<id>/ as it is migrated.
-export type GameId = 'chess' | 'checkers' | 'trivia' | 'movie';
+export type GameId = 'chess' | 'checkers' | 'trivia' | 'logic' | 'movie';
 export type GameEntry = {
   id: GameId; name: string; icon: string; accent: string;
   single?: string; road?: string; battle?: string; blurb: { single: string; road: string; battle: string };
@@ -13,6 +13,7 @@ export const GAMES: GameEntry[] = [
     blurb: { single: 'Forced jumps, kings, trash talk.', road: 'Climb the board, beat the bosses.', battle: 'Invite link, phone to phone.' } },
   { id: 'trivia', name: 'Pub Trivia', icon: '🍻', accent: '#22d3ee', single: '/trivia-brawl', road: '/road/trivia', battle: '/trivia-brawl?host=1',
     blurb: { single: 'Pub quiz vs Chester.', road: '15 rounds, 5 pub bosses, one Landlord.', battle: 'Quiz a friend by link.' } },
+  { id: 'logic', name: 'Logic & Riddles', icon: '🔐', accent: '#8be6c0', single: '/logic-brawl', road: '/road/logic', battle: '/logic-brawl?host=1', blurb: { single: 'Chester hosts five rounds of logic, riddles and wildcards.', road: 'Fifteen tables. Beat the Riddlemaster.', battle: 'Invite friends to a live thinking table.' } },
   { id: 'movie', name: 'Movie Night', icon: '🎬', accent: '#fbbf24', single: CINESYNC_URL, external: true,
     blurb: { single: 'CineSync: find a film you both want.', road: 'Coming soon.', battle: 'Coming soon.' } },
 ];

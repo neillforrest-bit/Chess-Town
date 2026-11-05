@@ -314,7 +314,7 @@ function PlayChesterGame() {
   const bumpAcc = (side: 'w' | 'b', points: number) => { const slot = accRef.current[side]; slot.loss += Math.max(0, points); slot.n += 1; setAccuracy({ ...accRef.current }); if (side === 'w') { const p = Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * Math.max(0, points)) - 0.8))); setAccSeries((sr) => [...sr.slice(-39), p]); } };
   const releaseFreeze = () => { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = false; window.dispatchEvent(new CustomEvent('chester-clear-better')); setFreeze(null); };
   // BUILD 128 fork: ACCEPT = Chester replies at once; REWIND = take back the move (1 ply) and try again.
-  const acceptConsequences = () => { (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
+  const acceptConsequences = () => { setTeachOpen(false); (window as unknown as { __ctFastReply?: boolean }).__ctFastReply = true; releaseFreeze(); };
   const handleNextLevel = () => {
     const atTop = roadLevel >= roadMaxFor(roadVariant);
     if (rushActive) { window.location.href = '/boss-rush'; return; }
@@ -326,7 +326,7 @@ function PlayChesterGame() {
     window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } }));
     burstConfetti();
   };
-  const rewindAndRetry = () => { window.dispatchEvent(new CustomEvent('chester-clear-better')); window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); if (bossRef.current.on) { bossCardsRef.current = Math.max(0, bossCardsRef.current - 1); setBossCards(bossCardsRef.current); } };
+  const rewindAndRetry = () => { setTeachOpen(false); window.dispatchEvent(new CustomEvent('chester-clear-better')); window.dispatchEvent(new CustomEvent('chester-rewind')); setFreeze(null); setCoachPrompt(null); setMoveTrail((t) => t.slice(0, -1)); setBanter(''); if (bossRef.current.on) { bossCardsRef.current = Math.max(0, bossCardsRef.current - 1); setBossCards(bossCardsRef.current); } };
   const [reviewLoading, setReviewLoading] = useState(false);
   const [started, setStarted] = useState(false);
   useEffect(() => {
