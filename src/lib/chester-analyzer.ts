@@ -206,7 +206,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
       if (pieces > 14) return ` You played ${human}. With ${pieces > 24 ? 'almost every piece' : 'most pieces'} still on the board, an early king walk gives me targets to aim at.${better}`;
       return ` You played ${human}. In the endgame an active king is right - the engine simply found a sharper square for him.${better}`;
     }
-    if (better) return ` You played ${human}. No piece is left hanging, but it misses a stronger idea.${better}`;
+    if (better) return ` You played ${human}. No piece is left hanging, but it misses something stronger.${better}`;
     return ` You played ${human}. No piece is left hanging, but a stronger move existed.`;
   })();
 
