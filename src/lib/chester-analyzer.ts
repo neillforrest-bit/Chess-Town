@@ -222,7 +222,7 @@ export function buildWhyCard(inp: AnalyzerInput): WhyCard {
         : '\ud83e\udd16 The game is drawn - there is nothing left to analyse.')
     : inp.bestSan
     ? (!good || grade === 'SOLID')
-      ? ` The stronger idea here was ${bestHuman || inp.bestSan}: ${best.text || plainSuggestion(inp.fenBefore, inp.bestSan) || 'a move that keeps your pieces safer'}.`
+      ? (did.includes('The stronger idea here was') ? '' : ` The stronger idea here was ${bestHuman || inp.bestSan}: ${best.text || plainSuggestion(inp.fenBefore, inp.bestSan) || 'a move that keeps your pieces safer'}.`)
       : (() => {
         const playedWhy = plainWhy(inp.fenBefore, inp.san);
         const whyDup = playedWhy.length > 3 && did.toLowerCase().includes(playedWhy.toLowerCase());

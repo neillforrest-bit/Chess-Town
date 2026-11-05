@@ -62,7 +62,7 @@ export const ROST_PJ_TAUNTS = {
  *  reacting to the chess only (no invented personal facts about real people). Used on the
  *  shareable Brendo and Rost invite flows. */
 export const BRENDO_CAST_TAUNTS = {
-  bad: ['Aidan the maiden spotted that threat before you moved.', 'David Rost would never have given that piece away.', 'Concord Academy rule one: check what they attack before you move. That one gets homework.'],
+  bad: ['Aidan the maiden spotted that threat before you moved.', 'David Rost would never have played that one.', 'Concord Academy rule one: check what they attack before you move. That one gets homework.'],
   good: ['Neillo will hear about that move. Yes, that one.', 'Ayres just stood up. That was proper chess.', 'jay bird is telling everyone. Lovely move.'],
   calm: ['Andy says breathe. Take the steady square.', 'Gabe rates your position here. Do not spoil it.', 'Danny has seen games turn on less than this. Concentrate.'],
 } as const;
