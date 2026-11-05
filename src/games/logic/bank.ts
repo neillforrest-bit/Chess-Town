@@ -1,3 +1,5 @@
+import { EXTRA } from './extra';
+import { generatedPuzzles } from './generated';
 // Original house pack. Generated puzzles carry constructive proofs, not remote answers.
 export type Puzzle = { id: string; category: string; difficulty: number; prompt: string; options: string[]; correct: string; explanation: string };
 export const CATEGORIES = ['Riddle Room', 'Number Lab', 'Deduction Den', 'Pattern Alley', 'Lateral Lounge'];
@@ -83,10 +85,19 @@ const deductions = [
  ['A statement says: At least one of A and B is true. A is false. What about B?','B is true','B is false|B is both true and false|Cannot tell','To keep at least one true when A is false, B must be true.'],
 ];
 deductions.forEach((x,i)=>add(`ded${i}`,CATEGORIES[2],Math.min(3,1+Math.floor(i/7)),x[0],x[1],x[2].split('|'),x[3]));
-export const PUZZLES = bank;
+EXTRA.forEach((x,i)=>add(`house${i}`,CATEGORIES[x[0]],x[1],x[2],x[3],x[4].split('|'),x[5]));
+bank.push(...generatedPuzzles());
+export const PUZZLES = bank.filter((q,i,all)=>all.findIndex(x=>x.prompt===q.prompt)===i);
 export function shuffle<T>(xs:T[]):T[] { const a=[...xs];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
-export function buildDeck(level=1): Puzzle[] {
- const categories=shuffle(CATEGORIES), used=new Set<string>(); const deck:Puzzle[]=[];
- for(let r=0;r<5;r++) for(let j=0;j<6;j++) { const target=Math.min(3,1+Math.floor((r+Math.floor((level-1)/5))/2));const pool=PUZZLES.filter(q=>q.category===categories[r]&&!used.has(q.id));const ranked=shuffle(pool).sort((a,b)=>Math.abs(a.difficulty-target)-Math.abs(b.difficulty-target));const q=ranked[0];used.add(q.id);deck.push({...q,options:shuffle(q.options)}); }
+export function buildDeck(level=1,seen:string[]=[]): Puzzle[] {
+ const used=new Set<string>(),deck:Puzzle[]=[],recent=new Set(seen);const cycle=shuffle(CATEGORIES);
+ for(let r=0;r<5;r++)for(let j=0;j<6;j++){
+  const target=Math.min(3,1+Math.floor((r+Math.floor((level-1)/5))/2));
+  // Every round samples several rooms. Difficulty is chosen before freshness,
+  // so a deep easy pool cannot make the final round stay easy.
+  const category=cycle[(r+j)%5];const pool=PUZZLES.filter(q=>!used.has(q.id));
+  const rank=(q:Puzzle)=>(Math.abs(q.difficulty-target)*10000)+(recent.has(q.id)?1000:0)+(q.category===category?0:100);
+  const q=shuffle(pool).sort((a,b)=>rank(a)-rank(b))[0];used.add(q.id);deck.push({...q,options:shuffle(q.options)});
+ }
  return deck;
 }
