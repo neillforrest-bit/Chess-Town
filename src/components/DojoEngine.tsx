@@ -179,7 +179,7 @@ const PIECE_VALUES: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q
 // Depth 1 already looks one reply ahead (avoids free blunders) and stays fast enough
 // to run synchronously on the main thread without freezing the board animation.
 const AI_SEARCH_DEPTH = 1;
-const AI_RESPONSE_DELAY_MS = 2200;
+const AI_RESPONSE_DELAY_MS = 240;
 
 function evaluatePosition(chess: any): number {
   let score = 0;
@@ -536,7 +536,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               if (!imageUrl || royalCatTextures[pieceType]) return;
               const image = new Image();
               image.onload = () => {
-                if (!scene.add || !scene.sys) return; // BUILD 155: dead remount scene - drop quietly
+                if (!scene.add || !scene.sys || !scene.sys.isActive()) return; // BUILD 155: dead remount scene - drop quietly
                 const textureKey = `royal-cat-${pieceType}`;
                 let source: HTMLImageElement | HTMLCanvasElement = image;
                 const MAX_CAT_PX = 288;
@@ -569,15 +569,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const cached = pieceImageCache.get(key);
             if (cached) {
               try { scene.textures.addImage(key, cached); } catch { return; }
-              renderBoard?.();
+              if (scene.sys?.isActive()) renderBoard?.();
               return;
             }
             const image = new Image();
             image.onload = () => {
               pieceImageCache.set(key, image);
-              if (!scene.add || !scene.sys) return; // dead StrictMode/remount scene - drop quietly
+              if (!scene.add || !scene.sys || !scene.sys.isActive()) return; // dead or shutting-down scene
               try { if (!scene.textures.exists(key)) scene.textures.addImage(key, image); } catch { return; }
-              renderBoard?.();
+              if (scene.sys?.isActive()) renderBoard?.();
             };
             image.onerror = () => {
               if (attempt < 5 && scene.add) setTimeout(() => registerPieceTexture(color, type, attempt + 1), 350 * (attempt + 1));
@@ -654,6 +654,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const CAPTURE_BUBBLE_NAMES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
           // His capture spec: the capturing piece gloats - "I took your Rook!".
           const showCaptureBubble = (m: any) => {
+            if (mode === 'COACH_OPENING') return; // captured-piece jail is the single capture channel
             try {
               const attacker = pieceContainers[m.to];
               if (!attacker) return;
@@ -702,9 +703,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             pathSquares.forEach((sq, i) => {
               const fp = centerOf(sq);
               const flash = scene.add.rectangle(fp.x, fp.y, tileSize * 0.94, tileSize * 0.94, 0xffd84d, 0).setDepth(28);
-              scene.tweens.add({ targets: flash, alpha: 0.75, duration: 150, delay: i * 70, yoyo: true, ease: 'Quad.Out', onComplete: () => flash.destroy() });
+              scene.tweens.add({ targets: flash, alpha: 0.75, duration: 150, delay: i * 18, yoyo: true, ease: 'Quad.Out', onComplete: () => flash.destroy() });
             });
-            const trotMs = 460 + pathSquares.length * 70;
+            const trotMs = 160;
             if (attackingPiece) {
               const dest = centerOf(move.to);
               attackingPiece.setDepth(32);
@@ -714,7 +715,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             scene.tweens.add({ targets: impact, scale: 2.7, alpha: { from: 0.65, to: 0 }, duration: 520, delay: trotMs, ease: 'Quad.Out', onComplete: () => impact.destroy() });
             const legs = scene.add.text(capturedPiece.x, capturedPiece.y + tileSize * 0.28, '', { fontSize: '24px' }).setOrigin(0.5).setDepth(31).setScale(0.2).setAlpha(0);
             scene.tweens.add({ targets: legs, alpha: 1, duration: 120, delay: trotMs });
-            scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 1250, delay: trotMs + 480, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
+            scene.tweens.add({ targets: legs, x: targetX, y: targetY + 14, scale: 0.65, angle: { from: -18, to: 18 }, duration: 260, delay: trotMs + 140, ease: 'Sine.InOut', yoyo: true, repeat: 0, onComplete: () => legs.destroy() });
 
             // The captured-piece moonwalk hid the attacker (alpha 0) and only the onComplete
             // restored the board - but the domJails path returned BEFORE renderBoard, so every
@@ -732,17 +733,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             };
             // His capture spec: the taken piece pops larger, TIPS OVER, then waddles off.
             capturedPiece.setScale(1.08);
-            scene.tweens.add({ targets: capturedPiece, scaleX: 1.7, scaleY: 1.7, duration: 240, delay: trotMs, ease: 'Back.Out' });
-            scene.tweens.add({ targets: capturedPiece, angle: 102, duration: 300, delay: trotMs + 250, ease: 'Bounce.Out' });
+            scene.tweens.add({ targets: capturedPiece, scaleX: 1.7, scaleY: 1.7, duration: 80, delay: trotMs, ease: 'Back.Out' });
+            scene.tweens.add({ targets: capturedPiece, angle: 102, duration: 100, delay: trotMs + 60, ease: 'Bounce.Out' });
             const moonwalk = scene.tweens.add({
               targets: capturedPiece,
               x: targetX,
               y: targetY,
-              delay: trotMs + 480,
+              delay: trotMs + 140,
               angle: { from: 102, to: -14 },
               scaleX: { from: 1.7, to: 0.52 },
               scaleY: { from: 1.7, to: 0.52 },
-              duration: 1250,
+              duration: 260,
               ease: 'Sine.InOut',
               onUpdate: (_tween, target) => {
                 target.y += Math.sin(_tween.totalProgress * Math.PI * 6) * 2.4;
@@ -763,7 +764,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             });
 
             moonwalk.once(Phaser.Tweens.Events.TWEEN_STOP, () => settleCapture());
-            scene.time.delayedCall(trotMs + 2400, settleCapture);
+            scene.time.delayedCall(trotMs + 500, settleCapture);
           };
 
           // Engine line in words: walk the PV from the resulting position and phrase each
@@ -808,13 +809,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           // light green, shaky = amber, blunder = red. Pieces keep their own sprites.
           const armyTintFor = (label: string | null | undefined): number | null => {
             switch (label) {
-              case 'BRILLIANT': return 0xffffff;
-              case 'BEST': return 0xffffff;
-              case 'GREAT': return 0xf5f5f5;
-              case 'GOOD': return 0xe5e5e5;
-              case 'INACCURACY': return 0x9ca3af;
-              case 'MISTAKE': return 0x4b5563;
-              case 'BLUNDER': return 0x0a0a0a;
+              case 'BRILLIANT': return 0x22ff88;
+              case 'BEST': return 0x22ff88;
+              case 'GREAT': return 0x34d399;
+              case 'GOOD': return 0x34d399;
+              case 'INACCURACY': return 0xff3355;
+              case 'MISTAKE': return 0xff3355;
+              case 'BLUNDER': return 0xff3355;
               default: return null;
             }
           };
@@ -842,7 +843,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 targets: counter,
                 v: 0,
                 delay: 420,
-                duration: 1250,
+                duration: 260,
                 ease: 'Cubic.Out',
                 onUpdate: () => { const val = mix(counter.v); targets.forEach((t) => { try { t.setTint(val); } catch { /* gone in a redraw */ } }); },
                 onComplete: () => targets.forEach((t) => { try { t.clearTint(); } catch { /* gone */ } }),
@@ -861,7 +862,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // Army verdict pulse - Play Chester coach games only for now (his test
             // environment). Deduped per ply+label so the provisional/final pair never
             // double-fires, but a revised grade upgrades the color.
-            if (!isPending && !isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && quality?.label) {
+            if (!isPending && !phrases.provisional && !isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && quality?.label) {
               const flashKey = `${gameRef.current.ply}:${quality.label}`;
               if ((gameRef.current as any).lastArmyFlash !== flashKey) {
                 (gameRef.current as any).lastArmyFlash = flashKey;
@@ -876,7 +877,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             // about it - rose pulse on the hanging piece, rose arrow from the piece
             // that can take it, plus a grounded event the page turns into Chester's
             // warning line. chess.js attackers() keeps every claim real.
-            if (!isPending && !isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && (quality?.label === 'MISTAKE' || quality?.label === 'BLUNDER')) {
+            if (!isPending && !phrases.provisional && !isAiMover && mode !== 'PVP_REMOTE' && mode !== 'PVP_LOCAL' && mode !== '2V2' && (quality?.label === 'MISTAKE' || quality?.label === 'BLUNDER')) {
               const riskKey = `${gameRef.current.ply}:risk`;
               if ((gameRef.current as any).lastRiskReveal !== riskKey) {
                 (gameRef.current as any).lastRiskReveal = riskKey;
@@ -976,7 +977,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-move-squares', { detail: { from: move.from, to: move.to, ply: gameRef.current.ply } }));
             if (isAiMover) window.dispatchEvent(new CustomEvent('chester-ai-graded', { detail: { evalDelta: engineTelemetry?.evalDelta ?? quality?.centipawnLoss ?? null, fen: gameRef.current.chess.fen() } }));
             if (isAiMover) publishPositionEvaluation(gameRef.current.chess.fen());
-            if (!isAiMover) { (window as any).__ctEval = engineTelemetry?.evaluationAfter ?? (window as any).__ctEval ?? null; (window as any).__ctPending = false; }
+            if (!isAiMover && !isPending) { (window as any).__ctEval = engineTelemetry?.evaluationAfter ?? (window as any).__ctEval ?? null; (window as any).__ctPending = false; }
             if (!isAiMover) window.dispatchEvent(new CustomEvent('chester-coaching-pause', {
               detail: {
                 kind: 'move',
@@ -1014,6 +1015,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const publishPositionEvaluation = (fen: string) => {
             void getStockfishClient().analyzeForDisplay(fen).then((analysis) => {
+              if (gameRef.current.chess.fen() !== fen) return;
               const stm = fen.split(/\s+/)[1];
               const absScore = analysis.score === null ? null : stm === 'b' ? -analysis.score : analysis.score;
               const absMate = analysis.mate === null ? null : stm === 'b' ? -analysis.mate : analysis.mate;
@@ -1072,10 +1074,11 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               difficulty: getChesterDifficulty(difficulty),
               suspectSacrifice: !!pendingSac,
             }).then((telemetry) => {
+              if (!scene.sys?.isActive()) return;
               // Identity guard: engine output is only used when it provably belongs to this
               // exact position and move. SAN equality alone is not move identity - the same
               // SAN can be legal in different positions, and async telemetry can arrive late.
-              if (!telemetry || telemetry.fenBefore !== fenBeforeMove || telemetry.uci !== uci) return;
+              if (!telemetry || telemetry.fenBefore !== fenBeforeMove || telemetry.uci !== uci || gameRef.current.chess.fen() !== fenAfterMove || gameRef.current.ply !== movePly) return;
               const quality = { label: applyMaterialReality(fenBeforeMove, move, telemetry.classification || 'GOOD'), centipawnLoss: telemetry.evalDelta ?? localQuality?.centipawnLoss ?? 0 };
               // Delicate grading for genuine learner moves (ROOKIE only): a move that follows a
               // real opening principle and costs less than a pawn is taught, not scolded.
@@ -1185,6 +1188,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 }));
               }
             }).catch(() => {
+              if (!scene.sys?.isActive() || gameRef.current.chess.fen() !== fenAfterMove || gameRef.current.ply !== movePly) return;
               // The analyst run failed or timed out (real on a slow phone). The depth-1 toy
               // label must never reach the user as an unmarked verdict: publish it flagged
               // provisional so the card says FIRST TAKE instead of a fake grade, and mark the
@@ -1277,7 +1281,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: true } }));
             setTimeout(async () => {
 
-              if (gameRef.current.isGameOver || ((window as any).__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
+              if (!scene.sys?.isActive() || gameRef.current.isGameOver || ((window as any).__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               // BUILD 125: Chester waits for the verdict on your move (so a FREEZE lands before he replies),
               // holds while a freeze is up, then thinks for as long as the position deserves (his hesitation rule).
               const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -1285,9 +1289,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               for (let t = 0; t < 120 && w.__ctPending; t++) await sleep(100); // wait out slow deep grading so a freeze can land before Chester replies
               w.__ctPending = false;
               for (let t = 0; t < 150 && w.__ctFreeze; t++) await sleep(100);
-              if ((w.__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
+              if (!scene.sys?.isActive() || (w.__ctAiEpoch || 0) !== aiEpoch) { window.dispatchEvent(new CustomEvent('chester-calculating', { detail: { on: false } })); return; }
               const fastReply = !!w.__ctFastReply; w.__ctFastReply = false; // ACCEPT CONSEQUENCES: Chester answers at once
-              if (!fastReply && !gameRef.current.isGameOver && difficulty) {
+              if (!fastReply && !gameRef.current.isGameOver && difficulty && mode !== 'COACH_OPENING') {
                 const hist = gameRef.current.chess.history({ verbose: true }) as any[];
                 const last = hist[hist.length - 1]; const prev = hist[hist.length - 2];
                 const legal = gameRef.current.chess.moves().length;
@@ -1329,7 +1333,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                 gameRef.current.trojanPawnArmed = false;
                 gameRef.current.pendingChaosEvent = 'TROJAN_PAWN';
               }
-              const quality = classifyMove(fenBeforeMove, { from: result.from, to: result.to, promotion: result.promotion }, AI_SEARCH_DEPTH);
+              const quality = null; // real worker telemetry upgrades the report; no duplicate synchronous search
               gameRef.current.ply++;
               gameRef.current.lastMove = { from: result.from, to: result.to, grade: getLetterGrade(quality?.centipawnLoss), captured: result.captured || null, check: result.san.includes('+') || result.san.includes('#'), color: result.color };
               gameRef.current.gradeHistory.push({ move: result.san, player: AI_TAGS[mode]?.rival || 'Chester', ply: gameRef.current.ply, grade: getLetterGrade(quality?.centipawnLoss), centipawnLoss: quality?.centipawnLoss ?? null });
@@ -1372,7 +1376,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             const playerName = mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE'
               ? (moveResult.color === 'w' ? AI_TAGS[mode].player : AI_TAGS[mode].rival)
               : AI_TAGS[mode]?.player || 'Neill';
-            const quality = classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion }, AI_SEARCH_DEPTH);
+            // Coach grades come from the worker. Never block the move paint with a second main-thread search.
+            const quality = (mode === 'PVP_LOCAL' || mode === 'PVP_REMOTE') ? classifyMove(fenBeforeMove, { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion }, AI_SEARCH_DEPTH) : null;
             gameRef.current.lastMove.grade = getLetterGrade(quality?.centipawnLoss);
             gameRef.current.gradeHistory.push({ move: moveResult.san, player: playerName, ply: gameRef.current.ply, grade: getLetterGrade(quality?.centipawnLoss), centipawnLoss: quality?.centipawnLoss ?? null });
             if (mode === 'PVP_REMOTE' && !isRemote) {
@@ -1402,7 +1407,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
             renderAfterCapture(moveResult);
             if (blindnessExpires) renderBoard();
-            if (!isRemote) { (window as any).__ctPending = true; playAiTurn(moveResult.captured ? 2600 : AI_RESPONSE_DELAY_MS); }
+            if (!isRemote) { (window as any).__ctPending = true; playAiTurn(AI_RESPONSE_DELAY_MS); }
           };
 
           const showLegalTargets = () => {
@@ -1424,6 +1429,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           const clearSelectLift = () => {
             const lift = (gameRef.current as any).selectLift;
             if (!lift) return;
+            window.dispatchEvent(new CustomEvent('chester-position-now', { detail: { fen: gameRef.current.chess.fen(), ply: gameRef.current.ply, san: gameRef.current.chess.history().at(-1) || null } }));
             (gameRef.current as any).selectLift = null;
             try { lift.container.setScale(1); } catch { /* recreated by a redraw */ }
             try { lift.glow.destroy(); } catch { /* gone */ }
@@ -1451,7 +1457,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
 
           renderBoard = () => {
-            if (!scene.add || !scene.sys) return; // BUILD 155: a destroyed remount scene must never paint (was 12 boot crashes)
+            if (!scene.add || !scene.sys || !scene.sys.isActive()) return; // BUILD 155: a destroyed remount scene must never paint (was 12 boot crashes)
+            window.dispatchEvent(new CustomEvent('chester-position-now', { detail: { fen: gameRef.current.chess.fen(), ply: gameRef.current.ply, san: gameRef.current.chess.history().at(-1) || null } }));
             (gameRef.current as any).selectLift = null;
             updateSpotlights();
             graphics.clear();
@@ -2086,11 +2093,13 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
           window.addEventListener('set-board-theme', handleSetBoardTheme);
           const handleSetPieceTheme = (event: Event) => {
-            const name = (event as CustomEvent<{ name?: string }>).detail?.name === 'metallic' ? 'metallic' : 'neon';
+            const requested = (event as CustomEvent<{ name?: string }>).detail?.name;
+            const name = requested === 'metallic' || requested === 'gothic' || requested === 'neon' ? requested : 'fossil';
             if (gameRef.current.pieceTheme === name) return;
             gameRef.current.pieceTheme = name;
             try { window.localStorage.setItem('ct-piece-theme', name); } catch { /* */ }
             (['w', 'b'] as const).forEach((color) => { ['p', 'r', 'n', 'b', 'q', 'k'].forEach((type) => registerPieceTexture(color, type)); });
+            renderBoard();
           };
           window.addEventListener('set-piece-theme', handleSetPieceTheme);
 
@@ -2111,6 +2120,8 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             window.removeEventListener('request-resign', handleRequestResign);
             window.removeEventListener('chester-rewind', handleRewind);
             window.removeEventListener('toggle-board-theme', handleToggleBoardTheme);
+            window.removeEventListener('set-board-theme', handleSetBoardTheme);
+            window.removeEventListener('set-piece-theme', handleSetPieceTheme);
             if (demoIntervalRef.current) {
               clearInterval(demoIntervalRef.current);
               demoIntervalRef.current = null;

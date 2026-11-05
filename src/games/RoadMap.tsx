@@ -1,4 +1,5 @@
 'use client';
+import { getRoadLevel as migratedRoadLevel } from '@/lib/road';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { getChessdleState, chessdleDay } from '@/lib/chessdle';
@@ -13,7 +14,7 @@ const ROW = 92, W = 340;
 export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   const ROAD_MAX = cfg.max, ZONES = cfg.zones, BOSS_ROSTER = cfg.bosses;
   const isBossLevel = (n: number) => Boolean(BOSS_ROSTER[n]);
-  const getRoadLevel = () => { try { const n = parseInt(window.localStorage.getItem(cfg.storageKey) || '1', 10); return Math.min(ROAD_MAX, Math.max(1, n || 1)); } catch { return 1; } };
+  const getRoadLevel = () => { if (cfg.storageKey === 'ct-brendo-level-v2') return migratedRoadLevel('brendo'); try { const n = parseInt(window.localStorage.getItem(cfg.storageKey) || '1', 10); return Math.min(ROAD_MAX, Math.max(1, n || 1)); } catch { return 1; } };
   const pos = (n: number) => ({ x: 170 + Math.sin((n - 1) * 1.15) * 110, y: (ROAD_MAX - n) * ROW + 70 });
   const [lvl, setLvl] = useState(1);
   const [sel, setSel] = useState<number | null>(null);

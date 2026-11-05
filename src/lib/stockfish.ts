@@ -95,6 +95,7 @@ export class StockfishClient {
   private worker: Worker | null = null;
   private ready: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
+  private displaySearch: { fen: string; at: number; promise: Promise<Analysis> } | null = null;
   /** A search that hit its wall-clock cap was stopped but never awaited: its bestmove can
    *  arrive after the NEXT search's listener attaches and be read as that search's verdict
    *  (the stale bestSan behind the impossible "matches the engine" card). Tracked so every
@@ -232,7 +233,8 @@ export class StockfishClient {
 
   async evaluateMove(input: { fenBefore: string; fenAfter: string; san: string; uci: string; playerColor: 'w' | 'b'; difficulty: ChesterDifficulty; suspectSacrifice?: boolean }): Promise<EngineTelemetry> {
     void input.difficulty; // grading always runs at analyst strength for verdict integrity
-    let before = await this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2, undefined, GRADE_CAP_MS);
+    const cached = this.displaySearch;
+    let before = await (cached && cached.fen === input.fenBefore && Date.now() - cached.at < 60000 ? cached.promise : this.analyze(input.fenBefore, ANALYST_PRESET, ANALYST_DEPTH, false, 2, undefined, GRADE_CAP_MS));
     // Loss is computed inside ONE search whenever possible, so two independent searches can
     // never disagree a good move into a bad grade (cross-search noise lesson). The played
     // move equal to the engine's first choice is loss 0 by definition; when it is the
@@ -293,6 +295,8 @@ export class StockfishClient {
       // side to move flips, so the centipawn loss of the played move is before + after
       // (same formula for both colours).
       const delta = before.score === null || after.score === null ? null : before.score + after.score;
+      // A pre-move forced win thrown into an opponent's forced mate is an exact loss, not missing cp data.
+      if (after.mate !== null && after.mate > 0 && (before.mate === null || before.mate > 0)) terminalForced = 'BLUNDER';
       loss = delta === null ? null : Math.max(0, delta);
       continuation = after.pv;
       afterScore = after.score;
@@ -434,7 +438,11 @@ export class StockfishClient {
   }
 
   async analyzeForDisplay(fen: string, multiPv = 1) {
-    return this.analyze(fen, ANALYST_PRESET, ANALYST_DEPTH, false, multiPv);
+    if (this.displaySearch?.fen === fen && Date.now() - this.displaySearch.at < 60000) return this.displaySearch.promise;
+    const promise = this.analyze(fen, ANALYST_PRESET, ANALYST_DEPTH, false, Math.max(2, multiPv), undefined, GRADE_CAP_MS);
+    this.displaySearch = { fen, at: Date.now(), promise };
+    promise.catch(() => { if (this.displaySearch?.promise === promise) this.displaySearch = null; });
+    return promise;
   }
 
   async diagnose() {

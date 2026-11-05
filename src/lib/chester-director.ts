@@ -106,7 +106,7 @@ function directRich(f: MoveFacts): Directed {
   const swing = f.evalDelta == null && f.evaluationAfter == null ? null : (evalSwingPawns(f) ?? 0);
   const cls = (f.classification || '').toUpperCase();
   const seed = (f.ply || 0) * 7 + loss;
-  const bad = (cls === 'INACCURACY' || cls === 'MISTAKE' || cls === 'BLUNDER') && loss >= RED_FREEZE_CP;
+  const bad = cls === 'BLUNDER' || ((cls === 'INACCURACY' || cls === 'MISTAKE') && loss >= RED_FREEZE_CP);
   // His veto: green fires on any great move, not just +1.5 swings.
   const good = !bad && (cls === 'BRILLIANT' || cls === 'GREAT' || cls === 'BEST' || (swing !== null && swing >= FREEZE_PAWNS && loss <= 60));
   const slip = !bad && (cls === 'INACCURACY' || loss >= 40);

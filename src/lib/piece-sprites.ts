@@ -33,7 +33,7 @@ const THEME_GRADIENTS: Record<PieceTheme, { frost: [string, string, string]; fla
   // BUILD 187 (5 Nov, his live screenshot: two greens indistinguishable on his phone): clearly
   // different families - light army warm ivory/bone, dark army deep forest moss. Band accents
   // flip per side (dark ink on ivory, white on moss) so every piece keeps its stripe.
-  fossil: { frost: ['#f7f0dc', '#dcc99b', '#6d5a38'], flame: ['#8fae6f', '#3f6234', '#0f1e0c'] },
+  fossil: { frost: ['#ffffff', '#fff9e8', '#ddcfac'], flame: ['#274a2c', '#102c1b', '#06120b'] },
 };
 /** White band accent paths per piece type (cburnett 45x45 grid), injected for the fossil theme. */
 const FOSSIL_BANDS: Record<string, string> = {

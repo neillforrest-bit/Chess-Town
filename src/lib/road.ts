@@ -26,29 +26,28 @@ export function levelFocus(level: number): string {
 }
 export const isBossLevel = (level: number) => level % 3 === 0;
 export const bossFor = (level: number, variant: RoadVariant = 'joseph'): RoadBoss | null => {
-  if (variant === 'rost') return ROST_ROSTER[level] || null;
-  return isBossLevel(level) ? (variant === 'brendo' ? BRENDO_ROSTER : BOSS_ROSTER)[level] || null : null;
+  if (variant === 'rost' || variant === 'brendo') return BRENDO_ROSTER[level] || null;
+  return isBossLevel(level) ? BOSS_ROSTER[level] || null : null;
 };
-/** Variant-aware boss test: on the Rost road, PJ (level 2) is the boss; David Rost (level 1) is a full-teaching medium level. */
-export const isBossFor = (variant: RoadVariant, level: number): boolean => (variant === 'rost' ? level === 2 : isBossLevel(level));
+/** The first four named opponents keep coaching; Brendo is the final exam. */
+export const isBossFor = (variant: RoadVariant, level: number): boolean => (variant === 'rost' || variant === 'brendo' ? level === 5 : isBossLevel(level));
 /** Boss level numbers per variant, for "next boss" copy. */
-export const BOSS_LEVELS: Record<RoadVariant, number[]> = { joseph: [3, 6, 9, 12, 15], brendo: [3, 6, 9], rost: [2] };
+export const BOSS_LEVELS: Record<RoadVariant, number[]> = { joseph: [3, 6, 9, 12, 15], brendo: [5], rost: [5] };
 
 export type RoadVariant = 'joseph' | 'brendo' | 'rost';
 
-/** BUILD 186 (5 Nov 2026): David Rost mode - his invite road for Brendo. Level 1: David Rost at a
-   medium engine setting with full teaching; Level 2: boss PJ, harder. 2 levels, both named. */
-export const ROST_MAX = 2;
+/** Both invite routes now share the five-opponent road. Legacy records are retained below. */
+export const ROST_MAX = 5;
 export const ROST_ROSTER: Record<number, RoadBoss> = {
   2: { name: 'PJ', archetype: 'The Harder Test' },
 };
 /** Displayed difficulty SETTINGS per level (settings, not measured human Elo). */
-export const ROST_LEVEL_ELO: Record<number, number> = { 1: 1300, 2: 1850 };
-/** Effective global-ramp level the engine actually plays at (medium ~L6, harder ~L10). */
-const ROST_EFFECTIVE: Record<number, number> = { 1: 6, 2: 10 };
-export const effectiveLevelFor = (variant: RoadVariant, level: number): number => (variant === 'rost' ? (ROST_EFFECTIVE[level] || 6) : level);
+export const ROST_LEVEL_ELO: Record<number, number> = { 1: 600, 2: 1015, 3: 1431, 4: 1846, 5: 2400 };
+/** Strictly increasing engine settings across the five named opponents. */
+const ROST_EFFECTIVE: Record<number, number> = { 1: 1, 2: 4, 3: 7, 4: 10, 5: 14 };
+export const effectiveLevelFor = (variant: RoadVariant, level: number): number => (variant === 'rost' || variant === 'brendo' ? (ROST_EFFECTIVE[level] || 1) : level);
 /** Variant-aware displayed difficulty setting. */
-export const eloForLevelV = (variant: RoadVariant, level: number): number | null => (variant === 'rost' ? (ROST_LEVEL_ELO[level] ?? null) : eloForLevel(level));
+export const eloForLevelV = (variant: RoadVariant, level: number): number | null => (variant === 'rost' || variant === 'brendo' ? (ROST_LEVEL_ELO[level] ?? null) : eloForLevel(level));
 /** Deterministic PJ banter (exam mode, no LLM): hostile on player mistakes, grudging on strong moves, needling otherwise. */
 export const ROST_PJ_TAUNTS = {
   bad: ['PJ: Rost was the warm-up. I am the exam.', 'PJ: That move just made my job easier.', 'PJ: Simpler, remember? You are making it simpler for ME.'],
@@ -74,14 +73,16 @@ export const BRENDO_BOSS_TAUNTS = {
   calm: ['Andy and Neillo both said you were quick. Show me.', 'jay bird is commentating for the Academy. Make it worth his time.'],
 } as const;
 
-export const BRENDO_MAX = 9;
+export const BRENDO_MAX = 5;
 export const BRENDO_ROSTER: Record<number, RoadBoss> = {
-  3: { name: 'Little Brendo', archetype: 'The Eager Challenger' },
-  6: { name: 'Brendo Prime', archetype: 'The Trash-Talking Tactician' },
-  9: { name: 'BRENDO', archetype: 'The One To Beat' },
+  1: { name: 'PJ', archetype: 'The First Test' },
+  2: { name: 'Rost', archetype: 'The Next Step' },
+  3: { name: 'Andy', archetype: 'The Middle Test' },
+  4: { name: 'Byron', archetype: 'The Final Gate' },
+  5: { name: 'Brendo', archetype: 'The One To Beat' },
 };
 export const roadMaxFor = (variant: RoadVariant = 'joseph'): number => (variant === 'brendo' ? BRENDO_MAX : variant === 'rost' ? ROST_MAX : ROAD_MAX);
-const ROAD_KEYS: Record<RoadVariant, string> = { joseph: 'ct-road-level-v1', brendo: 'ct-brendo-level-v1', rost: 'ct-rost-level-v1' };
+const ROAD_KEYS: Record<RoadVariant, string> = { joseph: 'ct-road-level-v1', brendo: 'ct-brendo-level-v2', rost: 'ct-brendo-level-v2' };
 /** Nominal strength. Levels 1-14 interpolate 800..3190 Elo. Level 15 is unlimited (null): Joseph plays at full grandmaster strength. */
 export const ROAD_FLOOR_ELO = 600;
 // Batch 176 (his steering): the old ramp hit ~2271 by level 9 of 15 - far too steep for a
@@ -128,8 +129,21 @@ export function tierForLevel(level: number): 'BEGINNER' | 'INTERMEDIATE' | 'ADVA
   return level <= 4 ? 'BEGINNER' : level <= 8 ? 'INTERMEDIATE' : level <= 12 ? 'ADVANCED' : 'EXPERT';
 }
 export function getRoadLevel(variant: RoadVariant = 'joseph'): number {
-  try { const n = parseInt(window.localStorage.getItem(ROAD_KEYS[variant]) || '1', 10); return Math.min(roadMaxFor(variant), Math.max(1, n || 1)); } catch { return 1; }
+  try {
+    let saved = window.localStorage.getItem(ROAD_KEYS[variant]);
+    if (variant !== 'joseph' && saved === null) {
+      const oldBrendo = parseInt(window.localStorage.getItem('ct-brendo-level-v1') || '1', 10) || 1;
+      const oldRost = parseInt(window.localStorage.getItem('ct-rost-level-v1') || '1', 10) || 1;
+      const carried = Math.min(5, Math.max(1, oldBrendo, oldRost));
+      saved = String(carried);
+      window.localStorage.setItem(ROAD_KEYS[variant], saved);
+      if (oldBrendo > 1 || oldRost > 1) window.localStorage.setItem('ct-brendo-migration-note', `Your previous road progress is kept: rung ${carried} of this new five-opponent road is unlocked. Original road records and rewards are unchanged. These are new opponents and difficulty settings, not equivalent old levels.`);
+    }
+    const n = parseInt(saved || '1', 10);
+    return Math.min(roadMaxFor(variant), Math.max(1, n || 1));
+  } catch { return 1; }
 }
+export function roadMigrationNote(): string | null { try { return window.localStorage.getItem('ct-brendo-migration-note'); } catch { return null; } }
 export function setRoadLevel(n: number, variant: RoadVariant = 'joseph') { try { window.localStorage.setItem(ROAD_KEYS[variant], String(Math.min(roadMaxFor(variant), Math.max(1, n)))); } catch { /* storage unavailable */ } }
 export function bossTauntPrompt(boss: RoadBoss, playerName = 'Forrest'): string {
   return `You are ${boss.name}, a ${boss.archetype}. You are playing a boss match against ${playerName}. Generate a 1-sentence hostile taunt based on the engine evaluation swing. Do not offer advice.${boss.name === 'Joseph' ? " If the boss is 'Joseph', return an empty string." : ''}`;

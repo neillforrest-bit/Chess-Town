@@ -1,3 +1,5 @@
+'use client';
+import { useEffect, useState } from 'react';
 import { getPieceSpriteDataUrl } from '@/lib/piece-sprites';
 
 export type CapturedPiece = {
@@ -46,7 +48,7 @@ const spriteCache: Record<string, string> = {};
 function jailSpriteUrl(color: CapturedPiece['color'], type: string): string {
   const key = `${color}-${type}`;
   if (spriteCache[key] !== undefined) return spriteCache[key];
-  spriteCache[key] = getPieceSpriteDataUrl(color, type) || '';
+  spriteCache[key] = getPieceSpriteDataUrl(color, type, 288, 'fossil') || '';
   return spriteCache[key];
 }
 
@@ -143,6 +145,8 @@ function RollNumber({ value }: { value: number }) {
 }
 
 export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER', oppThinking = false, turnSide = 'you', tugPct = 50, lead = 0 }: { material: ReturnType<typeof splitMaterial>; youLabel?: string; oppLabel?: string; oppThinking?: boolean; turnSide?: 'you' | 'opp'; tugPct?: number; lead?: number }) {
+  const [beat, setBeat] = useState(0);
+  useEffect(() => { const pulse = () => setBeat(n => n + 1); window.addEventListener('chester-move-squares', pulse); window.addEventListener('chester-ai-graded', pulse); return () => { window.removeEventListener('chester-move-squares', pulse); window.removeEventListener('chester-ai-graded', pulse); }; }, []);
   const { yourPts, oppPts } = material;
   const you = Math.max(0, Math.min(100, tugPct));
   const youR = Math.round(you);
@@ -159,7 +163,7 @@ export function HeroScoreboard({ material, youLabel = 'YOU', oppLabel = 'CHESTER
       <div className="fighthud__bar" role="img" aria-label={`Tug of war: ${youLabel} ${youR} percent, ${oppLabel} ${100 - youR} percent`}>
         <i className="fighthud__you" style={{ width: `${you}%` }} />
         <i className="fighthud__opp" style={{ width: `${100 - you}%` }} />
-        <b className="fighthud__notch" aria-hidden="true" />
+        <b key={beat} className="fighthud__beat" aria-hidden="true" /><b className="fighthud__notch" aria-hidden="true" />
         <span className="fighthud__pct fighthud__pct--you">{youR}%</span>
         <span className="fighthud__pct fighthud__pct--opp">{100 - youR}%</span>
       </div>

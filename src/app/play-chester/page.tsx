@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
 import { PEER_CONFIG } from '@/lib/p2p';
-import { askChesterChat, chesterUsageByReply } from '@/app/actions';
+import { askChesterChat as askChesterChatRemote, chesterUsageByReply } from '@/app/actions';
 import { GEMINI_MODEL } from '@/lib/gemini-model';
 import QAFlagButton from '@/components/QAFlagButton';
 import {CaptureStrip, HeroScoreboard, splitMaterial, type CapturedPiece} from '@/components/CapturedPieceJails';
@@ -21,7 +21,7 @@ import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/s
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
-import { ROAD_MAX, bossFor, isBossLevel, isBossFor, eloForLevel, eloForLevelV, effectiveLevelFor, tierForLevel, getRoadLevel, setRoadLevel, roadMaxFor, bossTauntPrompt, BOSS_FOCUS, BOSS_LEVELS, ROST_PJ_TAUNTS, BRENDO_CAST_TAUNTS, BRENDO_BOSS_TAUNTS, levelFocus, type RoadVariant } from '@/lib/road';
+import { ROAD_MAX, bossFor, isBossLevel, isBossFor, eloForLevel, eloForLevelV, effectiveLevelFor, tierForLevel, getRoadLevel, roadMigrationNote, setRoadLevel, roadMaxFor, bossTauntPrompt, BOSS_FOCUS, BOSS_LEVELS, ROST_PJ_TAUNTS, BRENDO_CAST_TAUNTS, BRENDO_BOSS_TAUNTS, levelFocus, type RoadVariant } from '@/lib/road';
 import { getLadder, recordLadderGame, weakestHabit, LADDER_LABELS, type LadderState } from '@/lib/rating';
 import { phrasesFromPgn, fenBeforePly, explainEngineChoice } from '@/lib/move-words';
 import { getStockfishClient } from '@/lib/stockfish';
@@ -61,6 +61,12 @@ function TypeLine({ text }: { text: string }) {
 }
 
 function PlayChesterGame() {
+  // Safari's visible viewport changes with browser bars and the keyboard.
+  useEffect(() => {
+    const sync = () => { const v = window.visualViewport; document.documentElement.style.setProperty('--ct-vh', `${v?.height || window.innerHeight}px`); document.documentElement.style.setProperty('--ct-vtop', `${v?.offsetTop || 0}px`); };
+    sync(); window.visualViewport?.addEventListener('resize', sync); window.visualViewport?.addEventListener('scroll', sync); window.addEventListener('resize', sync);
+    return () => { window.visualViewport?.removeEventListener('resize', sync); window.visualViewport?.removeEventListener('scroll', sync); window.removeEventListener('resize', sync); };
+  }, []);
   const searchParams = useSearchParams();
   const requestedMode = searchParams.get('mode');
   const requestedLevel = searchParams.get('level');
@@ -79,6 +85,8 @@ function PlayChesterGame() {
   useEffect(() => { setLadder(getLadder()); }, []);
   // Road to Joseph: 15 levels, every 3rd is a boss fight (exam mode).
   const [roadLevel, setRoadLevelState] = useState(1);
+  const [migrationNote, setMigrationNote] = useState<string | null>(null);
+  useEffect(() => { if (roadActive && roadVariant !== 'joseph') { getRoadLevel(roadVariant); setMigrationNote(roadMigrationNote()); } }, [roadActive,roadVariant]);
   const rushActive = roadActive && searchParams.get('rush') === '1';
   useEffect(() => { if (roadActive) setRoadLevelState(rushActive ? RUSH_LEVELS[getRush().step] : getRoadLevel(roadVariant)); }, [roadActive, rushActive, roadVariant]);
   const [rushMsg, setRushMsg] = useState<{ kind: 'win'; step: number; complete: boolean } | { kind: 'loss' } | null>(null);
@@ -86,7 +94,7 @@ function PlayChesterGame() {
   const [introOpen, setIntroOpen] = useState(false);
   useEffect(() => { if (roadActive) setIntroOpen(true); }, [roadActive]);
   const isBossFight = roadActive && isBossFor(roadVariant, roadLevel);
-  const boss = isBossFight ? bossFor(roadLevel, roadVariant) : null;
+  const boss = roadActive ? bossFor(roadLevel, roadVariant) : null;
   const bossRef = useRef<{ on: boolean; boss: ReturnType<typeof bossFor> }>({ on: false, boss: null });
   bossRef.current = { on: isBossFight, boss };
   const roadRef = useRef({ active: false, level: 1, variant: 'joseph' as RoadVariant });
@@ -95,7 +103,7 @@ function PlayChesterGame() {
   const bp = useBlueprint(); const bpRef = useRef(bp); bpRef.current = bp;
   const [armoryOpen, setArmoryOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>(roadActive ? 'BEGINNER' : requestedLevel === 'INTERMEDIATE' || requestedLevel === 'ADVANCED' || requestedLevel === 'EXPERT' ? requestedLevel : 'BEGINNER');
-  useEffect(() => { if (roadActive) setDifficulty(tierForLevel(roadLevel)); }, [roadActive, roadLevel]);
+  useEffect(() => { if (roadActive) setDifficulty(tierForLevel(effectiveLevelFor(roadVariant, roadLevel))); }, [roadActive, roadLevel]);
   const [capturedPieces, setCapturedPieces] = useState<CapturedPiece[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [calculating, setCalculating] = useState(false);
@@ -138,7 +146,7 @@ function PlayChesterGame() {
   const [skinUnlocked, setSkinUnlocked] = useState<string | null>(null);
   const [skinNow, setSkinNow] = useState<string>(() => { try { return localStorage.getItem('ct-board-theme') || 'NEON'; } catch { return 'NEON'; } });
   const [styleOpen, setStyleOpen] = useState(false);
-  const [pieceThemeNow, setPieceThemeNow] = useState<'neon' | 'metallic'>(() => { try { return window.localStorage.getItem('ct-piece-theme') === 'metallic' ? 'metallic' : 'neon'; } catch { return 'neon'; } });
+  const [pieceThemeNow, setPieceThemeNow] = useState<'neon' | 'metallic' | 'gothic' | 'fossil'>(() => { try { const name = window.localStorage.getItem('ct-piece-theme'); return name === 'metallic' || name === 'neon' || name === 'gothic' ? name : 'fossil'; } catch { return 'fossil'; } });
   const [commOpen, setCommOpen] = useState(false);
   // BUILD 165 (PRD V2): structured Why Engine card, arrows, hint ladder, check/mate cinematics. All hooks live above the start-screen return.
   const [whyCard, setWhyCard] = useState<WhyCard | null>(null);
@@ -163,6 +171,7 @@ function PlayChesterGame() {
   const cardsRef = useRef<WhyCard[]>([]);
   const [arrowsOn, setArrowsOn] = useState(false);
   const [chipArrow, setChipArrow] = useState<{ from: string; to: string } | null>(null);
+  const [replyNow, setReplyNow] = useState<{ san: string; check: boolean } | null>(null);
   const [hintStage, setHintStage] = useState<0 | 1 | 2 | 3>(0);
   const liveRef = useRef<{ fen: string; bestSan: string | null; bestUci: string | null }>({ fen: '', bestSan: null, bestUci: null });
   const [liveFen, setLiveFen] = useState('');
@@ -178,6 +187,10 @@ function PlayChesterGame() {
   useEffect(() => {
     const onLive = (e: Event) => { const d = (e as CustomEvent<{ fen?: string; bestMoveFen?: string; bestMove?: { uci?: string | null; san?: string | null } }>).detail; if (!d?.fen) return; const fresh = !d.bestMoveFen || d.bestMoveFen === d.fen; liveRef.current = { fen: d.fen, bestSan: fresh ? (d.bestMove?.san || null) : null, bestUci: fresh ? (d.bestMove?.uci || null) : null }; setLiveFen(d.fen); };
     window.addEventListener('engine-evaluation', onLive); return () => window.removeEventListener('engine-evaluation', onLive);
+  }, []);
+  useEffect(() => {
+    const onNow = (e: Event) => { const d = (e as CustomEvent<{fen:string;ply:number;san:string|null}>).detail; if (!d?.fen) return; if (liveRef.current.fen === d.fen) return; liveRef.current = {fen:d.fen,bestSan:null,bestUci:null}; setLiveFen(d.fen); if (d.fen.split(' ')[1] === 'w') setPendingCard(null); setHintStage(0); setChipArrow(null); setBanter(''); setTeachOpen(false); setArrowsOn(false); setFreeze(null); (window as any).__ctFreeze = false; if (d.san && d.fen.split(' ')[1] === 'w') { setReplyNow({san:d.san,check:d.san.includes('+')}); } else { setReplyNow(null); if (d.fen.split(' ')[1] === 'w') { setWhyCard(null); setCoachPrompt(null); } } };
+    window.addEventListener('chester-position-now',onNow); return () => window.removeEventListener('chester-position-now',onNow);
   }, []);
   useEffect(() => { setHintStage(0); setChipArrow(null); }, [liveFen]);
   useEffect(() => { const up = () => { const el = document.querySelector('.chester-teleprompter__body'); if (el) (el as HTMLElement).scrollTop = 0; }; const t1 = window.setTimeout(up, 60); const t2 = window.setTimeout(up, 350); const t3 = window.setTimeout(up, 1200); up(); return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3); }; }, [whyCard, hintStage]);
@@ -540,7 +553,7 @@ function PlayChesterGame() {
       }
       if (roadRef.current.active && !isFriendMode && new URLSearchParams(window.location.search).get('rush') === '1' && detail.pgn) {
         if (/1-0\s*$/.test(detail.pgn)) { const r = rushWin(); setRushMsg({ kind: 'win', step: r.step, complete: r.complete }); setVictoryState('boss_defeated'); if (r.complete) { try { burstConfetti(); } catch { /* */ } } } else { rushLoss(); setRushMsg({ kind: 'loss' }); }
-      } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(roadMaxFor(roadRef.current.variant), lv + 1), roadRef.current.variant); try { window.localStorage.setItem(roadRef.current.variant === 'brendo' ? 'ct-brendo-level-v1-seen' : roadRef.current.variant === 'rost' ? 'ct-rost-level-v1-seen' : 'ct-road-level-v1-seen', String(Math.min(roadMaxFor(roadRef.current.variant), lv + 1))); } catch { /* */ } setVictoryState(isBossFor(roadRef.current.variant, lv) ? 'boss_defeated' : 'cleared'); if (isBossFor(roadRef.current.variant, lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
+      } else if (roadRef.current.active && !isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) { const lv = roadRef.current.level; setRoadLevel(Math.min(roadMaxFor(roadRef.current.variant), lv + 1), roadRef.current.variant); try { window.localStorage.setItem(roadRef.current.variant === 'brendo' ? 'ct-brendo-level-v2-seen' : roadRef.current.variant === 'rost' ? 'ct-brendo-level-v2-seen' : 'ct-road-level-v1-seen', String(Math.min(roadMaxFor(roadRef.current.variant), lv + 1))); } catch { /* */ } setVictoryState(isBossFor(roadRef.current.variant, lv) ? 'boss_defeated' : 'cleared'); if (isBossFor(roadRef.current.variant, lv)) { try { const SKIN: Record<number, string> = { 3: 'EMBER', 6: 'SHADOW', 9: 'CRIMSON', 12: 'FROST', 15: 'GOLD' }; const s = SKIN[lv]; const u = JSON.parse(localStorage.getItem('ct-skins') || '[]'); if (s && !u.includes(s)) { u.push(s); localStorage.setItem('ct-skins', JSON.stringify(u)); setSkinUnlocked(s); } } catch { /* */ } } }
       if (!isFriendMode && detail.pgn && /1-0\s*$/.test(detail.pgn)) {
         awardPoints('chester-win', `Beat ${difficulty} Chester`, DIFFICULTY_POINTS[difficulty] || 40);
         if (bossNode) completeBossNode(bossNode);
@@ -555,7 +568,7 @@ function PlayChesterGame() {
       const sq = bestSquares(fenBefore, best); if (!fenBefore || !sq) return null;
       try { return new Chess(fenBefore).move({ from: sq.from, to: sq.to, promotion: 'q' })?.san ?? null; } catch { return null; }
     };
-    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { if (detail.pending) { setPendingCard({ ply: detail.ply || 0, san: detail.move || '', movePhrase: detail.movePhrase || null }); setWhyCard(null); setWhyFresh(false); setTeachOpen(false); setTeachPage(0); } else { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured, provisional: detail.provisional === true }); setWhyCard(wc); setWhyFresh(true); cardsRef.current = [...cardsRef.current.slice(-59), wc]; window.dispatchEvent(new CustomEvent('chester-move-verdict', { detail: { ply: wc.ply, grade: wc.grade, ...((): { from?: string; to?: string } => { try { const m = new Chess(detail.fenBefore || '').move(detail.move || ''); return m ? { from: m.from, to: m.to } : {}; } catch { return {}; } })() } })); if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '' : ''} ${j.whatHappenedLine}`, engineBlueprintLine: ` ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (!endBannerRef.current && wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on && !(d.ui_action === 'freeze_red' && bossCardsRef.current > 0)) { setFreeze(null); setBanter(''); } else if (!endBannerRef.current && d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (!endBannerRef.current && d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && (detail.evalDelta != null || (detail.evaluationMateBefore != null && detail.evaluationMateBefore !== 0)) && detail.ply != null && !detail.provisional) { const mv = detail.color || (detail.ply % 2 === 1 ? 'w' : 'b'); const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); const mateB = detail.evaluationMateBefore; const mateA = detail.evaluationMateAfter; const afterWin = afterMover != null ? winProbOf(afterMover) : mateA != null && mateA !== 0 ? ((mv === 'w') === (mateA > 0) ? 100 : 0) : 50; const pts = detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : mateB != null && mateB !== 0 ? Math.max(0, ((mateB > 0 ? 100 : 0) - afterWin) * 1.5) : accPointsFromDelta(detail.evalDelta!); /* mate path: real pre-move search found the forced mate; 100/0 is the app's published mate convention (same as the live meter), never a material guess */ const clsLabel = (detail.classification || 'OK').toUpperCase(); bumpAcc(mv, pts); if (mv === 'w' && detail.move) { const sc = Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * Math.max(0, pts)) - 0.8))); setAccLog((lg) => [...lg.slice(-99), { san: detail.move!, grade: clsLabel, lost: Math.round(pts / 1.5), score: sc }]); /* row shows raw win% lost; the 1.5x weighting lives in the published score formula */ } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact(''); else if (rc === 'BRILLIANT') fireReact(''); setPendingCard(null); if (!bossRef.current.on && !endBannerRef.current) { setTeachOpen(true); setTeachPage(0); } } } };
+    const coach = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; if (!isFriendMode && detail.kind === 'move') { if (detail.pending) { setReplyNow(null); setPendingCard({ ply: detail.ply || 0, san: detail.move || '', movePhrase: detail.movePhrase || null }); setWhyCard(null); setWhyFresh(false); setTeachOpen(false); setTeachPage(0); return; } else { const d = direct({ moveSan: detail.move, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), classification: detail.classification, evalDelta: detail.evalDelta, evaluationBefore: detail.evaluationBefore, evaluationAfter: detail.evaluationAfter, playerColor: 'w', movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, sacrificePiece: detail.sacrificePiece, principleKey: detail.principleKey, principleFollowed: detail.principleFollowed, ply: detail.ply, fenBefore: detail.fenBefore, move: detail.move, bestMove: detail.bestMove }); { const wc = buildWhyCard({ ply: detail.ply || cardsRef.current.length * 2 + 1, san: detail.move || '', fenBefore: detail.fenBefore || '', fenAfter: detail.fen || '', classification: detail.classification, cp: detail.evalDelta, bestSan: bestSanOf(detail.fenBefore, detail.bestMove), check: detail.check, mate: detail.mate, captured: detail.captured, provisional: detail.provisional === true }); setWhyCard(wc); setWhyFresh(true); cardsRef.current = [...cardsRef.current.slice(-59), wc]; window.dispatchEvent(new CustomEvent('chester-move-verdict', { detail: { ply: wc.ply, grade: wc.grade, ...((): { from?: string; to?: string } => { try { const m = new Chess(detail.fenBefore || '').move(detail.move || ''); return m ? { from: m.from, to: m.to } : {}; } catch { return {}; } })() } })); if (geminiTierOn() && (wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' || wc.grade === 'BRILLIANT')) { const facts = { moveNumber: wc.moveNo, playerMoveSan: wc.san, moveGrade: wc.grade, centipawnLoss: wc.cp, engineBestSan: wc.engineBestSan, deterministic: { headline: wc.headlineBadge, whatHappened: wc.whatHappenedLine, engine: wc.engineBlueprintLine }, recentLines: cardsRef.current.slice(-5, -1).map((c) => c.whatHappenedLine) }; fetch('/api/chester/commentary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts }) }).then((r) => r.json()).then((j: { headlineBadge?: string; whatHappenedLine?: string; engineBlueprintLine?: string; usage?: { input: number; output: number } }) => { if (j.usage) { const w = window as unknown as { __chesterUsage?: { input: number; output: number }[] }; (w.__chesterUsage ||= []).push(j.usage); } if (j.whatHappenedLine && j.engineBlueprintLine) { const up: WhyCard = { ...wc, headlineBadge: (j.headlineBadge || wc.headlineBadge).toUpperCase(), whatHappenedLine: `${wc.grade === 'SHAKY' || wc.grade === 'BLUNDER' ? '' : ''} ${j.whatHappenedLine}`, engineBlueprintLine: ` ${j.engineBlueprintLine}` }; cardsRef.current = cardsRef.current.map((c) => (c.ply === wc.ply && c.san === wc.san ? up : c)); setWhyCard((cur) => (cur && cur.ply === wc.ply && cur.san === wc.san ? up : cur)); } }).catch(() => undefined); } if (!endBannerRef.current && wc.grade === 'BLUNDER') { setArrowsOn(true); } else setArrowsOn(false); } const radar = radarForUserMove(detail.fenBefore || '', detail.fen || '', bestSanOf(detail.fenBefore, detail.bestMove), detail.move || '', null); const rl = radarLines(radar, detail.move || '', /BLUNDER|MISTAKE|INACCURACY|MISS/i.test(detail.classification || '')); if (radar.hanging.length) radarTally.current.hanging += 1; if (radar.missedFork || radar.missedMate) radarTally.current.missed += 1; if (bossRef.current.on && !(d.ui_action === 'freeze_red' && bossCardsRef.current > 0)) { setFreeze(null); setBanter(''); } else if (!endBannerRef.current && d.ui_action === 'freeze_red' && !(bpRef.current.opening && bpRef.current.status === 'guiding' && bpRef.current.opening.steps[bpRef.current.step]?.san === detail.move)) { (window as unknown as { __ctFreeze?: boolean }).__ctFreeze = true; commentaryRef.current = [...commentaryRef.current.slice(-59), `FROZEN - ${d.freeze_explanation}`]; setFreeze({ tone: 'red', text: d.freeze_explanation, banter: rl.length ? rl.join(' ') : d.chester_immediate_chat, strategy: d.strategy, pawns: d.pawns, betterPhrase: detail.bestMovePhrase || null, best: bestSquares(detail.fenBefore, detail.bestMove) }); setBanter(''); if (d.better) window.dispatchEvent(new CustomEvent('chester-show-better', { detail: { ...d.better, tone: 'red' } })); } else if (!endBannerRef.current && d.ui_action === 'freeze_green') { setFreeze({ tone: 'green', text: d.freeze_explanation, banter: d.chester_immediate_chat, strategy: d.strategy, pawns: 0, betterPhrase: null, best: null }); setBanter(''); } else { setFreeze(null); setBanter(rl.length ? rl.join(' ') : d.chester_immediate_chat); if (d.ui_action === 'shake') { setShake(true); window.setTimeout(() => setShake(false), 700); } } } if (detail.kind === 'move' && (detail.evalDelta != null || (detail.evaluationMateBefore != null && detail.evaluationMateBefore !== 0)) && detail.ply != null && !detail.provisional) { const mv = detail.color || (detail.ply % 2 === 1 ? 'w' : 'b'); const afterMover = detail.evaluationAfter == null ? null : (mv === 'w' ? detail.evaluationAfter : -detail.evaluationAfter); const mateB = detail.evaluationMateBefore; const mateA = detail.evaluationMateAfter; const afterWin = afterMover != null ? winProbOf(afterMover) : mateA != null && mateA !== 0 ? ((mv === 'w') === (mateA > 0) ? 100 : 0) : 50; const pts = detail.evaluationBefore != null && afterMover != null ? accPoints(detail.evaluationBefore, afterMover) : mateB != null && mateB !== 0 ? Math.max(0, ((mateB > 0 ? 100 : 0) - afterWin) * 1.5) : accPointsFromDelta(detail.evalDelta!); /* mate path: real pre-move search found the forced mate; 100/0 is the app's published mate convention (same as the live meter), never a material guess */ const clsLabel = (detail.classification || 'OK').toUpperCase(); bumpAcc(mv, pts); if (mv === 'w' && detail.move) { const sc = Math.max(1, Math.min(100, Math.round(103.16 * Math.exp(-0.0435 * Math.max(0, pts)) - 0.8))); setAccLog((lg) => [...lg.slice(-99), { san: detail.move!, grade: clsLabel, lost: Math.round(pts / 1.5), score: sc }]); /* row shows raw win% lost; the 1.5x weighting lives in the published score formula */ } } if (!isFriendMode && recordMillMistake({ fenBefore: detail.fenBefore, bestMove: detail.bestMove, move: detail.move, classification: detail.classification, evalDelta: detail.evalDelta, bestMovePhrase: detail.bestMovePhrase, provisional: detail.provisional })) setMillCount(loadMill().length); setCoachPrompt({ ...detail, kind: 'move' }); try { const bl = buildCoachBullets({ fen: detail.fen, classification: detail.classification, movePhrase: detail.movePhrase, bestMovePhrase: detail.bestMovePhrase, captured: detail.captured, check: detail.check, mate: detail.mate, evalDelta: detail.evalDelta, evaluationAfter: detail.evaluationAfter, opponentName: isFriendMode ? 'your rival' : null, viewerColor: mode === 'PVP_REMOTE' ? requestedSeat : 'w', ply: detail.ply, move: detail.move, bestMove: detail.bestMove, fenBefore: detail.fenBefore, engineLine: detail.engineLine || null }); const line = [bl.reaction, bl.why, !bl.gradeGood ? bl.risk : null].filter(Boolean).join(' '); const log = commentaryRef.current; if (line && log[log.length - 1] !== line) commentaryRef.current = [...log.slice(-59), line]; } catch { /* logging is a bonus */ } setLessonStep((step) => Math.min(2, step + 1)); if (detail.fen) setLastFen(detail.fen); if (detail.move) setMoveTrail((t) => [...t.slice(-14), { move: detail.move!, classification: detail.classification }]); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); if (detail.movePhrase) setLastMovePhrase(detail.movePhrase); if (detail.kind === 'move' && detail.ply === 1 && !isFriendMode) startChallenge(); if (detail.kind === 'move' && !isFriendMode) updateChallenge(detail); if (detail.kind === 'move') { window.clearTimeout(leanT.current); const rc = (detail.classification || '').toUpperCase(); if (rc === 'BLUNDER' || rc === 'MISTAKE') fireReact(''); else if (rc === 'BRILLIANT') fireReact(''); setPendingCard(null); if (!bossRef.current.on && !endBannerRef.current) { setTeachOpen(true); setTeachPage(0); } } } };
     const aiGraded = (event: Event) => { const d = (event as CustomEvent<{ evalDelta: number | null }>).detail; if (d && d.evalDelta != null) { bumpAcc('b', accPointsFromDelta(d.evalDelta)); if (d.evalDelta >= 250) fireReact(''); } if (bossRef.current.on) setBossStrike(Date.now()); };
     const help = (event: Event) => { const detail = (event as CustomEvent<CoachPrompt>).detail; setCoachPrompt({ ...detail, kind: 'help' }); if (detail.fen) setLastFen(detail.fen); if (detail.bestMove) setLastBest(detail.bestMove); if (detail.bestMovePhrase) setLastBestPhrase(detail.bestMovePhrase); };
     const resetJails = () => setCapturedPieces([]);
@@ -597,17 +610,7 @@ function PlayChesterGame() {
       setIsThinking(false); setCoachReply(''); setTeleprompterLlm(null);
       const bs = bossRef.current.boss; const p = coachPrompt;
       if (bs.name === 'Joseph') { setBanter(''); return; }
-      if (roadVariant === 'rost') {
-        // Deterministic PJ banter - no LLM, 0p, specific to the invite road. The banter
-        // bubble is the visible channel (the whyCard owns the teleprompter); the bubble
-        // already prefixes the boss name, so strip the pool's "PJ: " marker.
-        const cls = (p.classification || '').toUpperCase();
-        const pool = /BLUNDER|MISTAKE|INACCURACY/.test(cls) ? ROST_PJ_TAUNTS.bad : /BRILLIANT|GREAT|STRONG/.test(cls) ? ROST_PJ_TAUNTS.good : ROST_PJ_TAUNTS.calm;
-        const line = pool[(p.ply || 0) % pool.length].replace(/^PJ: /, '');
-        setBanter(line); setCoachReply(line);
-        return;
-      }
-      if (roadVariant === 'brendo') {
+      if (roadVariant === 'brendo' || roadVariant === 'rost') {
         // Deterministic Brendo-road boss banter - boss speaks, cast gets named. No LLM.
         // Banter bubble is the visible channel and prefixes the boss name itself.
         const cls = (p.classification || '').toUpperCase();
@@ -630,7 +633,7 @@ function PlayChesterGame() {
       const loss = Math.abs(coachPrompt.evalDelta ?? 0);
       const bigGrade = /blunder|mistake|brilliant|great/i.test(coachPrompt.classification || '');
       const prompt = coachPrompt;
-      if (bigGrade || loss >= 200) {
+      if (!prompt.provisional && (bigGrade || loss >= 200)) {
         if (roadVariant === 'brendo' || roadVariant === 'rost') {
           // BUILD 187: deterministic cast commentary on the shareable invite flows -
           // Concord Academy crew reacts to value moments. No LLM, no invented facts.
@@ -757,6 +760,7 @@ function PlayChesterGame() {
     const fallback = () => chesterOfflineChat(message, { persona: difficulty, fen: lastFen, lastMove: lastMove?.move, lastMovePhrase, classification: lastMove?.classification, bestMove: lastBest, bestMovePhrase: lastBestPhrase, capturedCount: capturedPieces.length, historyCount: history.length });
     const context = `You are Chester, ${PERSONA_DESC[difficulty]}. You are chatting mid-game with your student. Live board FEN: ${lastFen}. Moves so far: ${moveTrail.map((m) => m.move).join(' ') || 'none yet'}. Last graded student move: ${lastMove ? `${lastMove.move} (${lastMove.classification || 'ungraded'})` : 'none'}. Engine-preferred idea: ${lastBest || 'unknown'}. Answer the student directly in at most 3 sentences. Be funny AND educational: every joke carries a chess lesson, every lesson lands a joke. Use only the FEN and record above for board facts - never invent pieces, squares, or lines. Plain English, no centipawns, no engine jargon.`;
     const deterministic = () => {
+      if (/what is castling|how (do|does|to).*castl|explain castling/i.test(message)) return 'Castling moves your king two squares toward a rook, then puts that rook beside it. Neither piece may have moved, the squares between must be empty, and your king cannot be in check or cross an attacked square.';
       // liveRef lags one position behind on terminal moves (engine-evaluation only
       // publishes for AI moves) - lastFen carries the mate position. Prefer it when it
       // is the finished board so chatReply's terminal branch can speak (parent review).
@@ -869,9 +873,9 @@ function PlayChesterGame() {
           <div className={boss ? 'road-intro__card road-intro__card--boss' : 'road-intro__card'}>
             {boss && <div className="road-intro__boss" aria-label={`Boss fight: ${boss.name}`}>
               <div className="road-intro__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={72} /></div>
-              <p className="road-intro__boss-name">BOSS FIGHT: {boss.name}</p>
-              <p className="road-intro__boss-arch">{boss.archetype} · {eloForLevelV(roadVariant, roadLevel) ? `difficulty setting ~${eloForLevelV(roadVariant, roadLevel)}` : 'no difficulty limit'} · exam mode · 2 take-backs</p>
-              <p className="road-intro__boss-focus">{roadVariant === 'rost' ? 'TRAINING FOCUS: PJ is a step up from Rost - calculate checks, captures and threats before every move.' : BOSS_FOCUS[roadLevel]?.focus}</p>
+              <p className="road-intro__boss-name">{isBossFight ? 'BOSS FIGHT' : 'OPPONENT'}: {boss.name}</p>
+              <p className="road-intro__boss-arch">{boss.archetype} · {eloForLevelV(roadVariant, roadLevel) ? `difficulty setting ~${eloForLevelV(roadVariant, roadLevel)}` : 'no difficulty limit'} · {isBossFight ? 'exam mode · 2 take-backs' : 'Chester coaching on'}</p>
+              <p className="road-intro__boss-focus">{roadVariant !== 'joseph' ? `TRAINING FOCUS: ${boss.name} is test ${roadLevel} of 5. Check threats, protect your pieces and calculate before you move.` : BOSS_FOCUS[roadLevel]?.focus}</p>
             </div>}
             {!boss && roadActive && <div className="road-intro__boss">
               <p className="road-intro__boss-name">LEVEL {roadLevel}/{roadMaxFor(roadVariant)} · difficulty setting ~{eloForLevelV(roadVariant, roadLevel)}</p>
@@ -879,18 +883,18 @@ function PlayChesterGame() {
             </div>}
             {!boss && <div className="road-intro__avatar"><ChesterAvatar isThinking={false} size="large" /></div>}
             {roadVariant === 'rost' ? <p className="road-intro__invite"><b>is this simpler mofo? You’re playing from David Rost mode</b></p> : roadVariant === 'brendo' ? <p className="road-intro__invite"><b>Time to Beat Brendo - with Concord Academy, Neillo, Aidan the maiden, David Rost, Ayres, Andy, Gabe, Danny and jay bird in the commentary</b></p> : boss ? <p>This one actually plays. No power-ups on this board - just you, two take-backs, and whatever you have learned. Do not waste my time.</p> : <p>One game, one lesson. Play your moves and I will explain each one - the strong ones and the loose ones - so every rung up the road teaches you something real.</p>}
-            <button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
+            <p>{migrationNote}</p><button type="button" onClick={() => { setIntroOpen(false); playSfx('start'); setStarted(true); }}>PROVE IT.</button>
           </div>
         </div>
       )}
       {!isFriendMode && roadActive && (
-        <div className="road-strip" aria-label={`${roadVariant === 'brendo' ? 'Time to Beat Brendo' : roadVariant === 'rost' ? 'David Rost mode' : 'Road to Joseph'}, level ${roadLevel} of ${roadMaxFor(roadVariant)}`}>
-          <p className="road-strip__title">{roadVariant === 'brendo' ? 'TIME TO BEAT BRENDO' : roadVariant === 'rost' ? 'DAVID ROST MODE' : 'ROAD TO JOSEPH'} · LEVEL {roadLevel}/{roadMaxFor(roadVariant)}</p>
-          {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. No power-ups on this board.</p>}
-          <ol>{Array.from({ length: roadMaxFor(roadVariant) }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossLevel(n) ? 'is-boss' : ''}`}>{isBossLevel(n) ? '★' : n}</li>)}</ol>
+        <div className="road-strip" aria-label={`${roadVariant !== 'joseph' ? 'Road to Brendo' : 'Road to Joseph'}, level ${roadLevel} of ${roadMaxFor(roadVariant)}`}>
+          <p className="road-strip__title">{roadVariant !== 'joseph' ? 'ROAD TO BRENDO' : 'ROAD TO JOSEPH'} · LEVEL {roadLevel}/{roadMaxFor(roadVariant)}</p>
+          {boss && <p className="road-strip__boss" aria-label={`Boss: ${boss.name}`}><span className="road-strip__boss-emoji" aria-hidden="true"><BossAvatar level={roadLevel} size={20} /></span> <b>{boss.name}</b> is watching. {isBossFight ? 'Final exam. Two take-backs.' : 'Chester is here to coach you.'}</p>}
+          <ol>{Array.from({ length: roadMaxFor(roadVariant) }, (_, i) => i + 1).map((n) => <li key={n} className={`${n < roadLevel ? 'is-done' : ''} ${n === roadLevel ? 'is-now' : ''} ${isBossFor(roadVariant, n) ? 'is-boss' : ''}`}>{isBossFor(roadVariant, n) ? '★' : n}</li>)}</ol>
           <div className="road-gauge" aria-hidden="true"><i style={{ width: `${roadLevel >= roadMaxFor(roadVariant) ? 100 : (((eloForLevelV(roadVariant, roadLevel) || 600) - 600) / 1800) * 100}%` }} /><span>600</span><span>2400+</span></div>
-          <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : roadVariant === 'rost' ? 'PJ. The harder test. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevelV(roadVariant, roadLevel)}. Two take-backs for hints or retries - spend them well. Exam mode.` : `Difficulty setting ~${eloForLevelV(roadVariant, roadLevel)} this level. Next boss: ${(() => { const nb = BOSS_LEVELS[roadVariant].find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${BOSS_LEVELS[roadVariant].find((b) => b >= roadLevel)}).`}</p>
-          {roadLevel < roadMaxFor(roadVariant) && <p className="road-strip__top">At the top waits <b>{roadVariant === 'brendo' ? 'BRENDO' : roadVariant === 'rost' ? 'PJ' : 'JOSEPH'}</b>: {roadVariant === 'brendo' ? 'the loudest rival in town, waiting on the rooftop' : roadVariant === 'rost' ? 'the harder test, one rung up' : 'a grandmaster at full engine strength, the hardest opponent here'}. Each rung is a real step up.</p>}
+          <p className="road-strip__who">{roadLevel >= roadMaxFor(roadVariant) ? (roadVariant === 'brendo' ? 'BRENDO. The one to beat. This is the top of the road.' : roadVariant === 'rost' ? 'BRENDO. The one to beat. This is the top of the road.' : 'JOSEPH. Grandmaster strength, no limits. This is the top of the road.') : isBossFight && boss ? `BOSS FIGHT: ${boss.name} · ${boss.archetype}. Difficulty setting ~${eloForLevelV(roadVariant, roadLevel)}. Two take-backs for hints or retries - spend them well. Exam mode.` : `${boss ? boss.name + ' · ' : ''}Difficulty setting ~${eloForLevelV(roadVariant, roadLevel)} this level. Next boss: ${(() => { const nb = BOSS_LEVELS[roadVariant].find((b) => b >= roadLevel); return nb ? bossFor(nb, roadVariant)?.name : ''; })()} (level ${BOSS_LEVELS[roadVariant].find((b) => b >= roadLevel)}).`}</p>
+          {roadLevel < roadMaxFor(roadVariant) && <p className="road-strip__top">At the top waits <b>{roadVariant !== 'joseph' ? 'BRENDO' : 'JOSEPH'}</b>: {roadVariant === 'brendo' ? 'the loudest rival in town, waiting on the rooftop' : roadVariant === 'rost' ? 'the fifth and hardest test' : 'a grandmaster at full engine strength, the hardest opponent here'}. Each rung is a real step up.</p>}
         </div>
       )}
       {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/play-chester?road=1"><b>ROAD TO JOSEPH</b><small>15 levels · a boss every 3rd · your level is saved</small></a>}
@@ -952,7 +956,7 @@ function PlayChesterGame() {
       <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b></button>
       <div className="chester-matchbar chester-matchbar--hud">
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
-        {boss && started && <span className={`chester-matchbar__boss${freeze?.tone === 'red' ? ' is-mocking' : ''}`} aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji road-strip__boss-emoji--walk" aria-hidden="true"><BossAvatar level={roadLevel} size={22} /></span> BOSS</span>}
+        {boss && started && <span className={`chester-matchbar__boss${freeze?.tone === 'red' ? ' is-mocking' : ''}`} aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji road-strip__boss-emoji--walk" aria-hidden="true"><BossAvatar level={roadLevel} size={22} /></span> {isBossFight ? 'BOSS' : 'OPPONENT'}</span>}
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
       </div>
     </header>
@@ -971,11 +975,11 @@ function PlayChesterGame() {
           <TypeLine text={bp.line.text} />
         </div>}
         {victoryState !== 'none' && !endBanner && !(reportOpen && finalResult) && (() => {
-          const finalWin = roadLevel >= ROAD_MAX;
+          const finalWin = roadLevel >= roadMaxFor(roadVariant);
           const bossName = bossFor(roadLevel, roadVariant)?.name || 'THE BOSS';
           const rw = rushActive && rushMsg?.kind === 'win' ? rushMsg : null;
-          const title = rw ? (rw.complete ? 'BOSS RUSH COMPLETE.' : `${bossName.toUpperCase()} DOWN.`) : finalWin ? (roadVariant === 'rost' ? 'PJ DETHRONED.' : 'JOSEPH DETHRONED.') : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
-          const sub = rw ? (rw.complete ? ' Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. One loss resets the run.`) : finalWin ? (roadVariant === 'brendo' ? 'You beat BRENDO. Time to Beat Brendo: complete.' : roadVariant === 'rost' ? 'You beat PJ. David Rost mode: complete.' : 'You beat the Final Mastermind. The Road to Joseph is complete.') : victoryState === 'boss_defeated' ? (roadVariant === 'brendo' ? 'Brendo felt that. Keep climbing.' : roadVariant === 'rost' ? 'PJ felt that. The road is yours.' : 'Joseph felt that. Keep climbing.') : (roadVariant === 'rost' ? 'David Rost is beaten. Next: PJ - harder, exam mode, two take-backs.' : 'The ladder gets steeper.');
+          const title = rw ? (rw.complete ? 'BOSS RUSH COMPLETE.' : `${bossName.toUpperCase()} DOWN.`) : finalWin ? (roadVariant !== 'joseph' ? 'BRENDO DETHRONED.' : 'JOSEPH DETHRONED.') : victoryState === 'boss_defeated' ? `${bossName.toUpperCase()} DETHRONED.` : `LEVEL ${roadLevel} CLEARED.`;
+          const sub = rw ? (rw.complete ? ' Trophy won for this week. All three bosses, back to back.' : `${rw.step} of ${RUSH_LEVELS.length} down. Next: ${bossFor(RUSH_LEVELS[rw.step])?.name || 'the next boss'}. One loss resets the run.`) : finalWin ? (roadVariant === 'brendo' ? 'You beat BRENDO. Time to Beat Brendo: complete.' : roadVariant === 'rost' ? 'You beat Brendo. Road to Brendo: complete.' : 'You beat the Final Mastermind. The Road to Joseph is complete.') : victoryState === 'boss_defeated' ? (roadVariant === 'brendo' ? 'Brendo felt that. Keep climbing.' : roadVariant === 'rost' ? 'Keep climbing toward Brendo.' : 'Joseph felt that. Keep climbing.') : (roadVariant === 'rost' ? 'Next opponent unlocked. Each step is harder.' : 'The ladder gets steeper.');
           return (
             <div className={`road-victory road-victory--${victoryState}`} role="dialog" aria-live="polite">
               <h2>{title}</h2>
@@ -993,7 +997,7 @@ function PlayChesterGame() {
         </div>}
         {!endBanner && freeze?.tone === 'red' && freeze.best && <FreezeSpotlight from={freeze.best.from} to={freeze.best.to} />}
         {powerups.length > 0 && <PowerupOverlay items={powerups} />}
-        <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage === 1 && hintInfo?.hintSquare ? [hintInfo.hintSquare] : [])]} />
+        <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : hintStage === 3 && hintInfo?.engineBestUci ? [{ from: hintInfo.engineBestUci.slice(0,2), to: hintInfo.engineBestUci.slice(2,4), intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage > 0 && hintInfo?.hintSquare ? [hintInfo.hintSquare, ...(hintStage === 3 && hintInfo.engineBestUci ? [hintInfo.engineBestUci.slice(2,4)] : [])] : [])]} />
         {endBanner && typeof document !== 'undefined' && createPortal(<div className={`chester-endbanner chester-endbanner--${endBanner.outcome}`} role="alertdialog" aria-label="Game over" onClick={() => { setEndBanner(null); setReportOpen(true); }}>
           {endBanner.outcome === 'you' && <span className="chester-endbanner__confetti" aria-hidden="true">    </span>}
           <b>{endBanner.outcome === 'draw' ? ' DRAW' : endBanner.outcome === 'you' ? ' YOU WIN' : ' CHESTER WINS'}</b>
@@ -1011,7 +1015,7 @@ function PlayChesterGame() {
             <button type="button" className="chester-pill" onClick={() => setMateStage(0)}>Close</button>
           </div>
         </div>}
-        {!endBanner && !freeze && banter && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : roadVariant === 'rost' ? 'DAVID ROST' : 'CHESTER'}</b> {banter}</div>}
+        {!endBanner && !freeze && banter && mode !== 'COACH_OPENING' && <div className="chester-banter" aria-live="polite"><b>{boss ? boss.name.toUpperCase() : roadVariant === 'rost' ? 'DAVID ROST' : 'CHESTER'}</b> {banter}</div>}
         {(coachPrompt?.check || coachPrompt?.mate) && <div className="chester-board-frame__drama" key={`${coachPrompt.move}-${coachPrompt.mate ? 'mate' : 'check'}`} aria-hidden="true" />}
         <div className={`material-score-badge ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={capturedPieces.length} aria-hidden="true">{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? material.lead : '±0'}</div>
       </div>
@@ -1028,7 +1032,7 @@ function PlayChesterGame() {
         const pg = Math.min(teachPage, pages.length - 1);
         const last = pg === pages.length - 1;
         return <div className={`chester-teach chester-teach--${whyCard.grade.toLowerCase()}`} role="dialog" aria-label="Chester explains your move">
-          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}</span></div>
+          <div className="chester-teach__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{whyCard.grade === 'IDLE' ? 'UNCONFIRMED' : `${gradeIcon(whyCard.grade)} ${whyCard.grade}`}</span></div>
           <b className="chester-teach__headline">{whyCard.headlineBadge}</b>
           <p className="chester-teach__line">{pages[pg]}</p>
           {pages.length > 1 && <div className="chester-teach__dots" aria-hidden="true">{pages.map((_, i) => <i key={i} className={i === pg ? 'on' : ''} />)}</div>}
@@ -1042,7 +1046,7 @@ function PlayChesterGame() {
         </div>;
       })()}
 
-      {!endBanner && !(teachOpen && whyCard) && <div className={`chester-teleprompter chester-teleprompter--tappable${whyCard && !isThinking && !calculating ? ` chester-hud chester-hud--${whyCard.grade.toLowerCase()}` : ' chester-hud chester-hud--idle'}`} key={whyCard ? `hud-${whyCard.ply}-${whyCard.grade}` : 'hud-idle'} role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; if (whyCard) setWhyModal(whyCard); else setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
+      {!endBanner && !(teachOpen && whyCard) && <div className={`chester-teleprompter chester-teleprompter--tappable${whyCard && !pendingCard && !replyNow ? ` chester-hud chester-hud--${whyCard.grade.toLowerCase()}` : ' chester-hud chester-hud--idle'}`} key={whyCard ? `hud-${whyCard.ply}-${whyCard.grade}` : 'hud-idle'} role="button" tabIndex={0} aria-label="Chester commentary - tap to read full history" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; if (whyCard) setWhyModal(whyCard); else setCommOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter') setCommOpen(true); }}>
         <div className="chester-teleprompter__head">
           <i className="chester-teleprompter__beacon" aria-hidden="true" />
           <span>CHESTER SAYS</span><span className="chester-teleprompter__expand" aria-hidden="true">⤢ TAP TO READ</span>
@@ -1054,16 +1058,16 @@ function PlayChesterGame() {
           }} />}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          {pendingCard
+          {replyNow && !pendingCard ? <div className="chester-reply-now"><b>{boss?.name || 'Chester'} played {replyNow.san}{replyNow.check ? ' - check' : ''}. Your move.</b>{replyNow.check && <p>Your king is in check. Move the king, capture the checking piece, or block the check.</p>}{whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}>Review your previous move ({whyCard.san})</button>}</div> : pendingCard
             ? <div className="chester-why chester-why--pending" key={`pending-${pendingCard.ply}`}>
                 <div className="chester-why__head"><span className="chester-why__san">{pendingCard.san}</span><span className="chester-why__grade"> GRADING…</span></div>
                 <p className="chester-why__row">You played {pendingCard.movePhrase || pendingCard.san}. Chester is grading this move<span className="chester-teleprompter__cursor">▮</span></p>
               </div>
-            : (isThinking || calculating) && !(whyFresh && whyCard && !isThinking)
+            : (isThinking || calculating) && !whyCard
             ? <p className="chester-teleprompter__calculating">{deepThought ? 'CHESTER IS DEEP IN THOUGHT' : 'CHESTER IS CALCULATING'}<span className="chester-teleprompter__cursor">▮</span></p>
             : whyCard
             ? <div className="chester-why" key={`${whyCard.ply}-${whyCard.san}`}>
-                <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{gradeIcon(whyCard.grade)} {whyCard.grade}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
+                <div className="chester-why__head"><span className="chester-why__san">{whyCard.moveNo}. {whyCard.san}</span><span className="chester-why__grade">{whyCard.grade === 'IDLE' ? 'UNCONFIRMED' : `${gradeIcon(whyCard.grade)} ${whyCard.grade}`}</span><b className="chester-why__headline">{whyCard.headlineBadge}</b></div>
                 <p className="chester-why__row">{whyCard.whatHappenedLine}</p>
                 <p className="chester-why__row chester-why__row--eng">{whyCard.engineBlueprintLine}</p>
                 {castLine && castLine.key === `${whyCard.ply}-${whyCard.san}` && <p className="chester-why__row chester-why__row--cast">{castLine.text}</p>}
@@ -1075,9 +1079,9 @@ function PlayChesterGame() {
         {!endBanner && <div className="chester-hud-actions" role="group" aria-label="Chester actions">
           {freeze?.tone === 'red' && <><button type="button" className="chester-pill chester-pill--primary" onClick={rewindAndRetry}> Retry move</button><button type="button" className="chester-pill" onClick={acceptConsequences}>Accept</button></>}
           {freeze?.tone === 'green' && <button type="button" className="chester-pill chester-pill--primary" onClick={releaseFreeze}>Continue ▸</button>}
-          {whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}> {arrowsOn ? 'Hide line' : 'Show line'}</button>}
-          {whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}> Read</button>}
-          {whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}> Ask why</button>}
+          {!replyNow && whyCard && whyCard.boardOverlayArrows.length > 0 && <button type="button" className="chester-pill" onClick={() => setArrowsOn((v) => !v)}> {arrowsOn ? 'Hide line' : 'Show line'}</button>}
+          {!replyNow && whyCard && <button type="button" className="chester-pill" onClick={() => setWhyModal(whyCard)}> Read</button>}
+          {!replyNow && whyCard && <button type="button" className="chester-pill" onClick={() => { setChatOpen(true); void sendChat({ preventDefault() {} } as unknown as React.FormEvent, `Why was my last move graded ${whyCard.grade.toLowerCase()}?`); }}> Ask why</button>}
         </div>}
       </div>}
 
@@ -1093,21 +1097,21 @@ function PlayChesterGame() {
           </div>
         </div>
         <div className="chester-console__lifelines">
-          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); const next = (hintStage < 3 ? hintStage + 1 : 3) as 1 | 2 | 3; if (next === 3 && hintStage !== 3) { if (isBossFight) { if (!bossCards) return; bossCardsRef.current = bossCards - 1; setBossCards(bossCards - 1); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); } setHintStage(next); }} disabled={hintStage === 2 && (isBossFight ? !bossCards : !helpRemaining)} title={undefined} aria-label={`Hint from Chester, ${isBossFight ? bossCards : helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{isBossFight ? bossCards : helpRemaining} LEFT</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--hint" onClick={() => { dismissHeroTip(); setHintOpen(true); const next = (hintStage < 3 ? hintStage + 1 : 3) as 1 | 2 | 3; if (next === 3 && hintStage !== 3) { if (isBossFight) { if (!bossCards) return; bossCardsRef.current = bossCards - 1; setBossCards(bossCards - 1); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setChipArrow(liveRef.current.bestUci ? { from: liveRef.current.bestUci.slice(0, 2), to: liveRef.current.bestUci.slice(2, 4) } : null); } setHintStage(next); if (next === 3 && liveRef.current.bestUci) setChipArrow({ from: liveRef.current.bestUci.slice(0,2), to: liveRef.current.bestUci.slice(2,4) }); }} disabled={hintStage === 2 && (isBossFight ? !bossCards : !helpRemaining)} title={undefined} aria-label={`Hint from Chester, ${isBossFight ? bossCards : helpRemaining} left`}><b>? HINT{hintStage > 0 ? ` ${hintStage}/3` : ''}</b><small>{isBossFight ? bossCards : helpRemaining} LEFT</small></button>
           {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} disabled={!torchReady()} aria-label="Use torch power-up for the full engine answer"><b> TORCH</b><small>{loot.torch} LEFT</small></button>}
           {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b> SHIELD</b><small>{loot.shield} LEFT</small></button>}
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
           <button type="button" className="chester-console__pill chester-console__pill--style" onClick={() => { dismissHeroTip(); setStyleOpen((v) => !v); }} aria-label="Change board and piece style" aria-expanded={styleOpen}><b> STYLE</b><small>{skinNow}</small></button>
                   </div>
         {styleOpen && (() => {
-          const SWATCHES: Record<string, [string, string]> = { NEON: ['#fffaf0', '#ecd9b0'], RETRO: ['#e8d9b5', '#4a3728'], FOREST: ['#eaf3e2', '#2f6b3a'], OCEAN: ['#e2f0f7', '#1c4f7a'], ROYAL: ['#efe4f5', '#5c2b7a'], EMBER: ['#ffe8c9', '#9a4a1c'], SHADOW: ['#cfc3e8', '#3d2b5c'], CRIMSON: ['#f5d0d0', '#7a1020'], FROST: ['#eaf7ff', '#5c93b8'], GOLD: ['#fff3c2', '#8a6a1c'] };
+          const SWATCHES: Record<string, [string, string]> = { GOTHIC: ['#ededed', '#232323'], NEON: ['#fffaf0', '#ecd9b0'], RETRO: ['#e8d9b5', '#4a3728'], FOREST: ['#eaf3e2', '#2f6b3a'], OCEAN: ['#e2f0f7', '#1c4f7a'], ROYAL: ['#efe4f5', '#5c2b7a'], EMBER: ['#ffe8c9', '#9a4a1c'], SHADOW: ['#cfc3e8', '#3d2b5c'], CRIMSON: ['#f5d0d0', '#7a1020'], FROST: ['#eaf7ff', '#5c93b8'], GOLD: ['#fff3c2', '#8a6a1c'] };
           let earned: string[] = [];
           try { earned = JSON.parse(window.localStorage.getItem('ct-skins') || '[]'); } catch { /* private mode */ }
-          const always = ['NEON', 'RETRO', 'FOREST', 'OCEAN', 'ROYAL'];
+          const always = ['GOTHIC', 'NEON', 'RETRO', 'FOREST', 'OCEAN', 'ROYAL'];
           const pickBoard = (name: string) => { window.dispatchEvent(new CustomEvent('set-board-theme', { detail: { name } })); setSkinNow(name); playSfx('select'); };
-          const pickPieces = (name: 'neon' | 'metallic') => { window.dispatchEvent(new CustomEvent('set-piece-theme', { detail: { name } })); setPieceThemeNow(name); playSfx('select'); };
+          const pickPieces = (name: 'neon' | 'metallic' | 'gothic' | 'fossil') => { window.dispatchEvent(new CustomEvent('set-piece-theme', { detail: { name } })); setPieceThemeNow(name); playSfx('select'); };
           return <div className="style-sheet" role="dialog" aria-label="Board and piece style">
-            <div className="style-sheet__head"><span> STYLE</span><button type="button" onClick={() => setStyleOpen(false)} aria-label="Close style picker"></button></div>
+            <div className="style-sheet__head"><span> STYLE</span><button type="button" onClick={() => setStyleOpen(false)} aria-label="Close style picker">×</button></div>
             <div className="style-sheet__label">BOARD</div>
             <div className="style-sheet__grid">
               {Object.entries(SWATCHES).map(([name, [light, dark]]) => {
@@ -1121,7 +1125,7 @@ function PlayChesterGame() {
             </div>
             <div className="style-sheet__label">PIECES</div>
             <div className="style-sheet__grid style-sheet__grid--pieces">
-              {(['neon', 'metallic'] as const).map((name) => <button key={name} type="button" className={`style-swatch ${pieceThemeNow === name ? 'is-current' : ''}`} onClick={() => pickPieces(name)} aria-label={`${name} pieces`}>
+              {(['fossil', 'gothic', 'neon', 'metallic'] as const).map((name) => <button key={name} type="button" className={`style-swatch ${pieceThemeNow === name ? 'is-current' : ''}`} onClick={() => pickPieces(name)} aria-label={`${name} pieces`}>
                 <span className="style-swatch__pieces" aria-hidden="true">{name === 'neon' ? '♞' : '♞'}</span>
                 <b>{name.toUpperCase()}</b>
               </button>)}
@@ -1179,10 +1183,10 @@ function PlayChesterGame() {
     {hintOpen && <div className="chess-game-sheet" role="dialog" aria-modal="true" aria-label="Hint from Chester">
       <div className="chess-game-sheet__backdrop" onClick={() => setHintOpen(false)} />
       <section className="chess-game-sheet__content chester-line-sheet">
-        <header><b> CHESTER / HINT · {helpRemaining} LEFT</b><button type="button" onClick={() => setHintOpen(false)} aria-label="Close">×</button></header>
-        <div className="chester-line-sheet__body" onClick={() => setHintOpen(false)}>
+        <header><b>HINT {hintStage}/3 · {isBossFight ? bossCards : helpRemaining} LEFT</b><button type="button" onClick={() => setHintOpen(false)} aria-label="Close">×</button></header>
+        <div className="chester-line-sheet__body">
           <b>{coachPrompt?.kind === 'help' && isThinking ? 'Reading the board…' : 'Try this idea'}</b>
-          <p>{coachPrompt?.kind === 'help' && isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : (coachPrompt?.kind === 'help' && coachReply ? coachReply : (lastHintReply || 'Tap the ? for a hint and Chester’s idea will wait for you here.'))}</p>
+          <p>{coachPrompt?.kind === 'help' && isThinking ? 'I’m checking the danger and your strongest next idea. Keep your eyes on the board.' : (coachPrompt?.kind === 'help' && coachReply ? coachReply : (hintStage > 0 ? hintFor(hintInfo, hintStage as 1 | 2 | 3) : lastHintReply || 'Tap the ? for a hint and Chester’s idea will wait for you here.'))}</p><button type="button" className="chester-pill" onClick={() => setHintOpen(false)}>SHOW THE BOARD</button>
         </div>
       </section>
     </div>}
@@ -1287,7 +1291,8 @@ function FreezeSpotlight({ from, to }: { from: string; to: string }) {
 }
 
 // BUILD 165: Gemini tier is ON only for Vercel PREVIEW hosts (hostname contains "-git-") and never in production; any failure keeps the deterministic card.
-function geminiTierOn(): boolean { try { return typeof location !== 'undefined' && /-git-/.test(location.hostname) && localStorage.getItem('ct-no-gemini') !== '1'; } catch { return false; } }
+function geminiTierOn(): boolean { return false; }
+async function askChesterChat(payload: string): Promise<string> { return geminiTierOn() ? askChesterChatRemote(payload) : ''; }
 
 function MoveChipText({ text, onChip }: { text: string; onChip: (san: string) => void }) {
   const parts = text.split(/(\bO-O(?:-O)?[+#]?|\b[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)/g);
