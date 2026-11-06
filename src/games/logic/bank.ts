@@ -89,15 +89,20 @@ EXTRA.forEach((x,i)=>add(`house${i}`,CATEGORIES[x[0]],x[1],x[2],x[3],x[4].split(
 bank.push(...generatedPuzzles());
 export const PUZZLES = bank.filter((q,i,all)=>all.findIndex(x=>x.prompt===q.prompt)===i);
 export function shuffle<T>(xs:T[]):T[] { const a=[...xs];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
+// Template ids (n/p/c/s/geo/draw/diff/alt/grid + number) share one puzzle idea with
+// different numbers; group them so a match never feels like the same question twice.
+export function familyOf(q:Puzzle):string { const m=q.id.match(/^(n|p|c|s|geo|draw|diff|alt|grid)\d+$/); return m?m[1]:q.id; }
 export function buildDeck(level=1,seen:string[]=[]): Puzzle[] {
- const used=new Set<string>(),deck:Puzzle[]=[],recent=new Set(seen);const cycle=shuffle(CATEGORIES);
+ const used=new Set<string>(),families=new Map<string,number>(),deck:Puzzle[]=[],recent=new Set(seen);const cycle=shuffle(CATEGORIES);
  for(let r=0;r<5;r++)for(let j=0;j<6;j++){
   const target=Math.min(3,1+Math.floor((r+Math.floor((level-1)/5))/2));
-  // Every round samples several rooms. Difficulty is chosen before freshness,
-  // so a deep easy pool cannot make the final round stay easy.
-  const category=cycle[(r+j)%5];const pool=PUZZLES.filter(q=>!used.has(q.id));
+  const category=cycle[(r+j)%5];
+  const pool=PUZZLES.filter(q=>!used.has(q.id)&&(families.get(familyOf(q))||0)<2);
   const rank=(q:Puzzle)=>(Math.abs(q.difficulty-target)*10000)+(recent.has(q.id)?1000:0)+(q.category===category?0:100);
-  const q=shuffle(pool).sort((a,b)=>rank(a)-rank(b))[0];used.add(q.id);deck.push({...q,options:shuffle(q.options)});
+  // Fresh questions always win over recently seen ones; seen is the last resort.
+  const fresh=pool.filter(q=>!recent.has(q.id));
+  const q=shuffle(fresh.length?fresh:pool).sort((a,b)=>rank(a)-rank(b))[0];
+  used.add(q.id);families.set(familyOf(q),(families.get(familyOf(q))||0)+1);deck.push({...q,options:shuffle(q.options)});
  }
  return deck;
 }

@@ -6,3 +6,54 @@ body:has(.logic-page) .chester-fab,body:has(.logic-page) .chester-drawer{display
 .logic-clock{display:flex;position:relative;align-items:center;gap:12px;padding:8px 12px 12px;margin-bottom:16px;border:1px solid #4b8d79;border-radius:10px;overflow:hidden;color:#bcecd5;background:#102725}.logic-clock span{font-size:10px;letter-spacing:.12em;font-weight:800}.logic-clock b{font-size:22px;margin-left:auto;font-variant-numeric:tabular-nums}.logic-clock i{position:absolute;height:4px;bottom:0;left:0;background:#a3ebca;transition:width 1s linear}.logic-clock.is-urgent{color:#ffb58b;border-color:#dd8e63;animation:fuse-pulse .6s ease-in-out infinite alternate}.logic-clock.is-urgent i{background:#ff9b68}@keyframes fuse-pulse{to{box-shadow:0 0 16px #ee865450}}@media(prefers-reduced-motion:reduce){.logic-clock.is-urgent{animation:none}.logic-clock i{transition:none}}
 /* Match-only compact stage: question, options, fuse and wildcards stay together. */
 .logic-match{height:calc(100dvh - 64px);min-height:0;padding:6px 10px 8px;display:flex;flex-direction:column;gap:5px;overflow:hidden}.logic-match>*{width:100%;box-sizing:border-box;margin:0 auto;max-width:780px}.logic-match .logic-title,.logic-match>.logic-host,.logic-match>footer,.logic-match>.logic-status,.logic-match>.logic-rules{display:none}.logic-match .logic-header{min-height:29px}.logic-match .logic-header>a{font-size:11px}.logic-match .logic-header button{min-height:28px;padding:4px 9px;font-size:11px}.logic-match .logic-score{gap:4px;flex-wrap:nowrap;overflow:visible;flex:none}.logic-match .logic-score>div{min-width:0;padding:4px;gap:0;border-radius:8px}.logic-match .logic-score span{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.logic-match .logic-score b{font-size:20px;line-height:1.1}.logic-match .logic-score small{font-size:8px}.logic-match .logic-progress{font-size:10px;gap:7px;min-height:15px;flex:none}.logic-match .logic-panel{padding:10px;flex:1;min-height:0;display:flex;flex-direction:column;margin:0 auto;border-radius:12px;overflow:auto}.logic-match .logic-eyebrow{font-size:9px;letter-spacing:.06em;flex:none}.logic-match .logic-clock{padding:3px 8px 6px;margin:4px 0 7px;min-height:29px;flex:none}.logic-match .logic-clock b{font-size:17px}.logic-match .logic-clock span{font-size:9px}.logic-match .logic-question{font-family:system-ui,sans-serif;font-size:clamp(15px,2.1vh,19px)!important;line-height:1.25;margin:0 0 8px;font-weight:650;flex:none}.logic-match .logic-options{gap:5px;flex:1;min-height:0;grid-template-rows:repeat(4,minmax(36px,1fr))}.logic-match .logic-options button{min-height:36px;padding:5px 8px;gap:8px;font-size:12px;line-height:1.2;border-radius:8px}.logic-match .logic-options button>span{width:22px;height:22px;flex-basis:22px;font-size:10px}.logic-match .logic-cards{margin-top:7px;gap:5px;flex:none}.logic-match .logic-cards button{min-height:35px;padding:6px 3px;gap:0;border-radius:8px}.logic-match .logic-cards span{font-size:10px}.logic-match .logic-cards small{display:none}.logic-match .logic-panel>p[role=status]{font-size:10px;margin:4px 0 0;line-height:1.2}.logic-match .logic-panel>details{display:none}.logic-match .logic-panel h2:not(.logic-question){font-size:22px;margin:0 0 9px}.logic-match .logic-explanation{font-size:14px;line-height:1.4;margin:4px 0}.logic-match .logic-receipt{overflow:auto;min-height:0;flex:1}.logic-match .logic-receipt p{margin:0;padding:8px 0;font-size:13px}.logic-match .logic-ledger th,.logic-match .logic-ledger td{padding:8px 2px}.logic-match .logic-error{font-size:11px;padding:6px;flex:none}.logic-match .logic-error button{font-size:10px;min-height:26px;padding:4px;margin-top:4px}@media(min-height:750px){.logic-match .logic-options button{font-size:14px}.logic-match .logic-question{font-size:20px!important}.logic-match .logic-panel{padding:14px}}@media(max-height:580px){.logic-match{gap:3px}.logic-match .logic-question{font-size:14px!important}.logic-match .logic-score small{display:none}.logic-match .logic-options button{font-size:11px}.logic-match .logic-cards{margin-top:4px}}
+/* BUILD 193 - game-night colour pass (overrides above; structure unchanged) */
+.logic-page{background:radial-gradient(ellipse at top,#2a1a4e 0,#181233 45%,#0c0a1d 100%);color:#fdf7ea}
+.logic-header>a{color:#ffd166}
+.logic-title>span,.logic-eyebrow{color:#c9a7ff}
+.logic-title h1{color:#ffe9a8}.logic-title i{color:#ff8fa3}
+.logic-title p{color:#c5bfe8}
+.logic-host{background:#221741;border:1px solid #6d4bb8;border-left:4px solid #b388ff}
+.logic-host>b{color:#d3b8ff}.logic-host>p{color:#e6defc}
+.logic-panel{background:#1a1430;border:1px solid #453a6e}
+.logic-panel h2{color:#ffe9a8}
+.logic-page button{background:#2b2350;border:1px solid #5a4c94;color:#fdf7ea}
+.logic-page button:hover:not(:disabled){border-color:#ffd166;background:#352a63}
+.logic-page input{background:#120e26;border:1px solid #5a4c94;color:#fff}
+.logic-modes button,.logic-modes a{background:linear-gradient(135deg,#3b2a6e,#572757);border:1px solid #7b5cc9;color:#fdf3da}
+.logic-modes b{color:#ffe9a8}.logic-modes small{color:#cdbfeb}
+.logic-page .logic-primary{background:linear-gradient(135deg,#ffd166,#ff9e5e);color:#3a1d05;border-color:#ffd166}
+.logic-page .logic-primary:hover:not(:disabled){background:linear-gradient(135deg,#ffe08f,#ffb27f)}
+.logic-rules{background:#150f2b;border:1px solid #453a6e;color:#c3bce6}
+.logic-page summary{color:#ffd9a0}
+.logic-page a{color:#8ad8ff}
+.logic-roster li{border-bottom-color:#453a6e}.logic-roster span{color:#9fe0bd}
+.logic-score>div{background:#1d1638;border:1px solid #4c3f80}
+.logic-score>div.is-me{border-color:#ffd166;box-shadow:0 0 10px #ffd16640}
+.logic-score b{color:#ffd166}
+.logic-score small{color:#b3abe0}
+.logic-progress{color:#ffd9a0}.logic-progress i{background:#453a6e}.logic-progress i.on{background:#ffd166}
+.logic-options button{border-width:2px}
+.logic-options button:nth-child(4n+1){background:linear-gradient(135deg,#3d2f23,#332415);border-color:#d9a441}
+.logic-options button:nth-child(4n+2){background:linear-gradient(135deg,#1e2f4a,#16233a);border-color:#4cc9f0}
+.logic-options button:nth-child(4n+3){background:linear-gradient(135deg,#40203a,#331627);border-color:#ff8fa3}
+.logic-options button:nth-child(4n+4){background:linear-gradient(135deg,#17382e,#122b23);border-color:#06d6a0}
+.logic-options button>span{background:#00000040;color:#fff}
+.logic-cards button{background:#241d47;border:1px solid #5a4c94}
+.logic-cards small{color:#b3abe0}
+.logic-clock{background:#221741;border-color:#6d4bb8;color:#d3b8ff}
+.logic-clock i{background:#b388ff}
+.logic-clock.is-urgent{color:#ffb08a;border-color:#ef476f}
+.logic-clock.is-urgent i{background:#ef476f}
+.logic-eyebrow.is-wild{color:#ffd166;animation:wild-glow 1.2s ease-in-out infinite alternate}
+@keyframes wild-glow{from{text-shadow:0 0 4px #ffd16633}to{text-shadow:0 0 12px #ffd166aa}}
+@media(prefers-reduced-motion:reduce){.logic-eyebrow.is-wild{animation:none}.logic-receipt b.pop{animation:none}}
+.logic-explanation{color:#d8f3e6;border-left-color:#06d6a0}
+.logic-receipt p{border-bottom-color:#453a6e}
+.logic-receipt p.hit b{color:#5ef0b4}
+.logic-receipt p.miss b{color:#8d84b8}
+.logic-receipt b.pop{display:inline-block;animation:score-pop .5s ease-out;color:#ffd166}
+@keyframes score-pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.25)}100%{transform:scale(1);opacity:1}}
+.logic-streak{font-style:normal;font-size:9px;font-weight:800;color:#ff9e5e;border:1px solid #ff9e5e;border-radius:6px;padding:1px 5px;margin-left:6px;letter-spacing:.06em}
+.logic-ledger th,.logic-ledger td{border-bottom-color:#453a6e}
+.logic-ledger tr.is-leader td,.logic-ledger tr.is-leader th{background:#3a2c0d55;color:#ffd166}
+.logic-error{background:#3a1626;border-color:#ef476f;color:#ffd0da}
