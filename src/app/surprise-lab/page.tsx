@@ -78,7 +78,7 @@ export default function SurpriseLab() {
       if (ans.san !== detour.answerSan) {
         c.undo();
         setFen(c.fen());
-        setCorrection(`Not that one. ${detour.answerHint}`);
+        setCorrection(`Not that one - ${detour.answerHint}`);
         return;
       }
       setCorrection(null);
@@ -93,7 +93,7 @@ export default function SurpriseLab() {
     if (played.san !== step.san) {
       c.undo();
       setFen(c.fen()); // snap the board back - correction, never abort
-      setCorrection(`Not that one. ${step.mistake || step.why}`);
+      setCorrection(`That is a different plan. This plan: ${step.mistake || step.why}`);
       return;
     }
     setCorrection(null);
