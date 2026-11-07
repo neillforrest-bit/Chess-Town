@@ -146,7 +146,8 @@ export default function ReviewPage() {
     const fixables = review.plies
       .filter((p) => p.isUser && p.bestMoveSan && !p.provisional && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER'))
       .sort((a, b) => (b.evalDelta ?? 0) - (a.evalDelta ?? 0))
-      .slice(0, 3);
+      .slice(0, 3)
+      .map((p) => ({ ply: p, stable: !sc[p.ply - 1]?.unstable }));
     return { top, back, fixables, anyStable: stableUser.length > 0 };
   }, [review, sc]);
 
@@ -364,7 +365,7 @@ export default function ReviewPage() {
           ? <p className="review-sub">The engine's reads in this game swung too hard at capped depth to name moments with a straight face - no show tonight, just the facts below.</p>
           : <>
             <p className="review-sub">⭐ Top play: {show?.top ? <b>{show.top.san}</b> : 'no standout'} {show?.top ? `- the scorecard jumped ${show.top.delta > 0 ? '+' : ''}${show.top.delta} points your way after that one.` : '- nothing stable stood out enough to call.'}</p>
-            <p className="review-sub">🙈 Wish-you-had-it-back: {show?.back ? <b>{show.back.san}</b> : 'nothing worth rewinding'} {show?.back ? `- engine read ${fmtLoss(show.back.loss)}${show.back.best ? `; Chester's pick there was ${show.back.best}` : ''}.` : '- no stable big mistake from you in this one.'}</p>
+            <p className="review-sub">🙈 Wish-you-had-it-back: {show?.back ? <b>{show.back.san}</b> : 'nothing with a stable number'} {show?.back ? `- engine read ${fmtLoss(show.back.loss)}${show.back.best ? `; Chester's pick there was ${show.back.best}` : ''}.` : show?.fixables.length ? '- your misses here sit on unstable engine reads at capped depth, so no numbers on them; they are in Fix your mistakes below if you fancy the practice.' : '- no big mistakes from you in this one.'}</p>
           </>}
         <p className="review-sub review-sub--fine">For fun, not to be taken seriously - the measured numbers are below.</p>
       </section>
@@ -379,7 +380,7 @@ export default function ReviewPage() {
           <button className="lab-btn" aria-label="Fast forward one move" onClick={() => goTo(Math.min(review.plies.length - 1, walkIdx + 1))} disabled={walkIdx >= review.plies.length - 1}>⏩</button>
         </div>
         {walkIdx < 0
-          ? <p className="review-sub">At the starting position. Press Play for the highlight, or step through with Next - pause any time to study a position with Chester.</p>
+          ? <p className="review-sub">At the starting position. Press ▶ for the highlight show, or step through with ⏪ ⏩ - pause any time to study a position with Chester.</p>
           : <div>
               <p className="review-sub"><b>{playing ? 'Now playing' : 'Paused at'} move {Math.ceil(ply.ply / 2)}{ply.mover === 'b' ? '…' : ''}.</b>{' '}
                 {ply.terminal === 'mate'
@@ -459,9 +460,9 @@ export default function ReviewPage() {
       {show && show.fixables.length > 0 && <section>
         <h2 className="review-h2">Fix your mistakes</h2>
         <p className="review-sub">Only here at the end: stand in the position just before your move and find the better one. Tap a card, then tap a piece and where it goes.</p>
-        {show.fixables.map((f) => <button key={f.ply} className="lab-card" onClick={() => startFix(f.ply)}>
-          <b>Move {Math.ceil(f.ply / 2)}{f.mover === 'b' ? '…' : ''} · {f.san}</b>
-          <span>{f.classification === 'BLUNDER' ? 'Blunder' : 'Mistake'}{f.evalDelta != null && f.evalDelta > 30 ? ` · engine read ${fmtLoss(f.evalDelta)}` : ''} - try the position yourself</span>
+        {show.fixables.map((f) => <button key={f.ply.ply} className="lab-card" onClick={() => startFix(f.ply.ply)}>
+          <b>Move {Math.ceil(f.ply.ply / 2)}{f.ply.mover === 'b' ? '…' : ''} · {f.ply.san}</b>
+          <span>{f.ply.classification === 'BLUNDER' ? 'Blunder' : 'Mistake'}{f.stable && f.ply.evalDelta != null && f.ply.evalDelta > 30 ? ` · engine read ${fmtLoss(f.ply.evalDelta)}` : ''} - try the position yourself</span>
         </button>)}
       </section>}
       {show && show.fixables.length === 0 && <section>
