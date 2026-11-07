@@ -97,6 +97,15 @@ export default function SurpriseLab() {
     if (!opening) return;
     genRef.current++;
     setPhase('rehearsal'); setGameOver(null); setCorrection(null);
+    if (opening.rehearsalPlies != null) {
+      // Replay only the honest starting point (e.g. Englund: the moment BEFORE White's trap-losing move).
+      const c = new Chess();
+      const seq: string[] = [...(opening.setupSan || [])];
+      opening.steps.forEach((st) => { seq.push(st.san); if (st.replySan) seq.push(st.replySan); });
+      for (const san of seq.slice(0, opening.rehearsalPlies)) { try { c.move(san); } catch { /* keep last good */ } }
+      chessRef.current = c;
+      setLastMove(null);
+    }
     const c = chessRef.current;
     setFen(c.fen());
     if (c.turn() !== opening.side) {
@@ -147,7 +156,7 @@ export default function SurpriseLab() {
     return <main className="lab-shell">
       <div className="lab-head"><h1>⚡ SURPRISE LAB</h1><Link href="/play-chester">← PLAY CHESTER</Link></div>
       <div className="lab-panel"><div className="lab-speaker"><ChesterAvatar isThinking={false} size="small" /><p>
-        Welcome to the lab, Forrest. These are the openings strong opponents don't prepare for - unusual, but each one with a real point. I'll walk you through every move, show you how a strong opponent hits back, then hand you the board with no hints. Pick your weapon.
+        Welcome to the lab, Forrest. Rare openings with real points - positions that pull a game off the memorised highways. I'll walk you through every move, show you the strongest replies, then hand you the board with no hints. Pick your weapon.
       </p></div></div>
       {tiers.map((tier) => <div key={tier}>
         <p className="lab-tier">{tier === 'AMBUSH' ? '⚠ THE AMBUSH SHELF - fun, not sound, card says so' : 'THE SOUND SHELF - playable even when they know it'}</p>
