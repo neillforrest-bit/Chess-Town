@@ -231,7 +231,9 @@ export function scorecard(review: ReviewedGame): ScorecardEntry[] {
     let unstable = false;
     if (delta != null && p.evalDelta != null) {
       const moverDelta = p.mover === userMover ? delta : -delta;
-      if (p.evalDelta >= 150 && moverDelta > 8) unstable = true;
+      // Directional contradiction at any half-pawn-plus graded loss is never coherent:
+      // if the engine says the mover lost ground, the mover's scorecard cannot improve.
+      if (p.evalDelta >= 50 && moverDelta > 8) unstable = true;
       if (p.evalDelta <= 30 && moverDelta < -25) unstable = true;
     }
     // Mate reads: convert to white-absolute (stored mover-relative) and flag when the
