@@ -359,19 +359,17 @@ export default function ReviewPage() {
                 if (!e) return null;
                 if (ply.terminal === 'mate') return <p className="review-sub">Scorecard: settled - {ply.mover === review.meta.userColor ? 'you win' : `${review.meta.opponent} wins`}. 100/0, proven by the board.</p>;
                 if (ply.terminal === 'draw') return <p className="review-sub">Scorecard: DRAW - the game finished level; no winning chances remain.</p>;
-                if (ply.mateInAfter != null) return e.unstable
-                  ? <p className="review-sub">Scorecard: the engine's mate read is unstable around this move (capped depth) - no percentage.</p>
-                  : <p className="review-sub">Scorecard: the engine reads mate in {Math.abs(ply.mateInAfter)} for {(ply.mateInAfter > 0) === (ply.mover === review.meta.userColor) ? 'you' : review.meta.opponent} - an engine read, not yet on the board, so no percentage.</p>;
+                if (e.unstable) return <p className="review-sub">Scorecard: unavailable here - the engine's reads around this move are unstable at capped depth, so no number is shown.</p>;
+                if (ply.mateInAfter != null) return <p className="review-sub">Scorecard: the engine reads mate in {Math.abs(ply.mateInAfter)} for {(ply.mateInAfter > 0) === (ply.mover === review.meta.userColor) ? 'you' : review.meta.opponent} - an engine read, not yet on the board, so no percentage.</p>;
                 if (e.userPct == null) return null;
-                if (e.unstable) return <p className="review-sub">Scorecard: leans {e.userPct}% your way - but the engine's read swung sharply around this move, and at capped depth sharp positions read unstably, so treat this number with extra caution.</p>;
                 return <p className="review-sub">Scorecard: leans {e.userPct}% your way{e.delta != null && e.delta !== 0 ? ` (${e.delta > 0 ? '+' : ''}${e.delta} after that move)` : ''}.</p>;
               })()}
               {!ply.terminal && ply.bestMoveSan && ply.bestMoveSan !== ply.san && <>
                 <button className="lab-btn" onClick={() => setCwhd((v) => !v)}>{cwhd ? 'Hide it again' : 'Chester would have done (CWHD)'}</button>
-                {cwhd && <p className="review-sub review-sub--good">Chester would have played {ply.bestMoveSan}. {bestMovePoint(ply) || 'That is the engine\'s top line here.'}{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} One engine's read at capped depth - a strong suggestion, not the only answer.</p>}
+                {cwhd && <p className="review-sub review-sub--good">Chester would have played {ply.bestMoveSan}. {bestMovePoint(ply) || 'What that move accomplishes is not established from the position alone - it is the engine\'s preference at capped depth, not a proven plan.'}</p>}
               </>}
             </div>}
-        <p className="review-sub review-sub--fine">Scorecard is approximate and directional: 100 means the engine reads the game as won, 50 means balanced (draws included), 0 means lost. It comes from the engine's evaluation via the published Lichess formula - an estimate, not betting odds.</p>
+        <p className="review-sub review-sub--fine">Scorecard is a rough advantage gauge, not a win probability: the engine's evaluation is mapped onto a 0-100 scale (50 = balanced, draws included) via the published Lichess formula. Only a result on the board is proven. Positions whose reads are unstable at capped depth show no number.</p>
         {walkIdx >= 0 && <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
           {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional && !ply.terminal ? ' (unconfirmed)' : ''}
           {ply.evalDelta != null && ply.evalDelta > 30 ? ` · engine read ${fmtLoss(ply.evalDelta)}` : ''}
@@ -383,7 +381,7 @@ export default function ReviewPage() {
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
         {retryMode === 'miss' && <button className="lab-btn" onClick={showBest}>Show me</button>}
-        {retryMode === 'shown' && <p className="review-sub review-sub--good">{whyFor(ply) ? `${whyFor(ply)} ` : ''}{bestMovePoint(ply) || `The engine's pick: ${ply.bestMoveSan}.`}{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} One engine's line at capped depth - a strong suggestion, not the only answer.</p>}
+        {retryMode === 'shown' && <p className="review-sub review-sub--good">{whyFor(ply) ? `${whyFor(ply)} ` : ''}{bestMovePoint(ply) || `The engine's pick: ${ply.bestMoveSan}.`} One engine's read at capped depth - a strong suggestion, not the only answer.</p>}
         <div className="review-traj" aria-hidden="true">
           {review.plies.map((p, i) => {
             const cp = p.whiteCpAfter == null ? (p.mateInAfter != null ? (p.mateInAfter > 0 === (p.mover === 'w') ? 1200 : -1200) : 0) : Math.max(-1200, Math.min(1200, p.whiteCpAfter));

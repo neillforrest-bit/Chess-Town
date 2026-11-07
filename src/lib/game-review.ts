@@ -236,8 +236,17 @@ export function scorecard(review: ReviewedGame): ScorecardEntry[] {
     } else if (p.whiteCpAfter != null) {
       prevWhiteMate = null;
     }
+    // Quick-pass-only grades are unconfirmed by design - their numbers are not shown either.
+    if (p.provisional && !p.terminal) unstable = true;
     out.push({ ply: p, userPct: pct, delta: unstable ? null : delta, unstable });
     prev = pct;
+  }
+  // Instability propagates one ply each way: a contradiction between two nodes means BOTH
+  // reads are suspect, and a delta measured against a suspect read is itself unreliable.
+  for (let i = 0; i < out.length; i++) {
+    if (!out[i].unstable) continue;
+    if (i > 0 && !out[i - 1].ply.terminal) { out[i - 1] = { ...out[i - 1], unstable: true, delta: null }; }
+    if (i < out.length - 1 && !out[i + 1].ply.terminal) { out[i + 1] = { ...out[i + 1], unstable: true, delta: null }; }
   }
   return out;
 }
