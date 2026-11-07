@@ -2171,6 +2171,7 @@ body:has(.chester-chatsheet) .chester-fab { display: none; }
   body:has(.minigame-page) .chester-fab,
   body:has(.daily-page) .chester-fab,
   body:has(.gameplay-page) .chester-fab,
+  body:has(.lab-shell) .chester-fab,
   body:has(.arena-page) .chester-fab { display: none; }
   .gameplay-board .neon-chessboard { width: 100% !important; height: auto !important; aspect-ratio: 1; box-sizing: border-box; }
   .daily-commentary [style*="fontSize: '0.9rem'"] { max-height: 5.4em !important; overflow-y: auto !important; }
