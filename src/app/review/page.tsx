@@ -389,7 +389,7 @@ export default function ReviewPage() {
                     ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} and the game is drawn here. That is a fact, not an engine grade.`
                   : ply.terminal === 'settled'
                     ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} and the game ends here: ${review.meta.termination || 'game over'}. A proven result, not an engine grade - the position itself was not played out.`
-                    : `${ply.isUser ? 'Your' : `${review.meta.opponent}'s`} ${ply.san} graded ${gradeChip(ply).label}${ply.provisional ? ' (unconfirmed)' : ''}${ply.evalDelta != null && ply.evalDelta > 30 ? ` - engine read ${fmtLoss(ply.evalDelta)}` : ''}.${whyFor(ply) ? ` ${whyFor(ply)}` : ''}`}</p>
+                    : `${ply.isUser ? 'Your' : `${review.meta.opponent}'s`} ${ply.san} graded ${gradeChip(ply).label}${ply.provisional ? ' (unconfirmed)' : ''}${!sc[walkIdx]?.unstable && ply.evalDelta != null && ply.evalDelta > 30 ? ` - engine read ${fmtLoss(ply.evalDelta)}` : ''}.${whyFor(ply) ? ` ${whyFor(ply)}` : ''}`}</p>
               {(() => {
                 const e = sc[walkIdx];
                 if (!e) return null;
@@ -409,7 +409,7 @@ export default function ReviewPage() {
         <p className="review-sub review-sub--fine">Scorecard is a rough advantage gauge, not a win probability: the engine's evaluation is mapped onto a 0-100 scale (50 = balanced, draws included) via the published Lichess formula. Only a result on the board is proven. Positions whose reads are unstable at capped depth show no number.</p>
         {walkIdx >= 0 && <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
           {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional && !ply.terminal ? ' (unconfirmed)' : ''}
-          {ply.evalDelta != null && ply.evalDelta > 30 ? ` · engine read ${fmtLoss(ply.evalDelta)}` : ''}
+          {!sc[walkIdx]?.unstable && ply.evalDelta != null && ply.evalDelta > 30 ? ` · engine read ${fmtLoss(ply.evalDelta)}` : ''}
           {ply.bestMoveSan && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER' || ply.classification === 'INACCURACY') ? ` · better: ${ply.bestMoveSan}` : ''}
         </div>}
         {walkIdx >= 0 && ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
@@ -435,7 +435,7 @@ export default function ReviewPage() {
         <h2 className="review-h2">Where the game turned</h2>
         {tps.map((tp) => <button key={tp.ply.ply} className="lab-card" onClick={() => goTo(tp.ply.ply - 1)}>
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
-          <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
+          <b>{tp.ply.san}{!sc[tp.ply.ply - 1]?.unstable && tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
             ? [whyFor(tp.ply), bestMovePoint(tp.ply) || (!whyFor(tp.ply) ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.` : null)].filter(Boolean).join(' ') + ' Tap to stand at that moment.'
             : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>
@@ -457,17 +457,15 @@ export default function ReviewPage() {
           {clock.rushedMistakes > 0 ? ' One game is a tiny sample - but it is worth checking whether slowing down at the tense moments helps.' : ''}</p>
       </section>}
 
-      {show && show.fixables.length > 0 && <section>
+      {show && walkIdx >= review.plies.length - 1 && <section>
         <h2 className="review-h2">Fix your mistakes</h2>
+        {show.fixables.length > 0 ? <>
         <p className="review-sub">Only here at the end: stand in the position just before your move and find the better one. Tap a card, then tap a piece and where it goes.</p>
         {show.fixables.map((f) => <button key={f.ply.ply} className="lab-card" onClick={() => startFix(f.ply.ply)}>
           <b>Move {Math.ceil(f.ply.ply / 2)}{f.ply.mover === 'b' ? '…' : ''} · {f.ply.san}</b>
           <span>{f.ply.classification === 'BLUNDER' ? 'Blunder' : 'Mistake'}{f.stable && f.ply.evalDelta != null && f.ply.evalDelta > 30 ? ` · engine read ${fmtLoss(f.ply.evalDelta)}` : ''} - try the position yourself</span>
         </button>)}
-      </section>}
-      {show && show.fixables.length === 0 && <section>
-        <h2 className="review-h2">Fix your mistakes</h2>
-        <p className="review-sub">Nothing to fix from this one - no confirmed big mistakes on your side of the scoresheet.</p>
+        </> : <p className="review-sub">Nothing to fix from this one - no confirmed big mistakes on your side of the scoresheet.</p>}
       </section>}
 
       <section className="review-row">
