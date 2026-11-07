@@ -353,12 +353,15 @@ export default function ReviewPage() {
                   ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} - checkmate on the board, game over. That is a fact, not an engine grade.`
                   : ply.terminal === 'draw'
                     ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} and the game is drawn here. That is a fact, not an engine grade.`
+                  : ply.terminal === 'settled'
+                    ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} and the game ends here: ${review.meta.termination || 'game over'}. A proven result, not an engine grade - the position itself was not played out.`
                     : `${ply.isUser ? 'Your' : `${review.meta.opponent}'s`} ${ply.san} graded ${gradeChip(ply).label}${ply.provisional ? ' (unconfirmed)' : ''}${ply.evalDelta != null && ply.evalDelta > 30 ? ` - engine read ${fmtLoss(ply.evalDelta)}` : ''}.${whyFor(ply) ? ` ${whyFor(ply)}` : ''}`}</p>
               {(() => {
                 const e = sc[walkIdx];
                 if (!e) return null;
                 if (ply.terminal === 'mate') return <p className="review-sub">Scorecard: settled - {ply.mover === review.meta.userColor ? 'you win' : `${review.meta.opponent} wins`}. 100/0, proven by the board.</p>;
                 if (ply.terminal === 'draw') return <p className="review-sub">Scorecard: DRAW - the game finished level; no winning chances remain.</p>;
+                if (ply.terminal === 'settled') return <p className="review-sub">Scorecard: settled - {review.meta.result === 'win' ? 'you win' : `${review.meta.opponent} wins`}{endPhrase(review.meta.termination) ? ` ${endPhrase(review.meta.termination)}` : ''}. The result is proven; the position itself was not played out.</p>;
                 if (e.unstable) return <p className="review-sub">Scorecard: unavailable here - the engine's reads around this move are unstable at capped depth, so no number is shown.</p>;
                 if (ply.mateInAfter != null) return <p className="review-sub">Scorecard: the engine reads mate in {Math.abs(ply.mateInAfter)} for {(ply.mateInAfter > 0) === (ply.mover === review.meta.userColor) ? 'you' : review.meta.opponent} - an engine read, not yet on the board, so no number is shown.</p>;
                 if (e.userPct == null) return null;
@@ -409,7 +412,9 @@ export default function ReviewPage() {
 
       {measures && measures.user.graded > 0 && <section>
         <h2 className="review-h2">Chester's verdict</h2>
-        <p className="review-sub">You: “{verdictFor(measures.user)}” · {review.meta.opponent}: “{verdictFor(measures.opp)}”</p>
+        {measures.user.graded >= 6
+          ? <p className="review-sub">You: “{verdictFor(measures.user)}” · {review.meta.opponent}: “{verdictFor(measures.opp)}”</p>
+          : <p className="review-sub">Only {measures.user.graded} of your moves got graded here - too short a game for a verdict.</p>}
         <p className="review-sub review-sub--fine">Behind the cheek, the measured numbers: your moves lost {measures.user.avgLossCp != null ? `${(measures.user.avgLossCp / 100).toFixed(1)} pawns` : 'an unmeasurable amount'} on average over {measures.user.graded} graded moves ({measures.user.blunders} blunder{measures.user.blunders === 1 ? '' : 's'}, {measures.user.mistakes} mistake{measures.user.mistakes === 1 ? '' : 's'}); theirs lost {measures.opp.avgLossCp != null ? `${(measures.opp.avgLossCp / 100).toFixed(1)} pawns` : 'an unmeasurable amount'} over {measures.opp.graded}. One game, one engine, capped depth - a snapshot of this game, not a rating.</p>
       </section>}
 

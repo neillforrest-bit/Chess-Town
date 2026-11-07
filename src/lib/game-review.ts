@@ -51,7 +51,7 @@ export type ReviewedPly = {
   mateInAfter: number | null;
   provisional?: boolean;
   /** chess.js-verified game end delivered BY this move - a fact, not an engine grade. */
-  terminal?: 'mate' | 'draw';
+  terminal?: 'mate' | 'draw' | 'settled';
 };
 
 export type ReviewedGame = {
@@ -124,6 +124,11 @@ export async function analyzeGame(
     });
     onProgress(i + 1, moves.length);
   }
+  // Games that end without a board-terminal position (resignation, timeout, abandonment,
+  // or a draw by agreement/repetition that chess.js cannot detect): the last played ply
+  // still marks the end. 'settled' = proven decisive result, position not played out.
+  const last = plies[plies.length - 1];
+  if (last && !last.terminal) last.terminal = game.result === 'draw' ? 'draw' : 'settled';
   return {
     gameUrl: game.url, analyzedAt: Date.now(),
     meta: (() => { const { pgn: _drop, ...rest } = game; void _drop; return rest; })(),
@@ -160,6 +165,9 @@ export type ClockReport = {
 };
 
 export function clockReport(review: ReviewedGame): ClockReport {
+  const none: ClockReport = { avgSecPerMove: null, avgOpening: null, avgMiddle: null, avgEndgame: null, rushedCount: 0, rushedMistakes: 0 };
+  // Untimed (daily/correspondence) games carry no meaningful per-move clock - no section.
+  if (review.meta.timeClass === 'daily') return none;
   const userPlies = review.plies.filter((p) => p.isUser);
   const withThink: { p: ReviewedPly; think: number }[] = [];
   for (let i = 0; i < review.plies.length; i++) {
@@ -213,7 +221,7 @@ export function scorecard(review: ReviewedGame): ScorecardEntry[] {
   for (const p of review.plies) {
     let pct: number | null;
     if (p.terminal === 'mate') pct = p.mover === userMover ? 100 : 0;
-    else if (p.terminal === 'draw') pct = null;
+    else if (p.terminal === 'draw' || p.terminal === 'settled') pct = null;
     else if (p.mateInAfter != null) pct = null;
     else {
       const w = whiteWinPct(p.whiteCpAfter);
@@ -256,7 +264,8 @@ export type PlayerMeasure = { graded: number; avgLossCp: number | null; blunders
  *  moves, plus blunder/mistake counts. No conversion to any rating scale. */
 export function playerMeasure(review: ReviewedGame, isUser: boolean): PlayerMeasure {
   const mine = review.plies.filter((p) => p.isUser === isUser);
-  const scored = mine.filter((p) => p.evalDelta != null && !p.terminal);
+  // Settled (resignation/timeout) final plies are still real played, graded moves: they count.
+  const scored = mine.filter((p) => p.evalDelta != null && p.terminal !== 'mate' && p.terminal !== 'draw');
   return {
     graded: scored.length,
     avgLossCp: scored.length ? Math.round(scored.reduce((a, p) => a + (p.evalDelta ?? 0), 0) / scored.length) : null,
