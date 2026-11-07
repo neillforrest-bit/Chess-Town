@@ -3768,3 +3768,6 @@ body:has(.chester-game) .global-nav,body:has(.chester-game) .chester-fab { displ
 .review-select option { background: #10161d; color: #e8eef2; }
 .review-filters { display: flex; gap: .5rem; }
 .review-filters .review-select { flex: 1; min-width: 0; }
+.review-walkpos--solo { text-align: center; margin: .35rem 0 0; }
+.review-walkbar .lab-btn { min-width: 0; flex: 1 1 0; }
+.review-show { border: 1px solid #2c3a4a; border-radius: 12px; padding: .6rem .8rem; margin-bottom: .6rem; background: rgba(255, 216, 77, 0.04); }

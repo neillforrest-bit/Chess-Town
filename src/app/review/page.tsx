@@ -134,6 +134,28 @@ export default function ReviewPage() {
   const sc = useMemo(() => (review ? scorecardFor(review) : []), [review]);
   const measures = useMemo(() => (review ? { user: playerMeasure(review, true), opp: playerMeasure(review, false) } : null), [review]);
 
+  // Highlight-show picks: only STABLE plies (no unstable reads, no quick-pass-only grades,
+  // no terminal/mate-read nodes) - the show never leans on a number the scorecard hides.
+  const show = useMemo(() => {
+    if (!review || !sc.length) return null;
+    const stableUser = sc.filter((e) => e.ply.isUser && !e.unstable && !e.ply.provisional && !e.ply.terminal && e.ply.mateInAfter == null);
+    let top: { san: string; delta: number } | null = null;
+    for (const e of stableUser) if (e.delta != null && e.delta >= 5 && (!top || e.delta > top.delta)) top = { san: e.ply.san, delta: e.delta };
+    let back: { san: string; loss: number; best: string | null } | null = null;
+    for (const e of stableUser) { const l = e.ply.evalDelta; if (l != null && l >= 100 && (!back || l > back.loss)) back = { san: e.ply.san, loss: l, best: e.ply.bestMoveSan }; }
+    const fixables = review.plies
+      .filter((p) => p.isUser && p.bestMoveSan && !p.provisional && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER'))
+      .sort((a, b) => (b.evalDelta ?? 0) - (a.evalDelta ?? 0))
+      .slice(0, 3);
+    return { top, back, fixables, anyStable: stableUser.length > 0 };
+  }, [review, sc]);
+
+  const startFix = (targetPly: number) => {
+    goTo(targetPly - 1);
+    setRetryMode('ask'); setRetryFen(null); setCwhd(false); setPlaying(false);
+    requestAnimationFrame(() => { document.querySelector('.review-walk')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  };
+
   const ply: ReviewedPly | null = review && review.plies.length ? review.plies[Math.max(0, Math.min(walkIdx, review.plies.length - 1))] : null;
   const startFen = review && review.plies.length ? review.plies[0].fenBefore : null;
 
@@ -332,23 +354,34 @@ export default function ReviewPage() {
         <p className="review-sub">{fmtDate(review.meta.endTime)} · {review.meta.timeClass} {review.meta.timeControl} · {review.meta.ecoName || 'Unknown opening'} · graded by {review.engineLabel}.</p>
       </section>
 
+      <section className="review-show">
+        <h2 className="review-h2">📺 Chester's Highlight Show</h2>
+        <p className="review-sub"><b>FINAL: {review.meta.result === 'win' ? 'You take it' : review.meta.result === 'loss' ? `${review.meta.opponent} takes it` : 'Honors even'}{endPhrase(review.meta.termination) ? ` ${endPhrase(review.meta.termination)}` : ''} after {Math.ceil(review.plies.length / 2)} move{Math.ceil(review.plies.length / 2) === 1 ? '' : 's'}.</b></p>
+        {measures && measures.user.graded >= 6
+          ? <p className="review-sub">Report card - You: “{verdictFor(measures.user)}” · {review.meta.opponent}: “{verdictFor(measures.opp)}”</p>
+          : <p className="review-sub">Too short a game for report cards - only {measures?.user.graded ?? 0} of your moves got graded.</p>}
+        {show && !show.anyStable
+          ? <p className="review-sub">The engine's reads in this game swung too hard at capped depth to name moments with a straight face - no show tonight, just the facts below.</p>
+          : <>
+            <p className="review-sub">⭐ Top play: {show?.top ? <b>{show.top.san}</b> : 'no standout'} {show?.top ? `- the scorecard jumped ${show.top.delta > 0 ? '+' : ''}${show.top.delta} points your way after that one.` : '- nothing stable stood out enough to call.'}</p>
+            <p className="review-sub">🙈 Wish-you-had-it-back: {show?.back ? <b>{show.back.san}</b> : 'nothing worth rewinding'} {show?.back ? `- engine read ${fmtLoss(show.back.loss)}${show.back.best ? `; Chester's pick there was ${show.back.best}` : ''}.` : '- no stable big mistake from you in this one.'}</p>
+          </>}
+        <p className="review-sub review-sub--fine">For fun, not to be taken seriously - the measured numbers are below.</p>
+      </section>
+
       <section className="review-walk">
         <TapBoard fen={retryFen ?? (retryMode ? ply.fenBefore : walkIdx < 0 && startFen ? startFen : ply.fenAfter)} orientation={review.meta.userColor} locked={retryMode === null} lastMove={retryMode || walkIdx < 0 ? null : lastFromTo} label="Game position" onMove={retryMode ? tryRetry : undefined} />
+        <p className="review-walkpos review-walkpos--solo">{walkIdx < 0 ? 'Start' : `${Math.ceil(ply.ply / 2)}. ${ply.mover === 'w' ? '' : '…'}${ply.san}`}</p>
         <div className="review-walkbar">
-          <button className="lab-btn" onClick={() => goTo(Math.max(-1, walkIdx - 1))} disabled={walkIdx <= -1}>◀ Back</button>
-          <span className="review-walkpos">{walkIdx < 0 ? 'Start' : `${Math.ceil(ply.ply / 2)}. ${ply.mover === 'w' ? '' : '…'}${ply.san}`}</span>
-          <button className="lab-btn" onClick={() => goTo(Math.min(review.plies.length - 1, walkIdx + 1))} disabled={walkIdx >= review.plies.length - 1}>Next ▶</button>
-        </div>
-        <div className="review-walkbar">
-          <button className="lab-btn lab-btn--go" onClick={togglePlay}>{playing ? '⏸ Pause' : walkIdx >= review.plies.length - 1 ? '▶ Replay' : '▶ Play'}</button>
-          <button className="lab-btn" onClick={() => goTo(-1)} disabled={walkIdx <= -1}>⟲ Start</button>
+          <button className="lab-btn" aria-label="Back to the start" onClick={() => goTo(-1)} disabled={walkIdx <= -1}>⏮</button>
+          <button className="lab-btn" aria-label="Rewind one move" onClick={() => goTo(Math.max(-1, walkIdx - 1))} disabled={walkIdx <= -1}>⏪</button>
+          <button className="lab-btn lab-btn--go" aria-label={playing ? 'Pause' : 'Play'} onClick={togglePlay}>{playing ? '⏸' : walkIdx >= review.plies.length - 1 ? '▶ Replay' : '▶'}</button>
+          <button className="lab-btn" aria-label="Fast forward one move" onClick={() => goTo(Math.min(review.plies.length - 1, walkIdx + 1))} disabled={walkIdx >= review.plies.length - 1}>⏩</button>
         </div>
         {walkIdx < 0
           ? <p className="review-sub">At the starting position. Press Play for the highlight, or step through with Next - pause any time to study a position with Chester.</p>
-          : playing
-            ? <p className="review-sub">Playing the highlight… hit Pause to stop on a position and study it.</p>
-            : <div>
-              <p className="review-sub"><b>Paused at move {Math.ceil(ply.ply / 2)}{ply.mover === 'b' ? '…' : ''}.</b>{' '}
+          : <div>
+              <p className="review-sub"><b>{playing ? 'Now playing' : 'Paused at'} move {Math.ceil(ply.ply / 2)}{ply.mover === 'b' ? '…' : ''}.</b>{' '}
                 {ply.terminal === 'mate'
                   ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} - checkmate on the board, game over. That is a fact, not an engine grade.`
                   : ply.terminal === 'draw'
@@ -367,7 +400,7 @@ export default function ReviewPage() {
                 if (e.userPct == null) return null;
                 return <p className="review-sub">Scorecard: {e.userPct}/100 leaning your way{e.delta != null && e.delta !== 0 ? ` (${e.delta > 0 ? '+' : ''}${e.delta} points after that move)` : ''}.</p>;
               })()}
-              {!ply.terminal && ply.bestMoveSan && ply.bestMoveSan !== ply.san && <>
+              {!playing && !ply.terminal && ply.bestMoveSan && ply.bestMoveSan !== ply.san && <>
                 <button className="lab-btn" onClick={() => setCwhd((v) => !v)}>{cwhd ? 'Hide it again' : 'Chester would have done (CWHD)'}</button>
                 {cwhd && <p className="review-sub review-sub--good">{bestMovePoint(ply) ? `Chester would have played ${ply.bestMoveSan}. ${bestMovePoint(ply)}` : `Chester's engine pick is ${ply.bestMoveSan}. I don't yet have a checked explanation of why.`}</p>}
               </>}
@@ -379,8 +412,6 @@ export default function ReviewPage() {
           {ply.bestMoveSan && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER' || ply.classification === 'INACCURACY') ? ` · better: ${ply.bestMoveSan}` : ''}
         </div>}
         {walkIdx >= 0 && ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
-        {walkIdx >= 0 && !playing && ply.isUser && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER') && retryMode === null &&
-          <button className="lab-btn lab-btn--go" onClick={() => { setRetryMode('ask'); setRetryFen(null); }}>Try the position yourself</button>}
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
         {retryMode === 'miss' && <button className="lab-btn" onClick={showBest}>Show me</button>}
@@ -405,7 +436,7 @@ export default function ReviewPage() {
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
           <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
-            ? [whyFor(tp.ply), bestMovePoint(tp.ply) || (!whyFor(tp.ply) ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.` : null)].filter(Boolean).join(' ') + ' Tap to stand at that moment and try it yourself.'
+            ? [whyFor(tp.ply), bestMovePoint(tp.ply) || (!whyFor(tp.ply) ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.` : null)].filter(Boolean).join(' ') + ' Tap to stand at that moment.'
             : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>
         </button>)}
       </section>}
@@ -423,6 +454,19 @@ export default function ReviewPage() {
         <p className="review-sub">About {clock.avgSecPerMove}s a move on average{clock.avgOpening != null ? `, ${clock.avgOpening}s in the opening` : ''}{clock.avgMiddle != null ? `, ${clock.avgMiddle}s later on` : ''}.
           {clock.rushedCount > 0 ? ` You played ${clock.rushedCount} move${clock.rushedCount === 1 ? '' : 's'} in under 10 seconds${clock.rushedMistakes > 0 ? ` - ${clock.rushedMistakes} of them graded as slips in this one game` : ' and none of them hurt you here'}.` : ''}
           {clock.rushedMistakes > 0 ? ' One game is a tiny sample - but it is worth checking whether slowing down at the tense moments helps.' : ''}</p>
+      </section>}
+
+      {show && show.fixables.length > 0 && <section>
+        <h2 className="review-h2">Fix your mistakes</h2>
+        <p className="review-sub">Only here at the end: stand in the position just before your move and find the better one. Tap a card, then tap a piece and where it goes.</p>
+        {show.fixables.map((f) => <button key={f.ply} className="lab-card" onClick={() => startFix(f.ply)}>
+          <b>Move {Math.ceil(f.ply / 2)}{f.mover === 'b' ? '…' : ''} · {f.san}</b>
+          <span>{f.classification === 'BLUNDER' ? 'Blunder' : 'Mistake'}{f.evalDelta != null && f.evalDelta > 30 ? ` · engine read ${fmtLoss(f.evalDelta)}` : ''} - try the position yourself</span>
+        </button>)}
+      </section>}
+      {show && show.fixables.length === 0 && <section>
+        <h2 className="review-h2">Fix your mistakes</h2>
+        <p className="review-sub">Nothing to fix from this one - no confirmed big mistakes on your side of the scoresheet.</p>
       </section>}
 
       <section className="review-row">
