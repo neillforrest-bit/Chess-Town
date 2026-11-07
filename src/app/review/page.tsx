@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type ParsedMove } from '@/lib/chesscom';
+import { buildOpponentRows, userRapidTrajectory, type OpponentRow } from '@/lib/opponent-stats';
 import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, scorecard as scorecardFor, playerMeasure, verdictFor, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
@@ -61,6 +62,11 @@ export default function ReviewPage() {
   const [playing, setPlaying] = useState(false);                 // highlight playback
   const [cwhd, setCwhd] = useState(false);                       // 'Chester would have done' reveal
   const [resultFilter, setResultFilter] = useState<'all' | 'win' | 'loss' | 'draw'>('all');
+  const [oppRows, setOppRows] = useState<OpponentRow[] | null>(null);
+  const [oppTraj, setOppTraj] = useState<Array<{ t: number; rating: number }> | null>(null);
+  const [oppBusy, setOppBusy] = useState(false);
+  const [oppSort, setOppSort] = useState<'games' | 'minutes' | 'record' | 'recent' | 'rating'>('games');
+  const [oppSearch, setOppSearch] = useState('');
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
 
@@ -77,6 +83,24 @@ export default function ReviewPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not reach Chess.com.'); }
     setBusy(false);
   };
+  const loadOpponents = async () => {
+    setOppBusy(true); setError('');
+    try {
+      const urls = archives.length
+        ? archives.slice(0, 6) // archives state is newest-first
+        : (await fetchArchives(username)).slice(-6);
+      const all: CcGame[] = [];
+      for (const u of urls) {
+        const g = await fetchMonth(u, username);
+        if (!mounted.current) return;
+        all.push(...g);
+      }
+      setOppRows(buildOpponentRows(all));
+      setOppTraj(userRapidTrajectory(all));
+    } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : String(e)); }
+    finally { if (mounted.current) setOppBusy(false); }
+  };
+
   const loadMonth = async (url: string) => {
     setBusy(true); setError(''); setPickedMonth(url); setOpponentFilter(null); setResultFilter('all');
     try { setGames(await fetchMonth(url, username)); }
@@ -308,7 +332,57 @@ export default function ReviewPage() {
       <div className="review-row">
         <input className="review-input" value={username} onChange={(e) => setUsername(e.target.value)} aria-label="Chess.com username" placeholder="Chess.com username" />
         <button className="lab-btn lab-btn--go" onClick={loadArchives} disabled={busy || !username.trim()}>Find games</button>
+        <button className="lab-btn" onClick={loadOpponents} disabled={oppBusy || busy || !username.trim()}>{oppBusy ? 'Loading 6 months…' : 'Opponent table'}</button>
       </div>
+      {oppRows && <section>
+        <h2 className="review-h2">Opponents · last 6 months</h2>
+        {oppTraj && oppTraj.length > 1 && (() => {
+          const first = oppTraj[0].rating;
+          const last = oppTraj[oppTraj.length - 1].rating;
+          const peak = Math.max(...oppTraj.map((p) => p.rating));
+          const delta = last - first;
+          return <p className="review-sub">Your rapid: {first} → {last} ({delta >= 0 ? '+' : ''}{delta}) · peak {peak} · {oppTraj.length} rapid games</p>;
+        })()}
+        <div className="review-filters">
+          <select className="review-select" value={oppSort} onChange={(e) => setOppSort(e.target.value as typeof oppSort)} aria-label="Sort opponents">
+            <option value="games">Most games</option>
+            <option value="minutes">Most time played</option>
+            <option value="record">Best record</option>
+            <option value="recent">Most recent</option>
+            <option value="rating">Highest rated</option>
+          </select>
+          <input className="review-input" value={oppSearch} onChange={(e) => setOppSearch(e.target.value)} placeholder="Filter name…" aria-label="Filter opponents" />
+        </div>
+        {(() => {
+          const q = oppSearch.trim().toLowerCase();
+          const vis = oppRows
+            .filter((r) => !q || r.opponent.toLowerCase().includes(q))
+            .sort((a, b) =>
+              oppSort === 'games' ? b.games - a.games
+              : oppSort === 'minutes' ? b.totalMinutes - a.totalMinutes
+              : oppSort === 'record' ? (b.wins / b.games) - (a.wins / a.games) || b.games - a.games
+              : oppSort === 'recent' ? b.lastPlayed - a.lastPlayed
+              : (b.lastRating ?? 0) - (a.lastRating ?? 0));
+          const partial = vis.some((r) => r.timedGames < r.games);
+          return <>
+            <div className="opp-table-wrap">
+              <table className="opp-table">
+                <thead><tr><th>Opponent</th><th>Games</th><th>Time</th><th>W-L-D</th><th>Last winner</th><th>Rating</th></tr></thead>
+                <tbody>{vis.slice(0, 50).map((r) => <tr key={r.opponent}>
+                  <td>{r.opponent}</td>
+                  <td>{r.games}</td>
+                  <td>{r.timedGames > 0 ? `${r.totalMinutes}m` : '—'}{r.timedGames > 0 && r.timedGames < r.games ? '*' : ''}</td>
+                  <td>{r.wins}-{r.losses}-{r.draws}</td>
+                  <td>{r.lastWinner === 'you' ? 'You' : r.lastWinner === 'opponent' ? r.opponent : r.lastWinner === 'draw' ? 'Draw' : '—'}</td>
+                  <td>{r.lastRating ?? '—'}{r.firstRating != null && r.lastRating != null && r.firstRating !== r.lastRating ? ` (${r.lastRating - r.firstRating >= 0 ? '+' : ''}${r.lastRating - r.firstRating})` : ''}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+            {partial && <p className="review-sub">* Some games don't carry clock times, so the time column covers the games that do.</p>}
+            {vis.length > 50 && <p className="review-sub">Showing 50 of {vis.length} opponents — use the name filter to narrow.</p>}
+          </>;
+        })()}
+      </section>}
       {archives.length > 0 && <section>
         <h2 className="review-h2">Pick a month</h2>
         <select className="review-select" value={pickedMonth ?? ''} onChange={(e) => { if (e.target.value) loadMonth(e.target.value); }} disabled={busy} aria-label="Month">

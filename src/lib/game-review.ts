@@ -251,10 +251,13 @@ export function scorecard(review: ReviewedGame): ScorecardEntry[] {
     out.push({ ply: p, userPct: pct, delta: unstable ? null : delta, unstable });
     prev = pct;
   }
-  // Instability propagates one ply each way: a contradiction between two nodes means BOTH
-  // reads are suspect, and a delta measured against a suspect read is itself unreliable.
+  // Instability propagates one ply each way FROM THE ORIGINAL FLAGS ONLY (snapshot first):
+  // a contradiction between two nodes makes BOTH reads suspect, and a delta measured
+  // against a suspect read is itself unreliable. Newly-marked neighbours do not spread it
+  // further - one flagged node must not cascade-suppress the rest of the game.
+  const seeds = out.map((e) => e.unstable);
   for (let i = 0; i < out.length; i++) {
-    if (!out[i].unstable) continue;
+    if (!seeds[i]) continue;
     if (i > 0 && !out[i - 1].ply.terminal) { out[i - 1] = { ...out[i - 1], unstable: true, delta: null }; }
     if (i < out.length - 1 && !out[i + 1].ply.terminal) { out[i + 1] = { ...out[i + 1], unstable: true, delta: null }; }
   }
