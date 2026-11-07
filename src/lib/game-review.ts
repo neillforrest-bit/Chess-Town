@@ -209,6 +209,7 @@ export function scorecard(review: ReviewedGame): ScorecardEntry[] {
   const userMover = review.meta.userColor; // 'w' | 'b'
   const out: ScorecardEntry[] = [];
   let prev: number | null = 50;
+  let prevWhiteMate: number | null = null;
   for (const p of review.plies) {
     let pct: number | null;
     if (p.terminal === 'mate') pct = p.mover === userMover ? 100 : 0;
@@ -224,6 +225,16 @@ export function scorecard(review: ReviewedGame): ScorecardEntry[] {
       const moverDelta = p.mover === userMover ? delta : -delta;
       if (p.evalDelta >= 150 && moverDelta > 8) unstable = true;
       if (p.evalDelta <= 30 && moverDelta < -25) unstable = true;
+    }
+    // Mate reads: convert to white-absolute (stored mover-relative) and flag when the
+    // claimed mating side flips between consecutive reads - capped-depth contradiction,
+    // so no side gets named for that ply.
+    if (!p.terminal && p.mateInAfter != null) {
+      const whiteMate = p.mover === 'w' ? p.mateInAfter : -p.mateInAfter;
+      if (prevWhiteMate != null && Math.sign(whiteMate) !== Math.sign(prevWhiteMate)) unstable = true;
+      prevWhiteMate = whiteMate;
+    } else if (p.whiteCpAfter != null) {
+      prevWhiteMate = null;
     }
     out.push({ ply: p, userPct: pct, delta: unstable ? null : delta, unstable });
     prev = pct;
