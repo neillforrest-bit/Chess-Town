@@ -12,6 +12,7 @@
 export type ReviewChatContext = {
   fen: string;
   practice?: boolean;
+  practiceComplete?: boolean;
   plyNumber: number;        // 0 = starting position, otherwise 1-based ply being viewed
   totalPlies: number;
   san: string | null;       // SAN of the move at this ply (null at the start)
@@ -40,6 +41,7 @@ export function getReviewChatContext(): ReviewChatContext | null {
  *  is outside the bounded move-help intents (caller falls through to the
  *  normal chat path). Never calls the network. */
 export function reviewMoveHelp(message: string, ctx: ReviewChatContext): string | null {
+  if (ctx.practiceComplete) return 'That practice move is finished. The board shows the alternative, not the recorded game. Use Return to recorded game to resume the review. No new engine score has been computed for the alternative.';
   if (ctx.practice) return 'You are on the practice board now. Tap a piece and its destination to try the move; the board will check it. I will not grade a position you have not played yet.';
   const m = message.toLowerCase();
   const where = ctx.plyNumber === 0

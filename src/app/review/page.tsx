@@ -184,6 +184,7 @@ export default function ReviewPage() {
     publishReviewChatContext({
       fen: retryMode && p ? (retryFen ?? p.fenBefore) : p ? p.fenAfter : review.plies[0].fenBefore,
       practice: !!retryMode,
+      practiceComplete: retryMode === 'shown',
       plyNumber: walkIdx + 1,
       totalPlies: review.plies.length,
       san: p?.san ?? null,
