@@ -902,9 +902,9 @@ function PlayChesterGame() {
         </div>
       )}
       {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/play-chester?road=1"><b>ROAD TO JOSEPH</b><small>15 levels · a boss every 3rd · your level is saved</small></a>}
+      {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/surprise-lab" style={{ borderColor: '#fb923c' }}><b>⚡ SURPRISE LAB</b><small>obscure openings · fully guided, move by move</small></a>}
       {!isFriendMode && requestedLevel && <p style={{ margin: '.2rem 0 .6rem', color: '#ffd84d', fontWeight: 900, letterSpacing: '1px' }}>OPPONENT: {selectedLevel.label} · {selectedLevel.note}</p>}
       {!isFriendMode && !requestedLevel && !roadActive && <div className="chester-level-grid">{LEVELS.map((level, index) => { const locked = index > ladder.unlocked; return <button key={level.value} className={`${difficulty === level.value ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => setDifficulty(level.value)}><b>{locked ? ' ' : ''}{level.label}</b><small>{locked ? `Beat ${LEVELS[index - 1].label} to unlock` : level.note}</small>{!locked && (() => { const rec = ladder.levels?.[level.value]; const stars = Math.min(3, rec?.wins || 0); return rec?.games ? <i className="chester-level-stars">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}{rec.bestGrade ? ` · best ${rec.bestGrade}` : ''}</i> : null; })()}</button>; })}</div>}
-      {!isFriendMode && !requestedLevel && !roadActive && <a className="road-entry" href="/surprise-lab" style={{ borderColor: '#fb923c' }}><b>⚡ SURPRISE LAB</b><small>NEW · learn unusual openings, guided move by move</small></a>}
       {!isFriendMode && !requestedLevel && !roadActive && <div className="bp-armory">
         <button className={`bp-toggle${bp.opening ? ' is-on' : ''}`} style={bp.opening ? { borderColor: bp.opening.color, color: bp.opening.color } : undefined} onClick={() => { if (bp.opening) bp.disarm(); else setArmoryOpen((v) => !v); }}>
           ⚔ GUIDED OPENING{bp.opening ? `: ${bp.opening.name} ` : armoryOpen ? ' ▲' : ' ▼'}
