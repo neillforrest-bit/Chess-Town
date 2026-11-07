@@ -110,7 +110,7 @@ export default function SurpriseLab() {
       setStepIdx(next);
       setLine(opening.steps[next].why);
       setAwaiting('user');
-    }, 950);
+    }, 1400);
   }, [opening, awaiting, stepIdx, finishLesson, detour]);
 
   const startDetour = useCallback(() => {
@@ -130,7 +130,7 @@ export default function SurpriseLab() {
       try { const m2 = c.move(bl.replySan); setFen(c.fen()); setLastMove({ from: m2.from, to: m2.to }); } catch { /* resync */ }
       setDetour((d) => (d ? { ...d, stage: 'answer' } : d));
       setLine(bl.replyWhy + ' Your answer?');
-    }, 950);
+    }, 1400);
   }, [opening, awaiting, stepIdx, detour, lastMove]);
 
   const endDetour = useCallback(() => {
