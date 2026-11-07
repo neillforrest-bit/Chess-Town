@@ -181,21 +181,22 @@ export default function ReviewPage() {
     const p = walkIdx >= 0 ? review.plies[walkIdx] : null;
     const unstable = walkIdx >= 0 ? !!sc[walkIdx]?.unstable : false;
     publishReviewChatContext({
-      fen: p ? p.fenAfter : review.plies[0].fenBefore,
+      fen: retryMode && p ? (retryFen ?? p.fenBefore) : p ? p.fenAfter : review.plies[0].fenBefore,
+      practice: !!retryMode,
       plyNumber: walkIdx + 1,
       totalPlies: review.plies.length,
       san: p?.san ?? null,
       isUserMove: !!p?.isUser,
       suppressed: unstable,
-      gradeLabel: p && !unstable ? measuredLabel(p) : null,
-      bestMoveSan: p && !unstable ? p.bestMoveSan : null,
-      why: p && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? whyFor(p) : null,
+      gradeLabel: p && !unstable && !retryMode ? measuredLabel(p) : null,
+      bestMoveSan: p && !unstable && !retryMode ? p.bestMoveSan : null,
+      why: p && !retryMode && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? whyFor(p) : null,
       opponent: review.meta.opponent ?? 'your opponent',
       atEnd: walkIdx >= review.plies.length - 1,
     });
     return () => clearReviewChatContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkIdx, review, sc, stage]);
+  }, [walkIdx, review, sc, stage, retryMode, retryFen]);
 
   // Highlight playback: advance about 1.2s per move until the final position, then stop.
   useEffect(() => {
@@ -249,52 +250,19 @@ export default function ReviewPage() {
 
   const PIECE_NAME: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
   const PIECE_VAL: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
-  /** One board-factual reason for a slip, verified move-by-move with chess.js: a claim only
-   *  ships when the capture it names is LEGAL for the side to move right now (check
-   *  responses included) and recapture really is absent. Null = fall back to engine framing
-   *  rather than tell a geometrically-plausible but tactically wrong story. */
+  /** A legal capture threat is a board fact, not proof of a lost exchange. */
   const whyFor = (p: ReviewedPly): string | null => {
     try {
       const c = new ChessFacts(p.fenBefore);
       const played = c.move(p.san);
       if (!played) return null;
-      const mover = played.color;
-      const enemy = mover === 'w' ? 'b' : 'w';
-      const legal = c.moves({ verbose: true });
-      const canCapture = (sq: string) => legal.some((m) => m.to === sq && m.captured);
-      const capturerType = (sq: string): string => {
-        const mv = legal.find((m) => m.to === sq && m.captured);
-        return mv ? mv.piece : 'p';
-      };
-      const defendersOf = (sq: string) => (c as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(sq, mover);
-      const attackersOf = (sq: string) => (c as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(sq, enemy);
-      // 1. A hanging NON-moved piece worth more than the moved one (the real cost when a
-      //    move ignores an existing threat, e.g. Bxa5 while the queen is en prise).
-      let hang: { type: string; attacker: string; value: number } | null = null;
-      for (const row of (c as unknown as { board(): ({ square: string; type: string; color: string } | null)[][] }).board()) {
-        for (const cell of row) {
-          if (!cell || cell.color !== mover || cell.type === 'k' || cell.square === played.to) continue;
-          const attackers = attackersOf(cell.square);
-          if (!attackers.length || !canCapture(cell.square)) continue;
-          const defenders = defendersOf(cell.square);
-          const cheap = Math.min(...attackers.map((sq) => PIECE_VAL[((c as unknown as { get(s: string): { type: string } | null }).get(sq)?.type) || 'p'] || 1));
-          if (defenders.length > 0 && cheap >= (PIECE_VAL[cell.type] || 0)) continue; // adequately defended
-          const v = PIECE_VAL[cell.type] || 0;
-          if (!hang || v > hang.value) hang = { type: cell.type, attacker: capturerType(cell.square), value: v };
-        }
-      }
-      if (hang && hang.value >= 3) return `Your ${PIECE_NAME[hang.type]} is under attack - their ${PIECE_NAME[hang.attacker]} can take it and nothing of yours takes back.`;
-      // 2. The moved piece itself can legally be taken back (e.g. a checking piece that is
-      //    simply capturable as the check answer).
-      if (played.piece !== 'k' && canCapture(played.to)) {
-        const defenders = defendersOf(played.to);
-        const attackers = attackersOf(played.to);
-        const cheap = Math.min(...attackers.map((sq) => PIECE_VAL[((c as unknown as { get(s: string): { type: string } | null }).get(sq)?.type) || 'p'] || 1));
-        if (defenders.length === 0 || cheap < (PIECE_VAL[played.piece] || 0)) {
-          return `Your ${PIECE_NAME[played.piece]} could just be taken by their ${PIECE_NAME[capturerType(played.to)]}.`;
-        }
-      }
-      return null;
+      const legal = c.moves({ verbose: true }).filter((m) => m.captured && m.captured !== 'k')
+        .sort((a, b) => (PIECE_VAL[b.captured!] ?? 0) - (PIECE_VAL[a.captured!] ?? 0));
+      const capture = legal[0];
+      if (!capture || (PIECE_VAL[capture.captured!] ?? 0) < 3) return null;
+      const owner = p.isUser ? 'Your' : `${review?.meta.opponent ?? 'The opponent'}'s`;
+      const enemy = p.isUser ? 'their' : 'your';
+      return `${owner} ${PIECE_NAME[capture.captured!]} is under attack: ${enemy} ${PIECE_NAME[capture.piece]} can legally capture it with ${capture.san}. That alone does not prove the exchange is bad.`;
     } catch { return null; }
   };
   /** What the engine's pick accomplishes, stated only when mechanically true: a capture names
@@ -322,12 +290,12 @@ export default function ReviewPage() {
         const biggest = victims.sort((a, b) => b.value - a.value)[0];
         return biggest
           ? `${p.bestMoveSan} takes their ${PIECE_NAME[mv.captured]} and ends the attack on your ${PIECE_NAME[biggest.type]}.`
-          : `${p.bestMoveSan} wins their ${PIECE_NAME[mv.captured]}.`;
+          : `${p.bestMoveSan} captures their ${PIECE_NAME[mv.captured]}.`;
       }
       // quiet move: was the moved piece under attack before?
       const before = new ChessFacts(p.fenBefore);
       const attackers = (before as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(mv.from, enemy);
-      if (attackers.length && mv.piece !== 'k') return `${p.bestMoveSan} gets your ${PIECE_NAME[mv.piece]} out of danger.`;
+      if (attackers.length && mv.piece !== 'k' && !(c as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(mv.to, enemy).length) return `${p.bestMoveSan} gets your ${PIECE_NAME[mv.piece]} out of danger.`;
       return null;
     } catch { return null; }
   };

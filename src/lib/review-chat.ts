@@ -11,6 +11,7 @@
  */
 export type ReviewChatContext = {
   fen: string;
+  practice?: boolean;
   plyNumber: number;        // 0 = starting position, otherwise 1-based ply being viewed
   totalPlies: number;
   san: string | null;       // SAN of the move at this ply (null at the start)
@@ -39,6 +40,7 @@ export function getReviewChatContext(): ReviewChatContext | null {
  *  is outside the bounded move-help intents (caller falls through to the
  *  normal chat path). Never calls the network. */
 export function reviewMoveHelp(message: string, ctx: ReviewChatContext): string | null {
+  if (ctx.practice) return 'You are on the practice board now. Tap a piece and its destination to try the move; the board will check it. I will not grade a position you have not played yet.';
   const m = message.toLowerCase();
   const where = ctx.plyNumber === 0
     ? `the starting position of your game vs ${ctx.opponent}`
@@ -51,7 +53,7 @@ export function reviewMoveHelp(message: string, ctx: ReviewChatContext): string 
 
   if (asksBest) {
     if (ctx.suppressed) return `The engine read is shaky at this exact position, so I won't name a best move from it. Step a move or two either way and the picture is usually clearer.`;
-    if (ctx.bestMoveSan) return `The engine's pick here was ${ctx.bestMoveSan}. When the review reaches the end, Fix your mistakes lets you play it out on the board.`;
+    if (ctx.bestMoveSan) return `For the move just reviewed (${ctx.san}), the stored engine pick was ${ctx.bestMoveSan}. This is about that move, not a new search of the current board.`;
     return `There's no engine pick stored for this position.`;
   }
   if (asksWhy) {
@@ -67,7 +69,7 @@ export function reviewMoveHelp(message: string, ctx: ReviewChatContext): string 
     return `No grade is stored for this position.`;
   }
   if (asksWhere) {
-    return `You're at ${where} - ${ctx.plyNumber} of ${ctx.totalPlies} plies in. ${ctx.atEnd ? 'That is the final position.' : 'Keep stepping through, or hit play to run the rest.'}`;
+    return `You're at ${where} - ${ctx.plyNumber} of ${ctx.totalPlies} plies in. ${ctx.atEnd ? 'That is the final position.' : 'Keep stepping through, or hit play to run the rest.'} ${ctx.atEnd ? '' : `${ctx.fen.split(' ')[1] === 'w' ? 'White' : 'Black'} to move.`}`;
   }
   return null;
 }
