@@ -361,6 +361,7 @@ export default function ReviewPage() {
                 if (ply.terminal === 'draw') return <p className="review-sub">Scorecard: DRAW - the game finished level; no winning chances remain.</p>;
                 if (ply.mateInAfter != null) return <p className="review-sub">Scorecard: the engine reads mate in {Math.abs(ply.mateInAfter)} for {ply.mover === review.meta.userColor ? 'you' : review.meta.opponent} - an engine read, not yet on the board, so no percentage.</p>;
                 if (e.userPct == null) return null;
+                if (e.unstable) return <p className="review-sub">Scorecard: leans {e.userPct}% your way - but the engine's read swung sharply around this move, and at capped depth sharp positions read unstably, so treat this number with extra caution.</p>;
                 return <p className="review-sub">Scorecard: leans {e.userPct}% your way{e.delta != null && e.delta !== 0 ? ` (${e.delta > 0 ? '+' : ''}${e.delta} after that move)` : ''}.</p>;
               })()}
               {!ply.terminal && ply.bestMoveSan && ply.bestMoveSan !== ply.san && <>

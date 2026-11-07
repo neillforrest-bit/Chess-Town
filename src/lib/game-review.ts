@@ -196,15 +196,19 @@ export function whiteWinPct(cp: number | null): number | null {
   return Math.round(50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1));
 }
 
-export type ScorecardEntry = { ply: ReviewedPly; userPct: number | null; delta: number | null };
+export type ScorecardEntry = { ply: ReviewedPly; userPct: number | null; delta: number | null; unstable: boolean };
 /** Per-move scorecard from the USER's perspective: winning-chance estimate after each ply
  *  and the shift that move caused. Terminal plies are chess.js-proven facts: delivered mate
  *  reads 100/0, a drawn game reads null (settled, no number). An engine-READ mate (not on
- *  the board) shows no percentage - the UI names it as an engine read instead. */
+ *  the board) shows no percentage - the UI names it as an engine read instead.
+ *  delta compares only with the immediately preceding ply's reading (never an older one).
+ *  unstable: the measured loss at THIS node contradicts the node-to-node swing (a big-graded
+ *  loss whose mover's reading rose, or a best-graded move whose reading crashed) - a known
+ *  capped-depth artifact in sharp positions, so the UI shows a caution instead of a delta. */
 export function scorecard(review: ReviewedGame): ScorecardEntry[] {
   const userMover = review.meta.userColor; // 'w' | 'b'
   const out: ScorecardEntry[] = [];
-  let prev = 50;
+  let prev: number | null = 50;
   for (const p of review.plies) {
     let pct: number | null;
     if (p.terminal === 'mate') pct = p.mover === userMover ? 100 : 0;
@@ -214,9 +218,15 @@ export function scorecard(review: ReviewedGame): ScorecardEntry[] {
       const w = whiteWinPct(p.whiteCpAfter);
       pct = w == null ? null : userMover === 'w' ? w : 100 - w;
     }
-    const delta = pct != null ? pct - prev : null;
-    out.push({ ply: p, userPct: pct, delta });
-    if (pct != null) prev = pct;
+    const delta = pct != null && prev != null ? pct - prev : null;
+    let unstable = false;
+    if (delta != null && p.evalDelta != null) {
+      const moverDelta = p.mover === userMover ? delta : -delta;
+      if (p.evalDelta >= 150 && moverDelta > 8) unstable = true;
+      if (p.evalDelta <= 30 && moverDelta < -25) unstable = true;
+    }
+    out.push({ ply: p, userPct: pct, delta: unstable ? null : delta, unstable });
+    prev = pct;
   }
   return out;
 }
