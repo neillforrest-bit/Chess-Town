@@ -10,6 +10,7 @@ import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type ParsedMove } from '@/lib/chesscom';
 import { buildOpponentRows, userRapidTrajectory, type OpponentRow } from '@/lib/opponent-stats';
+import { publishReviewChatContext, clearReviewChatContext } from '@/lib/review-chat';
 import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, scorecard as scorecardFor, playerMeasure, verdictFor, type ReviewedGame, type ReviewedPly, type ScorecardEntry } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
@@ -208,6 +209,29 @@ export default function ReviewPage() {
 
   const ply: ReviewedPly | null = review && review.plies.length ? review.plies[Math.max(0, Math.min(walkIdx, review.plies.length - 1))] : null;
   const startFen = review && review.plies.length ? review.plies[0].fenBefore : null;
+
+  // Publish the position being viewed so Chester chat can answer bounded move-help
+  // questions offline (no paid call). Cleared when leaving the review.
+  useEffect(() => {
+    if (!review || !review.plies.length) { clearReviewChatContext(); return; }
+    const p = walkIdx >= 0 ? review.plies[walkIdx] : null;
+    const unstable = walkIdx >= 0 ? !!sc[walkIdx]?.unstable : false;
+    publishReviewChatContext({
+      fen: p ? p.fenAfter : review.plies[0].fenBefore,
+      plyNumber: walkIdx + 1,
+      totalPlies: review.plies.length,
+      san: p?.san ?? null,
+      isUserMove: !!p?.isUser,
+      suppressed: unstable,
+      gradeLabel: p && !unstable ? measuredLabel(p) : null,
+      bestMoveSan: p && !unstable ? p.bestMoveSan : null,
+      why: p && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? whyFor(p) : null,
+      opponent: review.meta.opponent ?? 'your opponent',
+      atEnd: walkIdx >= review.plies.length - 1,
+    });
+    return () => clearReviewChatContext();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walkIdx, review, sc]);
 
   // Highlight playback: advance about 1.2s per move until the final position, then stop.
   useEffect(() => {

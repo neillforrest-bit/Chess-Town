@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { askChesterChat } from '@/app/actions';
 import { chesterOfflineChat } from '@/lib/chester-voice';
+import { getReviewChatContext, reviewMoveHelp } from '@/lib/review-chat';
 import GlobalNav from '@/components/GlobalNav';
 import BuildBadge from '@/components/BuildBadge';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
@@ -24,7 +25,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setMessages((current) => [...current, { role: 'user', text: message }]);
     setThinking(true);
     try {
-      const reply = await askChesterChat(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
+      // Bounded move help while a review position is on screen: answer offline, no paid call.
+      const reviewCtx = getReviewChatContext();
+      const offline = reviewCtx ? reviewMoveHelp(message, reviewCtx) : null;
+      const reply = offline ?? await askChesterChat(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
       const text = reply && !/messenger|delayed|unavailable/i.test(reply)
         ? reply
         : chesterOfflineChat(message, { persona: 'INTERMEDIATE', historyCount: messages.length });
