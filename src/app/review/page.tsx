@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
-import { fetchArchives, fetchMonth, parseGamePgn, type CcGame, type ParsedMove } from '@/lib/chesscom';
+import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type ParsedMove } from '@/lib/chesscom';
 import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
@@ -18,9 +18,10 @@ type Stage = 'pick' | 'analyzing' | 'report';
 function fmtDate(unix: number) {
   return new Date(unix * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
-function fmtCp(cp: number | null): string {
+/** evalDelta is a positive loss magnitude (cp) - bigger means the move was worse. */
+function fmtLoss(cp: number | null): string {
   if (cp == null) return '';
-  return `${cp > 0 ? '+' : ''}${(cp / 100).toFixed(1)}`;
+  return `-${(cp / 100).toFixed(1)}`;
 }
 function gradeChip(p: ReviewedPly): { label: string; bad: boolean } {
   const bad = p.classification === 'MISTAKE' || p.classification === 'BLUNDER';
@@ -161,7 +162,7 @@ export default function ReviewPage() {
         {shownGames.map((g) => <button key={g.url} className="lab-card" onClick={() => startAnalysis(g)}>
           <small>{fmtDate(g.endTime)} · {g.timeClass} {g.timeControl} · {g.ecoName || 'Unknown opening'}</small>
           <b>{g.userColor === 'w' ? 'White' : 'Black'} vs {g.opponent}{g.opponentRating ? ` (${g.opponentRating})` : ''}</b>
-          <span>{g.result === 'win' ? 'You won' : g.result === 'loss' ? 'You lost' : 'Draw'}{g.termination ? ` - ${g.termination.replace(/^(Neilli\w+|\S+) won /, 'won ')}` : ''}</span>
+          <span>{g.result === 'win' ? 'You won' : g.result === 'loss' ? 'You lost' : 'Draw'} {endPhrase(g.termination)}</span>
           {analyzed.includes(g.url) ? <span className="lab-meta">ANALYZED - tap to open</span> : null}
         </button>)}
       </section>}
@@ -188,7 +189,7 @@ export default function ReviewPage() {
         </div>
         <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
           {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional ? ' (unconfirmed)' : ''}
-          {ply.evalDelta != null && ply.evalDelta < -30 ? ` · engine read ${fmtCp(ply.evalDelta)}` : ''}
+          {ply.evalDelta != null && ply.evalDelta > 30 ? ` · engine read ${fmtLoss(ply.evalDelta)}` : ''}
           {ply.bestMoveSan && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER' || ply.classification === 'INACCURACY') ? ` · better: ${ply.bestMoveSan}` : ''}
         </div>
         {ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
@@ -216,7 +217,7 @@ export default function ReviewPage() {
         <h2 className="review-h2">Where the game turned</h2>
         {tps.map((tp) => <button key={tp.ply.ply} className="lab-card" onClick={() => { setWalkIdx(tp.ply.ply - 1); setRetryMode(null); }}>
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
-          <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtCp(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
+          <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
             ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'}. Tap to stand at that moment and try it yourself.`
             : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>

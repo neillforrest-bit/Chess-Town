@@ -23,6 +23,15 @@ export type CcGame = {
 
 export type ParsedMove = { ply: number; san: string; uci: string; fenBefore: string; fenAfter: string; clkSec: number | null; mover: 'w' | 'b' };
 
+/** Short honest end phrase from the PGN Termination header, e.g. "by checkmate". */
+export function endPhrase(termination: string): string {
+  const m = termination.match(/by (checkmate|resignation|stalemate|repetition|timeout|insufficient material)/i);
+  if (m) return `by ${m[1].toLowerCase()}`;
+  if (/on time/i.test(termination)) return 'on time';
+  if (/abandoned/i.test(termination)) return '- game abandoned';
+  return '';
+}
+
 function resultFor(userResult: string): CcGame['result'] {
   if (userResult === 'win') return 'win';
   // Chess.com loss codes: checkmated, resigned, timeout, abandoned, lose...
@@ -33,8 +42,9 @@ function resultFor(userResult: string): CcGame['result'] {
 function ecoNameFromUrl(eco: unknown): string | null {
   if (typeof eco !== 'string' || !eco.includes('/openings/')) return null;
   const slug = eco.split('/openings/')[1] || '';
-  const name = decodeURIComponent(slug).replace(/-/g, ' ').replace(/\d+$/, '').trim();
-  return name || null;
+  const name = decodeURIComponent(slug).replace(/-/g, ' ').trim();
+  if (!name || /undefined/i.test(name)) return null;
+  return name;
 }
 
 export async function fetchArchives(username: string): Promise<string[]> {

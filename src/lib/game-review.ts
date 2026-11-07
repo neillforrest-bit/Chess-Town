@@ -99,11 +99,11 @@ export function turningPoints(review: ReviewedGame, cap = 5): TurningPoint[] {
   const pts: TurningPoint[] = [];
   for (let i = 0; i < review.plies.length; i++) {
     const p = review.plies[i];
-    if (p.evalDelta == null || p.evalDelta > -150) continue;
+    if (p.evalDelta == null || p.evalDelta < 150) continue;
     pts.push({ ply: p, kind: p.isUser ? 'missed' : 'thrown', prev: i > 0 ? review.plies[i - 1] : null });
   }
   return pts
-    .sort((a, b) => (a.ply.evalDelta ?? 0) - (b.ply.evalDelta ?? 0))
+    .sort((a, b) => (b.ply.evalDelta ?? 0) - (a.ply.evalDelta ?? 0))
     .slice(0, cap)
     .sort((a, b) => a.ply.ply - b.ply.ply);
 }
