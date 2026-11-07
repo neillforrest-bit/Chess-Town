@@ -43,6 +43,7 @@ export default function ReviewPage() {
   // Game walker state (report)
   const [walkIdx, setWalkIdx] = useState(0);   // index into plies: which move is shown
   const [retryMode, setRetryMode] = useState<null | 'ask' | 'miss' | 'shown'>(null);
+  const [retryFen, setRetryFen] = useState<string | null>(null); // board override while retrying
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
 
@@ -117,15 +118,24 @@ export default function ReviewPage() {
   const tryRetry = (from: string, to: string, promotion?: string) => {
     if (!ply || !ply.bestMoveSan || (retryMode !== 'ask' && retryMode !== 'miss')) return;
     try {
-      const before = new Chess(ply.fenBefore);
+      const before = new Chess(retryFen ?? ply.fenBefore);
       before.move({ from, to, promotion });
       const played = before.history({ verbose: true }).pop();
       const bestHist = new Chess(ply.fenBefore);
       bestHist.move(ply.bestMoveSan);
       const best = bestHist.history({ verbose: true }).pop();
-      if (played && best && played.from === best.from && played.to === best.to) setRetryMode('shown');
+      if (played && best && played.from === best.from && played.to === best.to) { setRetryFen(before.fen()); setRetryMode('shown'); }
       else setRetryMode('miss');
     } catch { /* illegal tap */ }
+  };
+  const showBest = () => {
+    if (!ply?.bestMoveSan) return;
+    try {
+      const c = new Chess(ply.fenBefore);
+      c.move(ply.bestMoveSan);
+      setRetryFen(c.fen());
+    } catch { /* keep position */ }
+    setRetryMode('shown');
   };
 
   const resultWord = review ? (review.meta.result === 'win' ? 'You won' : review.meta.result === 'loss' ? 'You lost' : 'Draw') : '';
@@ -181,11 +191,11 @@ export default function ReviewPage() {
       </section>
 
       <section className="review-walk">
-        <TapBoard fen={ply.fenAfter} orientation={review.meta.userColor} locked={retryMode === null} lastMove={lastFromTo} label="Game position" onMove={retryMode ? tryRetry : undefined} />
+        <TapBoard fen={retryFen ?? (retryMode ? ply.fenBefore : ply.fenAfter)} orientation={review.meta.userColor} locked={retryMode === null} lastMove={retryMode ? null : lastFromTo} label="Game position" onMove={retryMode ? tryRetry : undefined} />
         <div className="review-walkbar">
-          <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.max(0, i - 1)); setRetryMode(null); }} disabled={walkIdx <= 0}>◀ Back</button>
+          <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.max(0, i - 1)); setRetryMode(null); setRetryFen(null); }} disabled={walkIdx <= 0}>◀ Back</button>
           <span className="review-walkpos">{Math.ceil(ply.ply / 2)}. {ply.mover === 'w' ? '' : '…'}{ply.san}</span>
-          <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.min(review.plies.length - 1, i + 1)); setRetryMode(null); }} disabled={walkIdx >= review.plies.length - 1}>Next ▶</button>
+          <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.min(review.plies.length - 1, i + 1)); setRetryMode(null); setRetryFen(null); }} disabled={walkIdx >= review.plies.length - 1}>Next ▶</button>
         </div>
         <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
           {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional ? ' (unconfirmed)' : ''}
@@ -194,15 +204,15 @@ export default function ReviewPage() {
         </div>
         {ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
         {ply.isUser && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER') && retryMode === null &&
-          <button className="lab-btn lab-btn--go" onClick={() => setRetryMode('ask')}>Try the position yourself</button>}
+          <button className="lab-btn lab-btn--go" onClick={() => { setRetryMode('ask'); setRetryFen(null); }}>Try the position yourself</button>}
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
-        {retryMode === 'miss' && <button className="lab-btn" onClick={() => setRetryMode('shown')}>Show me</button>}
+        {retryMode === 'miss' && <button className="lab-btn" onClick={showBest}>Show me</button>}
         {retryMode === 'shown' && <p className="review-sub review-sub--good">The engine liked <b>{ply.bestMoveSan}</b> here.{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} That is one engine's line at capped depth - a strong suggestion, not the only answer.</p>}
         <div className="review-traj" aria-hidden="true">
           {review.plies.map((p, i) => {
             const cp = p.whiteCpAfter == null ? (p.mateInAfter != null ? (p.mateInAfter > 0 === (p.mover === 'w') ? 1200 : -1200) : 0) : Math.max(-1200, Math.min(1200, p.whiteCpAfter));
-            return <button key={i} className={`review-traj__bar${i === walkIdx ? ' review-traj__bar--on' : ''}${p.isUser && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? ' review-traj__bar--bad' : ''}`} style={{ height: `${4 + Math.abs(cp) / 24}px`, background: i === walkIdx ? '#ffd84d' : cp >= 0 ? '#7ef29a' : '#ff7b7b' }} onClick={() => { setWalkIdx(i); setRetryMode(null); }} aria-label={`Move ${Math.ceil(p.ply / 2)}`} />;
+            return <button key={i} className={`review-traj__bar${i === walkIdx ? ' review-traj__bar--on' : ''}${p.isUser && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? ' review-traj__bar--bad' : ''}`} style={{ height: `${4 + Math.abs(cp) / 24}px`, background: i === walkIdx ? '#ffd84d' : cp >= 0 ? '#7ef29a' : '#ff7b7b' }} onClick={() => { setWalkIdx(i); setRetryMode(null); setRetryFen(null); }} aria-label={`Move ${Math.ceil(p.ply / 2)}`} />;
           })}
         </div>
       </section>
@@ -215,7 +225,7 @@ export default function ReviewPage() {
 
       {tps.length > 0 && <section>
         <h2 className="review-h2">Where the game turned</h2>
-        {tps.map((tp) => <button key={tp.ply.ply} className="lab-card" onClick={() => { setWalkIdx(tp.ply.ply - 1); setRetryMode(null); }}>
+        {tps.map((tp) => <button key={tp.ply.ply} className="lab-card" onClick={() => { setWalkIdx(tp.ply.ply - 1); setRetryMode(null); setRetryFen(null); }}>
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
           <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
