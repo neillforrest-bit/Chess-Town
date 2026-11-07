@@ -185,6 +185,70 @@ export function clockReport(review: ReviewedGame): ClockReport {
   };
 }
 
+/** Engine winning-chance estimate from a white-absolute centipawn eval, via the formula
+ *  Lichess publishes on https://lichess.org/page/accuracy (fitted to real game data).
+ *  Semantics kept honest wherever shown: an engine-standpoint estimate assuming
+ *  engine-level play from here; a balanced position reads 50/50 with draws folded in.
+ *  NOT an empirical win probability for club players. */
+export function whiteWinPct(cp: number | null): number | null {
+  if (cp == null) return null;
+  const c = Math.max(-1500, Math.min(1500, cp));
+  return Math.round(50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1));
+}
+
+export type ScorecardEntry = { ply: ReviewedPly; userPct: number | null; delta: number | null };
+/** Per-move scorecard from the USER's perspective: winning-chance estimate after each ply
+ *  and the shift that move caused. Terminal plies are chess.js-proven facts: delivered mate
+ *  reads 100/0, a drawn game reads null (settled, no number). An engine-READ mate (not on
+ *  the board) shows no percentage - the UI names it as an engine read instead. */
+export function scorecard(review: ReviewedGame): ScorecardEntry[] {
+  const userMover = review.meta.userColor; // 'w' | 'b'
+  const out: ScorecardEntry[] = [];
+  let prev = 50;
+  for (const p of review.plies) {
+    let pct: number | null;
+    if (p.terminal === 'mate') pct = p.mover === userMover ? 100 : 0;
+    else if (p.terminal === 'draw') pct = null;
+    else if (p.mateInAfter != null) pct = null;
+    else {
+      const w = whiteWinPct(p.whiteCpAfter);
+      pct = w == null ? null : userMover === 'w' ? w : 100 - w;
+    }
+    const delta = pct != null ? pct - prev : null;
+    out.push({ ply: p, userPct: pct, delta });
+    if (pct != null) prev = pct;
+  }
+  return out;
+}
+
+export type PlayerMeasure = { graded: number; avgLossCp: number | null; blunders: number; mistakes: number };
+/** Plain measured numbers per player: average engine-read loss (cp) over graded, non-terminal
+ *  moves, plus blunder/mistake counts. No conversion to any rating scale. */
+export function playerMeasure(review: ReviewedGame, isUser: boolean): PlayerMeasure {
+  const mine = review.plies.filter((p) => p.isUser === isUser);
+  const scored = mine.filter((p) => p.evalDelta != null && !p.terminal);
+  return {
+    graded: scored.length,
+    avgLossCp: scored.length ? Math.round(scored.reduce((a, p) => a + (p.evalDelta ?? 0), 0) / scored.length) : null,
+    blunders: mine.filter((p) => p.classification === 'BLUNDER').length,
+    mistakes: mine.filter((p) => p.classification === 'MISTAKE').length,
+  };
+}
+
+/** Cheeky closing verdict keyed ONLY to the measured numbers shown beside it. The endpoint
+ *  phrases are the user's own requested scale; the middle rungs are flavour keyed to loss
+ *  bands, not a quantitative claim. */
+export function verdictFor(m: PlayerMeasure): string {
+  const cp = m.avgLossCp;
+  if (cp == null) return 'not enough measured moves to call it';
+  if (cp <= 45 && m.blunders === 0) return 'ok, time to take on the grand masters';
+  if (cp <= 75) return 'clean game - proper club chess';
+  if (cp <= 110) return 'solid - a few wobbles, mostly controlled';
+  if (cp <= 150) return 'getting there - the ideas are fine, the gifts are the problem';
+  if (cp <= 200) return 'generous today - too many pieces given away';
+  return 'hm is this your first game?';
+}
+
 export function classCounts(review: ReviewedGame): { label: string; n: number }[] {
   const user = review.plies.filter((p) => p.isUser);
   const measured = (c: EngineTelemetry['classification']) =>

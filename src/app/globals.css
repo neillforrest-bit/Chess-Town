@@ -3764,3 +3764,7 @@ body:has(.chester-game) .global-nav,body:has(.chester-game) .chester-fab { displ
 .review-traj__bar { flex: 1 0 3px; min-width: 3px; border: none; border-radius: 1px; padding: 0; cursor: pointer; opacity: .8; }
 .review-traj__bar--on { opacity: 1; outline: 1px solid #ffd84d; }
 .review-traj__bar--bad { outline: 1px dashed #ff7b7b; }
+.review-select { width: 100%; background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.2); border-radius: 10px; padding: .55rem .7rem; color: #e8eef2; font-size: .85rem; margin-bottom: .6rem; appearance: auto; }
+.review-select option { background: #10161d; color: #e8eef2; }
+.review-filters { display: flex; gap: .5rem; }
+.review-filters .review-select { flex: 1; min-width: 0; }

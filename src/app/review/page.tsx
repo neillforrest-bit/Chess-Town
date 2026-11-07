@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type ParsedMove } from '@/lib/chesscom';
-import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
+import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, scorecard as scorecardFor, playerMeasure, verdictFor, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
 import { Chess as ChessFacts } from 'chess.js';
@@ -55,9 +55,12 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState(false);
   const [analyzed, setAnalyzed] = useState<string[]>([]);
   // Game walker state (report)
-  const [walkIdx, setWalkIdx] = useState(0);   // index into plies: which move is shown
+  const [walkIdx, setWalkIdx] = useState(-1);  // index into plies; -1 = starting position
   const [retryMode, setRetryMode] = useState<null | 'ask' | 'miss' | 'shown'>(null);
   const [retryFen, setRetryFen] = useState<string | null>(null); // board override while retrying
+  const [playing, setPlaying] = useState(false);                 // highlight playback
+  const [cwhd, setCwhd] = useState(false);                       // 'Chester would have done' reveal
+  const [resultFilter, setResultFilter] = useState<'all' | 'win' | 'loss' | 'draw'>('all');
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
 
@@ -75,7 +78,7 @@ export default function ReviewPage() {
     setBusy(false);
   };
   const loadMonth = async (url: string) => {
-    setBusy(true); setError(''); setPickedMonth(url); setOpponentFilter(null);
+    setBusy(true); setError(''); setPickedMonth(url); setOpponentFilter(null); setResultFilter('all');
     try { setGames(await fetchMonth(url, username)); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load that month.'); }
     setBusy(false);
@@ -84,7 +87,7 @@ export default function ReviewPage() {
   const startAnalysis = async (game: CcGame) => {
     setError('');
     const cached = loadReviews().find((r) => r.gameUrl === game.url);
-    if (cached) { setReview(cached); setWalkIdx(cached.plies.length - 1); setStage('report'); return; }
+    if (cached) { setReview(cached); setWalkIdx(-1); setStage('report'); return; }
     const moves: ParsedMove[] = parseGamePgn(game.pgn);
     if (moves.length < 4) { setError('That game was too short to review.'); return; }
     setStage('analyzing'); setProgress({ done: 0, total: moves.length });
@@ -110,7 +113,7 @@ export default function ReviewPage() {
           recordMillMistake({ fenBefore: p.fenBefore, bestMove: p.bestMoveSan, move: p.san, classification: p.classification, evalDelta: p.evalDelta, provisional: false, src: 'review' });
         } catch { /* second read failed: skip, do not bank */ }
       }
-      if (mounted.current) { setReview(done); setWalkIdx(done.plies.length - 1); setStage('report'); }
+      if (mounted.current) { setReview(done); setWalkIdx(-1); setStage('report'); }
     } catch {
       if (mounted.current) { setError('The engine stalled on that game - try another one.'); setStage('pick'); }
     }
@@ -121,13 +124,34 @@ export default function ReviewPage() {
     for (const g of games) m.set(g.opponent, (m.get(g.opponent) || 0) + 1);
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   }, [games]);
-  const shownGames = opponentFilter ? games.filter((g) => g.opponent === opponentFilter) : games;
+  const shownGames = games.filter((g) =>
+    (opponentFilter ? g.opponent === opponentFilter : true) &&
+    (resultFilter === 'all' ? true : g.result === resultFilter));
 
   const tps = useMemo(() => (review ? turningPoints(review) : []), [review]);
   const clock = useMemo(() => (review ? clockReport(review) : null), [review]);
   const counts = useMemo(() => (review ? classCounts(review) : []), [review]);
+  const sc = useMemo(() => (review ? scorecardFor(review) : []), [review]);
+  const measures = useMemo(() => (review ? { user: playerMeasure(review, true), opp: playerMeasure(review, false) } : null), [review]);
 
-  const ply: ReviewedPly | null = review && review.plies.length ? review.plies[Math.min(walkIdx, review.plies.length - 1)] : null;
+  const ply: ReviewedPly | null = review && review.plies.length ? review.plies[Math.max(0, Math.min(walkIdx, review.plies.length - 1))] : null;
+  const startFen = review && review.plies.length ? review.plies[0].fenBefore : null;
+
+  // Highlight playback: advance about 1.2s per move until the final position, then stop.
+  useEffect(() => {
+    if (!playing || !review) return;
+    if (walkIdx >= review.plies.length - 1) { setPlaying(false); return; }
+    const t = setTimeout(() => { setWalkIdx((i) => Math.min(review.plies.length - 1, i + 1)); setRetryMode(null); setRetryFen(null); setCwhd(false); }, 1200);
+    return () => clearTimeout(t);
+  }, [playing, walkIdx, review]);
+  /** Manual navigation always pauses playback and clears any retry state. */
+  const goTo = (i: number) => { setWalkIdx(i); setRetryMode(null); setRetryFen(null); setCwhd(false); setPlaying(false); };
+  const togglePlay = () => {
+    if (!review) return;
+    if (playing) { setPlaying(false); return; }
+    if (walkIdx >= review.plies.length - 1) { setWalkIdx(-1); setRetryMode(null); setRetryFen(null); setCwhd(false); }
+    setPlaying(true);
+  };
   const walkChess = useMemo(() => (ply ? new Chess(ply.fenAfter) : null), [ply]);
   const lastFromTo = useMemo(() => {
     if (!walkChess || !ply) return null;
@@ -252,31 +276,41 @@ export default function ReviewPage() {
     <header className="review-head">
       <Link href="/learn" className="review-back">← Lessons</Link>
       <h1>Game Review</h1>
-      <p className="review-sub">Your real Chess.com games, walked move by move. Pulled from Chess.com's public archive (no login); the analysis runs in this browser and reviews are saved on this device only.</p>
     </header>
 
     {error ? <p className="review-error">{error}</p> : null}
 
     {stage === 'pick' && <>
+      <p className="review-sub">Your real Chess.com games, walked move by move. Pulled from Chess.com's public archive (no login); the analysis runs in this browser and reviews are saved on this device only.</p>
       <div className="review-row">
         <input className="review-input" value={username} onChange={(e) => setUsername(e.target.value)} aria-label="Chess.com username" placeholder="Chess.com username" />
         <button className="lab-btn lab-btn--go" onClick={loadArchives} disabled={busy || !username.trim()}>Find games</button>
       </div>
       {archives.length > 0 && <section>
         <h2 className="review-h2">Pick a month</h2>
-        <div className="review-months">
-          {archives.slice(0, 12).map((u) => {
+        <select className="review-select" value={pickedMonth ?? ''} onChange={(e) => { if (e.target.value) loadMonth(e.target.value); }} disabled={busy} aria-label="Month">
+          <option value="" disabled>Choose a month…</option>
+          {archives.map((u) => {
             const label = u.split('/').slice(-2).reverse().join('/');
-            return <button key={u} className={`lab-btn${pickedMonth === u ? ' lab-btn--go' : ''}`} onClick={() => loadMonth(u)} disabled={busy}>{label}</button>;
+            return <option key={u} value={u}>{label}</option>;
           })}
-        </div>
+        </select>
       </section>}
       {games.length > 0 && <section>
-        <h2 className="review-h2">Pick a game {pickedMonth ? `- ${games.length} found` : ''}</h2>
-        {opponents.length > 1 && <div className="review-months">
-          <button className={`lab-btn${!opponentFilter ? ' lab-btn--go' : ''}`} onClick={() => setOpponentFilter(null)}>Everyone</button>
-          {opponents.map(([name, n]) => <button key={name} className={`lab-btn${opponentFilter === name ? ' lab-btn--go' : ''}`} onClick={() => setOpponentFilter(name)}>{name} ({n})</button>)}
-        </div>}
+        <h2 className="review-h2">Pick a game {pickedMonth ? `- ${shownGames.length === games.length ? `${games.length} found` : `${shownGames.length} shown`}` : ''}</h2>
+        <div className="review-filters">
+          {opponents.length > 1 && <select className="review-select" value={opponentFilter ?? ''} onChange={(e) => setOpponentFilter(e.target.value || null)} aria-label="Opponent">
+            <option value="">Everyone ({games.length})</option>
+            {opponents.map(([name, n]) => <option key={name} value={name}>{name} ({n})</option>)}
+          </select>}
+          <select className="review-select" value={resultFilter} onChange={(e) => setResultFilter(e.target.value as 'all' | 'win' | 'loss' | 'draw')} aria-label="Result">
+            <option value="all">All results</option>
+            <option value="win">Wins</option>
+            <option value="loss">Losses</option>
+            <option value="draw">Draws</option>
+          </select>
+        </div>
+        {shownGames.length === 0 && <p className="review-sub">No games match those filters.</p>}
         {shownGames.map((g) => <button key={g.url} className="lab-card" onClick={() => startAnalysis(g)}>
           <small>{fmtDate(g.endTime)} · {g.timeClass} {g.timeControl} · {g.ecoName || 'Unknown opening'}</small>
           <b>{g.userColor === 'w' ? 'White' : 'Black'} vs {g.opponent}{g.opponentRating ? ` (${g.opponentRating})` : ''}</b>
@@ -299,19 +333,49 @@ export default function ReviewPage() {
       </section>
 
       <section className="review-walk">
-        <TapBoard fen={retryFen ?? (retryMode ? ply.fenBefore : ply.fenAfter)} orientation={review.meta.userColor} locked={retryMode === null} lastMove={retryMode ? null : lastFromTo} label="Game position" onMove={retryMode ? tryRetry : undefined} />
+        <TapBoard fen={retryFen ?? (retryMode ? ply.fenBefore : walkIdx < 0 && startFen ? startFen : ply.fenAfter)} orientation={review.meta.userColor} locked={retryMode === null} lastMove={retryMode || walkIdx < 0 ? null : lastFromTo} label="Game position" onMove={retryMode ? tryRetry : undefined} />
         <div className="review-walkbar">
-          <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.max(0, i - 1)); setRetryMode(null); setRetryFen(null); }} disabled={walkIdx <= 0}>◀ Back</button>
-          <span className="review-walkpos">{Math.ceil(ply.ply / 2)}. {ply.mover === 'w' ? '' : '…'}{ply.san}</span>
-          <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.min(review.plies.length - 1, i + 1)); setRetryMode(null); setRetryFen(null); }} disabled={walkIdx >= review.plies.length - 1}>Next ▶</button>
+          <button className="lab-btn" onClick={() => goTo(Math.max(-1, walkIdx - 1))} disabled={walkIdx <= -1}>◀ Back</button>
+          <span className="review-walkpos">{walkIdx < 0 ? 'Start' : `${Math.ceil(ply.ply / 2)}. ${ply.mover === 'w' ? '' : '…'}${ply.san}`}</span>
+          <button className="lab-btn" onClick={() => goTo(Math.min(review.plies.length - 1, walkIdx + 1))} disabled={walkIdx >= review.plies.length - 1}>Next ▶</button>
         </div>
-        <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
+        <div className="review-walkbar">
+          <button className="lab-btn lab-btn--go" onClick={togglePlay}>{playing ? '⏸ Pause' : walkIdx >= review.plies.length - 1 ? '▶ Replay' : '▶ Play'}</button>
+          <button className="lab-btn" onClick={() => goTo(-1)} disabled={walkIdx <= -1}>⟲ Start</button>
+        </div>
+        {walkIdx < 0
+          ? <p className="review-sub">At the starting position. Press Play for the highlight, or step through with Next - pause any time to study a position with Chester.</p>
+          : playing
+            ? <p className="review-sub">Playing the highlight… hit Pause to stop on a position and study it.</p>
+            : <div>
+              <p className="review-sub"><b>Paused at move {Math.ceil(ply.ply / 2)}{ply.mover === 'b' ? '…' : ''}.</b>{' '}
+                {ply.terminal === 'mate'
+                  ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} - checkmate on the board, game over. That is a fact, not an engine grade.`
+                  : ply.terminal === 'draw'
+                    ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} and the game is drawn here. That is a fact, not an engine grade.`
+                    : `${ply.isUser ? 'Your' : `${review.meta.opponent}'s`} ${ply.san} graded ${gradeChip(ply).label}${ply.provisional ? ' (unconfirmed)' : ''}${ply.evalDelta != null && ply.evalDelta > 30 ? ` - engine read ${fmtLoss(ply.evalDelta)}` : ''}.${whyFor(ply) ? ` ${whyFor(ply)}` : ''}`}</p>
+              {(() => {
+                const e = sc[walkIdx];
+                if (!e) return null;
+                if (ply.terminal === 'mate') return <p className="review-sub">Scorecard: settled - {ply.mover === review.meta.userColor ? 'you win' : `${review.meta.opponent} wins`}. 100/0, proven by the board.</p>;
+                if (ply.terminal === 'draw') return <p className="review-sub">Scorecard: DRAW - the game finished level; no winning chances remain.</p>;
+                if (ply.mateInAfter != null) return <p className="review-sub">Scorecard: the engine reads mate in {Math.abs(ply.mateInAfter)} for {ply.mover === review.meta.userColor ? 'you' : review.meta.opponent} - an engine read, not yet on the board, so no percentage.</p>;
+                if (e.userPct == null) return null;
+                return <p className="review-sub">Scorecard: leans {e.userPct}% your way{e.delta != null && e.delta !== 0 ? ` (${e.delta > 0 ? '+' : ''}${e.delta} after that move)` : ''}.</p>;
+              })()}
+              {!ply.terminal && ply.bestMoveSan && ply.bestMoveSan !== ply.san && <>
+                <button className="lab-btn" onClick={() => setCwhd((v) => !v)}>{cwhd ? 'Hide it again' : 'Chester would have done (CWHD)'}</button>
+                {cwhd && <p className="review-sub review-sub--good">Chester would have played {ply.bestMoveSan}. {bestMovePoint(ply) || 'That is the engine\'s top line here.'}{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} One engine's read at capped depth - a strong suggestion, not the only answer.</p>}
+              </>}
+            </div>}
+        <p className="review-sub review-sub--fine">Scorecard is approximate and directional: 100 means the engine reads the game as won, 50 means balanced (draws included), 0 means lost. It comes from the engine's evaluation via the published Lichess formula - an estimate, not betting odds.</p>
+        {walkIdx >= 0 && <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
           {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional && !ply.terminal ? ' (unconfirmed)' : ''}
           {ply.evalDelta != null && ply.evalDelta > 30 ? ` · engine read ${fmtLoss(ply.evalDelta)}` : ''}
           {ply.bestMoveSan && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER' || ply.classification === 'INACCURACY') ? ` · better: ${ply.bestMoveSan}` : ''}
-        </div>
-        {ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
-        {ply.isUser && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER') && retryMode === null &&
+        </div>}
+        {walkIdx >= 0 && ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
+        {walkIdx >= 0 && !playing && ply.isUser && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER') && retryMode === null &&
           <button className="lab-btn lab-btn--go" onClick={() => { setRetryMode('ask'); setRetryFen(null); }}>Try the position yourself</button>}
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
@@ -320,7 +384,7 @@ export default function ReviewPage() {
         <div className="review-traj" aria-hidden="true">
           {review.plies.map((p, i) => {
             const cp = p.whiteCpAfter == null ? (p.mateInAfter != null ? (p.mateInAfter > 0 === (p.mover === 'w') ? 1200 : -1200) : 0) : Math.max(-1200, Math.min(1200, p.whiteCpAfter));
-            return <button key={i} className={`review-traj__bar${i === walkIdx ? ' review-traj__bar--on' : ''}${p.isUser && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? ' review-traj__bar--bad' : ''}`} style={{ height: `${4 + Math.abs(cp) / 24}px`, background: i === walkIdx ? '#ffd84d' : cp >= 0 ? '#7ef29a' : '#ff7b7b' }} onClick={() => { setWalkIdx(i); setRetryMode(null); setRetryFen(null); }} aria-label={`Move ${Math.ceil(p.ply / 2)}`} />;
+            return <button key={i} className={`review-traj__bar${i === walkIdx ? ' review-traj__bar--on' : ''}${p.isUser && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? ' review-traj__bar--bad' : ''}`} style={{ height: `${4 + Math.abs(cp) / 24}px`, background: i === walkIdx ? '#ffd84d' : cp >= 0 ? '#7ef29a' : '#ff7b7b' }} onClick={() => goTo(i)} aria-label={`Move ${Math.ceil(p.ply / 2)}`} />;
           })}
         </div>
       </section>
@@ -333,13 +397,19 @@ export default function ReviewPage() {
 
       {tps.length > 0 && <section>
         <h2 className="review-h2">Where the game turned</h2>
-        {tps.map((tp) => <button key={tp.ply.ply} className="lab-card" onClick={() => { setWalkIdx(tp.ply.ply - 1); setRetryMode(null); setRetryFen(null); }}>
+        {tps.map((tp) => <button key={tp.ply.ply} className="lab-card" onClick={() => goTo(tp.ply.ply - 1)}>
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
           <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
             ? [whyFor(tp.ply), bestMovePoint(tp.ply) || (!whyFor(tp.ply) ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.` : null)].filter(Boolean).join(' ') + ' Tap to stand at that moment and try it yourself.'
             : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>
         </button>)}
+      </section>}
+
+      {measures && measures.user.graded > 0 && <section>
+        <h2 className="review-h2">Chester's verdict</h2>
+        <p className="review-sub">You: “{verdictFor(measures.user)}” · {review.meta.opponent}: “{verdictFor(measures.opp)}”</p>
+        <p className="review-sub review-sub--fine">Behind the cheek, the measured numbers: your moves lost {measures.user.avgLossCp != null ? `${(measures.user.avgLossCp / 100).toFixed(1)} pawns` : 'an unmeasurable amount'} on average over {measures.user.graded} graded moves ({measures.user.blunders} blunder{measures.user.blunders === 1 ? '' : 's'}, {measures.user.mistakes} mistake{measures.user.mistakes === 1 ? '' : 's'}); theirs lost {measures.opp.avgLossCp != null ? `${(measures.opp.avgLossCp / 100).toFixed(1)} pawns` : 'an unmeasurable amount'} over {measures.opp.graded}. One game, one engine, capped depth - a snapshot of this game, not a rating.</p>
       </section>}
 
       {clock && clock.avgSecPerMove != null && <section>
