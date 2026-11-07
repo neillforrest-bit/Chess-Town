@@ -36,6 +36,7 @@ function uciLineToSans(fen: string, ucis: string[]): string[] {
 export type ReviewedPly = {
   ply: number;
   san: string;
+  uci: string;
   mover: 'w' | 'b';
   isUser: boolean;
   fenBefore: string;
@@ -96,7 +97,7 @@ export async function analyzeGame(
       // Delivering mate is chess.js-verifiable fact, not an engine estimate: never grade it,
       // never mark it unconfirmed, never send it through a capped search.
       plies.push({
-        ply: m.ply, san: m.san, mover: m.mover, isUser: m.mover === game.userColor,
+        ply: m.ply, san: m.san, uci: m.uci, mover: m.mover, isUser: m.mover === game.userColor,
         fenBefore: m.fenBefore, fenAfter: m.fenAfter, clkSec: m.clkSec,
         classification: 'BEST', evalDelta: 0, bestMoveSan: m.san, continuation: [],
         whiteCpAfter: null, mateInAfter: 0, terminal: 'mate',
@@ -111,7 +112,7 @@ export async function analyzeGame(
     });
     const moverSign = m.mover === 'w' ? 1 : -1;
     plies.push({
-      ply: m.ply, san: m.san, mover: m.mover, isUser: m.mover === game.userColor,
+      ply: m.ply, san: m.san, uci: m.uci, mover: m.mover, isUser: m.mover === game.userColor,
       fenBefore: m.fenBefore, fenAfter: m.fenAfter, clkSec: m.clkSec,
       classification: t.classification, evalDelta: t.evalDelta,
       bestMoveSan: t.bestMoveSan ? uciToSan(m.fenBefore, t.bestMoveSan) : null,

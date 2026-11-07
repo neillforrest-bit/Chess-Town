@@ -12,7 +12,7 @@ import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type P
 import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
-import { detectWhyPattern } from '@/lib/why-patterns';
+import { Chess as ChessFacts } from 'chess.js';
 
 type Stage = 'pick' | 'analyzing' | 'report';
 
@@ -98,11 +98,17 @@ export default function ReviewPage() {
         // positions read wildly at capped depth; unconfirmed grades never become puzzles.
         if (!p.isUser || p.provisional || p.terminal || p.mateInAfter != null) continue;
         if (p.evalDelta == null || p.evalDelta < 150) continue;
-        if (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') {
-          try {
-            recordMillMistake({ fenBefore: p.fenBefore, bestMove: p.bestMoveSan, move: p.san, classification: p.classification, evalDelta: p.evalDelta, provisional: p.provisional });
-          } catch { /* mill full */ }
-        }
+        if (p.classification !== 'MISTAKE' && p.classification !== 'BLUNDER') continue;
+        // Confirming analysis: time-capped grading drifts run to run, so a position becomes
+        // a teaching puzzle only when a second independent read still calls it a mistake and
+        // the loss agrees within 100cp. Drifting grades are dropped, not banked.
+        try {
+          const again = await engine.evaluateMove({ fenBefore: p.fenBefore, fenAfter: p.fenAfter, san: p.san, uci: p.uci, playerColor: p.mover, difficulty: 'EXPERT' });
+          const stable = (again.classification === 'MISTAKE' || again.classification === 'BLUNDER')
+            && again.evalDelta != null && Math.abs(again.evalDelta - p.evalDelta) <= 100;
+          if (!stable || again.provisional) continue;
+          recordMillMistake({ fenBefore: p.fenBefore, bestMove: p.bestMoveSan, move: p.san, classification: p.classification, evalDelta: p.evalDelta, provisional: false });
+        } catch { /* second read failed: skip, do not bank */ }
       }
       if (mounted.current) { setReview(done); setWalkIdx(done.plies.length - 1); setStage('report'); }
     } catch {
@@ -157,12 +163,54 @@ export default function ReviewPage() {
 
   const resultWord = review ? (review.meta.result === 'win' ? 'You won' : review.meta.result === 'loss' ? 'You lost' : 'Draw') : '';
 
-  /** One board-factual reason for a slip, when the pattern detector can name one from the
-   *  actual position. Null means we stay with the engine-line framing rather than invent a cause. */
+  const PIECE_NAME: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
+  const PIECE_VAL: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+  /** One board-factual reason for a slip, verified move-by-move with chess.js: a claim only
+   *  ships when the capture it names is LEGAL for the side to move right now (check
+   *  responses included) and recapture really is absent. Null = fall back to engine framing
+   *  rather than tell a geometrically-plausible but tactically wrong story. */
   const whyFor = (p: ReviewedPly): string | null => {
     try {
-      const pat = detectWhyPattern({ fenBefore: p.fenBefore, move: p.san, bestMove: p.bestMoveSan, classification: p.classification });
-      return pat ? pat.line : null;
+      const c = new ChessFacts(p.fenBefore);
+      const played = c.move(p.san);
+      if (!played) return null;
+      const mover = played.color;
+      const enemy = mover === 'w' ? 'b' : 'w';
+      const legal = c.moves({ verbose: true });
+      const canCapture = (sq: string) => legal.some((m) => m.to === sq && m.captured);
+      const capturerType = (sq: string): string => {
+        const mv = legal.find((m) => m.to === sq && m.captured);
+        return mv ? mv.piece : 'p';
+      };
+      const defendersOf = (sq: string) => (c as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(sq, mover);
+      const attackersOf = (sq: string) => (c as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(sq, enemy);
+      // 1. A hanging NON-moved piece worth more than the moved one (the real cost when a
+      //    move ignores an existing threat, e.g. Bxa5 while the queen is en prise).
+      let hang: { type: string; attacker: string; value: number } | null = null;
+      for (const row of (c as unknown as { board(): ({ square: string; type: string; color: string } | null)[][] }).board()) {
+        for (const cell of row) {
+          if (!cell || cell.color !== mover || cell.type === 'k' || cell.square === played.to) continue;
+          const attackers = attackersOf(cell.square);
+          if (!attackers.length || !canCapture(cell.square)) continue;
+          const defenders = defendersOf(cell.square);
+          const cheap = Math.min(...attackers.map((sq) => PIECE_VAL[((c as unknown as { get(s: string): { type: string } | null }).get(sq)?.type) || 'p'] || 1));
+          if (defenders.length > 0 && cheap >= (PIECE_VAL[cell.type] || 0)) continue; // adequately defended
+          const v = PIECE_VAL[cell.type] || 0;
+          if (!hang || v > hang.value) hang = { type: cell.type, attacker: capturerType(cell.square), value: v };
+        }
+      }
+      if (hang && hang.value >= 3) return `Your ${PIECE_NAME[hang.type]} is under attack - their ${PIECE_NAME[hang.attacker]} can take it and nothing of yours takes back.`;
+      // 2. The moved piece itself can legally be taken back (e.g. a checking piece that is
+      //    simply capturable as the check answer).
+      if (played.piece !== 'k' && canCapture(played.to)) {
+        const defenders = defendersOf(played.to);
+        const attackers = attackersOf(played.to);
+        const cheap = Math.min(...attackers.map((sq) => PIECE_VAL[((c as unknown as { get(s: string): { type: string } | null }).get(sq)?.type) || 'p'] || 1));
+        if (defenders.length === 0 || cheap < (PIECE_VAL[played.piece] || 0)) {
+          return `Your ${PIECE_NAME[played.piece]} could just be taken by their ${PIECE_NAME[capturerType(played.to)]}.`;
+        }
+      }
+      return null;
     } catch { return null; }
   };
 
