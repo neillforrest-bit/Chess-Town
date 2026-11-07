@@ -187,10 +187,11 @@ export default function ReviewPage() {
           <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.min(review.plies.length - 1, i + 1)); setRetryMode(null); }} disabled={walkIdx >= review.plies.length - 1}>Next ▶</button>
         </div>
         <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
-          {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}
+          {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional ? ' (unconfirmed)' : ''}
           {ply.evalDelta != null && ply.evalDelta < -30 ? ` · engine read ${fmtCp(ply.evalDelta)}` : ''}
           {ply.bestMoveSan && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER' || ply.classification === 'INACCURACY') ? ` · better: ${ply.bestMoveSan}` : ''}
         </div>
+        {ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
         {ply.isUser && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER') && retryMode === null &&
           <button className="lab-btn lab-btn--go" onClick={() => setRetryMode('ask')}>Try the position yourself</button>}
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
@@ -208,13 +209,14 @@ export default function ReviewPage() {
       <section>
         <h2 className="review-h2">How your moves graded</h2>
         <div className="review-counts">{counts.map((c) => <span key={c.label} className={`review-chip review-chip--${c.label === 'MISTAKE' || c.label === 'BLUNDER' ? 'bad' : 'ok'}`}>{c.label} ×{c.n}</span>)}</div>
+        {review.plies.filter((p) => p.isUser && p.provisional).length > 0 && <p className="review-sub review-sub--fine">{review.plies.filter((p) => p.isUser && p.provisional).length} of your grade{review.plies.filter((p) => p.isUser && p.provisional).length === 1 ? ' is' : 's are'} unconfirmed (quick-pass only) and not counted as banked mistakes.</p>
       </section>
 
       {tps.length > 0 && <section>
         <h2 className="review-h2">Where the game turned</h2>
         {tps.map((tp) => <button key={tp.ply.ply} className="lab-card" onClick={() => { setWalkIdx(tp.ply.ply - 1); setRetryMode(null); }}>
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
-          <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtCp(tp.ply.evalDelta)})` : ''}</b>
+          <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtCp(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
             ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'}. Tap to stand at that moment and try it yourself.`
             : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>
