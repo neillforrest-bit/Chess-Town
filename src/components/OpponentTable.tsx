@@ -8,7 +8,13 @@ export default function OpponentTable({ rows, trajectory, coverage }: { rows: Op
   const [query, setQuery] = useState('');
   const [winner, setWinner] = useState('all');
   const [record, setRecord] = useState('all');
+  const [minGames, setMinGames] = useState('');
+  const [minMinutes, setMinMinutes] = useState('');
+  const [minRapid, setMinRapid] = useState('');
   const visible = rows.filter((r) => r.opponent.toLowerCase().includes(query.trim().toLowerCase())
+    && (minGames === '' || r.games >= Number(minGames))
+    && (minMinutes === '' || (r.timedGames > 0 && r.totalMinutes >= Number(minMinutes)))
+    && (minRapid === '' || (r.rapidRating != null && r.rapidRating >= Number(minRapid)))
     && (winner === 'all' || r.lastWinner === winner)
     && (record === 'all' || (record === 'ahead' ? r.wins > r.losses : record === 'behind' ? r.losses > r.wins : r.wins === r.losses)))
     .sort((a, b) => sort === 'games' ? b.games - a.games : sort === 'minutes' ? b.totalMinutes - a.totalMinutes : sort === 'record' ? b.wins / b.games - a.wins / a.games || b.games - a.games : sort === 'recent' ? b.lastPlayed - a.lastPlayed : (b.rapidRating ?? -1) - (a.rapidRating ?? -1));
@@ -37,6 +43,9 @@ export default function OpponentTable({ rows, trajectory, coverage }: { rows: Op
       </select>
       <select className="review-select" value={record} onChange={(e) => setRecord(e.target.value)} aria-label="Head-to-head record"><option value="all">All W-L records</option><option value="ahead">Winning record</option><option value="behind">Losing record</option><option value="level">Level record</option></select>
       <select className="review-select" value={winner} onChange={(e) => setWinner(e.target.value)} aria-label="Most recent winner"><option value="all">Any latest result</option><option value="you">You won latest</option><option value="opponent">Opponent won latest</option><option value="draw">Latest was drawn</option></select>
+      <label className="review-sub">Minimum games<input className="review-input" type="number" min="1" step="1" value={minGames} onChange={(e) => setMinGames(e.target.value)} aria-label="Minimum games" placeholder="Any game count" /></label>
+      <label className="review-sub">Minimum measured minutes<input className="review-input" type="number" min="0" step="1" value={minMinutes} onChange={(e) => setMinMinutes(e.target.value)} aria-label="Minimum measured minutes" placeholder="Any measured duration" /></label>
+      <label className="review-sub">Minimum rapid at encounter<input className="review-input" type="number" min="0" step="1" value={minRapid} onChange={(e) => setMinRapid(e.target.value)} aria-label="Minimum rapid rating" placeholder="Any encounter rating" /></label>
     </div>
     <div className="opp-table-wrap"><table className="opp-table">
       <thead><tr><th>Opponent</th><th>Games</th><th>Measured time</th><th>Your W-L-D</th><th>Latest winner</th><th>Rapid at encounter</th></tr></thead>
