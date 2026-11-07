@@ -171,7 +171,9 @@ export default function ReviewPage() {
     const followPcts = (ply: number): number[] => {
       const out: number[] = [];
       for (let k = ply + 1; k <= Math.min(ply + 4, sc.length) && out.length < 2; k++) {
-        const p = sc[k - 1]?.userPct;
+        const entry = sc[k - 1];
+        if (!entry || entry.unstable) return [];
+        const p = entry.userPct;
         if (p != null) out.push(p);
       }
       return out;
@@ -181,7 +183,7 @@ export default function ReviewPage() {
       const pre = e.userPct - e.delta;
       const ahead = followPcts(e.ply.ply);
       if (ahead.length) return ahead.every((p) => p >= pre + (e.delta as number) * 0.5);
-      return e.ply.classification === 'BRILLIANT' || e.ply.classification === 'BEST';
+      return false; // no trustworthy follow-up means no numerical highlight
     };
     const backStands = (e: ScorecardEntry): boolean => {
       if (e.delta == null || e.userPct == null) return false;
@@ -213,7 +215,7 @@ export default function ReviewPage() {
   // Publish the position being viewed so Chester chat can answer bounded move-help
   // questions offline (no paid call). Cleared when leaving the review.
   useEffect(() => {
-    if (!review || !review.plies.length) { clearReviewChatContext(); return; }
+    if (stage !== 'report' || !review || !review.plies.length) { clearReviewChatContext(); return; }
     const p = walkIdx >= 0 ? review.plies[walkIdx] : null;
     const unstable = walkIdx >= 0 ? !!sc[walkIdx]?.unstable : false;
     publishReviewChatContext({
@@ -231,7 +233,7 @@ export default function ReviewPage() {
     });
     return () => clearReviewChatContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkIdx, review, sc]);
+  }, [walkIdx, review, sc, stage]);
 
   // Highlight playback: advance about 1.2s per move until the final position, then stop.
   useEffect(() => {

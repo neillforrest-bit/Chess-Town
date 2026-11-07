@@ -27,7 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     try {
       // Bounded move help while a review position is on screen: answer offline, no paid call.
       const reviewCtx = getReviewChatContext();
-      const offline = reviewCtx ? reviewMoveHelp(message, reviewCtx) : null;
+      const offline = reviewCtx ? (reviewMoveHelp(message, reviewCtx) ?? 'I can help here with the move on screen: ask what happened, how it graded, why it was a mistake, or what the engine preferred. This is saved move help, not a live analysis chat.') : null;
       const reply = offline ?? await askChesterChat(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
       const text = reply && !/messenger|delayed|unavailable/i.test(reply)
         ? reply

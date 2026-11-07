@@ -62,7 +62,8 @@ export type ReviewedGame = {
   plies: ReviewedPly[];
 };
 
-const STORE_KEY = 'ct-game-review-v1';
+// v1 retained untouched: its mixed-perspective scores require fresh analysis.
+const STORE_KEY = 'ct-game-review-v2';
 const STORE_CAP = 8;
 
 export function loadReviews(): ReviewedGame[] {
@@ -117,8 +118,9 @@ export async function analyzeGame(
       classification: t.classification, evalDelta: t.evalDelta,
       bestMoveSan: t.bestMoveSan ? uciToSan(m.fenBefore, t.bestMoveSan) : null,
       continuation: uciLineToSans(m.fenAfter, t.continuation ?? []),
-      whiteCpAfter: t.centipawns == null ? null : t.centipawns * moverSign,
-      mateInAfter: t.mateIn ?? null,
+      whiteCpAfter: t.evaluationAfter,
+      // Downstream review copy expects mover-relative mate, unlike the normalized API field.
+      mateInAfter: t.evaluationMateAfter == null ? null : t.evaluationMateAfter * moverSign,
       provisional: t.provisional,
       terminal: terminalDraw ? 'draw' : undefined,
     });
