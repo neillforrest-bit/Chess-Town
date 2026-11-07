@@ -213,12 +213,46 @@ export default function ReviewPage() {
       return null;
     } catch { return null; }
   };
+  /** What the engine's pick accomplishes, stated only when mechanically true: a capture names
+   *  the taken piece (and whether it ends an attack on one of yours); a quiet move that steps
+   *  an attacked piece out of danger says so. Anything subtler stays unsaid. */
+  const bestMovePoint = (p: ReviewedPly): string | null => {
+    if (!p.bestMoveSan || p.bestMoveSan === p.san) return null;
+    try {
+      const c = new ChessFacts(p.fenBefore);
+      const mover = c.turn();
+      const enemy = mover === 'w' ? 'b' : 'w';
+      const mv = c.move(p.bestMoveSan);
+      if (!mv) return null;
+      if (mv.captured) {
+        // did the captured piece attack something of ours before the move?
+        const before = new ChessFacts(p.fenBefore);
+        const victims: { type: string; value: number }[] = [];
+        for (const row of (before as unknown as { board(): ({ square: string; type: string; color: string } | null)[][] }).board()) {
+          for (const cell of row) {
+            if (!cell || cell.color !== mover || cell.type === 'k') continue;
+            const attackers = (before as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(cell.square, enemy);
+            if (attackers.includes(mv.to)) victims.push({ type: cell.type, value: PIECE_VAL[cell.type] || 0 });
+          }
+        }
+        const biggest = victims.sort((a, b) => b.value - a.value)[0];
+        return biggest
+          ? `${p.bestMoveSan} takes their ${PIECE_NAME[mv.captured]} and ends the attack on your ${PIECE_NAME[biggest.type]}.`
+          : `${p.bestMoveSan} wins their ${PIECE_NAME[mv.captured]}.`;
+      }
+      // quiet move: was the moved piece under attack before?
+      const before = new ChessFacts(p.fenBefore);
+      const attackers = (before as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(mv.from, enemy);
+      if (attackers.length && mv.piece !== 'k') return `${p.bestMoveSan} gets your ${PIECE_NAME[mv.piece]} out of danger.`;
+      return null;
+    } catch { return null; }
+  };
 
   return <main className="lab-shell review-shell">
     <header className="review-head">
       <Link href="/learn" className="review-back">← Lessons</Link>
       <h1>Game Review</h1>
-      <p className="review-sub">Your real Chess.com games, walked move by move. Public archive only - no login, nothing leaves your phone.</p>
+      <p className="review-sub">Your real Chess.com games, walked move by move. Pulled from Chess.com's public archive (no login); the analysis runs in this browser and reviews are saved on this device only.</p>
     </header>
 
     {error ? <p className="review-error">{error}</p> : null}
@@ -282,7 +316,7 @@ export default function ReviewPage() {
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
         {retryMode === 'miss' && <button className="lab-btn" onClick={showBest}>Show me</button>}
-        {retryMode === 'shown' && <p className="review-sub review-sub--good">{whyFor(ply) ? `${whyFor(ply)} ` : ''}The engine's pick: <b>{ply.bestMoveSan}</b>.{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} One engine's line at capped depth - a strong suggestion, not the only answer.</p>}
+        {retryMode === 'shown' && <p className="review-sub review-sub--good">{whyFor(ply) ? `${whyFor(ply)} ` : ''}{bestMovePoint(ply) || `The engine's pick: ${ply.bestMoveSan}.`}{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} One engine's line at capped depth - a strong suggestion, not the only answer.</p>}
         <div className="review-traj" aria-hidden="true">
           {review.plies.map((p, i) => {
             const cp = p.whiteCpAfter == null ? (p.mateInAfter != null ? (p.mateInAfter > 0 === (p.mover === 'w') ? 1200 : -1200) : 0) : Math.max(-1200, Math.min(1200, p.whiteCpAfter));
@@ -303,7 +337,7 @@ export default function ReviewPage() {
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
           <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
-            ? (whyFor(tp.ply) || `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.`) + ' Tap to stand at that moment and try it yourself.'
+            ? [whyFor(tp.ply), bestMovePoint(tp.ply) || (!whyFor(tp.ply) ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.` : null)].filter(Boolean).join(' ') + ' Tap to stand at that moment and try it yourself.'
             : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>
         </button>)}
       </section>}
