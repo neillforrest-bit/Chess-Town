@@ -192,7 +192,7 @@ export const LAB_OPENINGS: LabOpening[] = [
   {
     id: 'owens', name: "Owen's Defence", side: 'b', tier: 'SOUND SURPRISE', color: '#c084fc',
     blurb: 'Fianchetto the queenside bishop on move one and build a small, tough position behind it.',
-    engineRead: 'Machine read: White keeps a real pull (+0.9). You trade comfort for a position your opponent has likely never played.',
+    engineRead: 'Machine read: White keeps a real pull (+0.9). You trade comfort for a position that rarely appears in serious games.',
     intro: "The Owen's Defence. You fianchetto the queenside bishop immediately, keep your position small and tough, and counterpunch later. The machine gives White a real pull - that is the honest price - and in exchange you get a position with no map. You are Black: White moves first.",
     handoff: 'Lesson complete. Tough, flexible, weakness-free. Play it against me from here.',
     setupSan: ['e4'],
@@ -248,7 +248,7 @@ export const LAB_OPENINGS: LabOpening[] = [
   },
   {
     id: 'englund', name: 'Englund Gambit', side: 'b', tier: 'AMBUSH', color: '#991b1b',
-    blurb: 'Offer a whole pawn on move one and set the most famous trap in gambit chess. Pure ambush, honestly labelled.',
+    blurb: 'Offer a whole pawn on move one and set a trap that has caught players for over a century. Pure ambush, honestly labelled.',
     engineRead: 'Machine read: White is clearly better (+1.2) with the correct defence. This one lives entirely on surprise.',
     intro: 'The Englund Gambit. You offer a pawn on move one and set a trap that has claimed victims for over a century - and you will learn it to checkmate. Be honest with yourself: against the correct defence you are simply worse. You are playing for the trap. You are Black: White moves first.',
     handoff: 'Checkmate - the full trap, landed to the very end. Now the honest rehearsal: I restart from the moment before White\'s mistake and defend PROPERLY. Prove you can still fight.',
