@@ -25,6 +25,8 @@ type TapBoardProps = {
   // BUILD 160: battle's motion-FX toggle - off means no capture theatre, just the new position.
   motion?: boolean;
   theme?: PieceTheme;
+  // BUILD 194 Surprise Lab: pulsing guide marks for the scripted move.
+  hintMove?: { from: string; to: string } | null;
 };
 
 function rows(fen: string): string[][] {
@@ -32,7 +34,7 @@ function rows(fen: string): string[][] {
 }
 
 export default function TapBoard({ fen, orientation = 'w', locked = false, lastMove = null, onMove, label, ghostSquares, toppleSquare, motion = true,
-  theme = 'neon',
+  theme = 'neon', hintMove = null,
 }: TapBoardProps) {
   const [sprites, setSprites] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
@@ -125,6 +127,8 @@ export default function TapBoard({ fen, orientation = 'w', locked = false, lastM
         selected === square ? 'tapboard__square--selected' : '',
         target ? (target.capture ? 'tapboard__square--capture' : 'tapboard__square--target') : '',
         lastMove && (lastMove.from === square || lastMove.to === square) ? 'tapboard__square--last' : '',
+        hintMove && hintMove.from === square ? 'tapboard__square--hintfrom' : '',
+        hintMove && hintMove.to === square ? 'tapboard__square--hintto' : '',
       ].filter(Boolean).join(' ');
       const ghostOpacity = ghostSquares && square in ghostSquares ? ghostSquares[square] : 1;
       const hideForAnim = capAnim !== null && capAnim.to === square;
