@@ -424,12 +424,15 @@ export default function ReviewPage() {
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
         {retryMode === 'miss' && <button className="lab-btn" onClick={showBest}>Show me</button>}
         {retryMode === 'shown' && <p className="review-sub review-sub--good">{whyFor(ply) ? `${whyFor(ply)} ` : ''}{bestMovePoint(ply) || `The engine's pick: ${ply.bestMoveSan}.`} One engine's read at capped depth - a strong suggestion, not the only answer.</p>}
-        <div className="review-traj" aria-hidden="true">
+        <div className="review-traj" role="group" aria-label="Review position strip">
           {review.plies.map((p, i) => {
-            const cp = p.whiteCpAfter == null ? (p.mateInAfter != null ? (p.mateInAfter > 0 === (p.mover === 'w') ? 1200 : -1200) : 0) : Math.max(-1200, Math.min(1200, p.whiteCpAfter));
-            return <button key={i} className={`review-traj__bar${i === walkIdx ? ' review-traj__bar--on' : ''}${p.isUser && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') ? ' review-traj__bar--bad' : ''}`} style={{ height: `${4 + Math.abs(cp) / 24}px`, background: i === walkIdx ? '#ffd84d' : cp >= 0 ? '#7ef29a' : '#ff7b7b' }} onClick={() => goTo(i)} aria-label={`Move ${Math.ceil(p.ply / 2)}`} />;
+            const e = sc[i];
+            const gauge = e && !e.unstable ? e.userPct : null;
+            return <button key={i} className={`review-traj__bar${i === walkIdx ? ' review-traj__bar--on' : ''}`} style={{ height: `${gauge == null ? 6 : 6 + Math.abs(gauge - 50) * .9}px`, background: i === walkIdx ? '#ffd84d' : gauge == null ? '#65727e' : gauge >= 50 ? '#7ef29a' : '#ff7b7b' }} onClick={() => goTo(i)} aria-label={`Ply ${p.ply}: ${Math.ceil(p.ply / 2)}${p.mover === 'b' ? '...' : '.'} ${p.san}`} title={gauge == null ? 'Reading unavailable' : p.terminal === 'mate' ? 'Result proven by the board' : 'Rough advantage gauge'} />;
           })}
         </div>
+        <p className="review-sub review-sub--fine">Position strip: green leans your way, red leans theirs, gray means no reliable reading. Tap a bar to jump.</p>
+
       </section>
 
       <section>
