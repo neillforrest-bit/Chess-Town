@@ -289,13 +289,13 @@ export default function ReviewPage() {
         }
         const biggest = victims.sort((a, b) => b.value - a.value)[0];
         return biggest
-          ? `${p.bestMoveSan} takes their ${PIECE_NAME[mv.captured]} and ends the attack on your ${PIECE_NAME[biggest.type]}.`
-          : `${p.bestMoveSan} captures their ${PIECE_NAME[mv.captured]}.`;
+          ? `${p.bestMoveSan} takes ${p.isUser ? 'their' : 'your'} ${PIECE_NAME[mv.captured]} and removes that attack on ${p.isUser ? 'your' : 'their'} ${PIECE_NAME[biggest.type]}.`
+          : `${p.bestMoveSan} captures ${p.isUser ? 'their' : 'your'} ${PIECE_NAME[mv.captured]}.`;
       }
       // quiet move: was the moved piece under attack before?
       const before = new ChessFacts(p.fenBefore);
       const attackers = (before as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(mv.from, enemy);
-      if (attackers.length && mv.piece !== 'k' && !(c as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(mv.to, enemy).length) return `${p.bestMoveSan} gets your ${PIECE_NAME[mv.piece]} out of danger.`;
+      if (attackers.length && mv.piece !== 'k' && !(c as unknown as { attackers(s: string, col: 'w' | 'b'): string[] }).attackers(mv.to, enemy).length) return `${p.bestMoveSan} moves ${p.isUser ? 'your' : 'their'} ${PIECE_NAME[mv.piece]} away from that attack.`;
       return null;
     } catch { return null; }
   };
@@ -445,7 +445,7 @@ export default function ReviewPage() {
           <b>{tp.ply.san}{!sc[tp.ply.ply - 1]?.unstable && tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
             ? [whyFor(tp.ply), bestMovePoint(tp.ply) || (!whyFor(tp.ply) ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.` : null)].filter(Boolean).join(' ') + ' Tap to stand at that moment.'
-            : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>
+            : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - the engine preferred ${tp.ply.bestMoveSan} for them instead` : ''}.`}</span>
         </button>)}
       </section>}
 
