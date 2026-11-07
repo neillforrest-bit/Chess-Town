@@ -300,7 +300,7 @@ export default function ReviewPage() {
     } catch { return null; }
   };
 
-  return <main className="lab-shell review-shell">
+  return <main className={`lab-shell review-shell${stage === 'pick' && oppRows ? ' review-shell--table' : ''}`}>
     <header className="review-head">
       <Link href="/learn" className="review-back">← Lessons</Link>
       <h1>Game Review</h1>

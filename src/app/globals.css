@@ -3783,3 +3783,9 @@ body:has(.chester-game) .global-nav,body:has(.chester-game) .chester-fab { displ
 .opp-table td small { display:block; color:#a8b1ba; font-size:10px; }
 .review-jump { color:#ffd84d; text-decoration:underline; font-weight:700; cursor:pointer; background:none; border:0; padding:0; }
 @media(max-width:420px) { .opp-filters { grid-template-columns:1fr; } }
+/* Review keeps Chester available even where generic lab pages hide the chat button. */
+body:has(.review-shell) .chester-fab { display:flex; }
+.review-shell { padding-bottom:6rem; }
+.review-shell--table { max-width:1000px; width:100%; }
+.opp-filters .review-select, .opp-filters .review-input { box-sizing:border-box; }
+.opp-table th { white-space:normal; letter-spacing:.04em; }

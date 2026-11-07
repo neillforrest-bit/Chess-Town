@@ -42,7 +42,7 @@ export default function OpponentTable({ rows, trajectory, coverage }: { rows: Op
       <thead><tr><th>Opponent</th><th>Games</th><th>Measured time</th><th>Your W-L-D</th><th>Latest winner</th><th>Rapid at encounter</th></tr></thead>
       <tbody>{visible.slice(0, 50).map((r) => <tr key={r.opponent}>
         <td>{r.opponent}</td><td>{r.games}</td><td>{r.timedGames ? `${r.totalMinutes}m` : 'Unavailable'}<small>{r.timedGames}/{r.games} games timed</small></td>
-        <td>{r.wins}-{r.losses}-{r.draws}</td><td>{r.lastWinner === 'you' ? 'You' : r.lastWinner === 'opponent' ? r.opponent : 'Draw'}<small>{date(r.lastPlayed)}</small></td>
+        <td>{r.wins}-{r.losses}-{r.draws}</td><td>{r.lastWinner === 'you' ? 'You' : r.lastWinner === 'opponent' ? 'Opponent' : 'Draw'}<small>{date(r.lastPlayed)}</small></td>
         <td>{r.rapidRating ?? 'Unavailable'}{r.rapidAt && <small>{date(r.rapidAt)}</small>}</td>
       </tr>)}</tbody>
     </table></div>
