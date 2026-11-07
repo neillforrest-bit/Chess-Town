@@ -61,6 +61,7 @@ export default function ReviewPage() {
   // Game walker state (report)
   const [walkIdx, setWalkIdx] = useState(-1);  // index into plies; -1 = starting position
   const [retryMode, setRetryMode] = useState<null | 'ask' | 'miss' | 'shown'>(null);
+  const [retryPromotion, setRetryPromotion] = useState<'q' | 'r' | 'b' | 'n'>('q');
   const [retryFen, setRetryFen] = useState<string | null>(null); // board override while retrying
   const [playing, setPlaying] = useState(false);                 // highlight playback
   const [cwhd, setCwhd] = useState(false);                       // 'Chester would have done' reveal
@@ -167,7 +168,7 @@ export default function ReviewPage() {
 
   const startFix = (targetPly: number) => {
     goTo(targetPly - 1);
-    setRetryMode('ask'); setRetryFen(null); setCwhd(false); setPlaying(false);
+    setRetryMode('ask'); setRetryFen(null); setRetryPromotion('q'); setCwhd(false); setPlaying(false);
     requestAnimationFrame(() => { document.querySelector('.review-walk')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   };
 
@@ -227,12 +228,12 @@ export default function ReviewPage() {
     if (!ply || !ply.bestMoveSan || (retryMode !== 'ask' && retryMode !== 'miss')) return;
     try {
       const before = new Chess(retryFen ?? ply.fenBefore);
-      before.move({ from, to, promotion });
+      before.move({ from, to, promotion: promotion ? retryPromotion : undefined });
       const played = before.history({ verbose: true }).pop();
       const bestHist = new Chess(ply.fenBefore);
       bestHist.move(ply.bestMoveSan);
       const best = bestHist.history({ verbose: true }).pop();
-      if (played && best && played.from === best.from && played.to === best.to) { setRetryFen(before.fen()); setRetryMode('shown'); }
+      if (played && best && played.from === best.from && played.to === best.to && played.promotion === best.promotion) { setRetryFen(before.fen()); setRetryMode('shown'); }
       else setRetryMode('miss');
     } catch { /* illegal tap */ }
   };
@@ -378,8 +379,8 @@ export default function ReviewPage() {
       </section>
 
       <section className="review-walk">
-        <TapBoard fen={retryFen ?? (retryMode ? ply.fenBefore : walkIdx < 0 && startFen ? startFen : ply.fenAfter)} orientation={review.meta.userColor} locked={retryMode === null} lastMove={retryMode || walkIdx < 0 ? null : lastFromTo} label="Game position" onMove={retryMode ? tryRetry : undefined} />
-        <p className="review-walkpos review-walkpos--solo">{walkIdx < 0 ? 'Start' : `${Math.ceil(ply.ply / 2)}. ${ply.mover === 'w' ? '' : '…'}${ply.san}`}</p>
+        <TapBoard fen={retryFen ?? (retryMode ? ply.fenBefore : walkIdx < 0 && startFen ? startFen : ply.fenAfter)} orientation={review.meta.userColor} locked={retryMode === null || retryMode === 'shown'} lastMove={retryMode || walkIdx < 0 ? null : lastFromTo} label="Game position" onMove={retryMode ? tryRetry : undefined} />
+        <p className="review-walkpos review-walkpos--solo">{retryMode ? `Practice: ${retryMode === 'shown' ? `${ply.bestMoveSan} instead of ${ply.san}` : `before ${Math.ceil(ply.ply / 2)}${ply.mover === 'b' ? '...' : '.'} ${ply.san}`}` : walkIdx < 0 ? 'Start' : `${Math.ceil(ply.ply / 2)}. ${ply.mover === 'w' ? '' : '…'}${ply.san}`}</p>
         <div className="review-walkbar">
           <button className="lab-btn" aria-label="Back to the start" onClick={() => goTo(-1)} disabled={walkIdx <= -1}>⏮</button>
           <button className="lab-btn" aria-label="Rewind one move" onClick={() => goTo(Math.max(-1, walkIdx - 1))} disabled={walkIdx <= -1}>⏪</button>
@@ -388,7 +389,7 @@ export default function ReviewPage() {
         </div>
         {walkIdx < 0
           ? <p className="review-sub">At the starting position. Press ▶ for the highlight show, or step through with ⏪ ⏩ - pause any time to study a position with Chester.</p>
-          : <div>
+          : retryMode ? <p className="review-sub">Practice board, separate from the recorded game. No engine score has been computed for this alternative position.</p> : <div>
               <p className="review-sub"><b>{playing ? 'Now playing' : 'Paused at'} move {Math.ceil(ply.ply / 2)}{ply.mover === 'b' ? '…' : ''}.</b>{' '}
                 {ply.terminal === 'mate'
                   ? `${ply.isUser ? 'You' : review.meta.opponent} played ${ply.san} - checkmate on the board, game over. That is a fact, not an engine grade.`
@@ -414,16 +415,22 @@ export default function ReviewPage() {
               </>}
             </div>}
         <p className="review-sub review-sub--fine">Scorecard is a rough advantage gauge, not a win probability: the engine's evaluation is mapped onto a 0-100 scale (50 = balanced, draws included) via the published Lichess formula. Only a result on the board is proven. Positions whose reads are unstable at capped depth show no number.</p>
-        {walkIdx >= 0 && <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
+        {walkIdx >= 0 && !retryMode && <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
           {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional && !ply.terminal ? ' (unconfirmed)' : ''}
           {!sc[walkIdx]?.unstable && ply.evalDelta != null && ply.evalDelta > 30 ? ` · engine read ${fmtLoss(ply.evalDelta)}` : ''}
           {ply.bestMoveSan && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER' || ply.classification === 'INACCURACY') ? ` · better: ${ply.bestMoveSan}` : ''}
         </div>}
-        {walkIdx >= 0 && ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
+        {walkIdx >= 0 && !retryMode && ply.provisional && <p className="review-sub review-sub--fine">This grade came from the quick pass - the deeper double-check was inconclusive, so treat it as a maybe, and it has not been banked as a puzzle.</p>}
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
         {retryMode === 'miss' && <button className="lab-btn" onClick={showBest}>Show me</button>}
-        {retryMode === 'shown' && <p className="review-sub review-sub--good">{whyFor(ply) ? `${whyFor(ply)} ` : ''}{bestMovePoint(ply) || `The engine's pick: ${ply.bestMoveSan}.`} One engine's read at capped depth - a strong suggestion, not the only answer.</p>}
+        {(retryMode === 'ask' || retryMode === 'miss') && (() => {
+          try { return new Chess(ply.fenBefore).moves({ verbose: true }).some((m) => m.promotion) ? <label className="review-sub">Promote to <select className="review-select" aria-label="Practice promotion" value={retryPromotion} onChange={(e) => setRetryPromotion(e.target.value as typeof retryPromotion)}><option value="q">Queen</option><option value="r">Rook</option><option value="b">Bishop</option><option value="n">Knight</option></select></label> : null; } catch { return null; }
+        })()}
+        {retryMode === 'shown' && <>
+          <p className="review-sub review-sub--good">{ply.bestMoveSan} is now on the practice board, replacing {ply.san} from the game. {bestMovePoint(ply) || 'It matches the stored engine suggestion.'} A capped-depth suggestion, not proof that it is the only answer.</p>
+          <button className="lab-btn" onClick={() => goTo(walkIdx)}>Return to recorded game</button>
+        </>}
         <div className="review-traj" role="group" aria-label="Review position strip">
           {review.plies.map((p, i) => {
             const e = sc[i];
