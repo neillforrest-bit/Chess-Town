@@ -5,8 +5,33 @@
 // (Stockfish 18, EXPERT preset, depth-capped grading search) measured in that position. It is
 // NOT proof of why a human went wrong - the commentary layer interprets patterns, the engine
 // layer measures lines. Keep the two visibly separate in copy.
+import { Chess } from 'chess.js';
 import type { StockfishClient, EngineTelemetry } from './stockfish';
 import type { CcGame, ParsedMove } from './chesscom';
+
+const UCI_RE = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
+/** Engine telemetry hands back PV moves as UCI despite the *San field name; convert via chess.js. */
+function uciToSan(fen: string, uci: string): string | null {
+  if (!UCI_RE.test(uci)) return uci; // already SAN or odd - keep as-is
+  try {
+    const c = new Chess(fen);
+    const mv = c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+    return mv ? mv.san : null;
+  } catch { return null; }
+}
+function uciLineToSans(fen: string, ucis: string[]): string[] {
+  const out: string[] = [];
+  try {
+    const c = new Chess(fen);
+    for (const u of ucis.slice(0, 6)) {
+      if (!UCI_RE.test(u)) break;
+      const mv = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] || undefined });
+      if (!mv) break;
+      out.push(mv.san);
+    }
+  } catch { /* keep what converted */ }
+  return out;
+}
 
 export type ReviewedPly = {
   ply: number;
@@ -72,8 +97,9 @@ export async function analyzeGame(
     plies.push({
       ply: m.ply, san: m.san, mover: m.mover, isUser: m.mover === game.userColor,
       fenBefore: m.fenBefore, fenAfter: m.fenAfter, clkSec: m.clkSec,
-      classification: t.classification, evalDelta: t.evalDelta, bestMoveSan: t.bestMoveSan,
-      continuation: t.continuation ?? [],
+      classification: t.classification, evalDelta: t.evalDelta,
+      bestMoveSan: t.bestMoveSan ? uciToSan(m.fenBefore, t.bestMoveSan) : null,
+      continuation: uciLineToSans(m.fenAfter, t.continuation ?? []),
       whiteCpAfter: t.centipawns == null ? null : t.centipawns * moverSign,
       mateInAfter: t.mateIn ?? null,
       provisional: t.provisional,
