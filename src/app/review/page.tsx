@@ -107,7 +107,7 @@ export default function ReviewPage() {
           const stable = (again.classification === 'MISTAKE' || again.classification === 'BLUNDER')
             && again.evalDelta != null && Math.abs(again.evalDelta - p.evalDelta) <= 100;
           if (!stable || again.provisional) continue;
-          recordMillMistake({ fenBefore: p.fenBefore, bestMove: p.bestMoveSan, move: p.san, classification: p.classification, evalDelta: p.evalDelta, provisional: false });
+          recordMillMistake({ fenBefore: p.fenBefore, bestMove: p.bestMoveSan, move: p.san, classification: p.classification, evalDelta: p.evalDelta, provisional: false, src: 'review' });
         } catch { /* second read failed: skip, do not bank */ }
       }
       if (mounted.current) { setReview(done); setWalkIdx(done.plies.length - 1); setStage('report'); }

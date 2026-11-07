@@ -7,6 +7,9 @@ import { sameMove, explainEngineChoice } from './move-words';
 export type MillPuzzle = {
   id: string; fen: string; best: string; played: string; grade: string; loss: number;
   phrase: string | null; date: string; solved: number; misses: number; lastSolved: string | null;
+  /** Where the puzzle came from: 'review' = imported-game analysis, absent = Chester dojo
+   *  games (older records predate the marker). Lets future maintenance tell them apart. */
+  src?: string;
 };
 const KEY = 'ct-puzzle-mill-v1';
 const CAP = 80;
@@ -17,7 +20,7 @@ export function loadMill(): MillPuzzle[] {
 function saveMill(list: MillPuzzle[]) { try { window.localStorage.setItem(KEY, JSON.stringify(list.slice(0, CAP))); } catch { /* private browsing */ } }
 
 /** Bank a graded move. Returns true when a new puzzle was added. */
-export function recordMillMistake(input: { fenBefore?: string | null; bestMove?: string | null; move?: string | null; classification?: string | null; evalDelta?: number | null; bestMovePhrase?: string | null; provisional?: boolean }): boolean {
+export function recordMillMistake(input: { fenBefore?: string | null; bestMove?: string | null; move?: string | null; classification?: string | null; evalDelta?: number | null; bestMovePhrase?: string | null; provisional?: boolean; src?: string }): boolean {
   const grade = (input.classification || '').toUpperCase();
   if (input.provisional || !/^(MISTAKE|BLUNDER)$/.test(grade)) return false;
   if (!input.fenBefore || !input.bestMove || !input.move) return false;
@@ -33,6 +36,7 @@ export function recordMillMistake(input: { fenBefore?: string | null; bestMove?:
       id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, fen: input.fenBefore, best: `${best.from}${best.to}${best.promotion || ''}`,
       played: input.move, grade, loss: Math.abs(Math.round(input.evalDelta || 0)), phrase: input.bestMovePhrase || null,
       date: new Date().toISOString().slice(0, 10), solved: 0, misses: 0, lastSolved: null,
+      ...(input.src ? { src: input.src } : {}),
     });
     saveMill(list);
     return true;
