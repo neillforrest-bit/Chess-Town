@@ -10,7 +10,7 @@ import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type ParsedMove } from '@/lib/chesscom';
 import { buildOpponentRows, userRapidTrajectory, type OpponentRow } from '@/lib/opponent-stats';
-import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, scorecard as scorecardFor, playerMeasure, verdictFor, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
+import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, scorecard as scorecardFor, playerMeasure, verdictFor, type ReviewedGame, type ReviewedPly, type ScorecardEntry } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
 import { Chess as ChessFacts } from 'chess.js';
@@ -160,13 +160,38 @@ export default function ReviewPage() {
 
   // Highlight-show picks: only STABLE plies (no unstable reads, no quick-pass-only grades,
   // no terminal/mate-read nodes) - the show never leans on a number the scorecard hides.
+  // A pick must also survive what happens next: the jump (or the damage) has to persist
+  // over the following readable evals, not just exist between two adjacent capped-depth
+  // reads. Mate/terminal reads carry no usable eval; a top pick with no readable follow-up
+  // stands only when the engine itself endorsed the move.
   const show = useMemo(() => {
     if (!review || !sc.length) return null;
     const stableUser = sc.filter((e) => e.ply.isUser && !e.unstable && !e.ply.provisional && !e.ply.terminal && e.ply.mateInAfter == null);
+    const followPcts = (ply: number): number[] => {
+      const out: number[] = [];
+      for (let k = ply + 1; k <= Math.min(ply + 4, sc.length) && out.length < 2; k++) {
+        const p = sc[k - 1]?.userPct;
+        if (p != null) out.push(p);
+      }
+      return out;
+    };
+    const topStands = (e: ScorecardEntry): boolean => {
+      if (e.delta == null || e.userPct == null) return false;
+      const pre = e.userPct - e.delta;
+      const ahead = followPcts(e.ply.ply);
+      if (ahead.length) return ahead.every((p) => p >= pre + (e.delta as number) * 0.5);
+      return e.ply.classification === 'BRILLIANT' || e.ply.classification === 'BEST';
+    };
+    const backStands = (e: ScorecardEntry): boolean => {
+      if (e.delta == null || e.userPct == null) return false;
+      const mid = e.userPct - e.delta * 0.5; // delta is negative on a loss; midpoint of the drop
+      const ahead = followPcts(e.ply.ply);
+      return ahead.length > 0 && ahead.every((p) => p <= mid);
+    };
     let top: { san: string; delta: number } | null = null;
-    for (const e of stableUser) if (e.delta != null && e.delta >= 5 && (!top || e.delta > top.delta)) top = { san: e.ply.san, delta: e.delta };
+    for (const e of stableUser) if (e.delta != null && e.delta >= 5 && topStands(e) && (!top || e.delta > top.delta)) top = { san: e.ply.san, delta: e.delta };
     let back: { san: string; loss: number; best: string | null } | null = null;
-    for (const e of stableUser) { const l = e.ply.evalDelta; if (l != null && l >= 100 && (!back || l > back.loss)) back = { san: e.ply.san, loss: l, best: e.ply.bestMoveSan }; }
+    for (const e of stableUser) { const l = e.ply.evalDelta; if (l != null && l >= 100 && backStands(e) && (!back || l > back.loss)) back = { san: e.ply.san, loss: l, best: e.ply.bestMoveSan }; }
     const fixables = review.plies
       .filter((p) => p.isUser && p.bestMoveSan && !p.provisional && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER'))
       .sort((a, b) => (b.evalDelta ?? 0) - (a.evalDelta ?? 0))
@@ -378,7 +403,8 @@ export default function ReviewPage() {
                 </tr>)}</tbody>
               </table>
             </div>
-            {partial && <p className="review-sub">* Some games don't carry clock times, so the time column covers the games that do.</p>}
+            {partial && <p className="review-sub">* Some games don't carry clock times, so the time column covers only the games that do.</p>}
+            {vis.some((r) => r.firstRating != null && r.lastRating != null && r.firstRating !== r.lastRating) && <p className="review-sub">Rating shifts span only your games against that opponent in this window — not their overall form.</p>}
             {vis.length > 50 && <p className="review-sub">Showing 50 of {vis.length} opponents — use the name filter to narrow.</p>}
           </>;
         })()}

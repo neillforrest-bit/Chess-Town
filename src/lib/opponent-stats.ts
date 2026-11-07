@@ -19,10 +19,13 @@ export type OpponentRow = {
   lastRatingClass: string | null;  // time class that rating belongs to ('rapid', 'blitz', ...)
   firstRating: number | null;      // opponent rating at the first encounter in the fetched range
   firstRatingClass: string | null;
+  // NOTE: first/last ratings span only the user's encounters with this opponent in the
+  // fetched window - they are not the opponent's overall trajectory over the period.
 };
 
 /** Wall-clock minutes between the PGN's StartTime/EndTime headers, or null when absent or
- *  nonsense (daily games carry no live clock session). Crosses midnight via UTCDate/EndDate. */
+ *  implausible for a single sitting (>4h). Callers skip daily-class games separately; this
+ *  only measures what the headers record, it does not infer time class. */
 export function durationMinutesFromPgn(pgn: string): number | null {
   const st = pgn.match(/\[StartTime "(\d+):(\d+):(\d+)"\]/);
   const et = pgn.match(/\[EndTime "(\d+):(\d+):(\d+)"\]/);
@@ -31,9 +34,9 @@ export function durationMinutesFromPgn(pgn: string): number | null {
   let end = (+et[1]) * 3600 + (+et[2]) * 60 + (+et[3]);
   const sd = pgn.match(/\[UTCDate "([^"]+)"\]/);
   const ed = pgn.match(/\[EndDate "([^"]+)"\]/);
-  if (sd && ed && ed[1] !== sd[1]) end += 24 * 3600; // next-day finish; month-long daily games excluded below
+  if (sd && ed && ed[1] !== sd[1]) end += 24 * 3600; // crosses midnight via UTCDate/EndDate
   const mins = (end - start) / 60;
-  if (!Number.isFinite(mins) || mins < 0 || mins > 240) return null; // >4h means a daily/idle game, not a session
+  if (!Number.isFinite(mins) || mins < 0 || mins > 240) return null; // >4h is not a single live sitting
   return Math.round(mins);
 }
 
@@ -51,6 +54,7 @@ export function buildOpponentRows(games: CcGame[]): OpponentRow[] {
     let totalMinutes = 0;
     let timedGames = 0;
     for (const g of asc) {
+      if (g.timeClass === 'daily') continue; // daily games span days; header span is not playing time
       const d = durationMinutesFromPgn(g.pgn);
       if (d != null) { totalMinutes += d; timedGames++; }
     }
