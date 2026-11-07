@@ -49,6 +49,8 @@ export type ReviewedPly = {
   whiteCpAfter: number | null;
   mateInAfter: number | null;
   provisional?: boolean;
+  /** chess.js-verified game end delivered BY this move - a fact, not an engine grade. */
+  terminal?: 'mate' | 'draw';
 };
 
 export type ReviewedGame = {
@@ -89,6 +91,20 @@ export async function analyzeGame(
   const plies: ReviewedPly[] = [];
   for (let i = 0; i < moves.length; i++) {
     const m = moves[i];
+    const after = new Chess(m.fenAfter);
+    if (after.isCheckmate()) {
+      // Delivering mate is chess.js-verifiable fact, not an engine estimate: never grade it,
+      // never mark it unconfirmed, never send it through a capped search.
+      plies.push({
+        ply: m.ply, san: m.san, mover: m.mover, isUser: m.mover === game.userColor,
+        fenBefore: m.fenBefore, fenAfter: m.fenAfter, clkSec: m.clkSec,
+        classification: 'BEST', evalDelta: 0, bestMoveSan: m.san, continuation: [],
+        whiteCpAfter: null, mateInAfter: 0, terminal: 'mate',
+      });
+      onProgress(i + 1, moves.length);
+      continue;
+    }
+    const terminalDraw = after.isStalemate() || after.isDraw();
     const t = await engine.evaluateMove({
       fenBefore: m.fenBefore, fenAfter: m.fenAfter, san: m.san, uci: m.uci,
       playerColor: m.mover, difficulty: 'EXPERT',
@@ -103,6 +119,7 @@ export async function analyzeGame(
       whiteCpAfter: t.centipawns == null ? null : t.centipawns * moverSign,
       mateInAfter: t.mateIn ?? null,
       provisional: t.provisional,
+      terminal: terminalDraw ? 'draw' : undefined,
     });
     onProgress(i + 1, moves.length);
   }
@@ -169,6 +186,8 @@ export function clockReport(review: ReviewedGame): ClockReport {
 
 export function classCounts(review: ReviewedGame): { label: string; n: number }[] {
   const user = review.plies.filter((p) => p.isUser);
-  const order: EngineTelemetry['classification'][] = ['BRILLIANT', 'BEST', 'GREAT', 'INACCURACY', 'MISTAKE', 'BLUNDER'];
-  return order.map((c) => ({ label: c, n: user.filter((p) => p.classification === c).length }));
+  const measured = (c: EngineTelemetry['classification']) =>
+    c === 'BRILLIANT' || c === 'BEST' ? 'BEST' : c === 'GREAT' ? 'GOOD' : c === 'INACCURACY' ? 'SLIP' : c;
+  const order = ['BEST', 'GOOD', 'SLIP', 'MISTAKE', 'BLUNDER'];
+  return order.map((label) => ({ label, n: user.filter((p) => measured(p.classification) === label).length }));
 }

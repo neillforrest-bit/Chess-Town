@@ -12,6 +12,7 @@ import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type P
 import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
+import { detectWhyPattern } from '@/lib/why-patterns';
 
 type Stage = 'pick' | 'analyzing' | 'report';
 
@@ -23,9 +24,22 @@ function fmtLoss(cp: number | null): string {
   if (cp == null) return '';
   return `-${(cp / 100).toFixed(1)}`;
 }
+/** Measured labels, not praise: what the capped engine actually observed. */
+export function measuredLabel(p: ReviewedPly): string {
+  if (p.terminal === 'mate') return 'CHECKMATE';
+  if (p.terminal === 'draw') return 'GAME DRAWN';
+  switch (p.classification) {
+    case 'BRILLIANT':
+    case 'BEST': return 'BEST';
+    case 'GREAT': return 'GOOD';
+    case 'INACCURACY': return 'SLIP';
+    case 'MISTAKE': return 'MISTAKE';
+    case 'BLUNDER': return 'BLUNDER';
+  }
+}
 function gradeChip(p: ReviewedPly): { label: string; bad: boolean } {
   const bad = p.classification === 'MISTAKE' || p.classification === 'BLUNDER';
-  return { label: p.classification === 'INACCURACY' ? 'SLIP' : p.classification, bad };
+  return { label: measuredLabel(p), bad };
 }
 
 export default function ReviewPage() {
@@ -80,7 +94,10 @@ export default function ReviewPage() {
       saveReview(done);
       // Bank the player's own slips into the Puzzle Mill (existing retry feature).
       for (const p of done.plies) {
-        if (!p.isUser || p.provisional) continue;
+        // Confidence gate: bank only stable, comparable losses. Mate-adjacent and terminal
+        // positions read wildly at capped depth; unconfirmed grades never become puzzles.
+        if (!p.isUser || p.provisional || p.terminal || p.mateInAfter != null) continue;
+        if (p.evalDelta == null || p.evalDelta < 150) continue;
         if (p.classification === 'MISTAKE' || p.classification === 'BLUNDER') {
           try {
             recordMillMistake({ fenBefore: p.fenBefore, bestMove: p.bestMoveSan, move: p.san, classification: p.classification, evalDelta: p.evalDelta, provisional: p.provisional });
@@ -140,6 +157,15 @@ export default function ReviewPage() {
 
   const resultWord = review ? (review.meta.result === 'win' ? 'You won' : review.meta.result === 'loss' ? 'You lost' : 'Draw') : '';
 
+  /** One board-factual reason for a slip, when the pattern detector can name one from the
+   *  actual position. Null means we stay with the engine-line framing rather than invent a cause. */
+  const whyFor = (p: ReviewedPly): string | null => {
+    try {
+      const pat = detectWhyPattern({ fenBefore: p.fenBefore, move: p.san, bestMove: p.bestMoveSan, classification: p.classification });
+      return pat ? pat.line : null;
+    } catch { return null; }
+  };
+
   return <main className="lab-shell review-shell">
     <header className="review-head">
       <Link href="/learn" className="review-back">← Lessons</Link>
@@ -198,7 +224,7 @@ export default function ReviewPage() {
           <button className="lab-btn" onClick={() => { setWalkIdx((i) => Math.min(review.plies.length - 1, i + 1)); setRetryMode(null); setRetryFen(null); }} disabled={walkIdx >= review.plies.length - 1}>Next ▶</button>
         </div>
         <div className={`review-chip review-chip--${gradeChip(ply).bad ? 'bad' : 'ok'}`}>
-          {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional ? ' (unconfirmed)' : ''}
+          {ply.isUser ? 'Your move' : 'Their move'} · {gradeChip(ply).label}{ply.provisional && !ply.terminal ? ' (unconfirmed)' : ''}
           {ply.evalDelta != null && ply.evalDelta > 30 ? ` · engine read ${fmtLoss(ply.evalDelta)}` : ''}
           {ply.bestMoveSan && (ply.classification === 'MISTAKE' || ply.classification === 'BLUNDER' || ply.classification === 'INACCURACY') ? ` · better: ${ply.bestMoveSan}` : ''}
         </div>
@@ -208,7 +234,7 @@ export default function ReviewPage() {
         {retryMode === 'ask' && <p className="review-sub">From the position just before your move: find the better one. Tap a piece, then where it goes.</p>}
         {retryMode === 'miss' && <p className="review-sub">Not that one - have another go, or press “Show me”.</p>}
         {retryMode === 'miss' && <button className="lab-btn" onClick={showBest}>Show me</button>}
-        {retryMode === 'shown' && <p className="review-sub review-sub--good">The engine liked <b>{ply.bestMoveSan}</b> here.{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} That is one engine's line at capped depth - a strong suggestion, not the only answer.</p>}
+        {retryMode === 'shown' && <p className="review-sub review-sub--good">{whyFor(ply) ? `${whyFor(ply)} ` : ''}The engine's pick: <b>{ply.bestMoveSan}</b>.{ply.continuation.length ? ` If play continues ${ply.continuation.slice(0, 4).join(' ')}.` : ''} One engine's line at capped depth - a strong suggestion, not the only answer.</p>}
         <div className="review-traj" aria-hidden="true">
           {review.plies.map((p, i) => {
             const cp = p.whiteCpAfter == null ? (p.mateInAfter != null ? (p.mateInAfter > 0 === (p.mover === 'w') ? 1200 : -1200) : 0) : Math.max(-1200, Math.min(1200, p.whiteCpAfter));
@@ -229,7 +255,7 @@ export default function ReviewPage() {
           <small>{tp.kind === 'missed' ? 'YOUR SLIP' : 'THEIR GIFT'} · move {Math.ceil(tp.ply.ply / 2)}{tp.ply.mover === 'b' ? '…' : ''}</small>
           <b>{tp.ply.san}{tp.ply.evalDelta != null ? ` (${fmtLoss(tp.ply.evalDelta)})` : ''}{tp.ply.provisional ? ' - unconfirmed' : ''}</b>
           <span>{tp.kind === 'missed'
-            ? `The engine preferred ${tp.ply.bestMoveSan || 'another move'}. Tap to stand at that moment and try it yourself.`
+            ? (whyFor(tp.ply) || `The engine preferred ${tp.ply.bestMoveSan || 'another move'} here.`) + ' Tap to stand at that moment and try it yourself.'
             : `${review.meta.opponent} slipped here${tp.ply.bestMoveSan ? ` - ${tp.ply.bestMoveSan} was the way to punish it` : ''}.`}</span>
         </button>)}
       </section>}
