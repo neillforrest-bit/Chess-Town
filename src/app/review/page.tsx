@@ -10,8 +10,10 @@ import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
 import { fetchArchives, fetchMonth, parseGamePgn, endPhrase, type CcGame, type ParsedMove } from '@/lib/chesscom';
 import { buildOpponentRows, userRapidTrajectory, type OpponentRow } from '@/lib/opponent-stats';
+import { reviewHighlights } from '@/lib/review-highlights';
+import OpponentTable from '@/components/OpponentTable';
 import { publishReviewChatContext, clearReviewChatContext } from '@/lib/review-chat';
-import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, scorecard as scorecardFor, playerMeasure, verdictFor, type ReviewedGame, type ReviewedPly, type ScorecardEntry } from '@/lib/game-review';
+import { analyzeGame, saveReview, loadReviews, turningPoints, clockReport, classCounts, scorecard as scorecardFor, playerMeasure, verdictFor, type ReviewedGame, type ReviewedPly } from '@/lib/game-review';
 import { getStockfishClient } from '@/lib/stockfish';
 import { recordMillMistake } from '@/lib/puzzle-mill';
 import { Chess as ChessFacts } from 'chess.js';
@@ -66,8 +68,7 @@ export default function ReviewPage() {
   const [oppRows, setOppRows] = useState<OpponentRow[] | null>(null);
   const [oppTraj, setOppTraj] = useState<Array<{ t: number; rating: number }> | null>(null);
   const [oppBusy, setOppBusy] = useState(false);
-  const [oppSort, setOppSort] = useState<'games' | 'minutes' | 'record' | 'recent' | 'rating'>('games');
-  const [oppSearch, setOppSearch] = useState('');
+  const [oppCoverage, setOppCoverage] = useState('');
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
 
@@ -87,15 +88,18 @@ export default function ReviewPage() {
   const loadOpponents = async () => {
     setOppBusy(true); setError('');
     try {
-      const urls = archives.length
-        ? archives.slice(0, 6) // archives state is newest-first
-        : (await fetchArchives(username)).slice(-6);
+      const available = archives.length ? archives : (await fetchArchives(username));
+      const now = new Date();
+      const floor = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1);
+      const urls = available.filter((u) => { const [y, m] = u.split('/').slice(-2).map(Number); return Date.UTC(y, m - 1, 1) >= floor; }).sort().reverse();
       const all: CcGame[] = [];
       for (const u of urls) {
         const g = await fetchMonth(u, username);
         if (!mounted.current) return;
         all.push(...g);
       }
+      const labels = urls.slice().reverse().map((u) => u.split('/').slice(-2).join('/'));
+      setOppCoverage(`${all.length} games from ${labels.join(', ')} (${urls.length} published monthly archives loaded)`);
       setOppRows(buildOpponentRows(all));
       setOppTraj(userRapidTrajectory(all));
     } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : String(e)); }
@@ -159,49 +163,7 @@ export default function ReviewPage() {
   const sc = useMemo(() => (review ? scorecardFor(review) : []), [review]);
   const measures = useMemo(() => (review ? { user: playerMeasure(review, true), opp: playerMeasure(review, false) } : null), [review]);
 
-  // Highlight-show picks: only STABLE plies (no unstable reads, no quick-pass-only grades,
-  // no terminal/mate-read nodes) - the show never leans on a number the scorecard hides.
-  // A pick must also survive what happens next: the jump (or the damage) has to persist
-  // over the following readable evals, not just exist between two adjacent capped-depth
-  // reads. Mate/terminal reads carry no usable eval; a top pick with no readable follow-up
-  // stands only when the engine itself endorsed the move.
-  const show = useMemo(() => {
-    if (!review || !sc.length) return null;
-    const stableUser = sc.filter((e) => e.ply.isUser && !e.unstable && !e.ply.provisional && !e.ply.terminal && e.ply.mateInAfter == null);
-    const followPcts = (ply: number): number[] => {
-      const out: number[] = [];
-      for (let k = ply + 1; k <= Math.min(ply + 4, sc.length) && out.length < 2; k++) {
-        const entry = sc[k - 1];
-        if (!entry || entry.unstable) return [];
-        const p = entry.userPct;
-        if (p != null) out.push(p);
-      }
-      return out;
-    };
-    const topStands = (e: ScorecardEntry): boolean => {
-      if (e.delta == null || e.userPct == null) return false;
-      const pre = e.userPct - e.delta;
-      const ahead = followPcts(e.ply.ply);
-      if (ahead.length) return ahead.every((p) => p >= pre + (e.delta as number) * 0.5);
-      return false; // no trustworthy follow-up means no numerical highlight
-    };
-    const backStands = (e: ScorecardEntry): boolean => {
-      if (e.delta == null || e.userPct == null) return false;
-      const mid = e.userPct - e.delta * 0.5; // delta is negative on a loss; midpoint of the drop
-      const ahead = followPcts(e.ply.ply);
-      return ahead.length > 0 && ahead.every((p) => p <= mid);
-    };
-    let top: { san: string; delta: number } | null = null;
-    for (const e of stableUser) if (e.delta != null && e.delta >= 5 && topStands(e) && (!top || e.delta > top.delta)) top = { san: e.ply.san, delta: e.delta };
-    let back: { san: string; loss: number; best: string | null } | null = null;
-    for (const e of stableUser) { const l = e.ply.evalDelta; if (l != null && l >= 100 && backStands(e) && (!back || l > back.loss)) back = { san: e.ply.san, loss: l, best: e.ply.bestMoveSan }; }
-    const fixables = review.plies
-      .filter((p) => p.isUser && p.bestMoveSan && !p.provisional && (p.classification === 'MISTAKE' || p.classification === 'BLUNDER'))
-      .sort((a, b) => (b.evalDelta ?? 0) - (a.evalDelta ?? 0))
-      .slice(0, 3)
-      .map((p) => ({ ply: p, stable: !sc[p.ply - 1]?.unstable }));
-    return { top, back, fixables, anyStable: stableUser.length > 0 };
-  }, [review, sc]);
+  const show = useMemo(() => review ? reviewHighlights(review) : null, [review]);
 
   const startFix = (targetPly: number) => {
     goTo(targetPly - 1);
@@ -381,60 +343,11 @@ export default function ReviewPage() {
     {stage === 'pick' && <>
       <p className="review-sub">Your real Chess.com games, walked move by move. Pulled from Chess.com's public archive (no login); the analysis runs in this browser and reviews are saved on this device only.</p>
       <div className="review-row">
-        <input className="review-input" value={username} onChange={(e) => setUsername(e.target.value)} aria-label="Chess.com username" placeholder="Chess.com username" />
+        <input className="review-input" value={username} disabled={busy || oppBusy} onChange={(e) => { setUsername(e.target.value); setArchives([]); setGames([]); setPickedMonth(null); setOppRows(null); setOppTraj(null); }} aria-label="Chess.com username" placeholder="Chess.com username" />
         <button className="lab-btn lab-btn--go" onClick={loadArchives} disabled={busy || !username.trim()}>Find games</button>
         <button className="lab-btn" onClick={loadOpponents} disabled={oppBusy || busy || !username.trim()}>{oppBusy ? 'Loading 6 months…' : 'Opponent table'}</button>
       </div>
-      {oppRows && <section>
-        <h2 className="review-h2">Opponents · last 6 months</h2>
-        {oppTraj && oppTraj.length > 1 && (() => {
-          const first = oppTraj[0].rating;
-          const last = oppTraj[oppTraj.length - 1].rating;
-          const peak = Math.max(...oppTraj.map((p) => p.rating));
-          const delta = last - first;
-          return <p className="review-sub">Your rapid: {first} → {last} ({delta >= 0 ? '+' : ''}{delta}) · peak {peak} · {oppTraj.length} rapid games</p>;
-        })()}
-        <div className="review-filters">
-          <select className="review-select" value={oppSort} onChange={(e) => setOppSort(e.target.value as typeof oppSort)} aria-label="Sort opponents">
-            <option value="games">Most games</option>
-            <option value="minutes">Most time played</option>
-            <option value="record">Best record</option>
-            <option value="recent">Most recent</option>
-            <option value="rating">Highest rated</option>
-          </select>
-          <input className="review-input" value={oppSearch} onChange={(e) => setOppSearch(e.target.value)} placeholder="Filter name…" aria-label="Filter opponents" />
-        </div>
-        {(() => {
-          const q = oppSearch.trim().toLowerCase();
-          const vis = oppRows
-            .filter((r) => !q || r.opponent.toLowerCase().includes(q))
-            .sort((a, b) =>
-              oppSort === 'games' ? b.games - a.games
-              : oppSort === 'minutes' ? b.totalMinutes - a.totalMinutes
-              : oppSort === 'record' ? (b.wins / b.games) - (a.wins / a.games) || b.games - a.games
-              : oppSort === 'recent' ? b.lastPlayed - a.lastPlayed
-              : (b.lastRating ?? 0) - (a.lastRating ?? 0));
-          const partial = vis.some((r) => r.timedGames < r.games);
-          return <>
-            <div className="opp-table-wrap">
-              <table className="opp-table">
-                <thead><tr><th>Opponent</th><th>Games</th><th>Time</th><th>W-L-D</th><th>Last winner</th><th>Rating</th></tr></thead>
-                <tbody>{vis.slice(0, 50).map((r) => <tr key={r.opponent}>
-                  <td>{r.opponent}</td>
-                  <td>{r.games}</td>
-                  <td>{r.timedGames > 0 ? `${r.totalMinutes}m` : '—'}{r.timedGames > 0 && r.timedGames < r.games ? '*' : ''}</td>
-                  <td>{r.wins}-{r.losses}-{r.draws}</td>
-                  <td>{r.lastWinner === 'you' ? 'You' : r.lastWinner === 'opponent' ? r.opponent : r.lastWinner === 'draw' ? 'Draw' : '—'}</td>
-                  <td>{r.lastRating ?? '—'}{r.firstRating != null && r.lastRating != null && r.firstRating !== r.lastRating ? ` (${r.lastRating - r.firstRating >= 0 ? '+' : ''}${r.lastRating - r.firstRating})` : ''}</td>
-                </tr>)}</tbody>
-              </table>
-            </div>
-            {partial && <p className="review-sub">* Some games don't carry clock times, so the time column covers only the games that do.</p>}
-            {vis.some((r) => r.firstRating != null && r.lastRating != null && r.firstRating !== r.lastRating) && <p className="review-sub">Rating shifts span only your games against that opponent in this window — not their overall form.</p>}
-            {vis.length > 50 && <p className="review-sub">Showing 50 of {vis.length} opponents — use the name filter to narrow.</p>}
-          </>;
-        })()}
-      </section>}
+      {oppRows && <OpponentTable rows={oppRows} trajectory={oppTraj ?? []} coverage={oppCoverage} />}
       {archives.length > 0 && <section>
         <h2 className="review-h2">Pick a month</h2>
         <select className="review-select" value={pickedMonth ?? ''} onChange={(e) => { if (e.target.value) loadMonth(e.target.value); }} disabled={busy} aria-label="Month">
@@ -490,8 +403,8 @@ export default function ReviewPage() {
         {show && !show.anyStable
           ? <p className="review-sub">The engine's reads in this game swung too hard at capped depth to name moments with a straight face - no show tonight, just the facts below.</p>
           : <>
-            <p className="review-sub">⭐ Top play: {show?.top ? <b>{show.top.san}</b> : 'no standout'} {show?.top ? `- the scorecard jumped ${show.top.delta > 0 ? '+' : ''}${show.top.delta} points your way after that one.` : '- nothing stable stood out enough to call.'}</p>
-            <p className="review-sub">🙈 Wish-you-had-it-back: {show?.back ? <b>{show.back.san}</b> : 'nothing with a stable number'} {show?.back ? `- engine read ${fmtLoss(show.back.loss)}${show.back.best ? `; Chester's pick there was ${show.back.best}` : ''}.` : show?.fixables.length ? '- your misses here sit on unstable engine reads at capped depth, so no numbers on them; they are in Fix your mistakes below if you fancy the practice.' : '- no big mistakes from you in this one.'}</p>
+            <p className="review-sub">⭐ Top play: {show?.top ? <button className="review-jump" onClick={() => goTo(show.top!.ply - 1)}>Move {Math.ceil(show.top.ply / 2)}{show.top.ply % 2 === 0 ? '…' : '.'} {show.top.san}</button> : 'no standout'} {show?.top ? `- ${show.top.reason} The engine liked the move, and the next two reads held up.` : '- nothing stable stood out enough to call.'}</p>
+            <p className="review-sub">🙈 Wish-you-had-it-back: {show?.back ? <button className="review-jump" onClick={() => goTo(show.back!.ply - 1)}>Move {Math.ceil(show.back.ply / 2)}{show.back.ply % 2 === 0 ? '…' : '.'} {show.back.san}</button> : 'nothing with a stable number'} {show?.back ? `- engine read ${fmtLoss(show.back.loss)}${show.back.best ? `; Chester's pick there was ${show.back.best}` : ''}.` : show?.fixables.length ? '- your misses here sit on unstable engine reads at capped depth, so no numbers on them; they are in Fix your mistakes below if you fancy the practice.' : '- no big mistakes from you in this one.'}</p>
           </>}
         <p className="review-sub review-sub--fine">For fun, not to be taken seriously - the measured numbers are below.</p>
       </section>

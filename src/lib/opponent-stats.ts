@@ -19,6 +19,8 @@ export type OpponentRow = {
   lastRatingClass: string | null;  // time class that rating belongs to ('rapid', 'blitz', ...)
   firstRating: number | null;      // opponent rating at the first encounter in the fetched range
   firstRatingClass: string | null;
+  rapidRating: number | null;
+  rapidAt: number | null;
   // NOTE: first/last ratings span only the user's encounters with this opponent in the
   // fetched window - they are not the opponent's overall trajectory over the period.
 };
@@ -30,14 +32,19 @@ export function durationMinutesFromPgn(pgn: string): number | null {
   const st = pgn.match(/\[StartTime "(\d+):(\d+):(\d+)"\]/);
   const et = pgn.match(/\[EndTime "(\d+):(\d+):(\d+)"\]/);
   if (!st || !et) return null;
-  const start = (+st[1]) * 3600 + (+st[2]) * 60 + (+st[3]);
-  let end = (+et[1]) * 3600 + (+et[2]) * 60 + (+et[3]);
-  const sd = pgn.match(/\[UTCDate "([^"]+)"\]/);
-  const ed = pgn.match(/\[EndDate "([^"]+)"\]/);
-  if (sd && ed && ed[1] !== sd[1]) end += 24 * 3600; // crosses midnight via UTCDate/EndDate
-  const mins = (end - start) / 60;
-  if (!Number.isFinite(mins) || mins < 0 || mins > 240) return null; // >4h is not a single live sitting
-  return Math.round(mins);
+  const sd = pgn.match(/\[UTCDate "([^"]+)"\]/)?.[1];
+  const ed = pgn.match(/\[EndDate "([^"]+)"\]/)?.[1];
+  const seconds = (m: RegExpMatchArray) => +m[1] * 3600 + +m[2] * 60 + +m[3];
+  if ([st, et].some((m) => +m[1] > 23 || +m[2] > 59 || +m[3] > 59)) return null;
+  let span = seconds(et) - seconds(st);
+  if (sd && ed) {
+    const day = (s: string) => Date.parse(s.replaceAll('.', '-') + 'T00:00:00Z');
+    span += (day(ed) - day(sd)) / 1000;
+  } else if (span < 0) return null; // without dates, midnight crossing is unverified
+  const mins = span / 60;
+  if (!Number.isFinite(mins) || mins < 0 || mins > 240) return null;
+  return mins; // round only the final sum, not every game
+
 }
 
 export function buildOpponentRows(games: CcGame[]): OpponentRow[] {
@@ -51,6 +58,7 @@ export function buildOpponentRows(games: CcGame[]): OpponentRow[] {
   for (const [opponent, list] of byOpp) {
     const asc = [...list].sort((a, b) => a.endTime - b.endTime);
     const latest = asc[asc.length - 1];
+    const rapid = asc.filter((g) => g.timeClass === 'rapid' && g.opponentRating != null).at(-1);
     let totalMinutes = 0;
     let timedGames = 0;
     for (const g of asc) {
@@ -64,7 +72,8 @@ export function buildOpponentRows(games: CcGame[]): OpponentRow[] {
       wins: asc.filter((g) => g.result === 'win').length,
       losses: asc.filter((g) => g.result === 'loss').length,
       draws: asc.filter((g) => g.result === 'draw').length,
-      totalMinutes, timedGames,
+      totalMinutes: Math.round(totalMinutes), timedGames,
+      rapidRating: rapid?.opponentRating ?? null, rapidAt: rapid?.endTime ?? null,
       lastWinner: latest.result === 'win' ? 'you' : latest.result === 'loss' ? 'opponent' : 'draw',
       lastPlayed: latest.endTime,
       lastRating: latest.opponentRating, lastRatingClass: latest.timeClass,
@@ -75,7 +84,7 @@ export function buildOpponentRows(games: CcGame[]): OpponentRow[] {
 }
 
 /** The user's rapid rating after each rapid game, oldest first - their own 6-month
- *  trajectory is complete because every archived game carries both players' ratings. */
+ *  trajectory covers the published games fetched, not unpublished or delayed games. */
 export function userRapidTrajectory(games: CcGame[]): { t: number; rating: number }[] {
   return games
     .filter((g) => g.timeClass === 'rapid' && g.userRating != null)

@@ -3777,3 +3777,9 @@ body:has(.chester-game) .global-nav,body:has(.chester-game) .chester-fab { displ
 .opp-table { width: 100%; border-collapse: collapse; font-size: 12px; color: #e8eef2; }
 .opp-table th { text-align: left; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(232,238,242,.55); padding: 6px; border-bottom: 1px solid rgba(255,255,255,.25); white-space: nowrap; }
 .opp-table td { padding: 6px; border-bottom: 1px solid rgba(255,255,255,.08); white-space: nowrap; }
+.opp-rating-chart { width:100%; max-height:165px; display:block; background:rgba(255,255,255,.03); border-radius:8px; margin-bottom:12px; }
+.opp-filters { display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:start; }
+.opp-filters .review-select, .opp-filters .review-input { margin:0; width:100%; min-width:0; }
+.opp-table td small { display:block; color:#a8b1ba; font-size:10px; }
+.review-jump { color:#ffd84d; text-decoration:underline; font-weight:700; cursor:pointer; background:none; border:0; padding:0; }
+@media(max-width:420px) { .opp-filters { grid-template-columns:1fr; } }
