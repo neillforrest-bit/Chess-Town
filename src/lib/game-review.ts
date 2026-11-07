@@ -288,10 +288,10 @@ export function verdictFor(m: PlayerMeasure): string {
   const cp = m.avgLossCp;
   if (cp == null) return 'not enough measured moves to call it';
   if (cp <= 45 && m.blunders === 0) return 'ok, time to take on the grand masters';
-  if (cp <= 75) return 'clean game - proper club chess';
-  if (cp <= 110) return 'solid - a few wobbles, mostly controlled';
-  if (cp <= 150) return 'getting there - the ideas are fine, the gifts are the problem';
-  if (cp <= 200) return 'generous today - too many pieces given away';
+  if (cp <= 75) return 'a tidy scorecard this game';
+  if (cp <= 110) return 'a few wobbles in this one';
+  if (cp <= 150) return 'some costly choices in this one';
+  if (cp <= 200) return 'too many costly choices this game';
   return 'hm is this your first game?';
 }
 

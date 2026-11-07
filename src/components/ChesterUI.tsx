@@ -228,8 +228,8 @@ export function ChesterChatOverlay({
                 type="submit" 
                 disabled={isThinking || !chatInput.trim()}
                 style={{
-                  background: 'var(--arena-pink)',
-                  color: '#000',
+                  background: '#9d174d',
+                  color: '#fff',
                   border: 'none',
                   borderRadius: '4px',
                   padding: '0.5rem 1rem',

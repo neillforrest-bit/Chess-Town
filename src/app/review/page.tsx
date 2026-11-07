@@ -366,7 +366,7 @@ export default function ReviewPage() {
         <h2 className="review-h2">📺 Chester's Highlight Show</h2>
         <p className="review-sub"><b>FINAL: {review.meta.result === 'win' ? 'You take it' : review.meta.result === 'loss' ? `${review.meta.opponent} takes it` : 'Honors even'}{endPhrase(review.meta.termination) ? ` ${endPhrase(review.meta.termination)}` : ''} after {Math.ceil(review.plies.length / 2)} move{Math.ceil(review.plies.length / 2) === 1 ? '' : 's'}.</b></p>
         {measures && measures.user.graded >= 6
-          ? <p className="review-sub">Report card - You: “{verdictFor(measures.user)}” · {review.meta.opponent}: “{verdictFor(measures.opp)}”</p>
+          ? <p className="review-sub">Game-only banter - You: “{verdictFor(measures.user)}” · {review.meta.opponent}: “{verdictFor(measures.opp)}”</p>
           : <p className="review-sub">Too short a game for report cards - only {measures?.user.graded ?? 0} of your moves got graded.</p>}
         {show && !show.anyStable
           ? <p className="review-sub">The engine's reads in this game swung too hard at capped depth to name moments with a straight face - no show tonight, just the facts below.</p>
@@ -374,7 +374,7 @@ export default function ReviewPage() {
             <p className="review-sub">⭐ Top play: {show?.top ? <button className="review-jump" onClick={() => goTo(show.top!.ply - 1)}>Move {Math.ceil(show.top.ply / 2)}{show.top.ply % 2 === 0 ? '…' : '.'} {show.top.san}</button> : 'no standout'} {show?.top ? `- ${show.top.reason} The engine liked the move, and the next two reads held up.` : '- nothing stable stood out enough to call.'}</p>
             <p className="review-sub">🙈 Wish-you-had-it-back: {show?.back ? <button className="review-jump" onClick={() => goTo(show.back!.ply - 1)}>Move {Math.ceil(show.back.ply / 2)}{show.back.ply % 2 === 0 ? '…' : '.'} {show.back.san}</button> : 'nothing with a stable number'} {show?.back ? `- engine read ${fmtLoss(show.back.loss)}${show.back.best ? `; Chester's pick there was ${show.back.best}` : ''}.` : show?.fixables.length ? '- your misses here sit on unstable engine reads at capped depth, so no numbers on them; they are in Fix your mistakes below if you fancy the practice.' : '- no big mistakes from you in this one.'}</p>
           </>}
-        <p className="review-sub review-sub--fine">For fun, not to be taken seriously - the measured numbers are below.</p>
+        {measures && <p className="review-sub review-sub--fine">Based only on this game's measured move loss: you {measures.user.avgLossCp == null ? 'unavailable' : `~${(measures.user.avgLossCp / 100).toFixed(1)} pawns per graded move (${measures.user.graded} moves)`}; {review.meta.opponent} {measures.opp.avgLossCp == null ? 'unavailable' : `~${(measures.opp.avgLossCp / 100).toFixed(1)} (${measures.opp.graded} moves)`}. For fun, not a player rating or a claim about strength.</p>}
       </section>
 
       <section className="review-walk">
