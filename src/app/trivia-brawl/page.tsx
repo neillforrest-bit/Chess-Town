@@ -11,7 +11,6 @@ import {
   loadAllRounds, markRoundLoaded, planMatch, roundSummary, viewerQuestion,
   type MatchState, type ViewerQuestion, type WildcardId,
 } from '@/lib/trivia-match';
-import { PEER_CONFIG } from '@/lib/p2p';
 import { freeTriviaCommentaryReply, isFreeTriviaCommentaryTest } from '@/lib/trivia-commentary-test';
 import { LOCAL_CATEGORIES, categoryQuip, pickLocalQuestion, revealQuip, roundEndLine, ROUND_INTROS, ROULETTE_LINES, FLASH_INTROS, FLASH_RESOLVE_LINES, ON_THE_HOUSE_LINES } from '@/lib/trivia-local';
 import {
@@ -239,6 +238,8 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const [advancing, setAdvancing] = useState(false);
   const [linked, setLinked] = useState(false);
   const [guestJoined, setGuestJoined] = useState(false);
+  const [relayConfigured, setRelayConfigured] = useState<boolean | null>(null);
+  const [joinStopped, setJoinStopped] = useState(false);
   const [series, setSeries] = useState({ p1: 0, p2: 0, draws: 0 });
   const seriesCountedRef = useRef(false);
   const linkedRef = useRef(false);
@@ -311,6 +312,13 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     const id = initialMatch;
     let cancelled = false;
     let peer: any = null;
+    const probes = new Set<any>();
+    let removeVisibilityListener: (() => void) | undefined;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const later = (fn: () => void, delay: number) => {
+      const timer = setTimeout(() => { timers.delete(timer); if (!cancelled) fn(); }, delay);
+      timers.add(timer);
+    };
     setMatchId(id);
     const freeCommentary = new URLSearchParams(window.location.search).get('triviaFreeCommentary') === '1';
     window.history.replaceState(null, '', `/trivia-brawl?match=${id}&role=${role}${freeCommentary ? '&triviaFreeCommentary=1' : ''}`);
@@ -319,10 +327,30 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       setCategories(LOCAL_CATEGORIES);
       void fetch('https://opentdb.com/api_category.php', { signal: AbortSignal.timeout(5000) }).then((r) => r.json()).then((d: { trivia_categories?: Category[] }) => { if (!cancelled && d.trivia_categories?.length) setCategories([...LOCAL_CATEGORIES, ...d.trivia_categories]); }).catch(() => undefined);
       const { default: Peer } = await import('peerjs');
+      let iceServers: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+      try {
+        const response = await fetch('/api/trivia-ice', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+        if (response.ok) {
+          const data = await response.json() as { iceServers: RTCIceServer[]; relayConfigured: boolean };
+          if (Array.isArray(data.iceServers)) iceServers = data.iceServers;
+          if (!cancelled) setRelayConfigured(data.relayConfigured === true);
+        } else if (!cancelled) setRelayConfigured(false);
+      } catch { if (!cancelled) setRelayConfigured(false); }
+      const triviaPeerConfig = { config: { iceServers } };
       if (cancelled) return;
       let hosting = role === 'p1';
       let joinAttempts = 0;
       const joinGuest = () => {
+        if (cancelled) return;
+        if (joinAttempts >= 3) {
+          setLinked(false);
+          setJoinStopped(true);
+          setError('Connection paused after three attempts. Retry once the host is ready. If it still fails, return to the pub door.');
+          const retired = peer;
+          peer = null;
+          try { retired?.destroy?.(); } catch { /* teardown */ }
+          return;
+        }
         joinAttempts += 1;
         const my = joinAttempts;
         // Retire the old peer BEFORE destroying it: a destroy fires events, and a
@@ -330,74 +358,75 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         const retired = peer;
         peer = null;
         try { retired?.destroy?.(); } catch { /* teardown */ }
-        peer = new Peer(PEER_CONFIG as any);
+        peer = new Peer(triviaPeerConfig as any);
         const mine = peer;
+        // Bound the entire attempt, including a broker that never opens.
+        later(() => {
+          if (cancelled || linkedRef.current || joinAttempts !== my || peer !== mine) return;
+          setError(`Connecting to the host (${Math.min(joinAttempts + 1, 3)}/3)...`);
+          joinGuest();
+        }, 15000);
         peer.on('open', () => {
           if (cancelled || joinAttempts !== my || peer !== mine) return;
           const link = peer.connect(`ct-trivia-${id}`, { reliable: true });
           hostLinkRef.current = link;
-          link.on('open', () => { setLinked(true); hostSeenAtRef.current = Date.now(); });
-          link.on('data', (message: any) => { hostSeenAtRef.current = Date.now(); setError((cur) => cur === HOST_QUIET_MSG ? '' : cur); if (message?.type === 'room') setRoom(message.room as Room); if (message?.type === 'guest-error') setError(String(message.message || 'The pub table hiccuped - try that again.')); });
-          link.on('close', () => { setLinked(false); setError('The host left the pub. Ask for a fresh invite.'); });
-          link.on('error', () => { setLinked(false); setError('The pub table link dropped. Ask the host to reopen it.'); });
-          // A knock can vanish silently if the host's tab was asleep when it arrived.
-          // Never wait forever on one knock - close it and knock again.
-          window.setTimeout(() => {
-            if (cancelled || linkedRef.current || joinAttempts !== my) return;
-            try { link.close(); } catch { /* best effort */ }
-            setError('The knock went unanswered - knocking again...');
-            joinGuest();
-          }, 9000);
+          link.on('open', () => { if (cancelled || peer !== mine) return; setLinked(true); setJoinStopped(false); setError(''); hostSeenAtRef.current = Date.now(); });
+          link.on('data', (message: any) => { if (cancelled || peer !== mine) return; hostSeenAtRef.current = Date.now(); setError((cur) => cur === HOST_QUIET_MSG ? '' : cur); if (message?.type === 'room') setRoom(message.room as Room); if (message?.type === 'guest-error') setError(String(message.message || 'The pub table hiccuped - try that again.')); });
+          link.on('close', () => { if (cancelled || peer !== mine) return; setLinked(false); setJoinStopped(true); setError('The host connection closed. Retry when the host is back on the game screen.'); });
+          link.on('error', () => { if (cancelled || peer !== mine) return; setLinked(false); setJoinStopped(true); setError('The game connection dropped. Retry when the host is back on the game screen.'); });
         });
         peer.on('disconnected', () => { if (peer !== mine) return; try { peer.reconnect(); } catch { /* dropped */ } });
         peer.on('error', (peerError: any) => {
           if (cancelled || joinAttempts !== my || peer !== mine) return;
-          if (peerError?.type === 'peer-unavailable' && my < 40) {
-            setError('The pub table is still opening - knocking again...');
-            window.setTimeout(() => { if (!cancelled && !linkedRef.current && joinAttempts === my) joinGuest(); }, 3000);
+          if (peerError?.type === 'peer-unavailable' && my < 3) {
+            setError(`Connecting to the host (${my}/3)...`);
+            later(() => { if (!cancelled && !linkedRef.current && joinAttempts === my) joinGuest(); }, 3000);
             return;
           }
-          setError(peerError?.type === 'peer-unavailable' ? 'No pub table at that link. Ask the host for a fresh invite.' : 'The pub table connection hiccuped - holding on...');
+          if (peerError?.type === 'peer-unavailable') { joinGuest(); return; }
+          setError('The game connection could not open.');
         });
       };
       const openHost = (resumeAttempt: number, freshOpen = false) => {
+        if (cancelled) return;
         const retired = peer;
         peer = null;
         try { retired?.destroy?.(); } catch { /* teardown */ }
-        peer = new Peer(`ct-trivia-${id}`, PEER_CONFIG as any);
+        peer = new Peer(`ct-trivia-${id}`, triviaPeerConfig as any);
         const mine = peer;
         peer.on('connection', (link: any) => {
-          if (peer !== mine) { try { link.close(); } catch { /* stray */ } return; }
+          if (cancelled || peer !== mine) { try { link.close(); } catch { /* stray */ } return; }
           guestLinkRef.current = link;
+          const currentLink = () => !cancelled && peer === mine && guestLinkRef.current === link;
           link.on('open', () => {
-            if (cancelled) return;
+            if (!currentLink()) return;
             setLinked(true);
             setGuestJoined(true);
             guestSeenAtRef.current = Date.now();
             const current = fullRoomRef.current;
             if (current) { try { link.send({ type: 'room', room: serializeRoom(current, 'p2') }); } catch { /* next change resyncs */ } }
           });
-          link.on('data', (message: any) => { guestSeenAtRef.current = Date.now(); if (message?.type === 'ping') { try { link.send({ type: 'pong' }); } catch { /* link gone */ } } if (message?.type === 'action') void hostApply('p2', message.body || {}); });
-          link.on('close', () => setLinked(false));
-          link.on('error', () => setLinked(false));
-          link.on('iceStateChanged', (st: string) => { if (st === 'disconnected' || st === 'failed' || st === 'closed') setLinked(false); });
+          link.on('data', (message: any) => { if (!currentLink()) return; guestSeenAtRef.current = Date.now(); if (message?.type === 'ping') { try { link.send({ type: 'pong' }); } catch { /* link gone */ } } if (message?.type === 'action') void hostApply('p2', message.body || {}); });
+          link.on('close', () => { if (currentLink()) setLinked(false); });
+          link.on('error', () => { if (currentLink()) setLinked(false); });
+          link.on('iceStateChanged', (st: string) => { if (!currentLink()) return; if (st === 'disconnected' || st === 'failed' || st === 'closed') setLinked(false); });
         });
         peer.on('disconnected', () => { if (peer !== mine) return; try { peer.reconnect(); } catch { /* dropped */ } });
         peer.on('error', (peerError: any) => {
           if (cancelled || peer !== mine) return;
           if (peerError?.type === 'unavailable-id') {
-            // The id is taken: either a live host elsewhere (shared link opened on a
-            // second device) or a zombie registration - our own one, lingering at the
-            // broker for up to a couple of minutes after a tab reload or iOS discard.
-            // Probe the table: a live host answers a knock, a zombie does not.
-            if (hosting && !linkedRef.current && resumeAttempt < 24) {
-              const probe = new Peer(PEER_CONFIG as any);
+            // An occupied ID may be a live host or a lingering registration.
+            // An unanswered probe does not distinguish those cases. Retry briefly.
+            if (hosting && !linkedRef.current && resumeAttempt < 2) {
+              const probe = new Peer(triviaPeerConfig as any);
+              probes.add(probe);
               let probeDone = false;
               const probeFinish = (liveHost: boolean) => {
                 if (probeDone) return;
                 probeDone = true;
+                probes.delete(probe);
                 try { probe.destroy(); } catch { /* teardown */ }
-                if (cancelled || !hosting || linkedRef.current) return;
+                if (cancelled || peer !== mine || !hosting || linkedRef.current) return;
                 if (liveHost) {
                   if (freshOpen) {
                     // Genuinely hosted elsewhere - take the guest seat instead of
@@ -409,21 +438,23 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
                   }
                   return;
                 }
-                // Zombie: wait for the broker to release it, then reclaim OUR table.
-                window.setTimeout(() => { if (!cancelled && hosting && !linkedRef.current) openHost(resumeAttempt + 1, freshOpen); }, 4000);
+                // Wait briefly, then try to reclaim the same room ID.
+                later(() => { if (!cancelled && peer === mine && hosting && !linkedRef.current) openHost(resumeAttempt + 1, freshOpen); }, 4000);
               };
+              later(() => probeFinish(false), 5000);
               probe.on('open', () => {
+                if (probeDone || cancelled) return;
                 const knock = probe.connect(`ct-trivia-${id}`, { reliable: true });
                 knock.on('open', () => probeFinish(true));
                 knock.on('error', () => probeFinish(false));
-                window.setTimeout(() => probeFinish(false), 5000);
               });
               probe.on('error', () => probeFinish(false));
               return;
             }
+            setError('This room ID is still occupied. Return to the pub door for a fresh invite, or rejoin the original host.');
             return;
           }
-          setError('The pub table connection hiccuped - holding on...');
+          setError('The game connection could not open. Return to the pub door to try a fresh invite.');
         });
       };
       // iOS suspends background tabs and can silently kill the broker socket while the
@@ -431,10 +462,11 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       // the table from scratch (same ID) so the next knock lands.
       const onVisible = () => {
         if (document.visibilityState !== 'visible' || cancelled || linkedRef.current) return;
-        if (hosting && !guestLinkRef.current) { openHost(0); return; }
+        if (hosting && (!guestLinkRef.current || guestLinkRef.current.closed)) { guestLinkRef.current = null; openHost(0); return; }
         if (peer && peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch { /* dropped */ } }
       };
       document.addEventListener('visibilitychange', onVisible);
+      removeVisibilityListener = () => document.removeEventListener('visibilitychange', onVisible);
       if (role === 'p1') {
         publishRoom(createRoom(loadTriviaSettings()));
         openHost(-1, true);
@@ -442,7 +474,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         joinGuest();
       }
     })().catch((requestError: unknown) => { if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Could not open Trivia Brawl.'); });
-    return () => { cancelled = true; try { peer?.destroy?.(); } catch { /* teardown */ } };
+    return () => { cancelled = true; removeVisibilityListener?.(); timers.forEach(clearTimeout); probes.forEach((probe) => { try { probe.destroy(); } catch { /* teardown */ } }); try { peer?.destroy?.(); } catch { /* teardown */ } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -619,20 +651,22 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">← Pub door</Link></header>
     {room && <Scorebug p1Name={room.names.p1} p2Name={room.names.p2} p1Score={room.score.p1} p2Score={room.score.p2} round={room.round} qIndex={room.qIndex} lastCall={room.lastCall} finished={room.phase === 'finished'} />}
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile trivia />
-    {error && <p className="trivia-brawl-error">{error}</p>}
+    {error && <p className="trivia-brawl-error" role="status">{error}</p>}
+    {joinStopped && <button className="trivia-brawl-primary" onClick={() => window.location.reload()}>TRY CONNECTION AGAIN</button>}
+    {relayConfigured === false && !linked && <p className="trivia-setup__note">Direct connection only: a relay is not configured. Some WiFi and mobile networks will not connect. No need to keep changing your settings.</p>}
     <FlashBanner banner={bannerBody} />
     {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : 'Pub table open - send the invite and hold this screen.') : 'Connecting to the host table...'}</p>}
     {room && !error && player === 'p1' && !linked && guestJoined && room.phase === 'flash' && room.flash?.type === 'duel' && !room.flash.done && <div className="trivia-brawl-void">
       <button className="trivia-brawl-primary" onClick={() => void patchRoom({ voidFlash: true }).catch(() => undefined)}>VOID THE DUEL - NO FLASH POINTS</button>
       <p>Only here while {room.names.p2} is away - nobody banks, scores so far stand.</p>
     </div>}
-    {!room ? <section className="trivia-brawl-question"><h2>Opening the pub table...</h2></section> : room.phase === 'draft' ? <section className="trivia-brawl-draft">
+    {!room ? <section className="trivia-brawl-question"><h2>{joinStopped ? 'Connection paused' : 'Opening the pub table...'}</h2>{joinStopped && <p>The room has not reached this screen. You can retry above or return to the pub door.</p>}</section> : room.phase === 'draft' ? <section className="trivia-brawl-draft">
       {(() => {
         const focusPicks = focusedDraft(room.settings);
         const draftName = room.names[player] !== (player === 'p1' ? 'PLAYER 1' : 'PLAYER 2') ? room.names[player] : `Player ${player === 'p1' ? 'One' : 'Two'}`;
         return <>
           <h2>{draftName}: {focusPicks ? `Confirm ${sportFocusLabel(room.settings.focus)}` : 'Choose 3 Categories'}</h2>
-          <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1'} compact />
+          <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1'} compact brawlModes />
           <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={() => { if (myName.trim()) void patchRoom({ name: myName }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />
           {player === 'p1' && room.categories.p2.length === 0 && <div style={{ display: 'grid', gap: '.45rem' }}>
             <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. Five rounds of five - you, me, no mercy.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>SEND THE INVITE</button>
@@ -1122,18 +1156,19 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
   const updateSettings = (next: TriviaSettings) => { setSettings(next); saveTriviaSettings(next); };
   return <main className="trivia-brawl-page">
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/">← Chesterville</Link></header>
-    <ChesterTeleprompter text="Pick your sport and heat. Play me solo, pass the phone, or send a link and I will host the room. Five rounds, sharp questions, no mercy." isThinking={false} isMobile trivia />
-    <TriviaSetupPanel settings={settings} onChange={updateSettings} />
+    <ChesterTeleprompter text="Your home turf, or a draft of both your favourites? Pick the categories and heat. I will bring the commentary." isThinking={false} isMobile trivia />
+    <TriviaSetupPanel settings={settings} onChange={updateSettings} brawlModes />
     <section className="trivia-brawl-draft">
-      <h2>Take a seat</h2>
+      <h2>Ready?</h2>
+      <button className="trivia-brawl-primary" onClick={onHost}>PLAY A FRIEND · SEND INVITE</button>
+      <details className="trivia-lobby-more"><summary>Playing solo or sharing a phone?</summary>
       <button className="trivia-brawl-primary" onClick={onSolo}>PLAY SOLO VS CHESTER</button>
-      <button className="trivia-brawl-primary" onClick={onPass}>PASS &amp; PLAY · ONE PHONE</button>
-      <button className="trivia-brawl-primary" onClick={onHost}>HOST A BRAWL · SEND LINK</button>
+      <button className="trivia-brawl-primary" onClick={onPass}>PASS &amp; PLAY · ONE PHONE</button></details>
     </section>
-    <section className="trivia-brawl-draft">
-      <h2>Honour board</h2>
+    <details className="trivia-brawl-draft trivia-lobby-more">
+      <summary>Honour board</summary>
       {scores.length ? scores.map((entry, index) => <p key={`${entry.date}-${index}`} style={{ margin: 0 }}>{entry.date} · YOU {entry.you} - {entry.chester} CHESTER {entry.you > entry.chester ? '🏆' : entry.you < entry.chester ? '💀' : '🤝'}</p>) : <p style={{ margin: 0 }}>No results yet. The ledger awaits its first entry.</p>}
-    </section>
+    </details>
   </main>;
 }
 

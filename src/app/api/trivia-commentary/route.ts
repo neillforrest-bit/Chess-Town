@@ -79,6 +79,12 @@ export async function POST(request: NextRequest) {
       throw new Error('Question and answers are required');
     }
 
+    // Preview and local builds never spend, regardless of URL flags or aliases.
+    // Keep the production route unchanged.
+    if (process.env.VERCEL_ENV !== 'production') {
+      return NextResponse.json({ reply: getFallbackReply(payload), isFallback: true });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey?.trim()) throw new Error('GEMINI_API_KEY is not configured');
 

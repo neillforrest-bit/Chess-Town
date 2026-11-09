@@ -1670,3 +1670,18 @@ body {
   border-color: var(--trivia-gold);
   box-shadow: 0 0 0 3px rgba(255, 209, 102, .14);
 }
+
+/* Keep alternative formats and past results out of the first setup decision. */
+.trivia-lobby-more summary { cursor: pointer; color: var(--trivia-cyan); min-height: 44px; padding: .75rem .25rem; font-weight: 700; }
+.trivia-lobby-more[open] > button { margin-top: .65rem; }
+
+.trivia-setup--brawl [aria-label="Category mode"] { grid-column: 1 / -1; }
+.trivia-setup--brawl [aria-label="Category mode"] > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.trivia-setup--brawl [aria-label="Sport focus"] > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.trivia-setup--brawl [aria-label="Difficulty"] > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.trivia-setup--brawl .trivia-setup__group > .trivia-setup__note { font: 400 .8rem/1.5 Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; margin: .25rem 0 0; }
+
+@media (min-width: 761px) {
+  .trivia-setup--draft [aria-label="Difficulty"] { grid-column: 1 / -1; }
+  .trivia-setup--draft [aria-label="Difficulty"] > div { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
