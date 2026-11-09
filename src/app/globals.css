@@ -1658,3 +1658,15 @@ body {
   grid-template-columns: auto minmax(0, 1fr);
   height: max-content !important;
 }
+.trivia-setup button:focus-visible {
+  border-color: rgba(103, 232, 249, .78);
+  box-shadow: 0 0 0 3px rgba(103, 232, 249, .18);
+}
+.trivia-setup button[aria-pressed="true"] {
+  outline: 2px solid rgba(255, 209, 102, .72);
+  outline-offset: 2px;
+}
+.trivia-setup button[aria-pressed="true"]:focus-visible {
+  border-color: var(--trivia-gold);
+  box-shadow: 0 0 0 3px rgba(255, 209, 102, .14);
+}
