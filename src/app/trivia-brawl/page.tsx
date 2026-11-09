@@ -597,7 +597,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     return () => clearTimeout(bell);
   }, [flashKey, player]);
 
-  const inviteUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/trivia-brawl?match=${matchId}&role=p2`;
+  const inviteUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/trivia-brawl?match=${matchId}&role=p2${isFreeTriviaCommentaryTest() ? '&triviaFreeCommentary=1' : ''}`;
   // Flash stages speak for themselves - never the previous question's reveal line.
   const visibleHostText = room && room.phase === 'flash' && room.flash ? FLASH_INTROS[room.flash.type][0]
     : room && room.phase === 'flashReveal' && room.flash ? FLASH_RESOLVE_LINES[room.flash.type]
