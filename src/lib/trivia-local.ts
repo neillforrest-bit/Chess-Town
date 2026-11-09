@@ -180,12 +180,12 @@ export const ROUND_INTROS: string[][] = [
     'Second round. Chester refills the peanuts and raises one eyebrow.',
   ],
   [
-    'Round three - the medium heat. This is where the pub quiz usually turns.',
+    'Round three. This is where the pub quiz usually turns.',
     'Halftime approaches and the questions stop being polite.',
   ],
   [
     'Round four. The regulars have gone quiet. Someone here is sweating.',
-    'Fourth round, medium-hot. Chester has stopped polishing glasses to watch.',
+    'Fourth round. Chester has stopped polishing glasses to watch.',
   ],
   [
     'LAST CALL. Round five - the hard stuff. Chester dims the lights.',
@@ -202,7 +202,7 @@ export const REVEAL_QUIPS: Record<'bothRight' | 'bothWrong' | 'oneRight', string
   ],
   bothWrong: [
     ['The bar winces in unison. Nobody speaks of this one again.', 'Two swings, two misses. Chester quietly turns the ledger page.'],
-    ['Both wrong. The medium heat claims its first victims.', 'A shared stumble. Chester pretends not to enjoy this.'],
+    ['Both wrong. The middle rounds claim their first victims.', 'A shared stumble. Chester pretends not to enjoy this.'],
     ['Both wrong at the sharp end. The pub gasps - genuinely.', 'Nobody had that. LAST CALL shows no mercy.'],
   ],
   oneRight: [
