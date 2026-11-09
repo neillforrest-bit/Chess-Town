@@ -3,16 +3,20 @@
 // Chester surprises (roulette bell + on the house), sudden-death LAST CALL.
 // Shared by Trivia Brawl (host-authoritative p2p room) and Pass & Play (one phone).
 // Cost profile: OpenTDB community API (free) + hand-written house packs. No LLM here.
-import { LOCAL_CATEGORIES, localCategoryName, pickLocalQuestion, pickRiddle, pickTeaser, pickDuelBoard, type DuelBoard } from './trivia-local';
+import { LOCAL_CATEGORIES, localCategoryName, pickLocalQuestion, pickRiddle, pickTeaser, pickDuelBoard, type DuelBoard, type LocalQuestion } from './trivia-local';
+import { roundDifficulty, type QuestionDifficulty, type TriviaDifficultySetting } from './trivia-settings';
 
 export type Player = 'p1' | 'p2';
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = QuestionDifficulty;
 export type WildcardId = 'shakespeare' | 'fiftyfifty' | 'doubledown' | 'pickpocket';
 export type AnswerCardId = 'fiftyfifty' | 'doubledown' | 'pickpocket';
 
 export const MATCH_ROUNDS = 5;
 export const QUESTIONS_PER_ROUND = 5;
 export const DIFFICULTY_LADDER: Difficulty[] = ['easy', 'easy', 'medium', 'medium', 'hard'];
+export function difficultyLadder(setting: TriviaDifficultySetting = 'classic'): Difficulty[] {
+  return Array.from({ length: MATCH_ROUNDS }, (_, roundIndex) => roundDifficulty(setting, roundIndex));
+}
 
 export type CategoryPick = { id: number; name: string };
 export type MatchQuestion = { category: string; question: string; correctAnswer: string; answers: string[]; difficulty?: string; roulette?: boolean };
@@ -102,7 +106,8 @@ export function doubleKey(round: number, qIndex: number): string {
   return `${round}:${qIndex}`;
 }
 
-export function planMatch(p1Categories: CategoryPick[], p2Categories: CategoryPick[], power: Record<Player, number>): MatchState {
+export function planMatch(p1Categories: CategoryPick[], p2Categories: CategoryPick[], power: Record<Player, number>, options: { difficulty?: TriviaDifficultySetting } = {}): MatchState {
+  const ladder = difficultyLadder(options.difficulty || 'classic');
   // Both players' POWER categories always serve a round - a power round that sits
   // out would silently rig the match. The remaining rounds come from the rest of
   // the draft; heavy overlap just means a category hosts more than one round.
@@ -116,7 +121,7 @@ export function planMatch(p1Categories: CategoryPick[], p2Categories: CategoryPi
   const rounds: MatchRound[] = ordered.map((pick, index) => ({
     categoryId: pick.id,
     categoryName: pick.name,
-    difficulty: DIFFICULTY_LADDER[index],
+    difficulty: ladder[index] || 'medium',
     questions: [],
     ready: false,
   }));
@@ -202,38 +207,44 @@ function fromOpenTdb(source: { category: string; difficulty: string; question: s
   };
 }
 
-function fromHouse(categoryId: number, source: { question: string; correct: string; wrong: [string, string, string] }): MatchQuestion {
-  return { category: localCategoryName(categoryId), difficulty: 'house', question: source.question, correctAnswer: source.correct, answers: shuffle([source.correct, ...source.wrong]) };
+function fromHouse(categoryId: number, source: LocalQuestion, difficulty: Difficulty): MatchQuestion {
+  return {
+    category: localCategoryName(categoryId),
+    difficulty: source.adaptive ? difficulty : 'house',
+    question: source.question,
+    correctAnswer: source.correct,
+    answers: shuffle([source.correct, ...source.wrong]),
+  };
 }
 
-function drawHouseQuestions(categoryId: number, count: number, exclude: Set<string>): MatchQuestion[] {
+function drawHouseQuestions(categoryId: number, count: number, exclude: Set<string>, difficulty: Difficulty): MatchQuestion[] {
   const drawn: MatchQuestion[] = [];
   for (let tries = 0; drawn.length < count && tries < count * 8; tries += 1) {
-    const source = pickLocalQuestion(categoryId);
+    const source = pickLocalQuestion(categoryId, difficulty);
     if (!source) break;
     if (exclude.has(source.question) || drawn.some((item) => item.question === source.question)) continue;
-    drawn.push(fromHouse(categoryId, source));
+    drawn.push(fromHouse(categoryId, source, difficulty));
   }
   return drawn;
 }
 
-function drawHouseMixed(count: number, exclude: Set<string>): MatchQuestion[] {
+function drawHouseMixed(count: number, exclude: Set<string>, difficulty: Difficulty = 'medium'): MatchQuestion[] {
   const drawn: MatchQuestion[] = [];
   const ids = shuffle(LOCAL_CATEGORIES.map((category) => category.id));
   for (let tries = 0; drawn.length < count && tries < count * 10; tries += 1) {
     const id = ids[tries % ids.length];
-    const source = pickLocalQuestion(id);
+    const source = pickLocalQuestion(id, difficulty);
     if (!source) continue;
     if (exclude.has(source.question) || drawn.some((item) => item.question === source.question)) continue;
-    drawn.push(fromHouse(id, source));
+    drawn.push(fromHouse(id, source, difficulty));
   }
   return drawn;
 }
 
 export async function fetchRoundQuestions(categoryId: number, difficulty: Difficulty, exclude: Set<string>, count = QUESTIONS_PER_ROUND): Promise<MatchQuestion[]> {
   if (categoryId < 0) {
-    const drawn = drawHouseQuestions(categoryId, count, exclude);
-    return drawn.length >= count ? drawn : [...drawn, ...drawHouseMixed(count - drawn.length, new Set([...exclude, ...drawn.map((q) => q.question)]))];
+    const drawn = drawHouseQuestions(categoryId, count, exclude, difficulty);
+    return drawn.length >= count ? drawn : [...drawn, ...drawHouseMixed(count - drawn.length, new Set([...exclude, ...drawn.map((q) => q.question)]), difficulty)];
   }
   const picked: MatchQuestion[] = [];
   const seen = new Set<string>(exclude);
@@ -249,10 +260,11 @@ export async function fetchRoundQuestions(categoryId: number, difficulty: Diffic
     }
   };
   // Preferred pour: five at the round's heat in one call.
-  take(await spacedJson(`https://opentdb.com/api.php?amount=${count}&type=multiple&category=${categoryId}&difficulty=${difficulty}`));
+  const apiDifficulty = difficulty === 'master' ? 'hard' : difficulty;
+  take(await spacedJson(`https://opentdb.com/api.php?amount=${count}&type=multiple&category=${categoryId}&difficulty=${apiDifficulty}`));
   // Small category shelves run dry at one heat - top up at any heat rather than stall.
   if (picked.length < count) take(await spacedJson(`https://opentdb.com/api.php?amount=${count}&type=multiple&category=${categoryId}`));
-  if (picked.length < count) picked.push(...drawHouseMixed(count - picked.length, seen));
+  if (picked.length < count) picked.push(...drawHouseMixed(count - picked.length, seen, difficulty));
   return picked.slice(0, count);
 }
 
@@ -266,7 +278,7 @@ export async function fetchLastCallQuestion(exclude: Set<string>): Promise<Match
       if (!seen.has(question.question)) return question;
     }
   }
-  const house = drawHouseMixed(1, seen);
+  const house = drawHouseMixed(1, seen, 'hard');
   if (house.length) return house[0];
   throw new Error('The quizmaster is out of deciders - take the draw and rematch.');
 }
@@ -395,7 +407,7 @@ function applyRoulette(state: MatchState): MatchState {
   if (state.round !== roundIndex || state.qIndex !== qIndex) return state;
   const round = state.rounds[roundIndex];
   if (!round?.ready || round.questions[qIndex]?.roulette) return state;
-  const [mystery] = drawHouseMixed(1, usedQuestionTexts(state));
+  const [mystery] = drawHouseMixed(1, usedQuestionTexts(state), round.difficulty);
   if (!mystery) return { ...state, rouletteKey: null };
   const swapped: MatchQuestion = { ...mystery, category: `🎰 Roulette: ${mystery.category}`, roulette: true };
   const rounds = state.rounds.map((item, index) => (index === roundIndex ? { ...item, questions: item.questions.map((question, qi) => (qi === qIndex ? swapped : question)) } : item));
@@ -458,7 +470,7 @@ function startFlash(state: MatchState): MatchState {
     const source = pickTeaser();
     return { ...state, phase: 'flash', flash: { ...base, question: { category: '⚡ Brain Teaser', difficulty: 'house', question: source.question, correctAnswer: source.correct, answers: shuffle([source.correct, ...source.wrong]) } } };
   }
-  const [pour] = drawHouseMixed(1, usedQuestionTexts(state));
+  const [pour] = drawHouseMixed(1, usedQuestionTexts(state), state.rounds[state.round]?.difficulty || 'medium');
   const question: MatchQuestion = pour || { category: '⚡ Flash', question: 'Chester has run dry - take a point each and call it square.', correctAnswer: '', answers: [] };
   if (type === 'fastest') return { ...state, phase: 'flash', flash: { ...base, question: { ...question, category: '⚡ Fastest Finger' } } };
   if (type === 'lastorders') return { ...state, phase: 'flash', flash: { ...base, question: { ...question, category: '⚡ Last Orders' } } };

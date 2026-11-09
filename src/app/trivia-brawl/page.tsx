@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TRIVIA_ACC, getTrvRoad, setTrvRoad, TRV_ROAD_MAX } from '@/games/trivia/road';
 import Link from 'next/link';
 import { ChesterTeleprompter } from '@/components/ChesterUI';
+import { TriviaSetupPanel } from '@/components/TriviaSetupPanel';
 import { applyRoomAction, createRoom, planRoomMatch, serializeRoom, type PublicRoom, type TriviaRoom } from '@/lib/trivia-room';
 import {
   MATCH_ROUNDS, QUESTIONS_PER_ROUND, advanceMatch, applyAnswer, applyDuelPick, applyFlashAnswer, applyWildcard, currentQuestionOf, resolveFlashTimeout,
@@ -12,6 +13,10 @@ import {
 } from '@/lib/trivia-match';
 import { PEER_CONFIG } from '@/lib/p2p';
 import { LOCAL_CATEGORIES, categoryQuip, pickLocalQuestion, revealQuip, roundEndLine, ROUND_INTROS, ROULETTE_LINES, FLASH_INTROS, FLASH_RESOLVE_LINES, ON_THE_HOUSE_LINES } from '@/lib/trivia-local';
+import {
+  difficultyLabel, loadTriviaSettings, roundDifficulty, saveTriviaSettings, sportFocusCategoryId, sportFocusLabel,
+  type TriviaSettings,
+} from '@/lib/trivia-settings';
 
 type Player = 'p1' | 'p2';
 type Category = { id: number; name: string };
@@ -24,6 +29,11 @@ const WILDCARDS: Array<{ id: WildcardId; icon: string; label: string; hint: stri
   { id: 'doubledown', icon: '💰', label: 'DOUBLE DOWN', hint: 'Your points on this question count double' },
   { id: 'pickpocket', icon: '🤑', label: 'PICKPOCKET', hint: "If you're right and they're wrong, steal a point" },
 ];
+
+function focusedDraft(settings: TriviaSettings): number[] | null {
+  const categoryId = sportFocusCategoryId(settings.focus);
+  return categoryId ? [categoryId, categoryId, categoryId] : null;
+}
 
 function getMatchId(): string {
   const existing = new URLSearchParams(window.location.search).get('match');
@@ -420,7 +430,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       };
       document.addEventListener('visibilitychange', onVisible);
       if (role === 'p1') {
-        publishRoom(createRoom());
+        publishRoom(createRoom(loadTriviaSettings()));
         openHost(-1, true);
       } else {
         joinGuest();
@@ -543,14 +553,22 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     if (!hostLinkRef.current?.open) { setError('Not connected to the host table yet - hold on, or ask for a fresh invite.'); throw new Error('not linked'); }
     hostLinkRef.current.send({ type: 'action', body });
   };
+  const updateRoomSettings = async (next: TriviaSettings) => {
+    saveTriviaSettings(next);
+    setSelectedCategories([]);
+    setPowerId(null);
+    await patchRoom({ settings: next });
+  };
   const submitDraft = async () => {
-    if (selectedCategories.length !== 3) return;
+    const focusPicks = room?.settings ? focusedDraft(room.settings) : null;
+    const effectivePicks = focusPicks || selectedCategories;
+    if (effectivePicks.length !== 3) return;
     setIsSubmitting(true);
     try {
       if (myName.trim()) await patchRoom({ name: myName });
-      await patchRoom({ categories: selectedCategories, power: powerId ?? selectedCategories[0] });
-      const names = selectedCategories.map((id) => categories.find((category) => category.id === id)?.name).filter(Boolean).join(', ');
-      setHostText(`${myName.trim() || (player === 'p1' ? 'Player One' : 'Player Two')} has ordered ${names}, with ${categories.find((category) => category.id === (powerId ?? selectedCategories[0]))?.name || 'their favourite'} starred as the POWER round. Chester is scribbling twenty-five questions on beer mats...`);
+      await patchRoom({ categories: effectivePicks, power: focusPicks ? effectivePicks[0] : (powerId ?? effectivePicks[0]) });
+      const names = focusPicks ? sportFocusLabel(room?.settings.focus || 'open') : effectivePicks.map((id) => categories.find((category) => category.id === id)?.name).filter(Boolean).join(', ');
+      setHostText(`${myName.trim() || (player === 'p1' ? 'Player One' : 'Player Two')} has ordered ${names}${focusPicks ? ` at ${difficultyLabel(room?.settings.difficulty || 'classic')} heat` : `, with ${categories.find((category) => category.id === (powerId ?? effectivePicks[0]))?.name || 'their favourite'} starred as the POWER round`}. Chester is scribbling twenty-five questions on beer mats...`);
     } catch { /* error already on screen */ } finally { setIsSubmitting(false); }
   };
   const answer = async (selectedAnswer: string) => { try { await patchRoom({ answer: selectedAnswer }); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Could not lock that answer.'); } };
@@ -598,13 +616,25 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       <button className="trivia-brawl-primary" onClick={() => void patchRoom({ voidFlash: true }).catch(() => undefined)}>🚫 VOID THE DUEL - NO FLASH POINTS</button>
       <p>Only here while {room.names.p2} is away - nobody banks, scores so far stand.</p>
     </div>}
-    {!room ? <section className="trivia-brawl-question"><h2>Opening the pub table...</h2></section> : room.phase === 'draft' ? <section className="trivia-brawl-draft"><h2>{room.names[player] !== (player === 'p1' ? 'PLAYER 1' : 'PLAYER 2') ? room.names[player] : `Player ${player === 'p1' ? 'One' : 'Two'}`}: Choose 3 Categories</h2>
-      <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={() => { if (myName.trim()) void patchRoom({ name: myName }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />{player === 'p1' && room.categories.p2.length === 0 && <div style={{ display: 'grid', gap: '.45rem' }}>
-          <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. Five rounds of five - you, me, no mercy.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>📮 SEND THE INVITE</button>
-          <input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Invite link for Player 2" />
-        </div>}{categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggleCategory(category.id)} aria-pressed={selectedCategories.includes(category.id)}>{selectedCategories.includes(category.id) && powerId === category.id ? `⭐ ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
-      {selectedCategories.length === 3 && <div className="trivia-power"><span>⭐ Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{selectedCategories.map((id) => <button key={id} type="button" className={powerId === id ? 'is-starred' : ''} onClick={() => starPower(id)}>{powerId === id ? '⭐ ' : ''}{categories.find((category) => category.id === id)?.name || `Category ${id}`}</button>)}</div></div>}
-      <button className="trivia-brawl-primary" disabled={selectedCategories.length !== 3 || isSubmitting} onClick={() => void submitDraft()}>LOCK CATEGORIES ({selectedCategories.length}/3)</button><p>{room.categories.p1.length}/3 Player 1 choices · {room.categories.p2.length}/3 Player 2 choices</p></section>
+    {!room ? <section className="trivia-brawl-question"><h2>Opening the pub table...</h2></section> : room.phase === 'draft' ? <section className="trivia-brawl-draft">
+      {(() => {
+        const focusPicks = focusedDraft(room.settings);
+        const draftName = room.names[player] !== (player === 'p1' ? 'PLAYER 1' : 'PLAYER 2') ? room.names[player] : `Player ${player === 'p1' ? 'One' : 'Two'}`;
+        return <>
+          <h2>{draftName}: {focusPicks ? `Confirm ${sportFocusLabel(room.settings.focus)}` : 'Choose 3 Categories'}</h2>
+          <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1'} compact />
+          <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={() => { if (myName.trim()) void patchRoom({ name: myName }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />
+          {player === 'p1' && room.categories.p2.length === 0 && <div style={{ display: 'grid', gap: '.45rem' }}>
+            <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. Five rounds of five - you, me, no mercy.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>📮 SEND THE INVITE</button>
+            <input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Invite link for Player 2" />
+          </div>}
+          {focusPicks ? <p className="trivia-setup__locked">{sportFocusLabel(room.settings.focus)} focus is locked for every round · {difficultyLabel(room.settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggleCategory(category.id)} aria-pressed={selectedCategories.includes(category.id)}>{selectedCategories.includes(category.id) && powerId === category.id ? `⭐ ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
+          {!focusPicks && selectedCategories.length === 3 && <div className="trivia-power"><span>⭐ Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{selectedCategories.map((id) => <button key={id} type="button" className={powerId === id ? 'is-starred' : ''} onClick={() => starPower(id)}>{powerId === id ? '⭐ ' : ''}{categories.find((category) => category.id === id)?.name || `Category ${id}`}</button>)}</div></div>}
+          <button className="trivia-brawl-primary" disabled={(!focusPicks && selectedCategories.length !== 3) || isSubmitting} onClick={() => void submitDraft()}>{focusPicks ? `LOCK ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}` : `LOCK CATEGORIES (${selectedCategories.length}/3)`}</button>
+          <p>{room.categories.p1.length}/3 Player 1 choices · {room.categories.p2.length}/3 Player 2 choices</p>
+        </>;
+      })()}
+    </section>
     : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>The categories are locked.</h2><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : 'Awaiting Player One to begin the Brawl.') : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => void patchRoom({ start: true })}>START THE BRAWL</button>}</section>
     : room.phase === 'finished' ? <section className="trivia-brawl-question"><h2>{room.score.p1} - {room.score.p2}</h2><p>{room.score.p1 === room.score.p2 ? 'A dead heat. Chester demands a rematch - the pub insists.' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} wins the tab. Chester raises a glass to you both.`}</p>{(series.p1 + series.p2 + series.draws) > 0 && <p className="trivia-series">SERIES · {room.names.p1} {series.p1} - {series.p2} {room.names.p2}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>}<button className="trivia-brawl-primary" onClick={() => void patchRoom({ rematch: true })}>🔁 REMATCH - SAME PUB, NEW QUESTIONS</button></section>
     : <section className="trivia-brawl-question">
@@ -656,7 +686,9 @@ const SOLO_LINES = {
 function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolean }) {
   const [roadLv] = useState<number | null>(() => (road && typeof window !== 'undefined' ? getTrvRoad() : null));
   const [roadNote, setRoadNote] = useState('');
-  const chesterAcc = roadLv ? TRIVIA_ACC[roadLv - 1] : 0.72;
+  const [settings, setSettings] = useState<TriviaSettings>(() => loadTriviaSettings());
+  const soloAcc: Record<TriviaSettings['difficulty'], number> = { classic: 0.72, easy: 0.58, medium: 0.72, hard: 0.82, master: 0.9 };
+  const chesterAcc = roadLv ? TRIVIA_ACC[roadLv - 1] : soloAcc[settings.difficulty];
   const [categories, setCategories] = useState<Category[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
   const [phase, setPhase] = useState<'draft' | 'question' | 'reveal' | 'finished'>('draft');
@@ -680,20 +712,23 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
   useEffect(() => { if (phase !== 'finished' || !roadLv) return; if (score.you > score.chester) { if (roadLv < TRV_ROAD_MAX) setTrvRoad(roadLv + 1); setRoadNote(roadLv < TRV_ROAD_MAX ? `Level ${roadLv} cleared. Next: level ${roadLv + 1}.` : 'THE LANDLORD IS BEATEN. The pub is yours.'); } else setRoadNote('Not this time. Same level, go again.'); }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (id: number) => setPicked((current) => current.includes(id) ? current.filter((c) => c !== id) : current.length < 3 ? [...current, id] : current);
+  const updateSoloSettings = (next: TriviaSettings) => { setSettings(next); saveTriviaSettings(next); setPicked([]); };
 
-  const fetchSoloQuestion = async (categoryId: number): Promise<SoloQuestion> => {
+  const fetchSoloQuestion = async (categoryId: number, difficulty: TriviaSettings['difficulty'], roundIndex: number): Promise<SoloQuestion> => {
+    const heat = roundDifficulty(difficulty, roundIndex);
     if (categoryId < 0) {
-      const source = pickLocalQuestion(categoryId);
+      const source = pickLocalQuestion(categoryId, heat);
       if (!source) throw new Error('That category is still being written on beer mats.');
       return { category: LOCAL_CATEGORIES.find((c) => c.id === categoryId)?.name || 'House Special', question: source.question, correctAnswer: source.correct, answers: shuffled([source.correct, ...source.wrong]), chesterCorrect: Math.random() < chesterAcc };
     }
     let payload: { response_code: number; results: Array<{ category: string; question: string; correct_answer: string; incorrect_answers: string[] }> };
     try {
-      const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}`, { cache: 'no-store', signal: AbortSignal.timeout(6000) });
+      const apiDifficulty = heat === 'master' ? 'hard' : heat;
+      const response = await fetch(`https://opentdb.com/api.php?amount=1&type=multiple&category=${categoryId}&difficulty=${apiDifficulty}`, { cache: 'no-store', signal: AbortSignal.timeout(6000) });
       payload = await response.json();
-    } catch { return fetchSoloQuestion(shuffled(LOCAL_CATEGORIES)[0].id); }
+    } catch { return fetchSoloQuestion(shuffled(LOCAL_CATEGORIES)[0].id, difficulty, roundIndex); }
     const source = payload.results?.[0];
-    if (payload.response_code !== 0 || !source) return fetchSoloQuestion(shuffled(LOCAL_CATEGORIES)[0].id);
+    if (payload.response_code !== 0 || !source) return fetchSoloQuestion(shuffled(LOCAL_CATEGORIES)[0].id, difficulty, roundIndex);
     const correctAnswer = decodeHtmlClient(source.correct_answer);
     const wrongPool = source.incorrect_answers.map(decodeHtmlClient);
     // Chester answers 72% correct; when wrong he picks a random wrong option.
@@ -702,19 +737,21 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
   };
 
   const startGame = async () => {
-    if (picked.length !== 3) return;
-    const chesterPool = shuffled(categories.map((c) => c.id).filter((id) => !picked.includes(id))).slice(0, 3);
-    const rounds = shuffled([...picked, ...chesterPool]);
+    const focusPicks = focusedDraft(settings);
+    const playerPicks = focusPicks || picked;
+    if (playerPicks.length !== 3) return;
+    const chesterPool = focusPicks || shuffled(categories.map((c) => c.id).filter((id) => !playerPicks.includes(id))).slice(0, 3);
+    const rounds = shuffled([...playerPicks, ...chesterPool]);
     setQueue(rounds);
     setRound(0);
     setScore({ you: 0, chester: 0 });
     setError('');
     try {
-      const first = await fetchSoloQuestion(rounds[0]);
+      const first = await fetchSoloQuestion(rounds[0], settings.difficulty, 0);
       setQuestion(first);
       setLocked(null);
       setPhase('question');
-      setHostLine(`Round 1 of 5 - ${first.category}. ${categoryQuip(first.category, 0)}`);
+      setHostLine(`Round 1 of 5 - ${first.category} at ${difficultyLabel(settings.difficulty)} heat. ${categoryQuip(first.category, 0)}`);
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not draw the first question.'); }
   };
 
@@ -744,9 +781,9 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     setLocked(null);
     setError('');
     try {
-      const next = await fetchSoloQuestion(queue[nextRound]);
+      const next = await fetchSoloQuestion(queue[nextRound], settings.difficulty, nextRound);
       setQuestion(next);
-      setHostLine(`Round ${nextRound + 1} of 5 - ${next.category}. ${categoryQuip(next.category, nextRound)}`);
+      setHostLine(`Round ${nextRound + 1} of 5 - ${next.category} at ${difficultyLabel(settings.difficulty)} heat. ${categoryQuip(next.category, nextRound)}`);
       setPhase('question');
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not draw the next question.'); }
   };
@@ -756,9 +793,10 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     <Scorebug p1Name="YOU" p2Name="CHESTER" p1Score={score.you} p2Score={score.chester} round={round} finished={phase === 'finished'} />
     <ChesterTeleprompter text={hostLine} isThinking={false} isMobile />
     {error && <p className="trivia-brawl-error">{error}</p>}
-    {phase === 'draft' && <section className="trivia-brawl-draft"><h2>Choose your 3 categories</h2>
-      {categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggle(category.id)} aria-pressed={picked.includes(category.id)}>{category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
-      <button className="trivia-brawl-primary" disabled={picked.length !== 3} onClick={() => void startGame()}>BELLYS UP - START ({picked.length}/3)</button>
+    {phase === 'draft' && <section className="trivia-brawl-draft"><h2>{focusedDraft(settings) ? `Focused solo: ${sportFocusLabel(settings.focus)}` : 'Choose your 3 categories'}</h2>
+      <TriviaSetupPanel settings={settings} onChange={updateSoloSettings} compact />
+      {focusedDraft(settings) ? <p className="trivia-setup__locked">Every round pours from {sportFocusLabel(settings.focus)} · {difficultyLabel(settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggle(category.id)} aria-pressed={picked.includes(category.id)}>{category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
+      <button className="trivia-brawl-primary" disabled={!focusedDraft(settings) && picked.length !== 3} onClick={() => void startGame()}>{focusedDraft(settings) ? `START ${sportFocusLabel(settings.focus)} · ${difficultyLabel(settings.difficulty)}` : `BELLYS UP - START (${picked.length}/3)`}</button>
     </section>}
     {(phase === 'question' || phase === 'reveal') && question && <section className="trivia-brawl-question"><span>{question.category}</span><h2>{question.question}</h2>
       <div className="trivia-brawl-answers">{question.answers.map((option) => <button key={option} onClick={() => answerSolo(option)} disabled={phase === 'reveal'}>{phase === 'reveal' && option === question.correctAnswer ? `${option} ✓` : phase === 'reveal' && option === locked ? `${option} ✗` : option}</button>)}</div>
@@ -779,6 +817,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<PPPhase>('names');
   const [names, setNames] = useState({ a: '', b: '' });
   const [categories, setCategories] = useState<Category[]>(LOCAL_CATEGORIES);
+  const [settings, setSettings] = useState<TriviaSettings>(() => loadTriviaSettings());
   const [picks, setPicks] = useState<{ a: number[]; b: number[] }>({ a: [], b: [] });
   const [power, setPower] = useState<{ a: number | null; b: number | null }>({ a: null, b: null });
   const [match, setMatch] = useState<MatchState | null>(null);
@@ -806,13 +845,17 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     return list.length < 3 ? { ...cur, [who]: [...list, id] } : cur;
   });
   const starPower = (who: 'a' | 'b', id: number) => { if (picks[who].includes(id)) setPower((p) => ({ ...p, [who]: id })); };
+  const updatePassSettings = (next: TriviaSettings) => { setSettings(next); saveTriviaSettings(next); setPicks({ a: [], b: [] }); setPower({ a: null, b: null }); };
 
   const buildGame = async () => {
     setPhase('building');
     setError('');
     setHostLine('Chester is scribbling twenty-five questions on beer mats. Hands off the phone for a moment...');
     const toPicks = (ids: number[]) => ids.map((id) => ({ id, name: nameOf(id) }));
-    const built = planMatch(toPicks(picks.a), toPicks(picks.b), { p1: power.a ?? picks.a[0], p2: power.b ?? picks.b[0] });
+    const focusPicks = focusedDraft(settings);
+    const picksA = focusPicks || picks.a;
+    const picksB = focusPicks || picks.b;
+    const built = planMatch(toPicks(picksA), toPicks(picksB), { p1: focusPicks ? picksA[0] : (power.a ?? picks.a[0]), p2: focusPicks ? picksB[0] : (power.b ?? picks.b[0]) }, { difficulty: settings.difficulty });
     commitMatch(built);
     // Round one pours first; the rest arrive in the background while they play.
     await new Promise<void>((resolve) => {
@@ -985,11 +1028,12 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     {phase === 'names' && <section className="trivia-brawl-draft"><h2>Who is playing?</h2>
       <input value={names.a} onChange={(e) => setNames((c) => ({ ...c, a: e.target.value }))} placeholder="Player one name" maxLength={14} aria-label="Player one name" />
       <input value={names.b} onChange={(e) => setNames((c) => ({ ...c, b: e.target.value }))} placeholder="Player two name" maxLength={14} aria-label="Player two name" />
-      <button className="trivia-brawl-primary" onClick={() => { setPhase('draftA'); setHostLine(`${nameA}, choose three categories - and star your POWER round. ${nameB}, eyes shut - you pick next.`); }}>PULL UP A STOOL</button></section>}
-    {phase === 'draftA' && <section className="trivia-brawl-draft"><h2>{nameA}: choose 3 categories</h2>{catGrid('a')}{powerPicker('a')}
-      <button className="trivia-brawl-primary" disabled={picks.a.length !== 3} onClick={() => { setPhase('draftB'); setHostLine(`${nameB}, your turn. Three categories and a POWER star - ${nameA}, no peeking.`); }}>PASS TO {nameB.toUpperCase()} ({picks.a.length}/3)</button></section>}
-    {phase === 'draftB' && <section className="trivia-brawl-draft"><h2>{nameB}: choose 3 categories</h2>{catGrid('b')}{powerPicker('b')}
-      <button className="trivia-brawl-primary" disabled={picks.b.length !== 3} onClick={() => void buildGame()}>BELLYS UP - START ({picks.b.length}/3)</button></section>}
+      <TriviaSetupPanel settings={settings} onChange={updatePassSettings} compact />
+      <button className="trivia-brawl-primary" onClick={() => { setPhase('draftA'); setHostLine(focusedDraft(settings) ? `${nameA}, confirm the ${sportFocusLabel(settings.focus)} shelf at ${difficultyLabel(settings.difficulty)} heat. ${nameB}, eyes shut - you confirm next.` : `${nameA}, choose three categories - and star your POWER round. ${nameB}, eyes shut - you pick next.`); }}>PULL UP A STOOL</button></section>}
+    {phase === 'draftA' && <section className="trivia-brawl-draft"><h2>{nameA}: {focusedDraft(settings) ? `confirm ${sportFocusLabel(settings.focus)}` : 'choose 3 categories'}</h2>{focusedDraft(settings) ? <p className="trivia-setup__locked">Every round pours from {sportFocusLabel(settings.focus)} · {difficultyLabel(settings.difficulty)} heat.</p> : <>{catGrid('a')}{powerPicker('a')}</>}
+      <button className="trivia-brawl-primary" disabled={!focusedDraft(settings) && picks.a.length !== 3} onClick={() => { setPhase('draftB'); setHostLine(focusedDraft(settings) ? `${nameB}, confirm the same ${sportFocusLabel(settings.focus)} match - ${nameA}, no peeking.` : `${nameB}, your turn. Three categories and a POWER star - ${nameA}, no peeking.`); }}>{focusedDraft(settings) ? `PASS TO ${nameB.toUpperCase()}` : `PASS TO ${nameB.toUpperCase()} (${picks.a.length}/3)`}</button></section>}
+    {phase === 'draftB' && <section className="trivia-brawl-draft"><h2>{nameB}: {focusedDraft(settings) ? `confirm ${sportFocusLabel(settings.focus)}` : 'choose 3 categories'}</h2>{focusedDraft(settings) ? <p className="trivia-setup__locked">Every round pours from {sportFocusLabel(settings.focus)} · {difficultyLabel(settings.difficulty)} heat.</p> : <>{catGrid('b')}{powerPicker('b')}</>}
+      <button className="trivia-brawl-primary" disabled={!focusedDraft(settings) && picks.b.length !== 3} onClick={() => void buildGame()}>{focusedDraft(settings) ? `START ${sportFocusLabel(settings.focus)} · ${difficultyLabel(settings.difficulty)}` : `BELLYS UP - START (${picks.b.length}/3)`}</button></section>}
     {phase === 'building' && <section className="trivia-brawl-question"><h2>Pulling the pints...</h2><p>Hand-written shelves are instant. Online categories take a few seconds each - later rounds pour while you play.</p></section>}
     {(phase === 'askA' || phase === 'askB') && match && q && <section className="trivia-brawl-question">
       <MatchBadges difficulty={match.lastCall ? undefined : match.rounds[match.round]?.difficulty} isDouble={match.doubleQuestions.includes(`${match.round}:${match.qIndex}`)} powerForMe={match.power[activePlayer] === match.rounds[match.round]?.categoryId} streak={match.streak[activePlayer]} lastCall={match.lastCall} roulette={Boolean(activeView?.roulette)} />
@@ -1063,10 +1107,13 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
 
 function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: () => void; onPass: () => void }) {
   const [scores, setScores] = useState<SoloScore[]>([]);
+  const [settings, setSettings] = useState<TriviaSettings>(() => loadTriviaSettings());
   useEffect(() => { setScores(loadSoloScores().slice(0, 5)); }, []);
+  const updateSettings = (next: TriviaSettings) => { setSettings(next); saveTriviaSettings(next); };
   return <main className="trivia-brawl-page">
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/">← Chesterville</Link></header>
-    <ChesterTeleprompter text="Welcome to my pub. Season Two: ten house categories, hundreds of questions, rematches, and one-phone Pass & Play. Play me solo, or host a brawl and send the link. I host, I judge, I remember everything." isThinking={false} isMobile />
+    <ChesterTeleprompter text="Welcome to my pub. Season Two: house categories, focused NBA, NFL and Premier League shelves, Classic-to-Master heat, rematches, and one-phone Pass & Play. Play me solo, or host a brawl and send the link. I host, I judge, I remember everything." isThinking={false} isMobile />
+    <TriviaSetupPanel settings={settings} onChange={updateSettings} />
     <section className="trivia-brawl-draft">
       <h2>Take a seat</h2>
       <button className="trivia-brawl-primary" onClick={onSolo}>🧠 PLAY SOLO VS CHESTER</button>

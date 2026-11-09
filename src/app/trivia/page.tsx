@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ChesterHost from '@/components/ChesterHost';
+import { TriviaSetupPanel } from '@/components/TriviaSetupPanel';
 import { fetchTriviaQuestion, type TriviaQuestion } from '@/lib/trivia';
+import { loadTriviaSettings, saveTriviaSettings, type TriviaSettings } from '@/lib/trivia-settings';
 
 type AnswerState = 'idle' | 'submitting' | 'answered';
 
@@ -14,11 +16,12 @@ export default function TriviaPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
   const [chesterReply, setChesterReply] = useState('The first round is on the house. Do not embarrass the tavern.');
+  const [settings, setSettings] = useState<TriviaSettings>(() => loadTriviaSettings());
   const [error, setError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    void fetchTriviaQuestion()
+    void fetchTriviaQuestion(settings)
       .then((nextQuestion) => {
         if (!cancelled) setQuestion(nextQuestion);
       })
@@ -28,7 +31,7 @@ export default function TriviaPage() {
     return () => {
       cancelled = true;
     };
-  }, [round]);
+  }, [round, settings]);
 
   const selectAnswer = async (answer: string) => {
     if (!question || answerState !== 'idle') return;
@@ -56,6 +59,14 @@ export default function TriviaPage() {
     }
   };
 
+  const updateSettings = (next: TriviaSettings) => {
+    setSettings(next);
+    saveTriviaSettings(next);
+    setQuestion(null);
+    setSelectedAnswer(null);
+    setAnswerState('idle');
+  };
+
   const nextQuestion = () => {
     setSelectedAnswer(null);
     setAnswerState('idle');
@@ -71,6 +82,7 @@ export default function TriviaPage() {
         <Link href="/arena">Arena</Link>
       </header>
       <ChesterHost eyebrow="THE HOUSE QUIZMASTER" instruction="Pick the right answer, collect the point, and try not to make Chester ring the shame bell." />
+      <TriviaSetupPanel settings={settings} onChange={updateSettings} compact />
       <section className="trivia-game" aria-live="polite">
         <div className="trivia-scoreboard"><span>ROUND {round}</span><b>{score} POINT{score === 1 ? '' : 'S'}</b></div>
         {error ? (

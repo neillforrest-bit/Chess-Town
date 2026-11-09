@@ -5,6 +5,7 @@
 import {
   MATCH_ROUNDS, advanceMatch, applyAnswer, applyDuelPick, applyFlashAnswer, applyWildcard, currentQuestionOf, planMatch,
   resolveFlashTimeout, viewerQuestion, type FlashState, type MatchState, type Player, type WildcardId, applyFlashVoid } from './trivia-match';
+import { DEFAULT_TRIVIA_SETTINGS, normalizeTriviaSettings, type TriviaSettings } from './trivia-settings';
 
 export type { MatchQuestion as TriviaQuestion, MatchRound, MatchState, Player, QuestionResult, WildcardId } from './trivia-match';
 export { MATCH_ROUNDS, QUESTIONS_PER_ROUND, currentQuestionOf, isPowerRound, lastCallActive, loadAllRounds, markRoundLoaded, roundSummary, doubleKey } from './trivia-match';
@@ -14,6 +15,7 @@ export type TriviaRoom = {
   categories: Record<Player, number[]>;
   names: Record<Player, string>;
   power: Record<Player, number>;
+  settings: TriviaSettings;
   match: MatchState | null;
   hostMessage: string;
   phase: 'draft' | 'intro' | 'question' | 'reveal' | 'flash' | 'flashReveal' | 'banter' | 'finished';
@@ -88,11 +90,12 @@ function publicFlash(flash: FlashState | null): PublicFlash | null {
 
 const MAX_CATEGORIES = 3;
 
-export function createRoom(): TriviaRoom {
+export function createRoom(settings: TriviaSettings = DEFAULT_TRIVIA_SETTINGS): TriviaRoom {
   return {
     categories: { p1: [], p2: [] },
     names: { p1: 'PLAYER 1', p2: 'PLAYER 2' },
     power: { p1: 0, p2: 0 },
+    settings: normalizeTriviaSettings(settings),
     match: null,
     hostMessage: 'Choose your categories and Chester will open the Brawl.',
     phase: 'draft',
@@ -129,17 +132,22 @@ export function serializeRoom(room: TriviaRoom, viewer: Player): PublicRoom {
   };
 }
 
-export type RoomAction = { rematch?: unknown; categories?: unknown; power?: unknown; answer?: unknown; wildcard?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown; flashAnswer?: unknown; duelPick?: unknown; flashTimeout?: unknown; voidFlash?: unknown };
+export type RoomAction = { rematch?: unknown; settings?: unknown; categories?: unknown; power?: unknown; answer?: unknown; wildcard?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown; flashAnswer?: unknown; duelPick?: unknown; flashTimeout?: unknown; voidFlash?: unknown };
 
 export async function applyRoomAction(room: TriviaRoom, player: Player, body: RoomAction): Promise<{ room: TriviaRoom; error?: string; justLocked?: boolean }> {
   const next: TriviaRoom = { ...room, categories: { ...room.categories }, names: { ...room.names }, power: { ...room.power } };
   let justLocked = false;
 
   if (body.rematch === true && next.phase === 'finished') {
-    const fresh = createRoom();
+    const fresh = createRoom(next.settings);
     fresh.names = { ...next.names };
     fresh.hostMessage = '';
     return { room: fresh };
+  }
+
+  if (body.settings && player === 'p1' && next.phase === 'draft') {
+    if (next.categories.p1.length || next.categories.p2.length) return { room, error: 'Change the match setup before either player locks categories.' };
+    next.settings = normalizeTriviaSettings(body.settings);
   }
 
   if (typeof body.name === 'string') {
@@ -222,7 +230,7 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
 export function planRoomMatch(room: TriviaRoom, nameOf: (categoryId: number) => string | undefined): TriviaRoom {
   if (room.match) return room;
   const pick = (ids: number[]) => ids.map((id) => ({ id, name: nameOf(id) || (id < 0 ? 'House Special' : `Category ${id}`) }));
-  const match = planMatch(pick(room.categories.p1), pick(room.categories.p2), room.power);
+  const match = planMatch(pick(room.categories.p1), pick(room.categories.p2), room.power, { difficulty: room.settings.difficulty });
   return { ...room, match };
 }
 

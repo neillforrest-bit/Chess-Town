@@ -3,9 +3,18 @@
 // plus Chester's host voice banks - all deterministic, zero per-question cost.
 
 export type LocalCategory = { id: number; name: string };
-export type LocalQuestion = { question: string; correct: string; wrong: [string, string, string] };
+export type LocalQuestion = {
+  question: string;
+  correct: string;
+  wrong: [string, string, string];
+  // Adaptive shelves carry close distractors; higher settings swap more of them in.
+  near?: [string, string, string];
+  adaptive?: boolean;
+};
 
 import { SEASON_TWO_CATEGORIES, SEASON_TWO_QUESTIONS } from './trivia-packs';
+import { SPORT_FOCUS_CATEGORIES, SPORT_FOCUS_QUESTIONS } from './trivia-sports';
+import type { QuestionDifficulty } from './trivia-settings';
 
 export const LOCAL_CATEGORIES: LocalCategory[] = [
   { id: -1, name: '♞ Chess-Town' },
@@ -13,6 +22,7 @@ export const LOCAL_CATEGORIES: LocalCategory[] = [
   { id: -3, name: '🎬 Movie Night' },
   { id: -4, name: '🇬🇧 Blighty' },
   ...SEASON_TWO_CATEGORIES,
+  ...SPORT_FOCUS_CATEGORIES,
 ];
 
 const BASE_QUESTIONS: Record<number, LocalQuestion[]> = {
@@ -54,6 +64,7 @@ export const LOCAL_QUESTIONS: Record<number, LocalQuestion[]> = (() => {
   const merged: Record<number, LocalQuestion[]> = {};
   for (const [id, list] of Object.entries(BASE_QUESTIONS)) merged[Number(id)] = [...list];
   for (const [id, list] of Object.entries(SEASON_TWO_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
+  for (const [id, list] of Object.entries(SPORT_FOCUS_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
   return merged;
 })();
 
@@ -63,7 +74,7 @@ export function localCategoryName(id: number): string {
 
 // Season Two: never serve the same house question twice until the whole shelf is used.
 const SEEN_KEY = 'ct-trivia-seen-v1';
-export function pickLocalQuestion(categoryId: number): LocalQuestion | null {
+export function pickLocalQuestion(categoryId: number, difficulty: QuestionDifficulty = 'medium'): LocalQuestion | null {
   const pack = LOCAL_QUESTIONS[categoryId] || [];
   if (!pack.length) return null;
   let seen: Record<string, string[]> = {};
@@ -73,7 +84,17 @@ export function pickLocalQuestion(categoryId: number): LocalQuestion | null {
   if (!fresh.length) { used = []; fresh = pack; }
   const choice = fresh[Math.floor(Math.random() * fresh.length)];
   try { seen[categoryId] = [...used, choice.question]; window.localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch { /* best effort */ }
-  return choice;
+  if (!choice.adaptive || !choice.near) return choice;
+  const [looseA, looseB, looseC] = choice.wrong;
+  const [nearA, nearB, nearC] = choice.near;
+  const wrong: [string, string, string] = difficulty === 'easy'
+    ? [looseA, looseB, looseC]
+    : difficulty === 'medium'
+      ? [looseA, looseB, nearA]
+      : difficulty === 'hard'
+        ? [looseA, nearA, nearB]
+        : [nearA, nearB, nearC];
+  return { ...choice, wrong };
 }
 
 // Chester's round intros, keyed by category flavor. Warm, pub-host energy, layman-safe.
@@ -82,7 +103,7 @@ const CATEGORY_QUIPS: Array<[RegExp, string]> = [
   [/pub/i, 'House specialty. Wrong answers traditionally buy the next round.'],
   [/movie|film|cinema/i, 'Popcorn round. Silence in the stalls, shouting in the answers.'],
   [/blighty|british/i, 'Local knowledge. Passport stamps optional, confidence mandatory.'],
-  [/sport/i, 'Elbows warmed up - this one separates the players from the watchers.'],
+  [/sport|nba|nfl|premier league|football|basketball/i, 'Elbows warmed up - this one separates the players from the watchers.'],
   [/science|nature/i, 'Lab coats on. Guessing technically counts as an experiment.'],
   [/history/i, 'Dust off the past - it is about to be graded.'],
   [/geography/i, 'Pack a bag. We are going somewhere neither of you has been.'],
@@ -146,7 +167,7 @@ export const ROULETTE_LINES = [
 
 export const ROUND_INTROS: string[][] = [
   [
-    'Round one - easy pours to open the tab. Confidence is free at this stage.',
+    'Round one opens the tab at your chosen heat. Confidence is free at this stage.',
     'First round, gentle glasses. Even the bar dog gets these.',
   ],
   [
