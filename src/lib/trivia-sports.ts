@@ -6,9 +6,9 @@ import type { QuestionDifficulty } from './trivia-settings';
 const q = (level: QuestionDifficulty, question: string, correct: string, wrong: [string, string, string]): LocalQuestion => ({ level, question, correct, wrong });
 
 export const SPORT_FOCUS_CATEGORIES: LocalCategory[] = [
-  { id: -11, name: '🏀 NBA' },
-  { id: -12, name: '🏈 NFL' },
-  { id: -13, name: '⚽ Premier League' },
+  { id: -11, name: 'NBA' },
+  { id: -12, name: 'NFL' },
+  { id: -13, name: 'Premier League' },
 ];
 
 const NBA_EASY: LocalQuestion[] = [
@@ -40,8 +40,8 @@ const NBA_EASY: LocalQuestion[] = [
 ];
 
 const NBA_MEDIUM: LocalQuestion[] = [
-  q('medium', 'How many minutes are in an NBA regulation game?', '48 minutes', ['40 minutes', '44 minutes', '52 minutes']),
-  q('medium', 'How many points is a free throw worth?', '1', ['2', '3', '0.5']),
+  q('medium', 'Who won regular-season MVP in 2001?', 'Allen Iverson', ['Shaquille O’Neal', 'Tim Duncan', 'Kevin Garnett']),
+  q('medium', 'Who was Finals MVP for Miami in 2006?', 'Dwyane Wade', ['Shaquille O’Neal', 'Alonzo Mourning', 'Gary Payton']),
   q('medium', 'An offensive player may not stay in the restricted lane for more than how many seconds?', '3 seconds', ['5 seconds', '8 seconds', '10 seconds']),
   q('medium', 'How many seconds does an NBA team have to advance the ball past half court?', '8 seconds', ['5 seconds', '10 seconds', '14 seconds']),
   q('medium', 'After an offensive rebound, the NBA shot clock resets to how many seconds?', '14 seconds', ['10 seconds', '20 seconds', '24 seconds']),
@@ -82,7 +82,7 @@ const NBA_HARD: LocalQuestion[] = [
   q('hard', 'Michael Jordan’s “Last Shot” as a Bull came against which team?', 'Utah Jazz', ['Seattle SuperSonics', 'Indiana Pacers', 'Phoenix Suns']),
   q('hard', 'How many regular-season games did the lockout-shortened 1998-99 season have?', '50', ['48', '66', '72']),
   q('hard', 'Which team beat the Lakers in five games in the 2004 Finals?', 'Detroit Pistons', ['San Antonio Spurs', 'Indiana Pacers', 'Minnesota Timberwolves']),
-  q('hard', 'Who was Finals MVP for Miami in 2006?', 'Dwyane Wade', ['Shaquille O’Neal', 'Alonzo Mourning', 'Gary Payton']),
+  q('hard', 'Who became the youngest NBA MVP in 2011?', 'Derrick Rose', ['Kevin Durant', 'LeBron James', 'Russell Westbrook']),
   q('hard', 'In 2007, LeBron James scored 29 of Cleveland’s final 30 points against which team?', 'Detroit Pistons', ['Boston Celtics', 'New Jersey Nets', 'Orlando Magic']),
   q('hard', 'Dallas beat Miami in how many games in the 2011 Finals?', '6', ['4', '5', '7']),
   q('hard', 'Ray Allen’s famous 2013 Finals corner three came against which team?', 'San Antonio Spurs', ['Oklahoma City Thunder', 'Boston Celtics', 'Indiana Pacers']),
@@ -105,13 +105,13 @@ const NBA_MASTER: LocalQuestion[] = [
   q('master', 'Michael Jordan scored a playoff-record 63 points in which building?', 'Boston Garden', ['Madison Square Garden', 'The Forum', 'Chicago Stadium']),
   q('master', 'Which team did the Bulls beat for Michael Jordan’s first championship?', 'Los Angeles Lakers', ['Portland Trail Blazers', 'Phoenix Suns', 'Seattle SuperSonics']),
   q('master', 'Which guard won Defensive Player of the Year in 1996?', 'Gary Payton', ['Michael Jordan', 'John Stockton', 'Mookie Blaylock']),
-  q('master', 'Who won regular-season MVP in 2001?', 'Allen Iverson', ['Shaquille O’Neal', 'Tim Duncan', 'Kevin Garnett']),
+  q('master', 'Which rookie won regular-season MVP in 1969?', 'Wes Unseld', ['Wilt Chamberlain', 'Oscar Robertson', 'Kareem Abdul-Jabbar']),
   q('master', 'Who was the first overall pick in the 2002 NBA draft?', 'Yao Ming', ['Amar’e Stoudemire', 'Jay Williams', 'Mike Dunleavy Jr.']),
   q('master', 'Who was picked second in the 2003 NBA draft, between LeBron James and Carmelo Anthony?', 'Darko Miličić', ['Chris Bosh', 'Dwyane Wade', 'Chris Kaman']),
   q('master', 'Who won back-to-back MVP awards with Phoenix in 2005 and 2006?', 'Steve Nash', ['Dirk Nowitzki', 'Kobe Bryant', 'Tim Duncan']),
   q('master', 'How many games did the Celtics win in the 2007-08 championship regular season?', '66', ['62', '64', '67']),
   q('master', 'LeBron James won his first MVP after Cleveland won how many games in 2008-09?', '66', ['61', '63', '65']),
-  q('master', 'Who became the youngest NBA MVP in 2011?', 'Derrick Rose', ['Kevin Durant', 'LeBron James', 'Russell Westbrook']),
+  q('master', 'Who won the 1993 MVP in his first Phoenix season?', 'Charles Barkley', ['Michael Jordan', 'Hakeem Olajuwon', 'Patrick Ewing']),
   q('master', 'LeBron James fell one first-place vote short of a unanimous MVP in which year?', '2013', ['2012', '2014', '2016']),
   q('master', 'Who was the NBA’s first unanimous MVP?', 'Stephen Curry', ['LeBron James', 'Michael Jordan', 'Shaquille O’Neal']),
   q('master', 'Russell Westbrook set the single-season record with how many triple-doubles in 2016-17?', '42', ['41', '43', '45']),
