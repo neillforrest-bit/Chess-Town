@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import ChesterHost from '@/components/ChesterHost';
 import { TriviaSetupPanel } from '@/components/TriviaSetupPanel';
 import { fetchTriviaQuestion, type TriviaQuestion } from '@/lib/trivia';
+import { freeTriviaCommentaryReply, isFreeTriviaCommentaryTest } from '@/lib/trivia-commentary-test';
 import { loadTriviaSettings, saveTriviaSettings, type TriviaSettings } from '@/lib/trivia-settings';
 
 type AnswerState = 'idle' | 'submitting' | 'answered';
@@ -41,6 +42,11 @@ export default function TriviaPage() {
     if (isCorrect) setScore((current) => current + 1);
 
     try {
+      if (isFreeTriviaCommentaryTest()) {
+        setChesterReply(freeTriviaCommentaryReply({ selectedAnswer: answer, correctAnswer: question.correctAnswer }));
+        setAnswerState('answered');
+        return;
+      }
       const response = await fetch('/api/trivia-commentary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

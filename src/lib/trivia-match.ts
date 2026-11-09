@@ -210,7 +210,7 @@ function fromOpenTdb(source: { category: string; difficulty: string; question: s
 function fromHouse(categoryId: number, source: LocalQuestion, difficulty: Difficulty): MatchQuestion {
   return {
     category: localCategoryName(categoryId),
-    difficulty: source.adaptive ? difficulty : 'house',
+    difficulty: source.level || (source.adaptive ? difficulty : 'house'),
     question: source.question,
     correctAnswer: source.correct,
     answers: shuffle([source.correct, ...source.wrong]),
@@ -268,8 +268,16 @@ export async function fetchRoundQuestions(categoryId: number, difficulty: Diffic
   return picked.slice(0, count);
 }
 
-export async function fetchLastCallQuestion(exclude: Set<string>): Promise<MatchQuestion> {
+export async function fetchLastCallQuestion(exclude: Set<string>, categoryId?: number, difficulty: Difficulty = 'hard'): Promise<MatchQuestion> {
   const seen = new Set<string>(exclude);
+  if (categoryId && categoryId < 0) {
+    const focused = drawHouseQuestions(categoryId, 1, seen, difficulty);
+    if (focused.length) return focused[0];
+    // A complete 25-question focused shelf can reach sudden death exhausted.
+    // Repeat from that shelf rather than breaking focus or stalling the table.
+    const repeat = drawHouseQuestions(categoryId, 1, new Set(), difficulty);
+    if (repeat.length) return repeat[0];
+  }
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const payload = await spacedJson('https://opentdb.com/api.php?amount=1&type=multiple&difficulty=hard');
     const source = payload?.response_code === 0 ? payload.results?.[0] : null;
@@ -579,7 +587,7 @@ export async function advanceMatch(state: MatchState): Promise<{ state: MatchSta
       // Sudden death: decided on any split question, otherwise the next hard pour.
       if (state.score.p1 !== state.score.p2) return { state: { ...state, phase: 'finished' } };
       try {
-        const question = await fetchLastCallQuestion(usedQuestionTexts(state));
+        const question = await fetchLastCallQuestion(usedQuestionTexts(state), state.rounds[state.round]?.categoryId, state.rounds[state.round]?.difficulty);
         const rounds = state.rounds.map((round, index) => (index === state.round ? { ...round, questions: [question], ready: true } : round));
         return { state: applyRoulette({ ...state, rounds, qIndex: 0, answers: {}, result: null, phase: 'question' }) };
       } catch (error) {
@@ -592,20 +600,32 @@ export async function advanceMatch(state: MatchState): Promise<{ state: MatchSta
     return { state: startFlash({ ...state, phase: 'reveal' }) };
   }
   if (state.phase === 'flashReveal') {
+    // The final flash is already the natural full-time whistle. Do not make a
+    // decided table click through one more leaderboard before the result.
+    if (state.round + 1 >= MATCH_ROUNDS && state.score.p1 !== state.score.p2) return { state: { ...state, phase: 'finished', flash: null } };
     return { state: { ...state, phase: 'banter', flash: null } };
   }
   if (state.phase === 'banter') {
     const nextRound = state.round + 1;
     if (nextRound < MATCH_ROUNDS) {
-      const round = state.rounds[nextRound];
-      if (!round?.ready) return { state, error: 'Chester is still scribbling the next round - give him a breath.' };
-      return { state: applyRoulette({ ...state, round: nextRound, qIndex: 0, answers: {}, result: null, roundResults: [], phase: 'question' }) };
+      let round = state.rounds[nextRound];
+      let rounds = state.rounds;
+      if (!round?.ready) {
+        // Background pours can lose a race with a fast table. Draw the missing
+        // shelf on demand rather than stranding a finished round at banter.
+        if (!round) return { state, error: 'Chester is still scribbling the next round - give him a breath.' };
+        const questions = await fetchRoundQuestions(round.categoryId, round.difficulty, usedQuestionTexts(state));
+        if (!questions.length) return { state, error: 'Chester is still scribbling the next round - give him a breath.' };
+        rounds = state.rounds.map((item, index) => (index === nextRound ? { ...item, questions, ready: true } : item));
+        round = rounds[nextRound];
+      }
+      return { state: applyRoulette({ ...state, rounds, round: nextRound, qIndex: 0, answers: {}, result: null, roundResults: [], phase: 'question' }) };
     }
     if (state.score.p1 !== state.score.p2) return { state: { ...state, phase: 'finished' } };
     // Dead heat after five rounds: LAST CALL, sudden death, hard questions only.
     try {
-      const question = await fetchLastCallQuestion(usedQuestionTexts(state));
-      const decider: MatchRound = { categoryId: 0, categoryName: question.category, difficulty: 'hard', questions: [question], ready: true };
+      const question = await fetchLastCallQuestion(usedQuestionTexts(state), state.rounds[state.round]?.categoryId, state.rounds[state.round]?.difficulty);
+      const decider: MatchRound = { categoryId: state.rounds[state.round]?.categoryId || 0, categoryName: question.category, difficulty: state.rounds[state.round]?.difficulty || 'hard', questions: [question], ready: true };
       return { state: { ...state, rounds: [...state.rounds, decider], round: MATCH_ROUNDS, qIndex: 0, answers: {}, result: null, roundResults: [], lastCall: true, phase: 'question' } };
     } catch (error) {
       return { state, error: error instanceof Error ? error.message : 'Could not pour a decider' };

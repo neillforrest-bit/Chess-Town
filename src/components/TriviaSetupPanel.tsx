@@ -16,6 +16,6 @@ export function TriviaSetupPanel({ settings, onChange, readOnly = false, compact
       <p>Difficulty</p>
       <div>{DIFFICULTY_OPTIONS.map((option) => <button key={option.id} type="button" disabled={readOnly} aria-pressed={settings.difficulty === option.id} title={option.hint} onClick={() => update({ difficulty: option.id })}>{option.label}</button>)}</div>
     </div>
-    {settings.focus !== 'open' && <p className="trivia-setup__note">Focused match: every question pours from {sportFocusLabel(settings.focus)}. MASTER uses the closest wrong answers on the sports shelf.</p>}
+    {settings.focus !== 'open' && <p className="trivia-setup__note">Focused match: every question pours from {sportFocusLabel(settings.focus)}. Each level uses its own stable question shelf.</p>}
   </section>;
 }

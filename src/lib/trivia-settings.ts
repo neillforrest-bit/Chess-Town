@@ -14,7 +14,7 @@ export const DIFFICULTY_OPTIONS: Array<{ id: TriviaDifficultySetting; label: str
   { id: 'easy', label: 'EASY', hint: 'Friendlier pours all night' },
   { id: 'medium', label: 'MEDIUM', hint: 'A proper pub-quiz heat' },
   { id: 'hard', label: 'HARD', hint: 'Top-shelf questions from the start' },
-  { id: 'master', label: 'MASTER', hint: 'Hardest pours and closest wrong answers' },
+  { id: 'master', label: 'MASTER', hint: 'Hardest top-shelf questions' },
 ];
 
 export const SPORT_FOCUS_OPTIONS: Array<{ id: TriviaSportFocus; label: string; hint: string; categoryId: number | null }> = [

@@ -12,6 +12,7 @@ import {
   type MatchState, type ViewerQuestion, type WildcardId,
 } from '@/lib/trivia-match';
 import { PEER_CONFIG } from '@/lib/p2p';
+import { freeTriviaCommentaryReply, isFreeTriviaCommentaryTest } from '@/lib/trivia-commentary-test';
 import { LOCAL_CATEGORIES, categoryQuip, pickLocalQuestion, revealQuip, roundEndLine, ROUND_INTROS, ROULETTE_LINES, FLASH_INTROS, FLASH_RESOLVE_LINES, ON_THE_HOUSE_LINES } from '@/lib/trivia-local';
 import {
   difficultyLabel, loadTriviaSettings, roundDifficulty, saveTriviaSettings, sportFocusCategoryId, sportFocusLabel,
@@ -98,7 +99,7 @@ function LeaderboardCard({ p1Name, p2Name, score, history, streak, cardsUsed }: 
 function useFlashBanner(watch: string | null): string | null {
   const [banner, setBanner] = useState<string | null>(null);
   useEffect(() => {
-    if (!watch) return;
+    if (!watch) { setBanner(null); return; }
     setBanner(watch);
     const timer = setTimeout(() => setBanner(null), 2600);
     return () => clearTimeout(timer);
@@ -283,6 +284,10 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       if (roomAfter.match) pourRounds(roomAfter.match);
       const p1Categories = roomAfter.categories.p1.map(nameOf).filter((name): name is string => Boolean(name));
       const p2Categories = roomAfter.categories.p2.map(nameOf).filter((name): name is string => Boolean(name));
+      if (isFreeTriviaCommentaryTest()) {
+        publishRoom({ ...roomAfter, hostMessage: freeTriviaCommentaryReply({ mode: 'brawl-intro', p1Name: roomAfter.names.p1, p2Name: roomAfter.names.p2 }) });
+        return;
+      }
       void fetch('/api/trivia-commentary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'brawl-intro', p1Categories, p2Categories, p1Name: roomAfter.names.p1, p2Name: roomAfter.names.p2 }) })
         .then(async (response) => {
           const data = await response.json() as { reply?: string };
@@ -307,7 +312,8 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     let cancelled = false;
     let peer: any = null;
     setMatchId(id);
-    window.history.replaceState(null, '', `/trivia-brawl?match=${id}&role=${role}`);
+    const freeCommentary = new URLSearchParams(window.location.search).get('triviaFreeCommentary') === '1';
+    window.history.replaceState(null, '', `/trivia-brawl?match=${id}&role=${role}${freeCommentary ? '&triviaFreeCommentary=1' : ''}`);
     void (async () => {
       // The pub table must open even if the online quiz service is slow or down: local categories first, online ones merged in later.
       setCategories(LOCAL_CATEGORIES);
@@ -521,6 +527,10 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     const summary = roundSummary(match, room.round);
     const fallback = roundEndLine(room.round, room.names.p1, room.names.p2, room.score.p1, room.score.p2, room.lastCall);
     const roundMeta = room.roundMeta?.[room.round];
+    if (isFreeTriviaCommentaryTest()) {
+      void hostApply('p1', { hostMessage: freeTriviaCommentaryReply({ mode: 'brawl-round', roundIndex: room.round, p1Name: room.names.p1, p2Name: room.names.p2 }) });
+      return;
+    }
     void fetch('/api/trivia-commentary', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         mode: 'brawl-round', roundIndex: room.round, roundTotal: MATCH_ROUNDS,
@@ -651,7 +661,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         {player !== 'p1' && <p>Awaiting the host to pour the next one...</p>}
       </> : room.phase === 'banter' ? <>
         <LeaderboardCard p1Name={room.names.p1} p2Name={room.names.p2} score={room.score} history={room.history} streak={room.streak} cardsUsed={room.cardsUsed} />
-        {player === 'p1' && <button className="trivia-brawl-primary" disabled={advancing || !nextRoundReady} onClick={() => void advance()}>{nextRoundReady ? (room.lastCall || (room.round + 1 >= MATCH_ROUNDS && room.score.p1 === room.score.p2) ? 'LAST CALL - SUDDEN DEATH' : room.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND') : 'CHESTER IS SCRIBBLING...'}</button>}
+        {player === 'p1' && <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void advance()}>{nextRoundReady ? (room.lastCall || (room.round + 1 >= MATCH_ROUNDS && room.score.p1 === room.score.p2) ? 'LAST CALL - SUDDEN DEATH' : room.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND') : 'POUR NEXT ROUND'}</button>}
         {player !== 'p1' && <p>Awaiting the host...</p>}
       </> : <>
         <div className="trivia-brawl-answers">{view.answers.map((option, index) => <button key={`${index}-${room.currentQuestion?.answers[index] ?? option}`} onClick={() => void answer(room.currentQuestion?.answers[index] ?? option)} disabled={Boolean(room.answers[player])}>{option}</button>)}</div>
@@ -1098,7 +1108,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
       <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void next()}>{advancing ? 'POURING...' : match.lastCall ? (match.score.p1 === match.score.p2 ? 'NEXT DECIDER' : 'FINAL CALL') : match.qIndex + 1 >= QUESTIONS_PER_ROUND ? '⚡ FLASH FINALE' : 'NEXT QUESTION'}</button></section>}
     {phase === 'roundEnd' && match && <section className="trivia-brawl-question"><h2>Round {match.round + 1} of {MATCH_ROUNDS} poured.</h2>
       <LeaderboardCard p1Name={nameA} p2Name={nameB} score={match.score} history={match.history} streak={match.streak} cardsUsed={match.cardsUsed} />
-      <button className="trivia-brawl-primary" disabled={advancing || (match.round + 1 < MATCH_ROUNDS && !match.rounds[match.round + 1]?.ready)} onClick={() => void next()}>{advancing ? 'POURING...' : (match.round + 1 < MATCH_ROUNDS && !match.rounds[match.round + 1]?.ready) ? 'CHESTER IS SCRIBBLING...' : match.round + 1 >= MATCH_ROUNDS ? (match.score.p1 === match.score.p2 ? 'LAST CALL - SUDDEN DEATH' : 'FINAL CALL') : 'NEXT ROUND'}</button></section>}
+      <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void next()}>{advancing ? 'POURING...' : (match.round + 1 < MATCH_ROUNDS && !match.rounds[match.round + 1]?.ready) ? 'POUR NEXT ROUND' : match.round + 1 >= MATCH_ROUNDS ? (match.score.p1 === match.score.p2 ? 'LAST CALL - SUDDEN DEATH' : 'FINAL CALL') : 'NEXT ROUND'}</button></section>}
     {phase === 'finished' && match && <section className="trivia-brawl-question"><h2>{match.score.p1} - {match.score.p2}</h2>
       <p className="trivia-series">SERIES · {nameA} {series.a} - {series.b} {nameB}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>
       <button className="trivia-brawl-primary" onClick={rematch}>🔁 REMATCH - NEW CATEGORIES</button></section>}

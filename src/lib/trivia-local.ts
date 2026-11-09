@@ -7,6 +7,9 @@ export type LocalQuestion = {
   question: string;
   correct: string;
   wrong: [string, string, string];
+  // Optional shelf for hand-authored packs. Untagged house-pack questions are
+  // eligible at every difficulty; focused sports shelves use exact difficulty.
+  level?: QuestionDifficulty;
   // Adaptive shelves carry close distractors; higher settings swap more of them in.
   near?: [string, string, string];
   adaptive?: boolean;
@@ -76,14 +79,16 @@ export function localCategoryName(id: number): string {
 const SEEN_KEY = 'ct-trivia-seen-v1';
 export function pickLocalQuestion(categoryId: number, difficulty: QuestionDifficulty = 'medium'): LocalQuestion | null {
   const pack = LOCAL_QUESTIONS[categoryId] || [];
-  if (!pack.length) return null;
+  const eligible = pack.filter((item) => !item.level || item.level === difficulty);
+  if (!eligible.length) return null;
   let seen: Record<string, string[]> = {};
   try { seen = JSON.parse(window.localStorage.getItem(SEEN_KEY) || '{}'); } catch { /* private browsing */ }
-  let used = seen[categoryId] || [];
-  let fresh = pack.filter((item) => !used.includes(item.question));
-  if (!fresh.length) { used = []; fresh = pack; }
+  const seenKey = `${categoryId}:${difficulty}`;
+  let used = seen[seenKey] || [];
+  let fresh = eligible.filter((item) => !used.includes(item.question));
+  if (!fresh.length) { used = []; fresh = eligible; }
   const choice = fresh[Math.floor(Math.random() * fresh.length)];
-  try { seen[categoryId] = [...used, choice.question]; window.localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch { /* best effort */ }
+  try { seen[seenKey] = [...used, choice.question]; window.localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch { /* best effort */ }
   if (!choice.adaptive || !choice.near) return choice;
   const [looseA, looseB, looseC] = choice.wrong;
   const [nearA, nearB, nearC] = choice.near;
