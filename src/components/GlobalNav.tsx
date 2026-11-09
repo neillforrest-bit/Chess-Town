@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ChangeEvent, useState } from 'react';
 import { ChesterAvatar } from './ChesterUI';
 
 export default function GlobalNav() {
+  const pathname = usePathname();
+  const isTriviaRoute = pathname.startsWith('/trivia');
   const [isRoyalCatsOpen, setIsRoyalCatsOpen] = useState(false);
   const [status, setStatus] = useState('');
 
@@ -38,7 +41,7 @@ export default function GlobalNav() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link href="/arena" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ animation: 'chester-float 4s ease-in-out infinite' }}>
-            <ChesterAvatar isThinking={false} size="small" />
+            <ChesterAvatar isThinking={false} size="small" trivia={isTriviaRoute} />
           </div>
           <span style={{ 
             fontFamily: 'Georgia, serif', 

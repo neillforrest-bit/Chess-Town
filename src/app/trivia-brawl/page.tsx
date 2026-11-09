@@ -25,10 +25,10 @@ type Room = PublicRoom;
 
 // BUILD 183 - five rounds of five shared questions, rising heat, wildcards and doubles.
 const WILDCARDS: Array<{ id: WildcardId; icon: string; label: string; hint: string }> = [
-  { id: 'shakespeare', icon: '🎭', label: 'SHAKESPEARE', hint: "Opponent's next question arrives in disguise" },
-  { id: 'fiftyfifty', icon: '🍸', label: 'FIFTY-FIFTY', hint: 'Two wrong answers vanish for you' },
-  { id: 'doubledown', icon: '💰', label: 'DOUBLE DOWN', hint: 'Your points on this question count double' },
-  { id: 'pickpocket', icon: '🤑', label: 'PICKPOCKET', hint: "If you're right and they're wrong, steal a point" },
+  { id: 'shakespeare', icon: 'S', label: 'SHAKESPEARE', hint: "Opponent's next question arrives in disguise" },
+  { id: 'fiftyfifty', icon: '50', label: 'FIFTY-FIFTY', hint: 'Two wrong answers vanish for you' },
+  { id: 'doubledown', icon: '2X', label: 'DOUBLE DOWN', hint: 'Your points on this question count double' },
+  { id: 'pickpocket', icon: 'PP', label: 'PICKPOCKET', hint: "If you're right and they're wrong, steal a point" },
 ];
 
 function focusedDraft(settings: TriviaSettings): number[] | null {
@@ -79,13 +79,13 @@ function LeaderboardCard({ p1Name, p2Name, score, history, streak, cardsUsed }: 
       flash: Boolean(flash),
     };
   });
-  const cards: Array<[WildcardId, string]> = [['shakespeare', '🎭'], ['fiftyfifty', '🍸'], ['doubledown', '💰'], ['pickpocket', '🤑']];
+  const cards: Array<[WildcardId, string]> = [['shakespeare', 'S'], ['fiftyfifty', '50'], ['doubledown', '2X'], ['pickpocket', 'PP']];
   const cardChips = (who: Player) => cardsUsed ? cards.map(([id, icon]) => <span key={id} className={cardsUsed[who]?.[id] ? 'trivia-leaderboard__card is-spent' : 'trivia-leaderboard__card'}>{icon}</span>) : null;
   return <div className="trivia-leaderboard">
     <div className="trivia-leaderboard__top">
-      <div className="trivia-leaderboard__side"><b>{leader === 'p1' ? '👑 ' : ''}{p1Name}</b><span className="trivia-leaderboard__points">{score.p1}</span>{streak.p1 >= 2 ? <span>🔥{streak.p1}</span> : null}<div>{cardChips('p1')}</div></div>
+      <div className="trivia-leaderboard__side"><b>{leader === 'p1' ? 'LEADER · ' : ''}{p1Name}</b><span className="trivia-leaderboard__points">{score.p1}</span>{streak.p1 >= 2 ? <span>ROLL x{streak.p1}</span> : null}<div>{cardChips('p1')}</div></div>
       <div className="trivia-leaderboard__mid">THE LEDGER</div>
-      <div className="trivia-leaderboard__side is-right"><b>{leader === 'p2' ? '👑 ' : ''}{p2Name}</b><span className="trivia-leaderboard__points">{score.p2}</span>{streak.p2 >= 2 ? <span>🔥{streak.p2}</span> : null}<div>{cardChips('p2')}</div></div>
+      <div className="trivia-leaderboard__side is-right"><b>{leader === 'p2' ? 'LEADER · ' : ''}{p2Name}</b><span className="trivia-leaderboard__points">{score.p2}</span>{streak.p2 >= 2 ? <span>ROLL x{streak.p2}</span> : null}<div>{cardChips('p2')}</div></div>
     </div>
     <div className="trivia-leaderboard__tug"><div className="trivia-leaderboard__tug-p1" style={{ width: `${p1Share}%` }} /></div>
     <div className="trivia-leaderboard__grid">
@@ -109,10 +109,10 @@ function useFlashBanner(watch: string | null): string | null {
 
 function MatchBadges({ difficulty, isDouble, powerForMe, streak, lastCall, roulette }: { difficulty?: string; isDouble: boolean; powerForMe: boolean; streak: number; lastCall?: boolean; roulette?: boolean }) {
   return <div className="trivia-badges">
-    {roulette ? <span className="trivia-badge trivia-badge--roulette">🎰 CHESTER'S ROULETTE · TRIPLE POINTS</span> : lastCall ? <span className="trivia-badge trivia-badge--hot">⚡ SUDDEN DEATH</span> : difficulty ? <span className={`trivia-badge trivia-badge--${difficulty}`}>{difficulty === 'house' ? '🏠 HOUSE' : `${difficulty.toUpperCase()} HEAT`}</span> : null}
-    {isDouble && <span className="trivia-badge trivia-badge--double">⭐ WORTH DOUBLE</span>}
-    {powerForMe && <span className="trivia-badge trivia-badge--power">🔥 YOUR POWER ROUND</span>}
-    {streak >= 2 && <span className="trivia-badge trivia-badge--streak">🎳 ON A ROLL x{streak}</span>}
+    {roulette ? <span className="trivia-badge trivia-badge--roulette">CHESTER'S ROULETTE · TRIPLE POINTS</span> : lastCall ? <span className="trivia-badge trivia-badge--hot">SUDDEN DEATH</span> : difficulty ? <span className={`trivia-badge trivia-badge--${difficulty}`}>{difficulty === 'house' ? 'HOUSE' : `${difficulty.toUpperCase()} HEAT`}</span> : null}
+    {isDouble && <span className="trivia-badge trivia-badge--double">WORTH DOUBLE</span>}
+    {powerForMe && <span className="trivia-badge trivia-badge--power">YOUR POWER ROUND</span>}
+    {streak >= 2 && <span className="trivia-badge trivia-badge--streak">ON A ROLL x{streak}</span>}
   </div>;
 }
 
@@ -147,12 +147,12 @@ function RevealCards({ p1Name, p2Name, answers, result }: { p1Name: string; p2Na
       <span className="trivia-reveal-card__answer">{answers[player] || 'No answer'}</span>
       <span className="trivia-reveal-card__points">
         {points > 0 ? `+${points}` : '+0'}
-        {result.double && correct ? ' · ⭐ DOUBLE' : ''}
-        {result.roulette && correct ? ' · 🎰 ROULETTE' : ''}
-        {result.powerPlayers.includes(player) && correct ? ' · 🔥 POWER' : ''}
-        {streakBonus ? ' · 🎳 ROLL +1' : ''}
-        {stole ? ' · 🤑 STOLEN' : ''}
-        {robbed ? ' · 🤑 -1 PICKED' : ''}
+        {result.double && correct ? ' · DOUBLE' : ''}
+        {result.roulette && correct ? ' · ROULETTE' : ''}
+        {result.powerPlayers.includes(player) && correct ? ' · POWER' : ''}
+        {streakBonus ? ' · ROLL +1' : ''}
+        {stole ? ' · STOLEN' : ''}
+        {robbed ? ' · -1 PICKED' : ''}
       </span>
     </div>;
   };
@@ -618,12 +618,12 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   return <main className="trivia-brawl-page">
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">← Pub door</Link></header>
     {room && <Scorebug p1Name={room.names.p1} p2Name={room.names.p2} p1Score={room.score.p1} p2Score={room.score.p2} round={room.round} qIndex={room.qIndex} lastCall={room.lastCall} finished={room.phase === 'finished'} />}
-    <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile />
+    <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile trivia />
     {error && <p className="trivia-brawl-error">{error}</p>}
     <FlashBanner banner={bannerBody} />
     {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : 'Pub table open - send the invite and hold this screen.') : 'Connecting to the host table...'}</p>}
     {room && !error && player === 'p1' && !linked && guestJoined && room.phase === 'flash' && room.flash?.type === 'duel' && !room.flash.done && <div className="trivia-brawl-void">
-      <button className="trivia-brawl-primary" onClick={() => void patchRoom({ voidFlash: true }).catch(() => undefined)}>🚫 VOID THE DUEL - NO FLASH POINTS</button>
+      <button className="trivia-brawl-primary" onClick={() => void patchRoom({ voidFlash: true }).catch(() => undefined)}>VOID THE DUEL - NO FLASH POINTS</button>
       <p>Only here while {room.names.p2} is away - nobody banks, scores so far stand.</p>
     </div>}
     {!room ? <section className="trivia-brawl-question"><h2>Opening the pub table...</h2></section> : room.phase === 'draft' ? <section className="trivia-brawl-draft">
@@ -635,18 +635,18 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1'} compact />
           <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={() => { if (myName.trim()) void patchRoom({ name: myName }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />
           {player === 'p1' && room.categories.p2.length === 0 && <div style={{ display: 'grid', gap: '.45rem' }}>
-            <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. Five rounds of five - you, me, no mercy.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>📮 SEND THE INVITE</button>
+            <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. Five rounds of five - you, me, no mercy.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>SEND THE INVITE</button>
             <input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Invite link for Player 2" />
           </div>}
-          {focusPicks ? <p className="trivia-setup__locked">{sportFocusLabel(room.settings.focus)} focus is locked for every round · {difficultyLabel(room.settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggleCategory(category.id)} aria-pressed={selectedCategories.includes(category.id)}>{selectedCategories.includes(category.id) && powerId === category.id ? `⭐ ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
-          {!focusPicks && selectedCategories.length === 3 && <div className="trivia-power"><span>⭐ Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{selectedCategories.map((id) => <button key={id} type="button" className={powerId === id ? 'is-starred' : ''} onClick={() => starPower(id)}>{powerId === id ? '⭐ ' : ''}{categories.find((category) => category.id === id)?.name || `Category ${id}`}</button>)}</div></div>}
+          {focusPicks ? <p className="trivia-setup__locked">{sportFocusLabel(room.settings.focus)} focus is locked for every round · {difficultyLabel(room.settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggleCategory(category.id)} aria-pressed={selectedCategories.includes(category.id)}>{selectedCategories.includes(category.id) && powerId === category.id ? `POWER · ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
+          {!focusPicks && selectedCategories.length === 3 && <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{selectedCategories.map((id) => <button key={id} type="button" className={powerId === id ? 'is-starred' : ''} onClick={() => starPower(id)}>{powerId === id ? 'POWER · ' : ''}{categories.find((category) => category.id === id)?.name || `Category ${id}`}</button>)}</div></div>}
           <button className="trivia-brawl-primary" disabled={(!focusPicks && selectedCategories.length !== 3) || isSubmitting} onClick={() => void submitDraft()}>{focusPicks ? `LOCK ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}` : `LOCK CATEGORIES (${selectedCategories.length}/3)`}</button>
           <p>{room.categories.p1.length}/3 Player 1 choices · {room.categories.p2.length}/3 Player 2 choices</p>
         </>;
       })()}
     </section>
     : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>The categories are locked.</h2><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : 'Awaiting Player One to begin the Brawl.') : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => void patchRoom({ start: true })}>START THE BRAWL</button>}</section>
-    : room.phase === 'finished' ? <section className="trivia-brawl-question"><h2>{room.score.p1} - {room.score.p2}</h2><p>{room.score.p1 === room.score.p2 ? 'A dead heat. Chester demands a rematch - the pub insists.' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} wins the tab. Chester raises a glass to you both.`}</p>{(series.p1 + series.p2 + series.draws) > 0 && <p className="trivia-series">SERIES · {room.names.p1} {series.p1} - {series.p2} {room.names.p2}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>}<button className="trivia-brawl-primary" onClick={() => void patchRoom({ rematch: true })}>🔁 REMATCH - SAME PUB, NEW QUESTIONS</button></section>
+    : room.phase === 'finished' ? <section className="trivia-brawl-question"><h2>{room.score.p1} - {room.score.p2}</h2><p>{room.score.p1 === room.score.p2 ? 'A dead heat. Chester demands a rematch - the pub insists.' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} wins the tab. Chester raises a glass to you both.`}</p>{(series.p1 + series.p2 + series.draws) > 0 && <p className="trivia-series">SERIES · {room.names.p1} {series.p1} - {series.p2} {room.names.p2}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>}<button className="trivia-brawl-primary" onClick={() => void patchRoom({ rematch: true })}>REMATCH - SAME PUB, NEW QUESTIONS</button></section>
     : <section className="trivia-brawl-question">
       {room.phase !== 'flash' && room.phase !== 'flashReveal' && room.phase !== 'banter' && <>
         <MatchBadges difficulty={room.lastCall ? undefined : room.roundMeta?.[room.round]?.difficulty} isDouble={room.isDoubleQuestion} powerForMe={room.powerRoundFor.includes(player)} streak={room.streak[player]} lastCall={room.lastCall} roulette={Boolean(room.currentQuestion?.roulette)} />
@@ -801,7 +801,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
   return <main className="trivia-brawl-page">
     <header className="trivia-brawl-header"><div><span>SOLO AT THE BAR</span><h1>You vs Chester</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
     <Scorebug p1Name="YOU" p2Name="CHESTER" p1Score={score.you} p2Score={score.chester} round={round} finished={phase === 'finished'} />
-    <ChesterTeleprompter text={hostLine} isThinking={false} isMobile />
+    <ChesterTeleprompter text={hostLine} isThinking={false} isMobile trivia />
     {error && <p className="trivia-brawl-error">{error}</p>}
     {phase === 'draft' && <section className="trivia-brawl-draft"><h2>{focusedDraft(settings) ? `Focused solo: ${sportFocusLabel(settings.focus)}` : 'Choose your 3 categories'}</h2>
       <TriviaSetupPanel settings={settings} onChange={updateSoloSettings} compact />
@@ -1026,13 +1026,13 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
   const answeringName = phase === 'askB' ? nameB : nameA;
   const q = match ? currentQuestionOf(match) : null;
 
-  const catGrid = (who: 'a' | 'b') => categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggle(who, category.id)} aria-pressed={picks[who].includes(category.id)}>{picks[who].includes(category.id) && power[who] === category.id ? `⭐ ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>;
-  const powerPicker = (who: 'a' | 'b') => picks[who].length === 3 ? <div className="trivia-power"><span>⭐ Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{picks[who].map((id) => <button key={id} type="button" className={power[who] === id ? 'is-starred' : ''} onClick={() => starPower(who, id)}>{power[who] === id ? '⭐ ' : ''}{nameOf(id)}</button>)}</div></div> : null;
+  const catGrid = (who: 'a' | 'b') => categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggle(who, category.id)} aria-pressed={picks[who].includes(category.id)}>{picks[who].includes(category.id) && power[who] === category.id ? `POWER · ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>;
+  const powerPicker = (who: 'a' | 'b') => picks[who].length === 3 ? <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{picks[who].map((id) => <button key={id} type="button" className={power[who] === id ? 'is-starred' : ''} onClick={() => starPower(who, id)}>{power[who] === id ? '⭐ ' : ''}{nameOf(id)}</button>)}</div></div> : null;
 
   return <main className="trivia-brawl-page">
     <header className="trivia-brawl-header"><div><span>ONE PHONE · TWO PLAYERS</span><h1>Pass &amp; Play</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
     {match && <Scorebug p1Name={nameA} p2Name={nameB} p1Score={match.score.p1} p2Score={match.score.p2} round={match.round} qIndex={match.qIndex} lastCall={match.lastCall} finished={phase === 'finished'} />}
-    <ChesterTeleprompter text={hostLine} isThinking={phase === 'building'} isMobile />
+    <ChesterTeleprompter text={hostLine} isThinking={phase === 'building'} isMobile trivia />
     {error && <p className="trivia-brawl-error">{error}</p>}
     <FlashBanner banner={ppBannerBody} />
     {phase === 'names' && <section className="trivia-brawl-draft"><h2>Who is playing?</h2>
@@ -1111,7 +1111,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
       <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void next()}>{advancing ? 'POURING...' : (match.round + 1 < MATCH_ROUNDS && !match.rounds[match.round + 1]?.ready) ? 'POUR NEXT ROUND' : match.round + 1 >= MATCH_ROUNDS ? (match.score.p1 === match.score.p2 ? 'LAST CALL - SUDDEN DEATH' : 'FINAL CALL') : 'NEXT ROUND'}</button></section>}
     {phase === 'finished' && match && <section className="trivia-brawl-question"><h2>{match.score.p1} - {match.score.p2}</h2>
       <p className="trivia-series">SERIES · {nameA} {series.a} - {series.b} {nameB}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>
-      <button className="trivia-brawl-primary" onClick={rematch}>🔁 REMATCH - NEW CATEGORIES</button></section>}
+      <button className="trivia-brawl-primary" onClick={rematch}>REMATCH - NEW CATEGORIES</button></section>}
   </main>;
 }
 
@@ -1122,13 +1122,13 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
   const updateSettings = (next: TriviaSettings) => { setSettings(next); saveTriviaSettings(next); };
   return <main className="trivia-brawl-page">
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/">← Chesterville</Link></header>
-    <ChesterTeleprompter text="Welcome to my pub. Season Two: house categories, focused NBA, NFL and Premier League shelves, Classic-to-Master heat, rematches, and one-phone Pass & Play. Play me solo, or host a brawl and send the link. I host, I judge, I remember everything." isThinking={false} isMobile />
+    <ChesterTeleprompter text="Pick your sport and heat. Play me solo, pass the phone, or send a link and I will host the room. Five rounds, sharp questions, no mercy." isThinking={false} isMobile trivia />
     <TriviaSetupPanel settings={settings} onChange={updateSettings} />
     <section className="trivia-brawl-draft">
       <h2>Take a seat</h2>
-      <button className="trivia-brawl-primary" onClick={onSolo}>🧠 PLAY SOLO VS CHESTER</button>
-      <button className="trivia-brawl-primary" onClick={onPass}>📱 PASS &amp; PLAY - ONE PHONE, TWO PLAYERS</button>
-      <button className="trivia-brawl-primary" onClick={onHost}>📮 HOST A BRAWL - SEND THE LINK</button>
+      <button className="trivia-brawl-primary" onClick={onSolo}>PLAY SOLO VS CHESTER</button>
+      <button className="trivia-brawl-primary" onClick={onPass}>PASS &amp; PLAY · ONE PHONE</button>
+      <button className="trivia-brawl-primary" onClick={onHost}>HOST A BRAWL · SEND LINK</button>
     </section>
     <section className="trivia-brawl-draft">
       <h2>Honour board</h2>

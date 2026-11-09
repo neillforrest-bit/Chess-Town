@@ -19,9 +19,9 @@ export const DIFFICULTY_OPTIONS: Array<{ id: TriviaDifficultySetting; label: str
 
 export const SPORT_FOCUS_OPTIONS: Array<{ id: TriviaSportFocus; label: string; hint: string; categoryId: number | null }> = [
   { id: 'open', label: 'OPEN PUB', hint: 'Draft from every category', categoryId: null },
-  { id: 'nba', label: '🏀 NBA', hint: 'Every round from the NBA shelf', categoryId: -11 },
-  { id: 'nfl', label: '🏈 NFL', hint: 'Every round from the NFL shelf', categoryId: -12 },
-  { id: 'premier-league', label: '⚽ PREMIER LEAGUE', hint: 'Every round from the Premier League shelf', categoryId: -13 },
+  { id: 'nba', label: 'NBA', hint: 'Every round from the NBA shelf', categoryId: -11 },
+  { id: 'nfl', label: 'NFL', hint: 'Every round from the NFL shelf', categoryId: -12 },
+  { id: 'premier-league', label: 'PREMIER LEAGUE', hint: 'Every round from the Premier League shelf', categoryId: -13 },
 ];
 
 const SETTINGS_KEY = 'ct-trivia-settings-v1';
