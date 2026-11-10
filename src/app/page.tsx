@@ -217,6 +217,7 @@ export default function Home() {
         <input id="challenger-name" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Enter your name, Challenger..." autoComplete="name" maxLength={30} />
         <button type="submit">ENTER <span aria-hidden="true">→</span></button>
       </form>
+      <Link className="entry-gate__trivia" href="/trivia-brawl"><span>CHESTER&apos;S PUB</span><b>PLAY PUB TRIVIA →</b><small>Challenge a friend or take on Chester. No chess required.</small></Link>
     </section>
   </main>;
 }

@@ -907,17 +907,17 @@ function LegacyArena() {
             </section>
             <section className="command-primary">
               <div className="command-primary__copy">
-                <span className="command-label">1V1 LIVE SHOWDOWN</span>
+                <span className="command-label">CHESTER&apos;S PUB · FRIENDS OR SOLO</span>
                 <h2>🍻 PUB TRIVIA BRAWL</h2>
-                <p>Draft categories, challenge a rival, and let Chester keep the score behind the bar.</p>
+                <p>One topic or a mixed quiz. Challenge a friend, share a phone, or play a short quiz against Chester.</p>
               </div>
               <div className="command-knight" aria-hidden="true"><span>🍻</span><i /></div>
               <div className="command-metrics">
                 <div><b>1V1</b><span>Live showdown</span></div>
-                <div><b>6</b><span>Trivia rounds</span></div>
+                <div><b>5 + 5</b><span>Brawl rounds + flash finales</span></div>
                 <div><b>LIVE</b><span>Chester hosts</span></div>
               </div>
-              <div className="command-actions"><button className="command-play" onClick={() => window.location.assign('/trivia-brawl')}>PLAY →</button></div>
+              <div className="command-actions"><button className="command-play" onClick={() => window.location.assign('/trivia-brawl')}>PLAY PUB TRIVIA →</button></div>
             </section>
           </main>
 

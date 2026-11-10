@@ -1838,3 +1838,23 @@ body:has(.trivia-showtime) .global-nav :is(a,button) { font-family: BarlowTrivia
 .trivia-timed-quiz.is-time-low { animation: trivia-low-signal 1.4s ease-in-out infinite; }
 @media(prefers-reduced-motion:reduce) { .trivia-timed-quiz.is-time-low { animation: none; border-inline: 3px solid #ff405b; } }
 .trivia-question-timer { height: auto; overflow: visible; }
+
+.entry-gate__trivia { width: 100%; box-sizing: border-box; display: grid; gap: .45rem; margin-top: 1.25rem; padding: 1rem; border: 1px solid #ff2b88; border-radius: 5px; text-decoration: none; color: #fff; background: #000; font-family: BarlowTrivia,Arial,sans-serif; font-style: italic; }
+.entry-gate__trivia span { color: #00e5ff; font-size: .7rem; letter-spacing: .12em; }
+.entry-gate__trivia b { font-size: 1.35rem; }
+.entry-gate__trivia small { font-size: .82rem; line-height: 1.4; color: #cad8dc; }
+.entry-gate__trivia:focus-visible { outline: 2px solid #00e5ff; outline-offset: 4px; }
+.entry-gate { overflow-y: auto; }
+.entry-gate__content { padding-block: 1rem; }
+.trivia-format-summary { display: grid; gap: .4rem; padding: .8rem; border: 1px solid #00e5ff; border-radius: 3px; color: #eefcff; line-height: 1.45; }
+.trivia-format-summary b { color: #00e5ff; }
+.trivia-format-summary small { color: #bdcdd2; }
+.trivia-showtime--lobby .trivia-brawl-draft > .trivia-brawl-primary { margin-top: .75rem; }
+@media(max-height:700px) { .entry-gate__chester { margin-bottom: .6rem; } .entry-gate h1 { margin-bottom: 1rem; } .entry-gate__chester > div { width: 64px !important; height: 64px !important; } }
+
+.portal-trivia-entry { display: block; margin: .8rem 0 1rem; padding: 1rem 1.2rem; border: 1px solid #00e5ff; border-radius: 5px; color: #fff; background: #000; text-decoration: none; font-family: BarlowTrivia,Arial,sans-serif; font-style: italic; }
+.portal-trivia-entry span { color: #00e5ff; font-size: .7rem; letter-spacing: .1em; }
+.portal-trivia-entry h2 { margin: .4rem 0; font-size: 1.7rem; font-weight: 900; }
+.portal-trivia-entry p { margin: .3rem 0 .7rem; line-height: 1.45; color: #c6d4d8; }
+.portal-trivia-entry b { font-size: .7rem; color: #00e5ff; }
+.portal-trivia-entry:focus-visible { outline: 2px solid #ff405b; outline-offset: 3px; }
