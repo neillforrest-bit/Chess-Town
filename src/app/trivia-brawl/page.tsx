@@ -1333,6 +1333,8 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
       <button className="trivia-brawl-primary" onClick={onSolo}>PLAY SOLO VS CHESTER · 5 QUESTIONS</button>
       <p className="trivia-setup__note">Chester scores at your chosen difficulty. This short mode has no wildcards or flash finales.</p>
       <button className="trivia-brawl-primary" onClick={onPass}>PASS &amp; PLAY · ONE PHONE</button>
+      <Link className="trivia-brawl-primary trivia-party-entry" href="/trivia-party">PARTY TABLE · UP TO 5 PHONES</Link>
+      <p className="trivia-setup__note">Separate group rules, one host, saved guest seats. The host keeps the table open.</p>
     </section>
     <details className="trivia-brawl-draft trivia-lobby-more">
       <summary>Honour board</summary>

@@ -2,7 +2,7 @@
 
 import { DIFFICULTY_OPTIONS, SPORT_FOCUS_OPTIONS, difficultyLabel, sportFocusLabel, type TriviaSettings } from '@/lib/trivia-settings';
 
-export function TriviaSetupPanel({ settings, onChange, readOnly = false, compact = false, brawlModes = false }: { settings: TriviaSettings; onChange?: (next: TriviaSettings) => void; readOnly?: boolean; compact?: boolean; brawlModes?: boolean }) {
+export function TriviaSetupPanel({ settings, onChange, readOnly = false, compact = false, brawlModes = false, powerRounds = true }: { settings: TriviaSettings; onChange?: (next: TriviaSettings) => void; readOnly?: boolean; compact?: boolean; brawlModes?: boolean; powerRounds?: boolean }) {
   const update = (patch: Partial<TriviaSettings>) => {
     if (!readOnly && onChange) onChange({ ...settings, ...patch });
   };
@@ -15,7 +15,7 @@ export function TriviaSetupPanel({ settings, onChange, readOnly = false, compact
         <button type="button" disabled={readOnly} aria-pressed={settings.focus === 'open'} onClick={() => update({ focus: 'open' })}>MIXED QUIZ · 3 EACH</button>
       </div>
     </div>}
-    {brawlModes && <p className="trivia-format-summary" role="status"><b>{settings.focus === 'open' ? 'MIXED QUIZ' : `SINGLE TOPIC: ${sportFocusLabel(settings.focus)}`}</b><span>{settings.focus === 'open' ? 'Each player picks three categories. Both sets feed the quiz. Star one for power rounds.' : `${sportFocusLabel(settings.focus)} main rounds. Flash finales and roulette can use other topics.`}</span><small>{difficultyLabel(settings.difficulty)} difficulty</small></p>}
+    {brawlModes && <p className="trivia-format-summary" role="status"><b>{settings.focus === 'open' ? 'MIXED QUIZ' : `SINGLE TOPIC: ${sportFocusLabel(settings.focus)}`}</b><span>{settings.focus === 'open' ? `Each player picks three categories. Both sets feed the quiz.${powerRounds ? ' Star one for power rounds.' : ' No power rounds in Party Table.'}` : `${sportFocusLabel(settings.focus)} main rounds. Flash finales and roulette can use other topics.`}</span><small>{difficultyLabel(settings.difficulty)} difficulty</small></p>}
     {(!brawlModes || settings.focus !== 'open') && <div className="trivia-setup__group" aria-label="Sport focus">
       <p>{brawlModes ? "Pick your sport" : "Sport focus"}</p>
       <div>{SPORT_FOCUS_OPTIONS.filter((option) => !brawlModes || option.id !== 'open').map((option) => <button key={option.id} type="button" disabled={readOnly} aria-pressed={settings.focus === option.id} title={option.hint} onClick={() => update({ focus: option.id })}>{option.label}</button>)}</div>

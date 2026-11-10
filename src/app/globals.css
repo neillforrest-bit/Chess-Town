@@ -1858,3 +1858,30 @@ body:has(.trivia-showtime) .global-nav :is(a,button) { font-family: BarlowTrivia
 .portal-trivia-entry p { margin: .3rem 0 .7rem; line-height: 1.45; color: #c6d4d8; }
 .portal-trivia-entry b { font-size: .7rem; color: #00e5ff; }
 .portal-trivia-entry:focus-visible { outline: 2px solid #ff405b; outline-offset: 3px; }
+.trivia-party-roster { border: 1px solid #51606a; border-radius: 5px; margin: .9rem 0; background: #000; }
+.trivia-party-roster > header { display: flex; flex-wrap: wrap; justify-content: space-between; padding: .7rem; gap: .5rem; border-bottom: 1px solid #51606a; font-size: .8rem; }
+.trivia-party-roster > header span { color: #00e5ff; }
+.trivia-party-roster > div { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .3rem .7rem; padding: .7rem; border-bottom: 1px solid #253038; }
+.trivia-party-roster > div > span { overflow-wrap: anywhere; font-weight: 800; }
+.trivia-party-roster > div > b { color: #00e5ff; }
+.trivia-party-roster > div > small { grid-column: 1/-1; color: #c1cdd2; font-size: .65rem; }
+.trivia-party-roster .is-me { border-left: 3px solid #00e5ff; }
+.trivia-party-invite, .trivia-party-target { display: grid; gap: .5rem; margin: 1rem 0; font-size: .75rem; }
+.trivia-party-invite input, .trivia-party-target select { width: 100%; min-width: 0; padding: .7rem; min-height: 44px; box-sizing: border-box; color: #fff; background: #000; border: 1px solid #00e5ff; border-radius: 3px; font-size: 16px; }
+.trivia-party-results { display: grid; gap: .7rem; margin: 1rem 0; }
+.trivia-party-results > div { display: grid; gap: .4rem; padding: .8rem; border: 1px solid #ff405b; border-radius: 4px; overflow-wrap: anywhere; }
+.trivia-party-results .is-right { border-color: #38f59b; }
+.trivia-party-results strong { color: #00e5ff; }
+.trivia-party-duel-roster { display: grid; gap: .4rem; font-size: .85rem; }
+.trivia-party .trivia-question-timer > div { height: 5px; background: #00e5ff; }
+.trivia-party .trivia-question-timer.is-low > div { background: #ff405b; }
+.trivia-party-status { font-size: .8rem; color: #c1d4d8; }
+@media(min-width:700px) { .trivia-party-results { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.trivia-party-remove { justify-self: start; border: 1px solid #66727b; color: #c5d1d6; padding: .5rem; font-size: .65rem; min-height: 36px; }
+.trivia-party-entry { display: block; text-align: center; text-decoration: none; margin-top: .75rem; }
+.trivia-party .trivia-party-play-area { scroll-margin-top: .8rem; }
+
+.trivia-party-duel-roster p { margin: .1rem 0; }
+.trivia-party .trivia-duel-grid button.is-correct { border-color: #38f59b; color: #38f59b; }
+.trivia-party .trivia-duel-grid button.is-strike { border-color: #ff405b; color: #ff8296; }
