@@ -4,7 +4,7 @@
 // BUILD 183: wraps the shared match engine (trivia-match.ts): 5 rounds x 5.
 import {
   MATCH_ROUNDS, advanceMatch, applyAnswer, applyDuelPick, applyFlashAnswer, applyWildcard, currentQuestionOf, planMatch,
-  resolveFlashTimeout, viewerQuestion, type FlashState, type MatchState, type Player, type WildcardId, applyFlashVoid } from './trivia-match';
+  resolveFlashTimeout, resolveQuestionTimeout, viewerQuestion, type FlashState, type MatchState, type Player, type WildcardId, applyFlashVoid } from './trivia-match';
 import { DEFAULT_TRIVIA_SETTINGS, normalizeTriviaSettings, type TriviaSettings } from './trivia-settings';
 
 export type { MatchQuestion as TriviaQuestion, MatchRound, MatchState, Player, QuestionResult, WildcardId } from './trivia-match';
@@ -14,6 +14,7 @@ export type { FlashState, FlashType } from './trivia-match';
 export type TriviaRoom = {
   gameId: string;
   flashEndsAt?: number;
+  questionEndsAt?: number;
   categories: Record<Player, number[]>;
   names: Record<Player, string>;
   power: Record<Player, number>;
@@ -26,6 +27,7 @@ export type TriviaRoom = {
 
 export type RoundMeta = { categoryName: string; difficulty: string; ready: boolean; count: number };
 export type PublicRoom = Omit<TriviaRoom, 'match'> & {
+  questionRemainingMs?: number;
   roundMeta: RoundMeta[] | null;
   round: number;
   qIndex: number;
@@ -118,6 +120,7 @@ export function serializeRoom(room: TriviaRoom, viewer: Player): PublicRoom {
   const round = match.rounds[match.round];
   return {
     ...rest,
+    questionRemainingMs: room.phase === 'question' && typeof room.questionEndsAt === 'number' ? Math.max(0, room.questionEndsAt - Date.now()) : undefined,
     roundMeta: match.rounds.map((item) => ({ categoryName: item.categoryName, difficulty: item.difficulty, ready: item.ready, count: item.questions.length })),
     round: match.round,
     qIndex: match.qIndex,
@@ -137,11 +140,19 @@ export function serializeRoom(room: TriviaRoom, viewer: Player): PublicRoom {
   };
 }
 
-export type RoomAction = { rematch?: unknown; settings?: unknown; categories?: unknown; power?: unknown; answer?: unknown; wildcard?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown; flashAnswer?: unknown; duelPick?: unknown; flashTimeout?: unknown; voidFlash?: unknown };
+export type RoomAction = { rematch?: unknown; settings?: unknown; categories?: unknown; power?: unknown; answer?: unknown; wildcard?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown; flashAnswer?: unknown; duelPick?: unknown; questionTimeout?: unknown; flashTimeout?: unknown; voidFlash?: unknown };
 
 export async function applyRoomAction(room: TriviaRoom, player: Player, body: RoomAction): Promise<{ room: TriviaRoom; error?: string; justLocked?: boolean }> {
   const next: TriviaRoom = { ...room, categories: { ...room.categories }, names: { ...room.names }, power: { ...room.power } };
   let justLocked = false;
+
+  // Check the host's clock inside the serialized action queue too. A late answer,
+  // replay or wildcard cannot beat the deadline just because a timer was delayed.
+  if (next.phase === 'question' && next.match && typeof next.questionEndsAt === 'number' && Date.now() >= next.questionEndsAt) {
+    const expired = resolveQuestionTimeout(next.match);
+    return { room: { ...next, match: expired.state, phase: expired.state.phase, questionEndsAt: undefined, updatedAt: Date.now() }, error: expired.error };
+  }
+
 
   if (body.rematch === true && next.phase === 'finished') {
     const fresh = createRoom(next.settings);
@@ -226,6 +237,9 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
     next.hostMessage = '';
   }
 
+  if (next.phase === 'question' && (room.phase !== 'question' || next.match?.round !== room.match?.round || next.match?.qIndex !== room.match?.qIndex)) {
+    next.questionEndsAt = Date.now() + 10000;
+  } else if (next.phase !== 'question') next.questionEndsAt = undefined;
   next.updatedAt = Date.now();
   return { room: next, justLocked };
 }

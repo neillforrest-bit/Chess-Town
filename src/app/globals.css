@@ -1827,3 +1827,14 @@ body:has(.trivia-showtime) .global-nav :is(a,button) { font-family: BarlowTrivia
 .trivia-showtime .trivia-flash-timer > div { transition: none; }
 .trivia-showtime .trivia-setup button[aria-pressed="true"] { outline-color: #00e5ff; }
 .trivia-showtime .trivia-scorebug__number em.is-loss { color: #ff405b; border-color: #ff405b; background: #260008; }
+
+/* Ordinary questions: one clear ten-second clock, steady cues for reduced motion. */
+.trivia-question-timer { display: grid; grid-template-columns: 1fr; gap: .4rem; margin: .75rem 0; border: 1px solid #00e5ff; padding: .6rem .8rem; color: #fff; background: #000; }
+.trivia-question-timer b { font-size: 1.35rem; font-weight: 900; }
+.trivia-question-timer > div { height: 5px; background: #00e5ff; max-width: 100%; transition: none; }
+.trivia-question-timer small { color: #c6d4d8; font-size: .8rem; }
+.trivia-question-timer.is-low { border-color: #ff405b; }
+.trivia-question-timer.is-low > div { background: #ff405b; }
+.trivia-timed-quiz.is-time-low { animation: trivia-low-signal 1.4s ease-in-out infinite; }
+@media(prefers-reduced-motion:reduce) { .trivia-timed-quiz.is-time-low { animation: none; border-inline: 3px solid #ff405b; } }
+.trivia-question-timer { height: auto; overflow: visible; }

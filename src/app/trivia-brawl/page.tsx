@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { TRIVIA_ACC, getTrvRoad, setTrvRoad, TRV_ROAD_MAX } from '@/games/trivia/road';
 import Link from 'next/link';
 import { ChesterTeleprompter } from '@/components/ChesterUI';
+import { TriviaQuestionClock, useTriviaQuestionTimer } from '@/components/TriviaQuestionClock';
 import { TriviaSetupPanel } from '@/components/TriviaSetupPanel';
 import { applyRoomAction, createRoom, planRoomMatch, serializeRoom, type PublicRoom, type TriviaRoom } from '@/lib/trivia-room';
 import {
-  MATCH_ROUNDS, QUESTIONS_PER_ROUND, advanceMatch, applyAnswer, applyDuelPick, applyFlashAnswer, applyWildcard, currentQuestionOf, resolveFlashTimeout,
+  MATCH_ROUNDS, QUESTIONS_PER_ROUND, QUESTION_TIMEOUT_ANSWER, advanceMatch, applyAnswer, applyDuelPick, applyFlashAnswer, applyWildcard, currentQuestionOf, resolveFlashTimeout,
   loadAllRounds, markRoundLoaded, planMatch, roundSummary, viewerQuestion,
   type MatchState, type ViewerQuestion, type WildcardId,
 } from '@/lib/trivia-match';
@@ -748,8 +749,11 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     } catch { /* error already on screen */ } finally { setIsSubmitting(false); }
   };
   const questionKey = room ? `${room.gameId}:${room.round}:${room.qIndex}:${room.currentQuestion?.question || ''}` : '';
+  const questionTimer = useTriviaQuestionTimer(room?.phase === 'question' ? questionKey : null, room?.questionRemainingMs, () => {
+    if (player === 'p1') void patchRoom({ questionTimeout: true }).catch(() => undefined);
+  });
   const answer = async (selectedAnswer: string) => {
-    if (!room || room.phase !== 'question' || room.answers[player] || pendingAnswerRef.current?.key === questionKey) return;
+    if (questionTimer.expired() || !room || room.phase !== 'question' || room.answers[player] || pendingAnswerRef.current?.key === questionKey) return;
     const pick = { key: questionKey, answer: selectedAnswer };
     pendingAnswerRef.current = pick; setPendingAnswer(pick);
     try { await patchRoom({ answer: selectedAnswer }); }
@@ -789,7 +793,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const nextRoundReady = room?.phase === 'banter' ? (room.round + 1 >= MATCH_ROUNDS || room.lastCall ? true : Boolean(room.roundMeta?.[room.round + 1]?.ready)) : true;
 
   const outcome = room?.result && room.flash?.resolvedNote !== 'void' && (room.phase === 'reveal' || room.phase === 'flashReveal') ? (player === 'p1' ? room.result.p1Correct : room.result.p2Correct) ? ' is-answer-right' : ' is-answer-wrong' : '';
-  return <main ref={stageRef} className={`trivia-brawl-page trivia-showtime${room?.phase === 'flash' || room?.phase === 'flashReveal' ? ' is-flash-time' : ''}${room?.phase === 'flash' && flashLow ? ' is-time-low' : ''}${outcome}`}>
+  return <main ref={stageRef} className={`trivia-brawl-page trivia-showtime${room?.phase === 'flash' || room?.phase === 'flashReveal' ? ' is-flash-time' : ''}${(room?.phase === 'flash' && flashLow || room?.phase === 'question' && questionTimer.left <= 5 && questionTimer.left > 0) ? ' is-time-low' : ''}${outcome}`}>
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">← Pub door</Link></header>
     {room && room.phase !== 'draft' && <Scorebug p1Name={room.names.p1} p2Name={room.names.p2} p1Score={room.score.p1} p2Score={room.score.p2} round={room.round} qIndex={room.qIndex} lastCall={room.lastCall} finished={room.phase === 'finished'} p1Locked={room.phase === 'question' && Boolean(room.answers.p1)} p2Locked={room.phase === 'question' && Boolean(room.answers.p2)} />}
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile trivia />
@@ -840,13 +844,14 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         {player === 'p1' && <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void advance()}>{nextRoundReady ? (room.lastCall || (room.round + 1 >= MATCH_ROUNDS && room.score.p1 === room.score.p2) ? 'LAST CALL - SUDDEN DEATH' : room.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND') : 'POUR NEXT ROUND'}</button>}
         {player !== 'p1' && <p>Awaiting the host...</p>}
       </> : <>
+        <TriviaQuestionClock seconds={questionTimer.left} />
         <div className="trivia-brawl-answers">{view.answers.map((option, index) => {
           const raw = room.currentQuestion?.answers[index] ?? option;
           const chosen = room.answers[player] === raw || (pendingAnswer?.key === questionKey && pendingAnswer.answer === raw);
-          return <button key={`${index}-${raw}`} className={chosen ? 'is-selected' : ''} aria-pressed={chosen} onClick={() => void answer(raw)} disabled={Boolean(room.answers[player]) || pendingAnswer?.key === questionKey || !linked && player === 'p2'}><span className="trivia-answer-letter">{'ABCD'[index]}</span><span>{option}</span>{chosen && <span className="trivia-answer-check" aria-label="Your choice">✓</span>}</button>;
+          return <button key={`${index}-${raw}`} className={chosen ? 'is-selected' : ''} aria-pressed={chosen} onClick={() => void answer(raw)} disabled={questionTimer.left === 0 || Boolean(room.answers[player]) || pendingAnswer?.key === questionKey || !linked && player === 'p2'}><span className="trivia-answer-letter">{'ABCD'[index]}</span><span>{option}</span>{chosen && <span className="trivia-answer-check" aria-label="Your choice">✓</span>}</button>;
         })}</div>
         {(room.answers[player] || pendingAnswer?.key === questionKey) && <p className="trivia-answer-status" role="status">{room.answers[player] ? '✓ Answer locked. Waiting for your rival.' : reconnecting ? 'Reconnecting. Your choice is saved on this screen, not yet confirmed.' : 'Sending your choice. Waiting for host confirmation...'}</p>}
-        <WildcardBar cardsUsed={myCardsUsed} activeCards={myActiveCards} canPlayAnswers={!room.answers[player] && pendingAnswer?.key !== questionKey && Boolean(room.currentQuestion)} canShakespeare={!room.lastCall && room.round < MATCH_ROUNDS - 1} onPlay={(card) => void playWildcard(card)} />
+        <WildcardBar cardsUsed={myCardsUsed} activeCards={myActiveCards} canPlayAnswers={questionTimer.left > 0 && !room.answers[player] && pendingAnswer?.key !== questionKey && Boolean(room.currentQuestion)} canShakespeare={!room.lastCall && room.round < MATCH_ROUNDS - 1} onPlay={(card) => void playWildcard(card)} />
       </>}
     </section>}
   </main>;
@@ -932,6 +937,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     if (playerPicks.length !== 3) return;
     const chesterPool = focusPicks || shuffled(categories.map((c) => c.id).filter((id) => !playerPicks.includes(id))).slice(0, 3);
     const rounds = shuffled([...playerPicks, ...chesterPool]);
+    soloAnsweredRef.current = null;
     setQueue(rounds);
     setRound(0);
     setScore({ you: 0, chester: 0 });
@@ -945,15 +951,20 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not draw the first question.'); }
   };
 
-  const answerSolo = (option: string) => {
-    if (locked || !question) return;
+  const soloTimer = useTriviaQuestionTimer(phase === 'question' && question ? `${round}:${question.question}` : null, undefined, () => answerSolo(QUESTION_TIMEOUT_ANSWER));
+  const soloAnsweredRef = useRef<string | null>(null);
+  function answerSolo(option: string) {
+    const key = `${round}:${question?.question}`;
+    if (phase !== 'question' || locked || !question || soloAnsweredRef.current === key) return;
+    soloAnsweredRef.current = key;
+    if (soloTimer.expired()) option = QUESTION_TIMEOUT_ANSWER;
     setLocked(option);
     const youRight = option === question.correctAnswer;
     const chesterRight = question.chesterCorrect;
     setScore((current) => ({ you: current.you + (youRight ? 1 : 0), chester: current.chester + (chesterRight ? 1 : 0) }));
     const pool = youRight ? SOLO_LINES.correct : SOLO_LINES.wrong;
     const line = pool[Math.floor(Math.random() * pool.length)];
-    setHostLine(`${line} ${chesterRight ? 'I scored that one too.' : 'I missed it as well. The shame is shared.'}`);
+    setHostLine(`${option === QUESTION_TIMEOUT_ANSWER ? "Time's up. No answer, no question points." : line} ${chesterRight ? 'I scored that one too.' : 'I missed it as well. The shame is shared.'}`);
     setPhase('reveal');
   };
 
@@ -978,7 +989,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not draw the next question.'); }
   };
 
-  return <main className="trivia-brawl-page trivia-showtime">
+  return <main className={`trivia-brawl-page trivia-showtime${phase === 'question' && soloTimer.left <= 5 && soloTimer.left > 0 ? ' is-time-low' : ''}`}>
     <header className="trivia-brawl-header"><div><span>SOLO AT THE BAR</span><h1>You vs Chester</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
     <Scorebug p1Name="YOU" p2Name="CHESTER" p1Score={score.you} p2Score={score.chester} round={round} finished={phase === 'finished'} />
     <ChesterTeleprompter text={hostLine} isThinking={false} isMobile trivia />
@@ -989,7 +1000,9 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
       <button className="trivia-brawl-primary" disabled={!focusedDraft(settings) && picked.length !== 3} onClick={() => void startGame()}>{focusedDraft(settings) ? `START ${sportFocusLabel(settings.focus)} · ${difficultyLabel(settings.difficulty)}` : `BELLYS UP - START (${picked.length}/3)`}</button>
     </section>}
     {(phase === 'question' || phase === 'reveal') && question && <section className="trivia-brawl-question"><span>{question.category}</span><h2>{question.question}</h2>
-      <div className="trivia-brawl-answers">{question.answers.map((option) => <button key={option} onClick={() => answerSolo(option)} disabled={phase === 'reveal'} className={option === locked ? 'is-selected' : ''} aria-pressed={option === locked}>{phase === 'reveal' && option === question.correctAnswer ? `${option} ✓` : phase === 'reveal' && option === locked ? `${option} ✗` : option}</button>)}</div>
+      {phase === 'question' && <TriviaQuestionClock seconds={soloTimer.left} />}
+      {phase === 'reveal' && locked === QUESTION_TIMEOUT_ANSWER && <p role="status">Time&apos;s up. No answer locked.</p>}
+      <div className="trivia-brawl-answers">{question.answers.map((option) => <button key={option} onClick={() => answerSolo(option)} disabled={phase === 'reveal' || soloTimer.left === 0} className={option === locked ? 'is-selected' : ''} aria-pressed={option === locked}>{phase === 'reveal' && option === question.correctAnswer ? `${option} ✓` : phase === 'reveal' && option === locked ? `${option} ✗` : option}</button>)}</div>
       {phase === 'reveal' && <button className="trivia-brawl-primary" onClick={() => void nextSolo()}>{round + 1 >= 5 ? 'FINAL CALL' : 'NEXT ROUND'}</button>}
     </section>}
     {phase === 'finished' && <section className="trivia-brawl-question"><h2>{score.you} - {score.chester}</h2>
@@ -1068,9 +1081,14 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     setHostLine(card === 'shakespeare' ? `Sabotage! ${who === 'p1' ? nameB : nameA}'s next question arrives in Shakespearean disguise.` : card === 'fiftyfifty' ? 'Fifty-fifty poured - two wrong answers just left the bar.' : card === 'doubledown' ? 'Double down armed. This question pays you double.' : 'Pickpocket armed. Get it right while they slip and their point is yours.');
   };
 
-  const answerFor = (who: Player, option: string) => {
+  const [ppBannerWatch, setPpBannerWatch] = useState<string | null>(null);
+  const turnExpireRef = useRef<() => void>(() => undefined);
+  const turnTimer = useTriviaQuestionTimer((phase === 'askA' || phase === 'askB') && match ? `${match.round}:${match.qIndex}:${phase}` : null, undefined, () => turnExpireRef.current());
+  function answerFor(who: Player, option: string) {
     const current = matchRef.current;
     if (!current) return;
+    if (phase !== 'askA' && phase !== 'askB') return;
+    if (turnTimer.expired()) option = QUESTION_TIMEOUT_ANSWER;
     const applied = applyAnswer(current, who, option);
     if (applied.error) { setError(applied.error); return; }
     commitMatch(applied.state);
@@ -1088,6 +1106,9 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     setPhase('cover');
     setHostLine(`${who === 'p1' ? nameA : nameB} has locked in. Pass the phone - and no whispering.`);
   };
+
+
+  useEffect(() => { turnExpireRef.current = () => answerFor(phase === 'askB' ? 'p2' : 'p1', QUESTION_TIMEOUT_ANSWER); });
 
   const next = async () => {
     const current = matchRef.current;
@@ -1134,7 +1155,6 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
   };
 
 
-  const [ppBannerWatch, setPpBannerWatch] = useState<string | null>(null);
   const ppBanner = useFlashBanner(ppBannerWatch);
   const ppBannerBody = ppBanner ? ppBanner.slice(ppBanner.indexOf(':') + 1) : null;
 
@@ -1209,7 +1229,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
   const catGrid = (who: 'a' | 'b') => categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggle(who, category.id)} aria-pressed={picks[who].includes(category.id)}>{picks[who].includes(category.id) && power[who] === category.id ? `POWER · ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>;
   const powerPicker = (who: 'a' | 'b') => picks[who].length === 3 ? <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{picks[who].map((id) => <button key={id} type="button" className={power[who] === id ? 'is-starred' : ''} onClick={() => starPower(who, id)}>{power[who] === id ? '⭐ ' : ''}{nameOf(id)}</button>)}</div></div> : null;
 
-  return <main className="trivia-brawl-page trivia-showtime">
+  return <main className={`trivia-brawl-page trivia-showtime${(phase === 'askA' || phase === 'askB') && turnTimer.left <= 5 && turnTimer.left > 0 ? ' is-time-low' : ''}`}>
     <header className="trivia-brawl-header"><div><span>ONE PHONE · TWO PLAYERS</span><h1>Pass &amp; Play</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
     {match && <Scorebug p1Name={nameA} p2Name={nameB} p1Score={match.score.p1} p2Score={match.score.p2} round={match.round} qIndex={match.qIndex} lastCall={match.lastCall} finished={phase === 'finished'} />}
     <ChesterTeleprompter text={hostLine} isThinking={phase === 'building'} isMobile trivia />
@@ -1228,10 +1248,11 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     {(phase === 'askA' || phase === 'askB') && match && q && <section className="trivia-brawl-question">
       <MatchBadges difficulty={match.lastCall ? undefined : match.rounds[match.round]?.difficulty} isDouble={match.doubleQuestions.includes(`${match.round}:${match.qIndex}`)} powerForMe={match.power[activePlayer] === match.rounds[match.round]?.categoryId} streak={match.streak[activePlayer]} lastCall={match.lastCall} roulette={Boolean(activeView?.roulette)} />
       <span>{q.category} · {answeringName} to answer</span><h2>{view.question}</h2>
-      <div className="trivia-brawl-answers">{view.answers.map((option, index) => { const raw = activeView?.answers[index] ?? option; return <button key={`${index}-${raw}`} onClick={() => answerFor(activePlayer, raw)}>{option}</button>; })}</div>
-      <WildcardBar cardsUsed={match.cardsUsed[activePlayer]} activeCards={match.activeCards[activePlayer]} canPlayAnswers={!match.answers[activePlayer] && Boolean(q)} canShakespeare={!match.lastCall && match.round < MATCH_ROUNDS - 1} onPlay={(card) => playCard(activePlayer, card)} />
+      <TriviaQuestionClock seconds={turnTimer.left} />
+      <div className="trivia-brawl-answers">{view.answers.map((option, index) => { const raw = activeView?.answers[index] ?? option; return <button key={`${index}-${raw}`} disabled={turnTimer.left === 0} onClick={() => answerFor(activePlayer, raw)}>{option}</button>; })}</div>
+      <WildcardBar cardsUsed={match.cardsUsed[activePlayer]} activeCards={match.activeCards[activePlayer]} canPlayAnswers={turnTimer.left > 0 && !match.answers[activePlayer] && Boolean(q)} canShakespeare={!match.lastCall && match.round < MATCH_ROUNDS - 1} onPlay={(card) => playCard(activePlayer, card)} />
     </section>}
-    {phase === 'cover' && <section className="trivia-brawl-question"><h2>🔒 Answer locked</h2><p>Pass the phone to {nameB}. The question is hidden until you take it.</p>
+    {phase === 'cover' && <section className="trivia-brawl-question"><h2>🔒 {match?.answers.p1 === QUESTION_TIMEOUT_ANSWER ? "Time's up" : "Answer locked"}</h2><p>Pass the phone to {nameB}. The question is hidden until you take it.</p>
       <button className="trivia-brawl-primary" onClick={() => { setPhase('askB'); setHostLine(`${nameB}, same question. ${nameA} - eyes off the screen!`); }}>I AM {nameB.toUpperCase()} - SHOW QUESTION</button></section>}
     {(phase === 'flashA' || phase === 'flashB') && match?.flash?.question && <section className="trivia-brawl-question trivia-flash">
       <span className="trivia-badge trivia-badge--flash">⚡ FLASH FINALE · {FLASH_LABEL[match.flash.type]} · DOUBLE POINTS</span>

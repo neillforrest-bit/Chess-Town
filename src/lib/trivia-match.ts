@@ -383,6 +383,21 @@ export function applyAnswer(state: MatchState, player: Player, answer: string): 
   return { state: next };
 }
 
+// A timeout is an incorrect, locked response, never an invented option.
+export const QUESTION_TIMEOUT_ANSWER = "Time's up - no answer";
+export function resolveQuestionTimeout(state: MatchState): { state: MatchState; error?: string } {
+  if (state.phase !== 'question') return { state };
+  let next = state;
+  for (const player of ['p1', 'p2'] as Player[]) {
+    if (!next.answers[player]) {
+      const applied = applyAnswer(next, player, QUESTION_TIMEOUT_ANSWER);
+      if (applied.error) return applied;
+      next = applied.state;
+    }
+  }
+  return { state: next };
+}
+
 export function applyWildcard(state: MatchState, player: Player, card: WildcardId): { state: MatchState; error?: string } {
   if (state.phase === 'flash' || state.phase === 'flashReveal') return { state, error: 'Cards rest during the flash finale' };
   if (state.cardsUsed[player][card]) return { state, error: 'That card is already spent' };

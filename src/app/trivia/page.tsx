@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { TriviaQuestionClock, useTriviaQuestionTimer } from '@/components/TriviaQuestionClock';
+import { QUESTION_TIMEOUT_ANSWER } from '@/lib/trivia-match';
 import ChesterHost from '@/components/ChesterHost';
 import { TriviaSetupPanel } from '@/components/TriviaSetupPanel';
 import { fetchTriviaQuestion, type TriviaQuestion } from '@/lib/trivia';
@@ -34,8 +36,18 @@ export default function TriviaPage() {
     };
   }, [round, settings]);
 
-  const selectAnswer = async (answer: string) => {
-    if (!question || answerState !== 'idle') return;
+  const answeredRef = useRef(false);
+  const timer = useTriviaQuestionTimer(question && answerState === 'idle' ? `${round}:${question.question}` : null, undefined, () => { void selectAnswer(QUESTION_TIMEOUT_ANSWER); });
+  async function selectAnswer(answer: string) {
+    if (!question || answerState !== 'idle' || answeredRef.current) return;
+    answeredRef.current = true;
+    if (timer.expired()) answer = QUESTION_TIMEOUT_ANSWER;
+    if (answer === QUESTION_TIMEOUT_ANSWER) {
+      setSelectedAnswer(answer);
+      setAnswerState('answered');
+      setChesterReply(`Time's up. The answer was ${question.correctAnswer}. No point this time.`);
+      return;
+    }
     const isCorrect = answer === question.correctAnswer;
     setSelectedAnswer(answer);
     setAnswerState('submitting');
@@ -66,6 +78,7 @@ export default function TriviaPage() {
   };
 
   const updateSettings = (next: TriviaSettings) => {
+    answeredRef.current = false;
     setSettings(next);
     saveTriviaSettings(next);
     setQuestion(null);
@@ -74,6 +87,7 @@ export default function TriviaPage() {
   };
 
   const nextQuestion = () => {
+    answeredRef.current = false;
     setSelectedAnswer(null);
     setAnswerState('idle');
     setQuestion(null);
@@ -82,7 +96,7 @@ export default function TriviaPage() {
   };
 
   return (
-    <main className="trivia-page">
+    <main className={`trivia-page trivia-timed-quiz${question && answerState === 'idle' && timer.left <= 5 && timer.left > 0 ? ' is-time-low' : ''}`}>
       <header className="trivia-header">
         <div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Last Call Quiz</h1></div>
         <Link href="/arena">Arena</Link>
@@ -101,13 +115,14 @@ export default function TriviaPage() {
               <span>{question.category} · {question.difficulty}</span>
               <h2>{question.question}</h2>
             </div>
+            {answerState === 'idle' && <TriviaQuestionClock seconds={timer.left} />}
             <div className="trivia-answers">
               {question.answers.map((answer) => {
                 const isCorrect = answer === question.correctAnswer;
                 const isSelected = answer === selectedAnswer;
                 const isAnswered = answerState === 'answered';
                 const resultClass = isAnswered ? (isCorrect ? 'is-correct' : isSelected ? 'is-wrong' : '') : '';
-                return <button className={resultClass} key={answer} onClick={() => void selectAnswer(answer)} disabled={answerState !== 'idle'}>{answer}</button>;
+                return <button className={resultClass} key={answer} onClick={() => void selectAnswer(answer)} disabled={answerState !== 'idle' || timer.left === 0}>{answer}</button>;
               })}
             </div>
             <div className="trivia-host-reply">{answerState === 'submitting' ? 'Chester is consulting the bar ledger...' : chesterReply}</div>
