@@ -24,7 +24,7 @@ type Room = PublicRoom;
 
 // BUILD 183 - five rounds of five shared questions, rising heat, wildcards and doubles.
 const WILDCARDS: Array<{ id: WildcardId; icon: string; label: string; hint: string }> = [
-  { id: 'shakespeare', icon: 'S', label: 'SHAKESPEARE', hint: "Opponent's next question arrives in disguise" },
+  { id: 'shakespeare', icon: 'S', label: 'SHAKESPEARE', hint: "Rival's next round arrives in disguise" },
   { id: 'fiftyfifty', icon: '50', label: 'FIFTY-FIFTY', hint: 'Two wrong answers vanish for you' },
   { id: 'doubledown', icon: '2X', label: 'DOUBLE DOWN', hint: 'Your points on this question count double' },
   { id: 'pickpocket', icon: 'PP', label: 'PICKPOCKET', hint: "If you're right and they're wrong, steal a point" },
@@ -41,16 +41,36 @@ function getMatchId(): string {
 }
 
 // BUILD 117 live scorebug: names, big digits, round pips, leader glow.
-function Scorebug({ p1Name, p2Name, p1Score, p2Score, round, qIndex, lastCall, finished, total = MATCH_ROUNDS }: { p1Name: string; p2Name: string; p1Score: number; p2Score: number; round: number; qIndex?: number; lastCall?: boolean; finished: boolean; total?: number }) {
-  const midLabel = lastCall ? 'LAST CALL' : finished ? 'FINAL CALL' : `ROUND ${Math.min(round + 1, total)}/${total}`;
-  return <div className="trivia-scorebug" aria-live="polite">
-    <div className={`trivia-scorebug__side ${p1Score > p2Score ? 'is-leading' : ''}`}><small>{p1Name}</small><b>{p1Score}</b></div>
-    <div className="trivia-scorebug__mid"><span>{midLabel}</span>
-      <div className="trivia-scorebug__pips">{Array.from({ length: total }, (_, i) => <i key={i} className={finished || i < round ? 'is-done' : i === round ? 'is-live' : ''} />)}</div>
-      {!finished && !lastCall && typeof qIndex === 'number' && <span className="trivia-scorebug__q">QUESTION {qIndex + 1}/{QUESTIONS_PER_ROUND}</span>}
-    </div>
-    <div className={`trivia-scorebug__side is-right ${p2Score > p1Score ? 'is-leading' : ''}`}><b>{p2Score}</b><small>{p2Name}</small></div>
+function Scorebug({ p1Name, p2Name, p1Score, p2Score, round, qIndex, lastCall, finished, total = MATCH_ROUNDS, p1Locked = false, p2Locked = false }: { p1Name: string; p2Name: string; p1Score: number; p2Score: number; round: number; qIndex?: number; lastCall?: boolean; finished: boolean; total?: number; p1Locked?: boolean; p2Locked?: boolean }) {
+  const previous = useRef({ p1: p1Score, p2: p2Score });
+  const [swing, setSwing] = useState<{ p1: number; p2: number; label: string } | null>(null);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = { p1: p1Score, p2: p2Score };
+    const p1 = p1Score - before.p1, p2 = p2Score - before.p2;
+    if (!p1 && !p2) return;
+    if (p1Score === 0 && p2Score === 0) { const frame = requestAnimationFrame(() => setSwing(null)); return () => cancelAnimationFrame(frame); }
+    const leadBefore = Math.sign(before.p1 - before.p2), leadNow = Math.sign(p1Score - p2Score);
+    const label = leadNow === 0 ? 'ALL SQUARE' : leadBefore !== leadNow ? `${leadNow > 0 ? p1Name : p2Name} TAKES THE LEAD` : 'POINTS ON THE BOARD';
+    const frame = requestAnimationFrame(() => setSwing({ p1, p2, label }));
+    const timer = setTimeout(() => setSwing(null), 4500);
+    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+  }, [p1Score, p2Score, p1Name, p2Name]);
+  const midLabel = lastCall ? 'LAST CALL' : finished ? 'FINAL SCORE' : `ROUND ${Math.min(round + 1, total)} / ${total}`;
+  const margin = Math.abs(p1Score - p2Score);
+  const leader = p1Score > p2Score ? p1Name : p2Name;
+  const side = (name: string, score: number, who: 'p1' | 'p2', leading: boolean) => <div className={`trivia-scorebug__side team-${who}${leading ? ' is-leading' : ''}`}>
+    <small>{name}</small><div className="trivia-scorebug__number"><b key={score}>{score}</b>{swing && swing[who] !== 0 && <em className={swing[who] < 0 ? 'is-loss' : ''} key={`${score}-${swing[who]}`}>{swing[who] > 0 ? '+' : ''}{swing[who]}</em>}</div><span>{(who === 'p1' ? p1Locked : p2Locked) ? '✓ ANSWER LOCKED' : leading ? 'LEADING' : p1Score === p2Score ? 'LEVEL' : 'IN THE CHASE'}</span>
   </div>;
+  return <section className="trivia-live-board" aria-label="Live scoreboard">
+    <div className="trivia-live-board__strap"><span>{finished ? 'THE FINAL TAB' : "● LIVE AT CHESTER'S"}</span><span>{midLabel}</span></div>
+    <div className="trivia-scorebug" aria-live="polite">
+      {side(p1Name, p1Score, 'p1', p1Score > p2Score)}
+      <div className="trivia-scorebug__mid"><span>VERSUS</span><div className="trivia-scorebug__pips">{Array.from({ length: total }, (_, i) => <i key={i} className={finished || i < round ? 'is-done' : i === round ? 'is-live' : ''} />)}</div>{!finished && !lastCall && typeof qIndex === 'number' && <span className="trivia-scorebug__q">Q {qIndex + 1} / {QUESTIONS_PER_ROUND}</span>}</div>
+      {side(p2Name, p2Score, 'p2', p2Score > p1Score)}
+    </div>
+    <div className={`trivia-score-call${swing ? ' is-event' : ''}`} role="status">{swing?.label || (p1Score === p2Score ? 'ALL SQUARE. NEXT POINT COUNTS.' : `${leader} leads by ${margin}`)}</div>
+  </section>;
 }
 
 // Badges over the question: heat, doubles, power rounds, streaks.
@@ -122,17 +142,17 @@ function WildcardBar({ cardsUsed, activeCards, canPlayAnswers, canShakespeare, o
   canShakespeare: boolean;
   onPlay: (card: WildcardId) => void;
 }) {
-  return <div className="trivia-wildcards">
+  return <section className="trivia-wildcard-deck" aria-label="Wildcards"><header><span>CHANGE THE GAME</span><b>YOUR WILDCARDS</b><small>One of each per match. Make it count.</small></header><div className="trivia-wildcards">
     {WILDCARDS.map((card) => {
       const used = cardsUsed[card.id];
       const active = card.id === 'shakespeare' ? false : Boolean(activeCards[card.id as 'fiftyfifty']);
       const enabled = card.id === 'shakespeare' ? canShakespeare && !used : canPlayAnswers && !used && !active;
       return <button key={card.id} type="button" className={`trivia-wildcard ${active ? 'is-active' : ''}`} disabled={!enabled} title={card.hint}
         onClick={() => onPlay(card.id)}>
-        {used ? `${card.icon} SPENT` : active ? `${card.icon} ARMED` : `${card.icon} ${card.label}`}
+        <span className="trivia-wildcard__icon">{card.icon}</span><span><b>{card.label}</b><small>{active ? 'ARMED FOR THIS QUESTION' : used ? 'USED THIS MATCH' : card.hint}</small></span>
       </button>;
     })}
-  </div>;
+  </div></section>;
 }
 
 // BUILD 183: unmistakable per-player reveal after every question.
@@ -167,27 +187,38 @@ function questionText(view: ViewerQuestion | null): { question: string; answers:
 }
 
 
-function FlashBrawl({ flash, player, p1Name, p2Name, onAnswer, onPick }: { flash: NonNullable<Room['flash']>; player: Player; p1Name: string; p2Name: string; onAnswer: (answer: string) => void; onPick: (option: string) => void }) {
+function FlashBrawl({ flash, player, p1Name, p2Name, onAnswer, onPick, onTimeLow }: { flash: NonNullable<Room['flash']>; player: Player; p1Name: string; p2Name: string; onAnswer: (answer: string) => void; onPick: (option: string) => void; onTimeLow: (low: boolean) => void }) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const flashPickKey = `${flash.type}:${flash.question || flash.prompt}:${flash.turn}:${flash.picked?.length || 0}`;
+  const [pendingFlashPick, setPendingFlashPick] = useState<{ key: string; option: string } | null>(null);
+  const flashPick = pendingFlashPick?.key === flashPickKey ? pendingFlashPick.option : null;
+  const setFlashPick = (option: string) => setPendingFlashPick({ key: flashPickKey, option });
   const timed = flash.type === 'lastorders' || flash.type === 'fastest';
   useEffect(() => {
     if (!timed) { setSecondsLeft(null); return; }
-    setSecondsLeft(20);
-    const tick = setInterval(() => setSecondsLeft((cur) => (cur === null || cur <= 0 ? 0 : cur - 1)), 1000);
+    // Anchor to the host's remaining time, not a fresh twenty seconds on reload.
+    const deadline = performance.now() + (flash.remainingMs ?? 20000);
+    const update = () => setSecondsLeft(Math.max(0, Math.ceil((deadline - performance.now()) / 1000)));
+    update();
+    const tick = setInterval(update, 100);
     return () => clearInterval(tick);
-  }, [timed, flash.question]);
+  }, [timed, flash.question, flash.remainingMs]);
+  const low = timed && secondsLeft !== null && secondsLeft <= 5 && secondsLeft > 0;
+  useEffect(() => { onTimeLow(low); }, [low, onTimeLow]);
+  useEffect(() => () => onTimeLow(false), [onTimeLow]);
   const nameOf = (who: Player) => (who === 'p1' ? p1Name : p2Name);
   return <section className="trivia-brawl-question trivia-flash">
-    <span className="trivia-badge trivia-badge--flash">⚡ FLASH FINALE · {FLASH_LABEL[flash.type]} · DOUBLE POINTS</span>
+    <div className={`trivia-flash-title trivia-flash-title--${flash.type}`}><span>{flash.type === 'duel' ? '20' : flash.type === 'fastest' ? '⚡' : flash.type === 'lastorders' ? '◷' : '?'}</span><div><small>⚡ FLASH FINALE</small><h3>{FLASH_LABEL[flash.type]}</h3><p>{flash.type === 'duel' ? 'Take turns. Find ten. Avoid three strikes.' : flash.type === 'fastest' ? 'Race to the right answer. Winner banks double.' : flash.type === 'lastorders' ? 'Both can score. First correct gets a bonus.' : 'One sharp little puzzle. Double points up for grabs.'}</p></div></div>
     {flash.type === 'duel' && flash.options ? <>
       <h2>{flash.prompt}</h2>
       <p>Take turns tapping one option. A wrong tap is a strike - three strikes and {nameOf(flash.turn === 'p1' ? 'p2' : 'p1')} banks the flash. Clear all ten and the fuller basket wins (level baskets split it, one each).</p>
-      <p className="trivia-flash-turn">{flash.done ? 'Board settled.' : `${nameOf(flash.turn || 'p1')} to tap`} · Strikes: {p1Name} {flash.strikes?.p1 ?? 0}/3 · {p2Name} {flash.strikes?.p2 ?? 0}/3</p>
+      <div className="trivia-flash-versus">{(['p1', 'p2'] as Player[]).map((who) => <div key={who} className={flash.turn === who ? 'is-turn' : ''}><span>{nameOf(who)}</span><b>{flash.correctPicks?.[who].length || 0}<small> correct finds</small></b><span aria-label={`${flash.strikes?.[who] || 0} strikes`}>{[0, 1, 2].map((i) => <i key={i} className={i < (flash.strikes?.[who] || 0) ? 'is-struck' : ''}>×</i>)}</span></div>)}</div>
+      <p className="trivia-flash-turn">{flash.done ? 'Board settled.' : flash.turn === player ? 'YOUR TURN. PICK ONE.' : `${nameOf(flash.turn || 'p1')} is choosing...`}</p>
       <div className="trivia-duel-grid">{flash.options.map((option) => {
         const picked = flash.picked?.includes(option);
         const wasCorrect = picked && (flash.correctPicks?.p1.includes(option) || flash.correctPicks?.p2.includes(option));
         const revealed = flash.done && flash.correct?.includes(option);
-        return <button key={option} disabled={flash.done || picked || flash.turn !== player} onClick={() => onPick(option)} className={wasCorrect ? 'is-correct' : picked ? 'is-strike' : revealed ? 'is-revealed' : ''}>{option}{wasCorrect ? ' ✓' : picked ? ' ✗' : ''}</button>;
+        return <button key={option} disabled={flash.done || picked || flash.turn !== player || Boolean(flashPick)} onClick={() => { setFlashPick(option); onPick(option); }} className={flashPick === option ? 'is-selected' : wasCorrect ? 'is-correct' : picked ? 'is-strike' : revealed ? 'is-revealed' : ''}>{option}{wasCorrect ? ' ✓' : picked ? ' ✗' : ''}</button>;
       })}</div>
       {flash.turn !== player && !flash.done && <p>Awaiting {nameOf(flash.turn || 'p1')}...</p>}
     </> : <>
@@ -196,7 +227,7 @@ function FlashBrawl({ flash, player, p1Name, p2Name, onAnswer, onPick }: { flash
       {timed && secondsLeft !== null && <div className="trivia-flash-timer"><div style={{ width: `${(secondsLeft / 20) * 100}%` }} /><span>{secondsLeft}s</span></div>}
       {flash.type === 'fastest' && <p>First CORRECT answer banks the double. A wrong lunge locks you out - the rival gets a free swing. Chester’s table judges by the order answers arrive at the host’s phone - his call is final.</p>}
       {flash.type === 'lastorders' && <p>Both of you can bank double - and the swifter correct glass gets a +1 top-up, judged by arrival at the host’s phone. Twenty seconds.</p>}
-      <div className="trivia-brawl-answers">{(flash.answers || []).map((option) => <button key={option} disabled={Boolean(flash.answered[player]) || (timed && secondsLeft === 0)} onClick={() => onAnswer(option)}>{option}</button>)}</div>
+      <div className="trivia-brawl-answers">{(flash.answers || []).map((option) => <button key={option} className={flashPick === option ? 'is-selected' : ''} aria-pressed={flashPick === option} disabled={Boolean(flash.answered[player]) || Boolean(flashPick) || (timed && secondsLeft === 0)} onClick={() => { setFlashPick(option); onAnswer(option); }}>{option}{flashPick === option ? ' ✓' : ''}</button>)}</div>
       {flash.answered[player] && <p>Locked. Awaiting the rival...</p>}
     </>}
   </section>;
@@ -222,7 +253,7 @@ function FlashResultBrawl({ flash, result, p1Name, p2Name, player, advancing, on
   </section>;
 }
 
-const HOST_QUIET_MSG = 'The host table has gone quiet - if it stays quiet, ask the host to reopen the table.';
+const HOST_QUIET_MSG = 'Connection interrupted. Rejoining this table and syncing the score...';
 
 function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Player }) {
   const [matchId, setMatchId] = useState('');
@@ -232,7 +263,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const [powerId, setPowerId] = useState<number | null>(null);
   const [myName, setMyName] = useState('');
   const [room, setRoom] = useState<Room | null>(null);
-  const [hostText, setHostText] = useState('Welcome to the Brawl. Three categories each, one starred as your POWER category, five rounds of five - Chester hosting, loser buys the next round.');
+  const [hostText, setHostText] = useState('Welcome to the Brawl. Your categories or your home turf. Five rounds, a flash finale after each. I will keep the score.');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [advancing, setAdvancing] = useState(false);
@@ -240,6 +271,19 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const [guestJoined, setGuestJoined] = useState(false);
   const [relayConfigured, setRelayConfigured] = useState<boolean | null>(null);
   const [joinStopped, setJoinStopped] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [flashLow, setFlashLow] = useState(false);
+  const [pendingAnswer, setPendingAnswer] = useState<{ key: string; answer: string } | null>(null);
+  const pendingAnswerRef = useRef<{ key: string; answer: string } | null>(null);
+  const reconnectRef = useRef<(() => void) | null>(null);
+  const roomRef = useRef<Room | null>(null);
+  const seenActionsRef = useRef(new Set<string>());
+  const pendingActionsRef = useRef(new Map<string, { body: Record<string, unknown>; context: string }>());
+  const contextOf = (r: Room | null) => r ? `${r.gameId}:${r.phase}:${r.round}:${r.qIndex}` : 'opening';
+  const stageRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (room?.phase && room.phase !== 'draft') stageRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+  }, [room?.phase, room?.round, room?.qIndex]);
   const [series, setSeries] = useState({ p1: 0, p2: 0, draws: 0 });
   const seriesCountedRef = useRef(false);
   const linkedRef = useRef(false);
@@ -255,7 +299,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
 
   const publishRoom = (next: TriviaRoom) => {
     fullRoomRef.current = next;
-    setRoom(serializeRoom(next, 'p1'));
+    const view = serializeRoom(next, 'p1');
+    roomRef.current = view;
+    setRoom(view);
     try { guestLinkRef.current?.send?.({ type: 'room', room: serializeRoom(next, 'p2') }); } catch { /* guest resyncs on the next change */ }
   };
 
@@ -279,6 +325,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       return;
     }
     let roomAfter = result.room;
+    if (roomAfter.phase === 'flash' && current.phase !== 'flash') roomAfter = { ...roomAfter, flashEndsAt: Date.now() + 20000 };
     if (result.justLocked) {
       roomAfter = { ...planRoomMatch(roomAfter, nameOf), phase: 'intro' as const };
       publishRoom(roomAfter);
@@ -302,8 +349,12 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   };
 
   const applyQueueRef = useRef<Promise<unknown>>(Promise.resolve());
-  const hostApply = (asPlayer: Player, body: Record<string, unknown>): Promise<void> => {
-    const run = applyQueueRef.current.then(() => hostApplyNow(asPlayer, body));
+  const hostApply = (asPlayer: Player, body: Record<string, unknown>, expectedContext?: string): Promise<void> => {
+    const run = applyQueueRef.current.then(() => {
+      const current = fullRoomRef.current;
+      if (expectedContext && current && expectedContext !== contextOf(serializeRoom(current, asPlayer))) return;
+      return hostApplyNow(asPlayer, body);
+    });
     applyQueueRef.current = run.catch(() => undefined);
     return run;
   };
@@ -314,6 +365,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     let peer: any = null;
     const probes = new Set<any>();
     let removeVisibilityListener: (() => void) | undefined;
+    let transportWatch: ReturnType<typeof setInterval> | undefined;
     const timers = new Set<ReturnType<typeof setTimeout>>();
     const later = (fn: () => void, delay: number) => {
       const timer = setTimeout(() => { timers.delete(timer); if (!cancelled) fn(); }, delay);
@@ -340,9 +392,15 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       if (cancelled) return;
       let hosting = role === 'p1';
       let joinAttempts = 0;
+      let joining = false;
+      let healthySince = 0;
+      let stopped = false;
       const joinGuest = () => {
         if (cancelled) return;
         if (joinAttempts >= 3) {
+          joining = false;
+          stopped = true;
+          setReconnecting(false);
           setLinked(false);
           setJoinStopped(true);
           setError('Connection paused after three attempts. Retry once the host is ready. If it still fails, return to the pub door.');
@@ -351,6 +409,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           try { retired?.destroy?.(); } catch { /* teardown */ }
           return;
         }
+        joining = true;
+        linkedRef.current = false;
+        setLinked(false);
         joinAttempts += 1;
         const my = joinAttempts;
         // Retire the old peer BEFORE destroying it: a destroy fires events, and a
@@ -362,7 +423,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         const mine = peer;
         // Bound the entire attempt, including a broker that never opens.
         later(() => {
-          if (cancelled || linkedRef.current || joinAttempts !== my || peer !== mine) return;
+          if (cancelled || mine.__roomReceived || joinAttempts !== my || peer !== mine) return;
           setError(`Connecting to the host (${Math.min(joinAttempts + 1, 3)}/3)...`);
           joinGuest();
         }, 15000);
@@ -370,10 +431,33 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           if (cancelled || joinAttempts !== my || peer !== mine) return;
           const link = peer.connect(`ct-trivia-${id}`, { reliable: true });
           hostLinkRef.current = link;
-          link.on('open', () => { if (cancelled || peer !== mine) return; setLinked(true); setJoinStopped(false); setError(''); hostSeenAtRef.current = Date.now(); });
-          link.on('data', (message: any) => { if (cancelled || peer !== mine) return; hostSeenAtRef.current = Date.now(); setError((cur) => cur === HOST_QUIET_MSG ? '' : cur); if (message?.type === 'room') setRoom(message.room as Room); if (message?.type === 'guest-error') setError(String(message.message || 'The pub table hiccuped - try that again.')); });
-          link.on('close', () => { if (cancelled || peer !== mine) return; setLinked(false); setJoinStopped(true); setError('The host connection closed. Retry when the host is back on the game screen.'); });
-          link.on('error', () => { if (cancelled || peer !== mine) return; setLinked(false); setJoinStopped(true); setError('The game connection dropped. Retry when the host is back on the game screen.'); });
+          link.on('open', () => { if (cancelled || peer !== mine) return; hostSeenAtRef.current = Date.now(); link.send({ type: 'join', protocol: 2 }); });
+          link.on('data', (message: any) => {
+            if (cancelled || peer !== mine) return;
+            hostSeenAtRef.current = Date.now();
+            if (message?.ack) pendingActionsRef.current.delete(String(message.ack));
+            if (message?.type === 'room' && message.room) {
+              if (!mine.__roomReceived) healthySince = Date.now();
+              mine.__roomReceived = true;
+              joining = false;
+              linkedRef.current = true;
+              setLinked(true); setReconnecting(false); setJoinStopped(false); setError('');
+              roomRef.current = message.room as Room;
+              setRoom(message.room as Room);
+              // Do not replay actions into a later question or a later phase.
+              const context = contextOf(message.room as Room);
+              for (const [actionId, pending] of pendingActionsRef.current) {
+                if (pending.context !== context) { pendingActionsRef.current.delete(actionId); continue; }
+                link.send({ type: 'action', actionId, context, body: pending.body });
+              }
+
+            }
+            if (message?.type === 'guest-error') { pendingActionsRef.current.clear(); pendingAnswerRef.current = null; setPendingAnswer(null); setError(String(message.message || 'That action did not land.')); }
+          });
+          const recoverLink = () => { if (cancelled || peer !== mine || joining) return; recoverGuest(); };
+          link.on('close', recoverLink);
+          link.on('error', recoverLink);
+          link.on('iceStateChanged', (state: string) => { if (state === 'failed' || state === 'closed') recoverLink(); });
         });
         peer.on('disconnected', () => { if (peer !== mine) return; try { peer.reconnect(); } catch { /* dropped */ } });
         peer.on('error', (peerError: any) => {
@@ -387,6 +471,13 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           setError('The game connection could not open.');
         });
       };
+      const recoverGuest = () => {
+        if (cancelled || hosting || joining || stopped) return;
+        healthySince = 0;
+        setReconnecting(true); setError(HOST_QUIET_MSG);
+        joinGuest();
+      };
+      reconnectRef.current = () => { if (hosting || cancelled) return; joinAttempts = 0; joining = false; stopped = false; recoverGuest(); };
       const openHost = (resumeAttempt: number, freshOpen = false) => {
         if (cancelled) return;
         const retired = peer;
@@ -396,17 +487,38 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         const mine = peer;
         peer.on('connection', (link: any) => {
           if (cancelled || peer !== mine) { try { link.close(); } catch { /* stray */ } return; }
-          guestLinkRef.current = link;
           const currentLink = () => !cancelled && peer === mine && guestLinkRef.current === link;
-          link.on('open', () => {
-            if (!currentLink()) return;
+          const adoptGuest = () => {
+            if (cancelled || peer !== mine || !link.open) return;
+            const oldLink = guestLinkRef.current;
+            guestLinkRef.current = link;
+            if (oldLink && oldLink !== link) { try { oldLink.close(); } catch { /* retired */ } }
+            linkedRef.current = true;
             setLinked(true);
+            setError('');
             setGuestJoined(true);
             guestSeenAtRef.current = Date.now();
             const current = fullRoomRef.current;
             if (current) { try { link.send({ type: 'room', room: serializeRoom(current, 'p2') }); } catch { /* next change resyncs */ } }
+          };
+          // A probe can open a channel without being the game guest. Require its
+          // application handshake before replacing an established seat.
+          later(() => { if (guestLinkRef.current !== link) { try { link.close(); } catch { /* unused offer */ } } }, 8000);
+          link.on('data', (message: any) => {
+            if (message?.type === 'join' && message.protocol === 2) { adoptGuest(); return; }
+            if (!currentLink()) return;
+            guestSeenAtRef.current = Date.now(); linkedRef.current = true; setLinked(true);
+            const sendCurrent = (ack?: string) => { const current = fullRoomRef.current; if (current) { try { link.send({ type: 'room', room: serializeRoom(current, 'p2'), ack }); } catch { /* recover on next ping */ } } };
+            if (message?.type === 'ping') sendCurrent();
+            if (message?.type === 'action') {
+              const actionId = typeof message.actionId === 'string' ? message.actionId : '';
+              if (actionId && seenActionsRef.current.has(actionId)) { sendCurrent(actionId); return; }
+              const current = fullRoomRef.current;
+              if (message.context && current && message.context !== contextOf(serializeRoom(current, 'p2'))) { sendCurrent(actionId); return; }
+              if (actionId) { seenActionsRef.current.add(actionId); if (seenActionsRef.current.size > 512) seenActionsRef.current.delete(seenActionsRef.current.values().next().value!); }
+              void hostApply('p2', message.body || {}, message.context).then(() => sendCurrent(actionId));
+            }
           });
-          link.on('data', (message: any) => { if (!currentLink()) return; guestSeenAtRef.current = Date.now(); if (message?.type === 'ping') { try { link.send({ type: 'pong' }); } catch { /* link gone */ } } if (message?.type === 'action') void hostApply('p2', message.body || {}); });
           link.on('close', () => { if (currentLink()) setLinked(false); });
           link.on('error', () => { if (currentLink()) setLinked(false); });
           link.on('iceStateChanged', (st: string) => { if (!currentLink()) return; if (st === 'disconnected' || st === 'failed' || st === 'closed') setLinked(false); });
@@ -457,16 +569,28 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           setError('The game connection could not open. Return to the pub door to try a fresh invite.');
         });
       };
-      // iOS suspends background tabs and can silently kill the broker socket while the
-      // host is off in iMessage/WhatsApp sending the invite. On resume, re-register
-      // the table from scratch (same ID) so the next knock lands.
+      // Resume the broker only when necessary. Never tear down a healthy guest link
+      // just because the host returned from sending an invite.
       const onVisible = () => {
-        if (document.visibilityState !== 'visible' || cancelled || linkedRef.current) return;
-        if (hosting && (!guestLinkRef.current || guestLinkRef.current.closed)) { guestLinkRef.current = null; openHost(0); return; }
-        if (peer && peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch { /* dropped */ } }
+        if (document.visibilityState !== 'visible' || cancelled) return;
+        if (hosting) {
+          if (!peer || peer.destroyed) { openHost(0); return; }
+          if (peer.disconnected) { try { peer.reconnect(); } catch { /* next check */ } }
+          const current = fullRoomRef.current;
+          if (current && guestLinkRef.current?.open) { try { guestLinkRef.current.send({ type: 'room', room: serializeRoom(current, 'p2') }); } catch { /* guest reconnects */ } }
+        } else if (!joining && (!hostLinkRef.current?.open || Date.now() - hostSeenAtRef.current > 12000)) recoverGuest();
       };
       document.addEventListener('visibilitychange', onVisible);
       removeVisibilityListener = () => document.removeEventListener('visibilitychange', onVisible);
+      transportWatch = setInterval(() => {
+        if (cancelled || hosting || joining || stopped) return;
+        if (hostLinkRef.current?.open) {
+          try { hostLinkRef.current.send({ type: 'ping' }); } catch { /* recovery below */ }
+          if (Date.now() - hostSeenAtRef.current > 15000) recoverGuest();
+        } else recoverGuest();
+        // A connection that stayed healthy for ten seconds gets a fresh recovery budget.
+        if (linkedRef.current && Date.now() - hostSeenAtRef.current < 6000 && healthySince && Date.now() - healthySince > 10000) joinAttempts = 0;
+      }, 3000);
       if (role === 'p1') {
         publishRoom(createRoom(loadTriviaSettings()));
         openHost(-1, true);
@@ -474,29 +598,11 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         joinGuest();
       }
     })().catch((requestError: unknown) => { if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Could not open Trivia Brawl.'); });
-    return () => { cancelled = true; removeVisibilityListener?.(); timers.forEach(clearTimeout); probes.forEach((probe) => { try { probe.destroy(); } catch { /* teardown */ } }); try { peer?.destroy?.(); } catch { /* teardown */ } };
+    return () => { cancelled = true; removeVisibilityListener?.(); timers.forEach(clearTimeout); clearInterval(transportWatch); reconnectRef.current = null; probes.forEach((probe) => { try { probe.destroy(); } catch { /* teardown */ } }); try { peer?.destroy?.(); } catch { /* teardown */ } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { linkedRef.current = linked; }, [linked]);
-
-  // Guest heartbeat: a killed tab fires no reliable close event, so liveness
-  // is proven by traffic, not by the transport.
-  useEffect(() => {
-    if (player !== 'p2' || !linked) return;
-    const beat = window.setInterval(() => { try { hostLinkRef.current?.send?.({ type: 'ping' }); } catch { /* link gone */ } }, 5000);
-    return () => window.clearInterval(beat);
-  }, [player, linked]);
-
-  // Guest side: the host proves life by answering pings. 20s of silence = the
-  // table has gone quiet (killed host tab fires no reliable close event).
-  useEffect(() => {
-    if (player !== 'p2' || !linked) return;
-    const watch = window.setInterval(() => {
-      if (hostSeenAtRef.current && Date.now() - hostSeenAtRef.current > 20000) setError(HOST_QUIET_MSG);
-    }, 5000);
-    return () => window.clearInterval(watch);
-  }, [player, linked]);
 
   // Host side of the heartbeat: 15s of silence from a joined guest = away.
   useEffect(() => {
@@ -515,7 +621,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       setSeries((cur) => room.score.p1 === room.score.p2 ? { ...cur, draws: cur.draws + 1 } : room.score.p1 > room.score.p2 ? { ...cur, p1: cur.p1 + 1 } : { ...cur, p2: cur.p2 + 1 });
     }
     if (room.phase === 'draft') {
-      if (seriesCountedRef.current) setHostText('Rematch! Same pub, fresh beer mats. Pick three new categories each - and star your POWER category.');
+      if (seriesCountedRef.current) setHostText('Rematch! Choose your home turf or draft categories, then get ready.');
       seriesCountedRef.current = false;
       announcedQuestionRef.current = '';
       setSelectedCategories([]);
@@ -524,6 +630,25 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.phase]);
 
+  const lastCardsRef = useRef<string>('');
+  useEffect(() => {
+    if (!room?.cardsUsed || !room.activeCards) return;
+    const snapshot = JSON.stringify({ used: room.cardsUsed, active: room.activeCards });
+    const prior = lastCardsRef.current;
+    lastCardsRef.current = snapshot;
+    if (!prior) return;
+    const old = JSON.parse(prior) as { used: NonNullable<Room['cardsUsed']>; active: NonNullable<Room['activeCards']> };
+    for (const who of ['p1', 'p2'] as Player[]) for (const card of WILDCARDS) {
+      const nowUsed = room.cardsUsed[who][card.id];
+      const nowActive = card.id !== 'shakespeare' && room.activeCards[who][card.id];
+      const wasActive = card.id !== 'shakespeare' && old.active[who][card.id];
+      if ((nowUsed && !old.used[who][card.id]) || (nowActive && !wasActive)) {
+        const line = card.id === 'shakespeare' ? 'Shakespeare is in play. Your rival faces the next round in disguise.' : card.id === 'fiftyfifty' ? 'Fifty-Fifty. Two wrong answers have left the building.' : card.id === 'doubledown' ? 'Double Down is armed. Back yourself, but be right.' : 'Pickpocket is armed. One correct answer and a rival mistake could turn the tab.';
+        setHostText(`${room.names[who]} plays ${card.label}. ${line}`);
+      }
+    }
+  }, [room?.cardsUsed, room?.activeCards, room?.names]);
+
   // Chester's live line: round intros escalate, per-question reveals call the score.
   useEffect(() => {
     if (!room || room.phase !== 'question') return;
@@ -531,11 +656,17 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     if (announcedQuestionRef.current === key) return;
     announcedQuestionRef.current = key;
     const isSabotaged = room.cardsUsed && room.round > 0 && room.currentQuestion?.disguise;
+    const available = WILDCARDS.filter((card) => !room.cardsUsed?.[player][card.id]);
+    const encouragement = available.length ? `Still in your hand: ${available.map((card) => card.label).join(', ')}. Make one count.` : 'Your wildcards are spent. It is all down to the answers now.';
     if (room.qIndex === 0) {
       const intro = room.lastCall
         ? 'LAST CALL. Sudden death - one hard question at a time until somebody blinks.'
-        : `${ROUND_INTROS[Math.min(room.round, ROUND_INTROS.length - 1)][room.round % 2]} ${room.currentQuestion ? categoryQuip(room.currentQuestion.category, room.round) : ''}`;
+        : `${ROUND_INTROS[Math.min(room.round, ROUND_INTROS.length - 1)][room.round % 2]} ${encouragement}`;
       setHostText(isSabotaged ? `Hear ye, thou bewildered scholar: decipher this cursed query if thy courage permits. ${intro}` : intro);
+    } else if (room.qIndex === 2) {
+      setHostText(encouragement);
+    } else {
+      setHostText(`Question ${room.qIndex + 1} of ${QUESTIONS_PER_ROUND}. ${room.score.p1 === room.score.p2 ? 'Level scores. Who moves first?' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} has the lead. There are points here for the taking.`}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.phase, room?.round, room?.qIndex]);
@@ -593,7 +724,10 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     setError('');
     if (player === 'p1') { await hostApply('p1', body); return; }
     if (!hostLinkRef.current?.open) { setError('Not connected to the host table yet - hold on, or ask for a fresh invite.'); throw new Error('not linked'); }
-    hostLinkRef.current.send({ type: 'action', body });
+    const actionId = crypto.randomUUID();
+    const context = contextOf(roomRef.current);
+    pendingActionsRef.current.set(actionId, { body, context });
+    hostLinkRef.current.send({ type: 'action', actionId, context, body });
   };
   const updateRoomSettings = async (next: TriviaSettings) => {
     saveTriviaSettings(next);
@@ -610,14 +744,20 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       if (myName.trim()) await patchRoom({ name: myName });
       await patchRoom({ categories: effectivePicks, power: focusPicks ? effectivePicks[0] : (powerId ?? effectivePicks[0]) });
       const names = focusPicks ? sportFocusLabel(room?.settings.focus || 'open') : effectivePicks.map((id) => categories.find((category) => category.id === id)?.name).filter(Boolean).join(', ');
-      setHostText(`${myName.trim() || (player === 'p1' ? 'Player One' : 'Player Two')} has ordered ${names}${focusPicks ? ` at ${difficultyLabel(room?.settings.difficulty || 'classic')} heat` : `, with ${categories.find((category) => category.id === (powerId ?? effectivePicks[0]))?.name || 'their favourite'} starred as the POWER round`}. Chester is scribbling twenty-five questions on beer mats...`);
+      if (roomRef.current?.phase === 'draft') setHostText(`${myName.trim() || (player === 'p1' ? 'Player One' : 'Player Two')} has ordered ${names}${focusPicks ? ` at ${difficultyLabel(room?.settings.difficulty || 'classic')} heat` : `, with ${categories.find((category) => category.id === (powerId ?? effectivePicks[0]))?.name || 'their favourite'} starred as the POWER round`}. Chester is scribbling twenty-five questions on beer mats...`);
     } catch { /* error already on screen */ } finally { setIsSubmitting(false); }
   };
-  const answer = async (selectedAnswer: string) => { try { await patchRoom({ answer: selectedAnswer }); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Could not lock that answer.'); } };
+  const questionKey = room ? `${room.gameId}:${room.round}:${room.qIndex}:${room.currentQuestion?.question || ''}` : '';
+  const answer = async (selectedAnswer: string) => {
+    if (!room || room.phase !== 'question' || room.answers[player] || pendingAnswerRef.current?.key === questionKey) return;
+    const pick = { key: questionKey, answer: selectedAnswer };
+    pendingAnswerRef.current = pick; setPendingAnswer(pick);
+    try { await patchRoom({ answer: selectedAnswer }); }
+    catch (requestError) { pendingAnswerRef.current = null; setPendingAnswer(null); setError(requestError instanceof Error ? requestError.message : 'Could not lock that answer.'); }
+  };
   const playWildcard = async (card: WildcardId) => {
     try {
       await patchRoom({ wildcard: card });
-      setHostText(card === 'shakespeare' ? 'Sabotage accepted. The next question shall arrive wearing a Shakespearean disguise.' : card === 'fiftyfifty' ? 'Fifty-fifty poured: two wrong answers just left the bar.' : card === 'doubledown' ? 'Double down armed. This question pays you double.' : 'Pickpocket armed. Get it right while they slip and their point is yours.');
     } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'That card failed to land.'); }
   };
   const advance = async () => { setAdvancing(true); try { await patchRoom({ advance: true }); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Could not advance.'); } finally { setAdvancing(false); } };
@@ -625,7 +765,8 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const flashKey = room?.phase === 'flash' && room.flash ? `${room.round}-${room.flash.type}` : null;
   useEffect(() => {
     if (!flashKey || player !== 'p1' || !room?.flash || room.flash.type === 'duel') return;
-    const bell = setTimeout(() => { void patchRoom({ flashTimeout: true }).catch(() => undefined); }, 20500);
+    const remaining = room.flash.remainingMs ?? 20000;
+    const bell = setTimeout(() => { void patchRoom({ flashTimeout: true }).catch(() => undefined); }, remaining + 500);
     return () => clearTimeout(bell);
   }, [flashKey, player]);
 
@@ -647,12 +788,13 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const myActiveCards = room?.activeCards?.[player] || {};
   const nextRoundReady = room?.phase === 'banter' ? (room.round + 1 >= MATCH_ROUNDS || room.lastCall ? true : Boolean(room.roundMeta?.[room.round + 1]?.ready)) : true;
 
-  return <main className="trivia-brawl-page">
+  const outcome = room?.result && room.flash?.resolvedNote !== 'void' && (room.phase === 'reveal' || room.phase === 'flashReveal') ? (player === 'p1' ? room.result.p1Correct : room.result.p2Correct) ? ' is-answer-right' : ' is-answer-wrong' : '';
+  return <main ref={stageRef} className={`trivia-brawl-page trivia-showtime${room?.phase === 'flash' || room?.phase === 'flashReveal' ? ' is-flash-time' : ''}${room?.phase === 'flash' && flashLow ? ' is-time-low' : ''}${outcome}`}>
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">← Pub door</Link></header>
-    {room && <Scorebug p1Name={room.names.p1} p2Name={room.names.p2} p1Score={room.score.p1} p2Score={room.score.p2} round={room.round} qIndex={room.qIndex} lastCall={room.lastCall} finished={room.phase === 'finished'} />}
+    {room && room.phase !== 'draft' && <Scorebug p1Name={room.names.p1} p2Name={room.names.p2} p1Score={room.score.p1} p2Score={room.score.p2} round={room.round} qIndex={room.qIndex} lastCall={room.lastCall} finished={room.phase === 'finished'} p1Locked={room.phase === 'question' && Boolean(room.answers.p1)} p2Locked={room.phase === 'question' && Boolean(room.answers.p2)} />}
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile trivia />
     {error && <p className="trivia-brawl-error" role="status">{error}</p>}
-    {joinStopped && <button className="trivia-brawl-primary" onClick={() => window.location.reload()}>TRY CONNECTION AGAIN</button>}
+    {joinStopped && <button className="trivia-brawl-primary" onClick={() => { setJoinStopped(false); reconnectRef.current?.(); }}>TRY CONNECTION AGAIN</button>}
     {relayConfigured === false && !linked && <p className="trivia-setup__note">Direct connection only: a relay is not configured. Some WiFi and mobile networks will not connect. No need to keep changing your settings.</p>}
     <FlashBanner banner={bannerBody} />
     {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : 'Pub table open - send the invite and hold this screen.') : 'Connecting to the host table...'}</p>}
@@ -666,28 +808,28 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         const draftName = room.names[player] !== (player === 'p1' ? 'PLAYER 1' : 'PLAYER 2') ? room.names[player] : `Player ${player === 'p1' ? 'One' : 'Two'}`;
         return <>
           <h2>{draftName}: {focusPicks ? `Confirm ${sportFocusLabel(room.settings.focus)}` : 'Choose 3 Categories'}</h2>
-          <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1'} compact brawlModes />
-          <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={() => { if (myName.trim()) void patchRoom({ name: myName }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />
+          <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1' || room.categories.p1.length === 3 || room.categories.p2.length === 3} compact brawlModes />
+          <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name) void patchRoom({ name }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />
           {player === 'p1' && room.categories.p2.length === 0 && <div style={{ display: 'grid', gap: '.45rem' }}>
             <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. Five rounds of five - you, me, no mercy.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>SEND THE INVITE</button>
             <input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Invite link for Player 2" />
           </div>}
           {focusPicks ? <p className="trivia-setup__locked">{sportFocusLabel(room.settings.focus)} focus is locked for every round · {difficultyLabel(room.settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggleCategory(category.id)} aria-pressed={selectedCategories.includes(category.id)}>{selectedCategories.includes(category.id) && powerId === category.id ? `POWER · ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
           {!focusPicks && selectedCategories.length === 3 && <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{selectedCategories.map((id) => <button key={id} type="button" className={powerId === id ? 'is-starred' : ''} onClick={() => starPower(id)}>{powerId === id ? 'POWER · ' : ''}{categories.find((category) => category.id === id)?.name || `Category ${id}`}</button>)}</div></div>}
-          <button className="trivia-brawl-primary" disabled={(!focusPicks && selectedCategories.length !== 3) || isSubmitting} onClick={() => void submitDraft()}>{focusPicks ? `LOCK ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}` : `LOCK CATEGORIES (${selectedCategories.length}/3)`}</button>
-          <p>{room.categories.p1.length}/3 Player 1 choices · {room.categories.p2.length}/3 Player 2 choices</p>
+          <button className="trivia-brawl-primary" disabled={room.categories[player].length === 3 || (!focusPicks && selectedCategories.length !== 3) || isSubmitting} onClick={() => void submitDraft()}>{room.categories[player].length === 3 ? '✓ READY - WAITING FOR YOUR RIVAL' : focusPicks ? `LOCK ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}` : `LOCK CATEGORIES (${selectedCategories.length}/3)`}</button>
+          <div className="trivia-ready-board" aria-label="Player readiness">{(['p1', 'p2'] as Player[]).map((who) => <div key={who} className={room.categories[who].length === 3 ? 'is-ready' : ''}><span>{room.names[who]}</span><b>{room.categories[who].length === 3 ? '✓ Ready' : '○ Not ready'}</b></div>)}</div>
         </>;
       })()}
     </section>
-    : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>The categories are locked.</h2><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : 'Awaiting Player One to begin the Brawl.') : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => void patchRoom({ start: true })}>START THE BRAWL</button>}</section>
+    : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>{room.settings.focus === 'open' ? 'Your draft is ready.' : `${sportFocusLabel(room.settings.focus)}. Your home court.`}</h2><p className="trivia-start-summary">{room.settings.focus === 'open' ? 'Both players bring their categories. Power rounds pay double.' : `Every main question is ${sportFocusLabel(room.settings.focus)} at ${difficultyLabel(room.settings.difficulty)} heat.`} Five rounds. A flash mini-game after each.</p><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : `Waiting for ${room.names.p1} to start.`) : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => void patchRoom({ start: true })}>START THE BRAWL</button>}</section>
     : room.phase === 'finished' ? <section className="trivia-brawl-question"><h2>{room.score.p1} - {room.score.p2}</h2><p>{room.score.p1 === room.score.p2 ? 'A dead heat. Chester demands a rematch - the pub insists.' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} wins the tab. Chester raises a glass to you both.`}</p>{(series.p1 + series.p2 + series.draws) > 0 && <p className="trivia-series">SERIES · {room.names.p1} {series.p1} - {series.p2} {room.names.p2}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>}<button className="trivia-brawl-primary" onClick={() => void patchRoom({ rematch: true })}>REMATCH - SAME PUB, NEW QUESTIONS</button></section>
-    : <section className="trivia-brawl-question">
+    : <section className={`trivia-brawl-question${room.phase === 'flash' || room.phase === 'flashReveal' ? ' trivia-flash-shell' : ''}`}>
       {room.phase !== 'flash' && room.phase !== 'flashReveal' && room.phase !== 'banter' && <>
         <MatchBadges difficulty={room.lastCall ? undefined : room.roundMeta?.[room.round]?.difficulty} isDouble={room.isDoubleQuestion} powerForMe={room.powerRoundFor.includes(player)} streak={room.streak[player]} lastCall={room.lastCall} roulette={Boolean(room.currentQuestion?.roulette)} />
         <span>{room.currentQuestion?.category}</span>
         <h2>{view.question || 'Chester is still scribbling this round...'}</h2>
       </>}
-      {room.phase === 'flash' && room.flash ? <FlashBrawl flash={room.flash} player={player} p1Name={room.names.p1} p2Name={room.names.p2} onAnswer={(a) => void patchRoom({ flashAnswer: a }).catch(() => undefined)} onPick={(o) => void patchRoom({ duelPick: o }).catch(() => undefined)} />
+      {room.phase === 'flash' && room.flash ? <FlashBrawl onTimeLow={setFlashLow} flash={room.flash} player={player} p1Name={room.names.p1} p2Name={room.names.p2} onAnswer={(a) => void patchRoom({ flashAnswer: a }).catch(() => undefined)} onPick={(o) => void patchRoom({ duelPick: o }).catch(() => undefined)} />
       : room.phase === 'flashReveal' && room.flash && room.result ? <FlashResultBrawl flash={room.flash} result={room.result} p1Name={room.names.p1} p2Name={room.names.p2} player={player} advancing={advancing} onAdvance={() => void advance()} />
       : room.phase === 'reveal' && room.result ? <>
         <RevealCards p1Name={room.names.p1} p2Name={room.names.p2} answers={room.answers} result={room.result} />
@@ -698,9 +840,13 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         {player === 'p1' && <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void advance()}>{nextRoundReady ? (room.lastCall || (room.round + 1 >= MATCH_ROUNDS && room.score.p1 === room.score.p2) ? 'LAST CALL - SUDDEN DEATH' : room.round + 1 >= MATCH_ROUNDS ? 'FINAL CALL' : 'NEXT ROUND') : 'POUR NEXT ROUND'}</button>}
         {player !== 'p1' && <p>Awaiting the host...</p>}
       </> : <>
-        <div className="trivia-brawl-answers">{view.answers.map((option, index) => <button key={`${index}-${room.currentQuestion?.answers[index] ?? option}`} onClick={() => void answer(room.currentQuestion?.answers[index] ?? option)} disabled={Boolean(room.answers[player])}>{option}</button>)}</div>
-        <WildcardBar cardsUsed={myCardsUsed} activeCards={myActiveCards} canPlayAnswers={!room.answers[player] && Boolean(room.currentQuestion)} canShakespeare={!room.lastCall && room.round < MATCH_ROUNDS - 1} onPlay={(card) => void playWildcard(card)} />
-        {room.answers[player] && <p>Answer locked. Awaiting the rival.</p>}
+        <div className="trivia-brawl-answers">{view.answers.map((option, index) => {
+          const raw = room.currentQuestion?.answers[index] ?? option;
+          const chosen = room.answers[player] === raw || (pendingAnswer?.key === questionKey && pendingAnswer.answer === raw);
+          return <button key={`${index}-${raw}`} className={chosen ? 'is-selected' : ''} aria-pressed={chosen} onClick={() => void answer(raw)} disabled={Boolean(room.answers[player]) || pendingAnswer?.key === questionKey || !linked && player === 'p2'}><span className="trivia-answer-letter">{'ABCD'[index]}</span><span>{option}</span>{chosen && <span className="trivia-answer-check" aria-label="Your choice">✓</span>}</button>;
+        })}</div>
+        {(room.answers[player] || pendingAnswer?.key === questionKey) && <p className="trivia-answer-status" role="status">{room.answers[player] ? '✓ Answer locked. Waiting for your rival.' : reconnecting ? 'Reconnecting. Your choice is saved on this screen, not yet confirmed.' : 'Sending your choice. Waiting for host confirmation...'}</p>}
+        <WildcardBar cardsUsed={myCardsUsed} activeCards={myActiveCards} canPlayAnswers={!room.answers[player] && pendingAnswer?.key !== questionKey && Boolean(room.currentQuestion)} canShakespeare={!room.lastCall && room.round < MATCH_ROUNDS - 1} onPlay={(card) => void playWildcard(card)} />
       </>}
     </section>}
   </main>;
@@ -832,7 +978,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not draw the next question.'); }
   };
 
-  return <main className="trivia-brawl-page">
+  return <main className="trivia-brawl-page trivia-showtime">
     <header className="trivia-brawl-header"><div><span>SOLO AT THE BAR</span><h1>You vs Chester</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
     <Scorebug p1Name="YOU" p2Name="CHESTER" p1Score={score.you} p2Score={score.chester} round={round} finished={phase === 'finished'} />
     <ChesterTeleprompter text={hostLine} isThinking={false} isMobile trivia />
@@ -843,7 +989,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
       <button className="trivia-brawl-primary" disabled={!focusedDraft(settings) && picked.length !== 3} onClick={() => void startGame()}>{focusedDraft(settings) ? `START ${sportFocusLabel(settings.focus)} · ${difficultyLabel(settings.difficulty)}` : `BELLYS UP - START (${picked.length}/3)`}</button>
     </section>}
     {(phase === 'question' || phase === 'reveal') && question && <section className="trivia-brawl-question"><span>{question.category}</span><h2>{question.question}</h2>
-      <div className="trivia-brawl-answers">{question.answers.map((option) => <button key={option} onClick={() => answerSolo(option)} disabled={phase === 'reveal'}>{phase === 'reveal' && option === question.correctAnswer ? `${option} ✓` : phase === 'reveal' && option === locked ? `${option} ✗` : option}</button>)}</div>
+      <div className="trivia-brawl-answers">{question.answers.map((option) => <button key={option} onClick={() => answerSolo(option)} disabled={phase === 'reveal'} className={option === locked ? 'is-selected' : ''} aria-pressed={option === locked}>{phase === 'reveal' && option === question.correctAnswer ? `${option} ✓` : phase === 'reveal' && option === locked ? `${option} ✗` : option}</button>)}</div>
       {phase === 'reveal' && <button className="trivia-brawl-primary" onClick={() => void nextSolo()}>{round + 1 >= 5 ? 'FINAL CALL' : 'NEXT ROUND'}</button>}
     </section>}
     {phase === 'finished' && <section className="trivia-brawl-question"><h2>{score.you} - {score.chester}</h2>
@@ -1063,7 +1209,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
   const catGrid = (who: 'a' | 'b') => categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggle(who, category.id)} aria-pressed={picks[who].includes(category.id)}>{picks[who].includes(category.id) && power[who] === category.id ? `POWER · ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>;
   const powerPicker = (who: 'a' | 'b') => picks[who].length === 3 ? <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{picks[who].map((id) => <button key={id} type="button" className={power[who] === id ? 'is-starred' : ''} onClick={() => starPower(who, id)}>{power[who] === id ? '⭐ ' : ''}{nameOf(id)}</button>)}</div></div> : null;
 
-  return <main className="trivia-brawl-page">
+  return <main className="trivia-brawl-page trivia-showtime">
     <header className="trivia-brawl-header"><div><span>ONE PHONE · TWO PLAYERS</span><h1>Pass &amp; Play</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
     {match && <Scorebug p1Name={nameA} p2Name={nameB} p1Score={match.score.p1} p2Score={match.score.p2} round={match.round} qIndex={match.qIndex} lastCall={match.lastCall} finished={phase === 'finished'} />}
     <ChesterTeleprompter text={hostLine} isThinking={phase === 'building'} isMobile trivia />
@@ -1154,9 +1300,10 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
   const [settings, setSettings] = useState<TriviaSettings>(() => loadTriviaSettings());
   useEffect(() => { setScores(loadSoloScores().slice(0, 5)); }, []);
   const updateSettings = (next: TriviaSettings) => { setSettings(next); saveTriviaSettings(next); };
-  return <main className="trivia-brawl-page">
+  return <main className="trivia-brawl-page trivia-showtime trivia-showtime--lobby">
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/">← Chesterville</Link></header>
     <ChesterTeleprompter text="Your home turf, or a draft of both your favourites? Pick the categories and heat. I will bring the commentary." isThinking={false} isMobile trivia />
+    <div className="trivia-marquee" aria-label="Match format"><span>5 ROUNDS</span><i>✦</i><span>YOUR HOME TURF</span><i>✦</i><span>FLASH FINALS</span></div>
     <TriviaSetupPanel settings={settings} onChange={updateSettings} brawlModes />
     <section className="trivia-brawl-draft">
       <h2>Ready?</h2>

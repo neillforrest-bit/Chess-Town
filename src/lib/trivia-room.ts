@@ -12,6 +12,8 @@ export { MATCH_ROUNDS, QUESTIONS_PER_ROUND, currentQuestionOf, isPowerRound, las
 export type { FlashState, FlashType } from './trivia-match';
 
 export type TriviaRoom = {
+  gameId: string;
+  flashEndsAt?: number;
   categories: Record<Player, number[]>;
   names: Record<Player, string>;
   power: Record<Player, number>;
@@ -46,6 +48,7 @@ export type PublicRoom = Omit<TriviaRoom, 'match'> & {
 // full correct shelf once the duel is done. Arrival order at the host decides races.
 export type PublicFlash = {
   type: FlashState['type'];
+  remainingMs?: number;
   category?: string;
   question?: string;
   answers?: string[];
@@ -62,10 +65,11 @@ export type PublicFlash = {
   resolvedNote?: string;
 };
 
-function publicFlash(flash: FlashState | null): PublicFlash | null {
+function publicFlash(flash: FlashState | null, endsAt?: number): PublicFlash | null {
   if (!flash) return null;
   const view: PublicFlash = {
     type: flash.type,
+    remainingMs: typeof endsAt === 'number' ? Math.max(0, endsAt - Date.now()) : undefined,
     answered: { p1: Boolean(flash.answers.p1), p2: Boolean(flash.answers.p2) },
     done: flash.done,
     winner: flash.winner,
@@ -92,6 +96,7 @@ const MAX_CATEGORIES = 3;
 
 export function createRoom(settings: TriviaSettings = DEFAULT_TRIVIA_SETTINGS): TriviaRoom {
   return {
+    gameId: crypto.randomUUID(),
     categories: { p1: [], p2: [] },
     names: { p1: 'PLAYER 1', p2: 'PLAYER 2' },
     power: { p1: 0, p2: 0 },
@@ -127,7 +132,7 @@ export function serializeRoom(room: TriviaRoom, viewer: Player): PublicRoom {
     result: match.result,
     lastCall: match.lastCall,
     currentQuestion: viewerQuestion(match, viewer),
-    flash: publicFlash(match.flash),
+    flash: publicFlash(match.flash, room.flashEndsAt),
     history: match.history,
   };
 }
