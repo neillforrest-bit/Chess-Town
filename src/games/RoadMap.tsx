@@ -9,12 +9,12 @@ import { getRush, RUSH_LEVELS } from '@/lib/boss-rush';
 export type RoadZone = { from: number; name: string; bg: string; tag: string };
 export type RoadBossCfg = { name: string; archetype: string; line: string; icon: string };
 export type RoadCfg = { title: string; narrative: string; max: number; storageKey: string; zones: RoadZone[]; bosses: Record<number, RoadBossCfg>; playHref: string; dailyHref?: string; strength: (n: number) => string };
-const ROW = 92, W = 340;
+const ROW = 92, W = 300;
 export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   const ROAD_MAX = cfg.max, ZONES = cfg.zones, BOSS_ROSTER = cfg.bosses;
   const isBossLevel = (n: number) => Boolean(BOSS_ROSTER[n]);
   const getRoadLevel = () => { try { const n = parseInt(window.localStorage.getItem(cfg.storageKey) || '1', 10); return Math.min(ROAD_MAX, Math.max(1, n || 1)); } catch { return 1; } };
-  const pos = (n: number) => ({ x: 170 + Math.sin((n - 1) * 1.15) * 110, y: (ROAD_MAX - n) * ROW + 70 });
+  const pos = (n: number) => ({ x: 150 + Math.sin((n - 1) * 1.15) * 95, y: (ROAD_MAX - n) * ROW + 70 });
   const [lvl, setLvl] = useState(1);
   const [sel, setSel] = useState<number | null>(null);
   const [daily, setDaily] = useState<{ streak: number; done: boolean } | null>(null);
@@ -42,7 +42,7 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
   const segPct = nextBossLvl === null ? 100 : Math.round(((lvl - 1 - prevBossLvl) / Math.max(1, nextBossLvl - prevBossLvl)) * 100);
   const overallPct = Math.round(((lvl - 1) / ROAD_MAX) * 100);
   const boss = BOSS_ROSTER[shown];
-  return <main style={{ minHeight: '100dvh', background: '#0b0a12', color: '#f4eefb', fontFamily: 'system-ui,sans-serif', paddingBottom: 190 }}>
+  return <main style={{ height: '100%', overflowY: 'auto', background: '#0b0a12', color: '#f4eefb', fontFamily: 'system-ui,sans-serif', paddingBottom: 190 }}>
 
     <div aria-label="Progress summary" style={{ position: 'sticky', top: 64, zIndex: 20, margin: '0 10px', padding: '6px 10px', borderRadius: 12, background: 'rgba(18,15,34,.96)', border: '1px solid #3b2f66', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
       <b style={{ whiteSpace: 'nowrap' }}>Lv {lvl}/{ROAD_MAX}</b>{flame.streak > 0 && <span title="Play streak" style={{ whiteSpace: 'nowrap', opacity: flame.playedToday ? 1 : .6 }}>🔥{flame.streak}</span>}
@@ -50,7 +50,7 @@ export default function RoadMap({ cfg }: { cfg: RoadCfg }) {
       <span style={{ whiteSpace: 'nowrap', color: '#ffd84d', fontWeight: 700 }}>{nextBossLvl === null ? 'Road complete' : `${BOSS_ROSTER[nextBossLvl].icon} ${toBoss === 0 ? 'boss next' : `${toBoss} to boss`}`}</span>
     </div>
     <header style={{ padding: '14px 14px 6px', textAlign: 'center' }}>
-      <Link href="/road" style={{ color: '#ffd84d', fontSize: 12 }}>← Road</Link>
+      <Link href="/arena" style={{ color: '#ffd84d', fontSize: 12 }}>← Games to play</Link>
       <h1 style={{ margin: '4px 0', fontSize: 22, letterSpacing: '.08em' }}>{cfg.title}</h1>
       <p style={{ margin: 0, fontSize: 13, opacity: .85 }}>{cfg.narrative} Level {lvl} of {ROAD_MAX}.</p>
     </header>

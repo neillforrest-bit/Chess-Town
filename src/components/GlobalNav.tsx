@@ -41,7 +41,7 @@ export default function GlobalNav() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link href="/arena" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ animation: 'chester-float 4s ease-in-out infinite' }}>
-            <ChesterAvatar isThinking={false} size="small" trivia={isTriviaRoute} />
+            <ChesterAvatar isThinking={false} size="small" trivia={isTriviaRoute || pathname === '/' || pathname === '/arena' || pathname.startsWith('/road/trivia')} />
           </div>
           <span style={{ 
             fontFamily: 'Georgia, serif', 
@@ -59,7 +59,7 @@ export default function GlobalNav() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
         {/* <button type="button" onClick={() => setIsRoyalCatsOpen(true)} className="global-nav__return" aria-haspopup="dialog">ROYAL CATS</button> */}
         {!isTriviaRoute && <Link href="/trivia-brawl" className="global-nav__return global-nav__brawl">PUB TRIVIA</Link>}
-        <Link href="/arena" className="global-nav__return">RETURN TO ARENA</Link>
+        <Link href="/arena" className="global-nav__return">GAMES TO PLAY</Link>
       </div>
       {isRoyalCatsOpen && (
         <div role="dialog" aria-modal="true" aria-label="Royal cat pieces" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0, 0, 0, 0.78)', display: 'grid', placeItems: 'center', padding: '1rem' }}>

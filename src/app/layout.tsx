@@ -5,7 +5,7 @@ import { EngineEvaluationProvider } from "@/components/EngineEvaluationProvider"
 
 export const metadata: Metadata = {
   title: "Chess Town",
-  description: "The Grandmaster's Map - Beta Demo",
+  description: "Chess and pub trivia with Chester. Choose a game, bring a friend, or play solo.",
 };
 
 export default function RootLayout({

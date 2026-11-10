@@ -9,7 +9,7 @@ import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isTriviaRoute = pathname.startsWith('/trivia');
+  const isTriviaRoute = pathname.startsWith('/trivia') || pathname === '/' || pathname === '/arena' || pathname.startsWith('/road/trivia');
   const engineEvaluation = useEngineEvaluation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[]>([]);
