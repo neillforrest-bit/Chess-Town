@@ -6,10 +6,10 @@ import { GAME_OPTIONS } from '@/lib/game-options';
 import styles from './GoodTogetherHub.module.css';
 
 const worlds = {
-  trivia: { label: "Chester's Pub · Trivia", name: "Chester's Pub", type: 'Pub trivia', description: "A pub quiz with me on the mic. Bring your partner, gather the table, or play solo. I'll keep the score. You bring the excuses.", hint: 'Solo, two-phone battle, pass & play or Party Table.', enter: 'Enter the pub' },
-  chess: { label: 'Chess Town · Chess', name: 'Chess Town', type: 'Chess', description: 'Make your move in Chess Town. Play Chester, share a local battle, or learn the ropes. A quiet board. A cheeky host.', hint: 'Play Chester, local battle or learning mode.', enter: 'Enter Chess Town' },
-  movie: { label: 'Plot Night · Movies', name: 'Plot Night', type: 'Movies', description: 'The only plot twist tonight should be the film. Find something to watch together, explore a new pick, or jump into Movie Time.', hint: 'Opens the existing movie preview, with Orson as its host.', enter: 'Enter Plot Night' },
-  logic: { label: 'Brain Parlour · Logic', name: 'Brain Parlour', type: 'Logic & riddles', description: 'Take a seat and give your brain something to brag about. Logic puzzles, riddles and a friend to puzzle it out with.', hint: 'Existing Logic & Riddles preview. Chester hosts your table.', enter: 'Enter Brain Parlour' },
+  trivia: { label: 'Quiz Town · Trivia', name: 'Quiz Town', type: 'Your pub quiz town', description: "Pull up a stool. Play me, challenge a friend, share a phone with your partner or bring the whole table. Pick your topic, trust your hunch and give me something to talk about.", hint: 'Solo, battle, pass & play, Party Table and the Road to the Landlord.', enter: 'Enter Quiz Town' },
+  chess: { label: 'Chess Town · Chess', name: 'Chess Town', type: 'Your chess town', description: "Fancy learning a trick or giving someone a proper game? Take me on, share a board with a friend or partner, or practise a new move. I'll be here for the bright ideas and the blunders.", hint: 'Play Chester, local battle, The Underdog, learning and a daily challenge.', enter: 'Enter Chess Town' },
+  movie: { label: 'Movie Town · Films', name: 'Movie Town', type: 'Your film-finding town', description: "Less debating, more watching. Find a film for tonight, dig up an unexpected gem or make choosing the movie a game with your partner. I'll show you the doors. You bring the popcorn.", hint: 'Existing movie preview: Tonight, Discovery Night and Movie Night. Orson hosts inside.', enter: 'Enter Movie Town' },
+  logic: { label: 'Puzzle Town · Logic & riddles', name: 'Puzzle Town', type: 'Your logic and riddle town', description: "Come for a brain-teaser, stay for the moment it clicks. Play me, puzzle it out with a partner, battle friends or climb the road. Read twice. That innocent little question has teeth.", hint: 'Play Chester, pass & play, battle and the Road to the Riddlemaster.', enter: 'Enter Puzzle Town' },
 };
 type World = keyof typeof worlds;
 const movieModes = [
@@ -52,17 +52,17 @@ export default function GamesHub() {
     </section>
     {!inside && <p className={styles.tagline}>A game. A film. A little time together.</p>}
     {!inside ? <>
-      <div className={styles.field}><label htmlFor="gt-game">What are we playing?</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'movie' ? 'tonight' : 'logic'); }}>
+      <div className={styles.field}><label htmlFor="gt-game">Which town are we visiting?</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'movie' ? 'tonight' : 'logic'); }}>
         {Object.entries(worlds).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}
       </select></div>
-      <section className={styles.intro} aria-live="polite"><span className={styles.eyebrow}>{game.type}</span><h2>{game.name}</h2><p>{game.description}</p><small>{game.hint}</small></section>
+      <section className={styles.intro} aria-live="polite" aria-label="Chester introduces your town"><span className={styles.eyebrow}>Chester says · {game.type}</span><h2>{game.name}</h2><p>{game.description}</p><small>{game.hint}</small></section>
       <button className={styles.cta} onClick={enter}>{game.enter}<span aria-hidden="true">→</span></button>
     </> : <>
       <div className={styles.field}><label htmlFor="gt-mode">How would you like to play?</label><select id="gt-mode" value={selected.id} onChange={event => setModeId(event.target.value)}>{modes.map(mode => <option value={mode.id} key={mode.id}>{mode.title}</option>)}</select></div>
-      <section className={styles.intro} aria-live="polite"><span className={styles.eyebrow}>{game.type}</span><h2>{selected.title}</h2><p>{selected.description}</p><small>{world === 'movie' || world === 'logic' ? 'Separate preview. Opens in this tab with its existing look and rules.' : 'Your game opens next, with its existing look and rules.'}</small></section>
+      <section className={styles.intro} aria-live="polite"><span className={styles.eyebrow}>{game.type}</span><h2>{selected.title}</h2><p>{selected.description}</p><small>{world === 'movie' || world === 'logic' ? 'Separate preview. Opens in this tab with its existing look and rules.' : 'Chester hosts your game. Existing look and rules stay for now.'}</small></section>
       <a className={styles.cta} href={selected.href} data-launch={selected.id}>{selected.action}<span aria-hidden="true">→</span></a>
       <button className={styles.back} onClick={leave}>← Back to all games</button>
     </>}
-    <footer className={styles.footer}>{inside ? 'Good Together · hosted by Chester' : 'Choose a game. Read about it. Then Enter.'}</footer>
+    <footer className={styles.footer}>{inside ? 'Good Together · hosted by Chester' : 'Pick a town. Hear from Chester. Then Enter.'}</footer>
   </main>;
 }
