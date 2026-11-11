@@ -1920,3 +1920,8 @@ body:has(.games-hub) .global-nav :is(a,button) { font-family:BarlowTrivia,Arial,
 @media(max-width:850px) { .games-hub__grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:480px) { .games-hub__grid { grid-template-columns:1fr; } .games-hub__header { gap:14px; } .games-hub__header > div:first-child { width:56px !important; height:56px !important; } .games-hub__header span { font-size:.59rem; } .games-hub__family > header { display:block; } .games-hub__family > header p { margin-top:4px; } .game-choice { padding:18px; } .games-hub__filters { gap:6px; } .games-hub__filters button { font-size:.9rem; padding-inline:6px; } }
 @media(prefers-reduced-motion:reduce) { .games-hub * { animation:none !important; scroll-behavior:auto !important; } }
+
+/* Good Together preview front door only. Existing game styles stay unchanged. */
+body:has(.good-together-hub){background:#fff8ee}
+body:has(.good-together-hub) .global-nav{display:none}
+body:has(.good-together-hub) .app-main{background:#fff8ee}

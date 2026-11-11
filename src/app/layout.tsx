@@ -4,8 +4,8 @@ import AppLayout from "@/components/AppLayout";
 import { EngineEvaluationProvider } from "@/components/EngineEvaluationProvider";
 
 export const metadata: Metadata = {
-  title: "Chess Town",
-  description: "Chess and pub trivia with Chester. Choose a game, bring a friend, or play solo.",
+  title: "Good Together",
+  description: "A game. A film. A little time together. Choose your game with Chester.",
 };
 
 export default function RootLayout({
