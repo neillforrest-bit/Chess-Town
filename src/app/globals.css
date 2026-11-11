@@ -1922,6 +1922,6 @@ body:has(.games-hub) .global-nav :is(a,button) { font-family:BarlowTrivia,Arial,
 @media(prefers-reduced-motion:reduce) { .games-hub * { animation:none !important; scroll-behavior:auto !important; } }
 
 /* Good Together preview front door only. Existing game styles stay unchanged. */
-body:has(.good-together-hub){background:#fff8ee}
+body:has(.good-together-hub){background:#251a36}
 body:has(.good-together-hub) .global-nav{display:none}
-body:has(.good-together-hub) .app-main{background:#fff8ee}
+body:has(.good-together-hub) .app-main{background:#251a36}

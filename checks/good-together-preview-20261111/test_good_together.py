@@ -21,7 +21,7 @@ try:
   t.cmd(tab,'Emulation.setDeviceMetricsOverride',{'width':w,'height':h,'deviceScaleFactor':1,'mobile':w<600})
   t.goto(tab,t.BASE);t.wait_for(tab,"!!document.getElementById('gt-game')")
   for world in ['trivia','chess','movie','logic']:
-   choose(tab,'gt-game',world);fit(tab);t.shot(tab,f'/downloads/good-together-live-hub-{world}-{w}.png')
+   choose(tab,'gt-game',world);fit(tab);t.wait_for(tab,"(()=>{const e=document.querySelector('svg[aria-label=\"Chester, your animated game-night host\"]');return e&&getComputedStyle(e.parentElement).opacity==='1'})()");t.shot(tab,f'/downloads/good-together-live-hub-{world}-{w}.png')
    assert t.evaluate(tab,"location.pathname==='/' && !document.getElementById('gt-mode')")
    t.evaluate(tab,"[...document.querySelectorAll('button')].find(e=>e.innerText.startsWith('Enter')).click()")
    t.wait_for(tab,"!!document.getElementById('gt-mode')");fit(tab)
