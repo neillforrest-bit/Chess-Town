@@ -54,7 +54,7 @@ q('medium','"{N} worked carefully so as ___ any errors."','not to make','to not 
 q('medium','"The {T} was too expensive for {N} ___."','to buy','buying','buy','bought')
 q('medium','"{N} is not tall enough ___ that shelf."','to reach','reaching','reach','reached')
 q('medium','"{N} would rather ___ at home tonight."','stay','to stay','staying','stayed')
-q('medium','"{N} prefers tea ___ coffee."','to','than','from','with')
+q('medium','Compare alternatives: "{N} prefers tea ___ coffee."','to','than','from','with')
 q('medium','"I look forward to ___ {N}."','meeting','meet','met','have met')
 q('medium','"{N} used to ___ here, but no longer does."','work','working','worked','works')
 q('medium','"{N} is used to ___ early; it feels normal now."','getting up','get up','got up','gets up')

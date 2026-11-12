@@ -2680,7 +2680,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Alex prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Alex prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
@@ -2988,7 +2988,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Jo prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Jo prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
@@ -3296,7 +3296,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Sam prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Sam prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
@@ -3604,7 +3604,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Kim prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Kim prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
@@ -3912,7 +3912,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Lee prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Lee prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
@@ -4220,7 +4220,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Robin prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Robin prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
@@ -4528,7 +4528,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Taylor prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Taylor prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
@@ -4836,7 +4836,7 @@ export const GRAMMAR_QUESTIONS: Record<number, LocalQuestion[]> = {
     "family": "medium-19"
   },
   {
-    "question": "\"Morgan prefers tea ___ coffee.\"",
+    "question": "Compare alternatives: \"Morgan prefers tea ___ coffee.\"",
     "correct": "to",
     "wrong": [
       "than",
