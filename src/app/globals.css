@@ -865,3 +865,12 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
 .cs-tonight .cs-tprov{font-size:.65rem}
 .cs-tonight .cs-tinfo b{font-size:1rem}
 }
+/* Shared-room welcome and invite remain fully visible on short phones. */
+@media(max-height:650px){
+.cs-play[data-stage=lobby] .cs-center{gap:7px;min-height:0}
+.cs-play[data-stage=lobby] .cs-code{font-size:2.8rem;line-height:1.1}
+.cs-play[data-stage=lobby] .cs-say{font-size:.94rem;line-height:1.3}
+.cs-play[data-stage=lobby] .cs-small{font-size:.7rem}
+.cs-play[data-stage=lobby] .cs-body{padding-top:8px;padding-bottom:8px}
+.cs-play[data-stage=lobby] .cs-toggle{padding:7px 12px;font-size:.66rem}
+}
