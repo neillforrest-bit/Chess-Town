@@ -16,6 +16,7 @@ export type LocalQuestion = {
 };
 
 import { SEASON_TWO_CATEGORIES, SEASON_TWO_QUESTIONS } from './trivia-packs';
+import { GRAMMAR_CATEGORIES, GRAMMAR_QUESTIONS } from './trivia-grammar';
 import { SPORT_FOCUS_CATEGORIES, SPORT_FOCUS_QUESTIONS } from './trivia-sports';
 import type { QuestionDifficulty } from './trivia-settings';
 
@@ -26,6 +27,7 @@ export const LOCAL_CATEGORIES: LocalCategory[] = [
   { id: -4, name: '🇬🇧 Blighty' },
   ...SEASON_TWO_CATEGORIES,
   ...SPORT_FOCUS_CATEGORIES,
+  ...GRAMMAR_CATEGORIES,
 ];
 
 const BASE_QUESTIONS: Record<number, LocalQuestion[]> = {
@@ -68,6 +70,7 @@ export const LOCAL_QUESTIONS: Record<number, LocalQuestion[]> = (() => {
   for (const [id, list] of Object.entries(BASE_QUESTIONS)) merged[Number(id)] = [...list];
   for (const [id, list] of Object.entries(SEASON_TWO_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
   for (const [id, list] of Object.entries(SPORT_FOCUS_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
+  for (const [id, list] of Object.entries(GRAMMAR_QUESTIONS)) merged[Number(id)] = [...list];
   return merged;
 })();
 

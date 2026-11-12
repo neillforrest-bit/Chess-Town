@@ -6,6 +6,14 @@ export function TriviaSetupPanel({ settings, onChange, readOnly = false, compact
   const update = (patch: Partial<TriviaSettings>) => {
     if (!readOnly && onChange) onChange({ ...settings, ...patch });
   };
+  if (settings.focus === 'grammar') return <section className="trivia-setup trivia-setup--grammar" aria-label="Grammar match setup">
+    <div className="trivia-setup__head"><span>MATCH SETUP</span><b>GRAMMAR · {difficultyLabel(settings.difficulty)}</b></div>
+    <div className="grammar-setup-fields">
+      <label>Topic<select aria-label="Quiz topic" disabled={readOnly} value={settings.focus} onChange={e => update({ focus: e.target.value as TriviaSettings['focus'] })}>{SPORT_FOCUS_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>
+      <label>Difficulty<select aria-label="Quiz difficulty" disabled={readOnly} value={settings.difficulty} onChange={e => update({ difficulty: e.target.value as TriviaSettings['difficulty'] })}>{DIFFICULTY_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>
+    </div>
+    <p className="grammar-setup-summary">Standard written English. {settings.difficulty === 'classic' ? 'Classic rises from Easy to Hard.' : `${difficultyLabel(settings.difficulty)} questions throughout.`} {brawlModes ? `Same five rounds of five.${powerRounds ? ' Flash finales and roulette keep their usual mixed topics.' : ' Group flash finales keep their usual mixed topics.'}` : 'Existing mode rules stay the same.'}</p>
+  </section>;
   return <section className={`trivia-setup${compact ? ' trivia-setup--compact' : ''}${brawlModes ? ' trivia-setup--brawl' : ''}${brawlModes && settings.focus === 'open' ? ' trivia-setup--draft' : ''}`}>
     <div className="trivia-setup__head"><span>MATCH SETUP</span><b>{sportFocusLabel(settings.focus)} · {difficultyLabel(settings.difficulty)}</b></div>
     {brawlModes && <div className="trivia-setup__group" aria-label="Category mode">
@@ -16,8 +24,8 @@ export function TriviaSetupPanel({ settings, onChange, readOnly = false, compact
       </div>
     </div>}
     {brawlModes && <p className="trivia-format-summary" role="status"><b>{settings.focus === 'open' ? 'MIXED QUIZ' : `SINGLE TOPIC: ${sportFocusLabel(settings.focus)}`}</b><span>{settings.focus === 'open' ? `Each player picks three categories. Both sets feed the quiz.${powerRounds ? ' Star one for power rounds.' : ' No power rounds in Party Table.'}` : `${sportFocusLabel(settings.focus)} main rounds. Flash finales and roulette can use other topics.`}</span><small>{difficultyLabel(settings.difficulty)} difficulty</small></p>}
-    {(!brawlModes || settings.focus !== 'open') && <div className="trivia-setup__group" aria-label="Sport focus">
-      <p>{brawlModes ? "Pick your sport" : "Sport focus"}</p>
+    {(!brawlModes || settings.focus !== 'open') && <div className="trivia-setup__group" aria-label="Topic focus">
+      <p>{brawlModes ? "Pick your topic" : "Topic focus"}</p>
       <div>{SPORT_FOCUS_OPTIONS.filter((option) => !brawlModes || option.id !== 'open').map((option) => <button key={option.id} type="button" disabled={readOnly} aria-pressed={settings.focus === option.id} title={option.hint} onClick={() => update({ focus: option.id })}>{option.label}</button>)}</div>
     </div>}
     <div className="trivia-setup__group" aria-label="Difficulty">
