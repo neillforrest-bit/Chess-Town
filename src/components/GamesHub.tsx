@@ -14,7 +14,7 @@ const worlds = {
 };
 type World = keyof typeof worlds;
 const movieModes = [
-  { id: 'tonight', title: 'Tonight · find a film', description: 'Tell Orson your taste and find something to watch.', href: 'https://chess-town-git-movie-night-neillo.vercel.app/tonight', action: 'Find a film' },
+  { id: 'tonight', title: 'Tonight · find a film', description: 'Pick a mood or jump straight to films. No film list or streaming setup needed.', href: 'https://chess-town-cx4vel2sx-neillo.vercel.app/tonight', action: 'Find a film' },
   { id: 'discover', title: 'Discovery Night', description: 'Explore films you might not have thought to look for.', href: 'https://chess-town-git-movie-night-neillo.vercel.app/discover', action: 'Explore films' },
   { id: 'movie-night', title: 'Movie night · together', description: 'Open the existing movie-picking game and choose your night.', href: 'https://chess-town-git-movie-night-neillo.vercel.app/', action: 'Open Movie Time' },
 ];
