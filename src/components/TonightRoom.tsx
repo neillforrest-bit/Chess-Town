@@ -28,6 +28,7 @@ export default function TonightRoom() {
   const [taste, setTaste] = useState<Taste>({ loved: [], services: [], hardNos: [], capMin: null });
   const [mood, setMood] = useState<(typeof MOODS)[number] | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [pickIndex, setPickIndex] = useState(0);
   const [kept, setKept] = useState<number[]>([]);
   const [seenIds, setSeenIds] = useState<number[]>([]);
   const [coldCount, setColdCount] = useState(0);
@@ -62,7 +63,7 @@ export default function TonightRoom() {
       const d = await r.json() as { picks?: Pick[]; error?: string };
       const ps = (d.picks || []).filter(Boolean);
       if (!r.ok || !ps.length) { setPhase('mood'); setErr(d.error ? 'Film picks are unavailable right now. Try again shortly.' : 'No picks this time. Try another mood or clear old preferences.'); return; }
-      setPicks(ps); setKept([]); setReactFor(null); setPhase('picks');
+      setPicks(ps); setPickIndex(0); setKept([]); setReactFor(null); setPhase('picks');
       setLine(ps.some((p) => p.wild) ? 'Three for the mood, one wildcard. Hot or cold on the direction?' : 'Three for the mood. Hot or cold on the direction?');
     } catch { setPhase('mood'); setErr('The archives hiccuped. One more tap usually fixes it.'); }
   };
@@ -121,7 +122,7 @@ export default function TonightRoom() {
   );
 
   return (
-    <main className="cs-play">{head}{bar}<section className="cs-body">
+    <main className="cs-play cs-tonight">{head}{bar}<section className="cs-body">
 
       {phase === 'mood' && (
         <section className="cs-ask">
@@ -152,7 +153,10 @@ export default function TonightRoom() {
           {reactFor !== null && !picks.some((p) => p.id === reactFor) && (
             <div className="cs-tcard">{reactionRow(reactFor)}</div>
           )}
-          {picks.map(card)}
+          {picks.length > 0 && <>
+            <div className="cs-row cs-pick-nav"><button className="cs-btn cs-btn--sm" disabled={Math.min(pickIndex, picks.length - 1) === 0} onClick={() => setPickIndex(Math.max(0, pickIndex - 1))}>PREVIOUS</button><span aria-live="polite">{Math.min(pickIndex, picks.length - 1) + 1} / {picks.length}</span><button className="cs-btn cs-btn--sm" disabled={pickIndex >= picks.length - 1} onClick={() => setPickIndex(Math.min(picks.length - 1, pickIndex + 1))}>NEXT</button></div>
+            {card(picks[Math.min(pickIndex, picks.length - 1)])}
+          </>}
           {!picks.length && (
             <><p className="cs-small">Shelf cleared.</p>
             <button className="cs-btn cs-btn--gold" onClick={() => deal(false, [])}>DEAL A FRESH SHELF</button></>

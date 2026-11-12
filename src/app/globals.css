@@ -849,3 +849,19 @@ p.cs8-syn{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
   .sc-lane { opacity: 1 !important; }
   .sc-card, .sc-cell { transition: none !important; }
 }
+/* One film at a time: keep the choice and its controls inside a phone. */
+.cs-tonight .cs-pick-nav{align-items:center;flex:none}
+.cs-tonight .cs-pick-nav span{white-space:nowrap;color:var(--dim);font-size:.8rem}
+.cs-tonight .cs-tcard{flex:none}
+.cs-tonight .cs-ask--tight{gap:10px;justify-content:flex-start}
+@media(max-height:700px){
+.cs-tonight .cs-ask--tight{gap:6px}
+.cs-tonight .cs-tcard{padding:10px;gap:6px}
+.cs-tonight .cs-tmain .cs-poster{height:80px;width:54px}
+.cs-tonight .cs-solo-orson{font-size:.75rem;padding:7px}
+.cs-tonight .cs-thc{padding:6px}
+.cs-tonight .cs-btn--sm{padding:8px;font-size:.7rem}
+.cs-tonight .cs-twhy{font-size:.85rem;margin:0}
+.cs-tonight .cs-tprov{font-size:.65rem}
+.cs-tonight .cs-tinfo b{font-size:1rem}
+}
