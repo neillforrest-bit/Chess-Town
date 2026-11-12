@@ -4,8 +4,8 @@ import AppLayout from "@/components/AppLayout";
 import { EngineEvaluationProvider } from "@/components/EngineEvaluationProvider";
 
 export const metadata: Metadata = {
-  title: "Good Together",
-  description: "A game. A film. A little time together. Choose your game with Chester.",
+  title: "Get In Town",
+  description: "You can do better than doom scrolling. Play a game, find a film, maybe even test your knowledge or grammar.",
 };
 
 export default function RootLayout({

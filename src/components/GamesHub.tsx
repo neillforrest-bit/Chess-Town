@@ -24,47 +24,48 @@ const logicModes = [
 ];
 
 export default function GamesHub() {
-  const [world, setWorld] = useState<World>('trivia');
+  const [world, setWorld] = useState<World | ''>('');
   const [inside, setInside] = useState(false);
   const [paused, setPaused] = useState(false);
   const modes = world === 'movie' ? movieModes : world === 'logic' ? logicModes : GAME_OPTIONS.filter(mode => mode.family === world);
   const [modeId, setModeId] = useState('solo');
   const selected = modes.find(mode => mode.id === modeId) || modes[0];
-  const game = worlds[world];
+  const game = world ? worlds[world] : null;
   useEffect(() => {
-    const back = () => { setInside(new URLSearchParams(window.location.search).get('choose') === 'mode'); };
+    const back = () => { const params = new URLSearchParams(window.location.search); const town = params.get('town'); if (town && town in worlds) { setWorld(town as World); setModeId(town === 'trivia' ? 'solo' : town === 'chess' ? 'chester' : town === 'movie' ? 'tonight' : 'logic'); setInside(params.get('choose') === 'mode'); } else setInside(false); };
     back(); window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
-  const enter = () => { setInside(true); history.pushState({}, '', `${location.pathname}?choose=mode`); };
+  const enter = () => { if (!world) return; setInside(true); history.pushState({}, '', `${location.pathname}?choose=mode&town=${world}`); };
   const leave = () => { setInside(false); history.replaceState({}, '', location.pathname); };
   return <main className={`${styles.hub} ${inside ? styles.inside : ''} good-together-hub`} data-town={world} aria-labelledby="gt-title">
     <header className={styles.header}>
-      <Link href="/" className={styles.brand} aria-label="Good Together home" onClick={leave}>
+      <Link href="/" className={styles.brand} aria-label="Get In Town home" onClick={leave}>
         {/* Original vector artwork recovered from the approved preview study. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/good-together/umbrella.svg" alt="" width="40" height="40" />
-        <span>good<i>together</i></span>
+        <span>get in<i>town</i></span>
       </Link><div className={styles.headerTools}><span className={styles.preview}>Preview</span><button className={styles.motion} onClick={() => setPaused(current => !current)} aria-label={paused ? 'Resume Chester animation' : 'Pause Chester animation'} aria-pressed={paused} title={paused ? 'Resume animation' : 'Pause animation'}>{paused ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4L16 10L7 16Z" fill="currentColor"/></svg> : <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5V15M13 5V15" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>}</button></div>
     </header>
     <section className={styles.welcome}>
-      <div className={styles.heroCopy}><span className={styles.hostLabel}>I&apos;m Chester. Your host.</span><h1 id="gt-title">{inside ? game.name : <>Good times,<br /><em>this way.</em></>}</h1><span className={styles.heroCaption}>{inside ? 'Find your favourite way to play.' : 'Four towns. Plenty of possibilities.'}</span></div>
-      <div className={styles.character} key={world}><ChesterCompanion paused={paused}/></div>
+      <div className={styles.heroCopy}><span className={styles.hostLabel}>I&apos;m Chester. Your host.</span><h1 id="gt-title">{inside && game ? game.name : <>Good times,<br /><em>this way.</em></>}</h1><span className={styles.heroCaption}>{inside ? 'Find your favourite way to play.' : 'Four towns. Plenty of possibilities.'}</span></div>
+      <div className={styles.character} key={world || 'welcome'}><ChesterCompanion paused={paused}/></div>
       <div className={styles.orbit} aria-hidden="true"/>
     </section>
-    {!inside && <p className={styles.tagline}>Learn a trick. Challenge a friend. Find a film.</p>}
+    {!inside && <p className={styles.tagline}>You can do better than doom scrolling. Play a game, find a film, maybe even test your knowledge or grammar.</p>}
     {!inside ? <>
-      <div className={styles.field}><label htmlFor="gt-game">Which town are we visiting?</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'movie' ? 'tonight' : 'logic'); }}>
+      <div className={styles.field}><label htmlFor="gt-game">Pick your town tonight</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World | ''; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'movie' ? 'tonight' : 'logic'); }}>
+        <option value="" disabled>Pick a town tonight...</option>
         {Object.entries(worlds).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}
       </select></div>
-      <section className={styles.intro} aria-live="polite" aria-label="Chester introduces your town"><div className={styles.cardHead}><span className={styles.speaker}><i aria-hidden="true"/>Chester says</span><span className={styles.townNumber}>{world === 'chess' ? '01' : world === 'trivia' ? '02' : world === 'movie' ? '03' : '04'} / 04</span></div><h2>{game.name}<span className={styles.townGlyph} aria-hidden="true">{world === 'chess' ? '♜' : world === 'trivia' ? '?' : world === 'movie' ? '▷' : '✳'}</span></h2><p>{game.description}</p><small>{game.hint}</small></section>
-      <button className={styles.cta} onClick={enter}>{game.enter}<span aria-hidden="true">→</span></button>
-    </> : <>
+      <section className={styles.intro} aria-live="polite" aria-label="Chester introduces your town"><div className={styles.cardHead}><span className={styles.speaker}><i aria-hidden="true"/>Chester says</span><span className={styles.townNumber}>{!world ? '00' : world === 'chess' ? '01' : world === 'trivia' ? '02' : world === 'movie' ? '03' : '04'} / 04</span></div><h2>{game ? game.name : 'Your night starts here'}<span className={styles.townGlyph} aria-hidden="true">{world === 'chess' ? '♜' : world === 'trivia' ? '?' : world === 'movie' ? '▷' : world === 'logic' ? '✳' : '?' }</span></h2><p>{game ? game.description : 'Pick a town above. I will show you what is waiting, then you choose how to play.'}</p>{game && <small>{game.hint}</small>}</section>
+      <button className={styles.cta} disabled={!world} onClick={enter}>{game ? game.enter : 'Choose a town to enter'}<span aria-hidden="true">→</span></button>
+    </> : game && selected ? <>
       <div className={styles.field}><label htmlFor="gt-mode">How would you like to play?</label><select id="gt-mode" value={selected.id} onChange={event => setModeId(event.target.value)}>{modes.map(mode => <option value={mode.id} key={mode.id}>{mode.title}</option>)}</select></div>
       <section className={styles.intro} aria-live="polite"><span className={styles.eyebrow}>{game.type}</span><h2>{selected.title}</h2><p>{selected.description}</p><small>{world === 'movie' || world === 'logic' ? 'Separate preview. Opens in this tab with its existing look and rules.' : 'Chester hosts your game. Existing look and rules stay for now.'}</small></section>
       <a className={styles.cta} href={selected.href} data-launch={selected.id}>{selected.action}<span aria-hidden="true">→</span></a>
       <button className={styles.back} onClick={leave}>← Back to all games</button>
-    </>}
-    <footer className={styles.footer}>{inside ? 'Good Together · hosted by Chester' : 'Pick a town. Hear from Chester. Then Enter.'}</footer>
+    </> : null}
+    <footer className={styles.footer}>{inside ? 'Get In Town · hosted by Chester' : 'Pick a town. Hear from Chester. Then Enter.'}</footer>
   </main>;
 }
