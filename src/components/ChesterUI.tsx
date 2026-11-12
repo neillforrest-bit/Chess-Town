@@ -56,7 +56,7 @@ export function ChesterAvatar({ isThinking, size = 'default', trivia = false }: 
   );
 }
 
-export function ChesterTeleprompter({ text, isThinking, isMobile, trivia = false }: { text: string, isThinking: boolean, isMobile?: boolean, trivia?: boolean }) {
+export function ChesterTeleprompter({ text, isThinking, isMobile, trivia = false, avatar }: { text: string, isThinking: boolean, isMobile?: boolean, trivia?: boolean, avatar?: React.ReactNode }) {
   const engineEvaluation = useEngineEvaluation();
   const messageRef = useRef<HTMLDivElement>(null);
   const message = text.replace(/^🎙️ CHESTER:\s*/, '');
@@ -81,7 +81,7 @@ export function ChesterTeleprompter({ text, isThinking, isMobile, trivia = false
       boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
       boxSizing: 'border-box'
     }}>
-      <ChesterAvatar isThinking={isThinking} trivia={trivia} />
+      {avatar || <ChesterAvatar isThinking={isThinking} trivia={trivia} />}
       <div ref={messageRef} className="chester-teleprompter__message max-h-48 overflow-y-auto" style={{
         flex: '1 1 auto',
         fontFamily: 'sans-serif',

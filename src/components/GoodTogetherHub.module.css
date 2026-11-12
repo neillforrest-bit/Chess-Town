@@ -66,3 +66,15 @@
 .hub:not(.inside) .character{bottom:35px;width:158px;height:158px}
 @media(max-height:720px){.hub:not(.inside) .welcome{height:156px;padding-top:14px;padding-bottom:54px}.heroTagline{left:16px;right:16px;bottom:10px;font-size:10px;line-height:1.4;padding-top:7px}.hub:not(.inside) .character{width:126px;height:126px;bottom:26px}}
 @media(max-height:600px){.hub:not(.inside) .welcome{height:136px;padding-top:10px;padding-bottom:50px}.heroTagline{left:13px;right:13px;bottom:8px;font-size:9px;line-height:1.4;padding-top:5px}.hub:not(.inside) .character{width:105px;height:105px;bottom:27px}}
+/* The selected adult donkey host, scoped to the town landing rather than game avatars. */
+.character{width:170px;height:247px;right:-2px;bottom:-42px}
+.inside .character{width:140px;height:205px;right:5px;bottom:-40px}
+.hostDonkey{width:37px;height:48px;flex:none;overflow:hidden;border-radius:8px;background:#5d3e76}
+.hostDonkey svg{height:58px;transform:translateY(-2px)}
+@media(max-height:720px){.character{width:137px;height:200px;bottom:-44px;right:3px}.inside .character{width:116px;height:170px;bottom:-42px}.hostDonkey{width:28px;height:38px}.hostDonkey svg{height:44px}}
+@media(max-height:600px){.hub:not(.inside) .character{width:88px;height:128px;right:7px;bottom:-28px}.inside .character{width:95px;height:138px;bottom:-31px}}
+.hub:not(.inside) .character{width:135px;height:151px;bottom:55px;right:0}
+.hostBottom{flex:none}
+.hostPrompter{flex:none}
+@media(max-height:720px){.hub:not(.inside) .character{width:102px;height:104px;bottom:49px;right:6px}}
+@media(max-height:600px){.hub:not(.inside) .welcome{height:112px}.hub:not(.inside) .character{width:80px;height:72px;bottom:42px;right:7px}.hostWelcome{justify-content:space-between}.hostPrompter :global(.chester-teleprompter__message){font-size:11px!important;line-height:1.35!important}}

@@ -61,7 +61,7 @@ export default function GamesHub() {
         <option value="" disabled>Pick a town tonight...</option>
         {Object.entries(worlds).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}
       </select></div>
-      <section className={`${styles.intro} ${styles.welcomeCard}`} aria-label="Chester host welcome"><TownWelcome town={game?.name} overview={game?.description} onStart={() => { document.getElementById('gt-game')?.focus(); }} /></section>
+      <section className={`${styles.intro} ${styles.welcomeCard}`} aria-label="Chester host welcome"><TownWelcome paused={paused} town={game?.name} overview={game?.description} onStart={() => { document.getElementById('gt-game')?.focus(); }} /></section>
       <button className={styles.cta} disabled={!world} onClick={enter}>{game ? game.enter : 'Choose a town to enter'}<span aria-hidden="true">→</span></button>
     </> : game && selected ? <>
       <div className={styles.field}><label htmlFor="gt-mode">How would you like to play?</label><select id="gt-mode" value={selected.id} onChange={event => setModeId(event.target.value)}>{modes.map(mode => <option value={mode.id} key={mode.id}>{mode.title}</option>)}</select></div>
