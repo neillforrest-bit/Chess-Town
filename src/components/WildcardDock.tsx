@@ -12,7 +12,7 @@ const HELP: Record<SabKey, string> = { veto: 'Kill ONE film in this matchup - th
 export default function WildcardDock({ s, pid, send }: { s: State; pid: PID; send: (i: Intent) => void }) {
   const [arm, setArm] = useState<SabKey | ''>(''); const [busy, setBusy] = useState(false); const [note, setNote] = useState('');
   const sab = s.sab; if (!sab) return null;
-  const keys: SabKey[] = s.phase === 'bracket' && s.b8 && !s.b8.show ? ['veto', 'block', 'orson'] : s.phase === 'vibe' || s.phase === 'draft' ? ['roulette'] : [];
+  const keys: SabKey[] = s.phase === 'bracket' && s.b8 && !s.b8.show ? ['veto', 'block', 'orson'] : [];
   if (!keys.length) return null;
   const fire = async (k: SabKey) => {
     if (arm !== k) { setArm(k); setNote(HELP[k] + (k === 'veto' ? ' Now tap the film you want DEAD.' : ' Tap again to fire.')); setTimeout(() => setArm((a) => (a === k ? '' : a)), 8000); return; }
