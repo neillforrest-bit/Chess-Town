@@ -17,7 +17,7 @@ export default function TownWelcome({ town, overview, onStart }: { town?: string
     const recorded = a ? `Last ${a.kind === 'finished' ? 'finished' : 'opened'}: ${a.label}${a.result ? `. ${a.result}` : '.'}` : 'No game session recorded on this site yet. Pick a town and let us change that.';
     const progress = road ? `${advanced ? `New level! You have moved from ${previous!.road} to ${road}` : `Your saved Road to the Landlord level is ${road}`} of 15. ${road === 15 ? 'The Landlord is next, unless you have already beaten him.' : 'Ready for the next table?'}` : '';
     setState({ returning: Boolean(previous || a || road), recap: [recorded, progress].filter(Boolean).join(' '), road, advanced });
-    try { localStorage.setItem(WELCOME_KEY, JSON.stringify({ road, at: Date.now() })); } catch { /* still show the welcome without storage */ }
+    try { localStorage.setItem(WELCOME_KEY, JSON.stringify({ road: road ?? 1, at: Date.now() })); } catch { /* still show the welcome without storage */ }
   }, []);
   const lines = [
     state.returning ? `Welcome back. ${state.recap}` : "Welcome to Game Town. I'm Chester, your host and partner in crime. A game, a film, a little friendly competition. No homework. Let's get you started.",
