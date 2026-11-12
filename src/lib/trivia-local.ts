@@ -10,6 +10,8 @@ export type LocalQuestion = {
   // Optional shelf for hand-authored packs. Untagged house-pack questions are
   // eligible at every difficulty; focused sports shelves use exact difficulty.
   level?: QuestionDifficulty;
+  // Grammar variants share a rule/interpretation family.
+  family?: string;
   // Adaptive shelves carry close distractors; higher settings swap more of them in.
   near?: [string, string, string];
   adaptive?: boolean;
@@ -80,9 +82,16 @@ export function localCategoryName(id: number): string {
 
 // Season Two: never serve the same house question twice until the whole shelf is used.
 const SEEN_KEY = 'ct-trivia-seen-v1';
-export function pickLocalQuestion(categoryId: number, difficulty: QuestionDifficulty = 'medium'): LocalQuestion | null {
+export function pickLocalQuestion(categoryId: number, difficulty: QuestionDifficulty = 'medium', exclude: Set<string> = new Set()): LocalQuestion | null {
   const pack = LOCAL_QUESTIONS[categoryId] || [];
-  const eligible = pack.filter((item) => !item.level || item.level === difficulty);
+  let eligible = pack.filter((item) => (!item.level || item.level === difficulty) && !exclude.has(item.question));
+  if (categoryId === -14 && exclude.size) {
+    const usedFamilies = new Set(pack.filter(item => exclude.has(item.question)).map(item => item.family));
+    const freshFamilies = eligible.filter(item => !usedFamilies.has(item.family));
+    // A standard 25-question match has enough families at every level.
+    // Long sudden death may revisit a rule, but still avoids the exact question.
+    if (freshFamilies.length) eligible = freshFamilies;
+  }
   if (!eligible.length) return null;
   let seen: Record<string, string[]> = {};
   try { seen = JSON.parse(window.localStorage.getItem(SEEN_KEY) || '{}'); } catch { /* private browsing */ }

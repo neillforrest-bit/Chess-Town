@@ -5,7 +5,7 @@
 import {
   MATCH_ROUNDS, advanceMatch, applyAnswer, applyDuelPick, applyFlashAnswer, applyWildcard, currentQuestionOf, planMatch,
   resolveFlashTimeout, resolveQuestionTimeout, viewerQuestion, type FlashState, type MatchState, type Player, type WildcardId, applyFlashVoid } from './trivia-match';
-import { DEFAULT_TRIVIA_SETTINGS, normalizeTriviaSettings, type TriviaSettings } from './trivia-settings';
+import { DEFAULT_TRIVIA_SETTINGS, mainQuestionSeconds, normalizeTriviaSettings, type TriviaSettings } from './trivia-settings';
 
 export type { MatchQuestion as TriviaQuestion, MatchRound, MatchState, Player, QuestionResult, WildcardId } from './trivia-match';
 export { MATCH_ROUNDS, QUESTIONS_PER_ROUND, currentQuestionOf, isPowerRound, lastCallActive, loadAllRounds, markRoundLoaded, roundSummary, doubleKey } from './trivia-match';
@@ -238,7 +238,7 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
   }
 
   if (next.phase === 'question' && (room.phase !== 'question' || next.match?.round !== room.match?.round || next.match?.qIndex !== room.match?.qIndex)) {
-    next.questionEndsAt = Date.now() + 10000;
+    next.questionEndsAt = Date.now() + mainQuestionSeconds(next.match ? currentQuestionOf(next.match)?.category : undefined) * 1000;
   } else if (next.phase !== 'question') next.questionEndsAt = undefined;
   next.updatedAt = Date.now();
   return { room: next, justLocked };

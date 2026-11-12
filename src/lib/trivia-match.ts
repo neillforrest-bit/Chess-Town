@@ -220,7 +220,7 @@ function fromHouse(categoryId: number, source: LocalQuestion, difficulty: Diffic
 function drawHouseQuestions(categoryId: number, count: number, exclude: Set<string>, difficulty: Difficulty): MatchQuestion[] {
   const drawn: MatchQuestion[] = [];
   for (let tries = 0; drawn.length < count && tries < count * 8; tries += 1) {
-    const source = pickLocalQuestion(categoryId, difficulty);
+    const source = pickLocalQuestion(categoryId, difficulty, new Set([...exclude, ...drawn.map(item => item.question)]));
     if (!source) break;
     if (exclude.has(source.question) || drawn.some((item) => item.question === source.question)) continue;
     drawn.push(fromHouse(categoryId, source, difficulty));

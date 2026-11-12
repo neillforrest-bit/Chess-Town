@@ -69,3 +69,8 @@ export function roundDifficulty(setting: TriviaDifficultySetting, roundIndex: nu
   if (setting !== 'classic') return setting;
   return (['easy', 'easy', 'medium', 'medium', 'hard'] as QuestionDifficulty[])[Math.max(0, Math.min(4, roundIndex))];
 }
+
+// Only main Grammar questions get extra thinking time. Roulette and flashes keep their clocks.
+export function mainQuestionSeconds(category: string | undefined): number {
+  return category === 'Grammar' ? 15 : 10;
+}

@@ -5,8 +5,8 @@ import { normalizeTriviaSettings, roundDifficulty, sportFocusCategoryId, type Tr
 export const PARTY_LIMIT = 5;
 export const PARTY_TIMEOUT = "Time's up - no answer";
 export const PARTY_RULES = [
-  'Five rounds of five shared questions. Ten seconds each. A correct answer earns one point; every third consecutive correct main answer earns one extra.',
-  'Mixed quiz: three category picks each, pooled and shuffled across the questions. Single topic: all main questions use that sport. Flash finales can use other topics. No power rounds or roulette in Party Table.',
+  'Five rounds of five shared questions. Fifteen seconds for main Grammar questions; ten for other main questions. A correct answer earns one point; every third consecutive correct main answer earns one extra.',
+  'Mixed quiz: three category picks each, pooled and shuffled across the questions. Single topic: all main questions use that topic. Flash finales can use other topics. No power rounds or roulette in Party Table.',
   'One of each wildcard per player. Fifty-Fifty removes two wrong options for you. Double Down doubles the base point for your next correct main answer (not the streak bonus). Pickpocket needs a named rival: if you are right and they are wrong, steal at most one existing point. Shakespeare needs a named rival: their next round is disguised. Wildcards rest during flashes.',
   'Riddle and Brain Teaser: two points for each correct player. Fastest Finger: first correct arrival at the host earns two. Last Orders: two each, plus one for the first correct arrival. Each flash question has twenty seconds.',
   'The Twenty: take turns, ten seconds per pick. One point per correct find. Three strikes eliminate a player. Most finds earns two bonus points; tied leaders earn one each. A timed-out turn is a strike. The board ends when all ten are found or everybody is out.',
@@ -77,7 +77,7 @@ export async function prepareParty(room: PartyRoom, nameOf: (id: number) => stri
   }
   return { ...room, questions, flashQuestions, phase: 'intro', answers: {}, result: null };
 }
-function nextQuestion(room: PartyRoom, now: number): PartyRoom { return { ...room, phase: 'question', answers: {}, result: null, event: undefined, deadline: now + 10000 }; }
+function nextQuestion(room: PartyRoom, now: number): PartyRoom { return { ...room, phase: 'question', answers: {}, result: null, event: undefined, deadline: now + (currentQuestion(room)?.category === 'Grammar' ? 15000 : 10000) }; }
 function settleQuestion(room: PartyRoom): PartyRoom {
   const q = currentQuestion(room);
   if (!q) throw new Error('No question is live.');
