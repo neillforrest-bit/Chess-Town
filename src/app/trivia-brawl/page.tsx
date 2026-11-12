@@ -1335,12 +1335,11 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
       <button className="trivia-brawl-primary" onClick={onSolo}>PLAY SOLO VS CHESTER · 5 QUESTIONS</button>
 
       <button className="trivia-brawl-primary" onClick={onPass}>PASS &amp; PLAY · ONE PHONE</button>
-      <details className="trivia-lobby-secondary"><summary>Party table &amp; solo rules</summary><p>Solo has no wildcards or flash finales. Party has separate group rules, one host and saved guest seats. The host keeps the table open.</p><Link className="trivia-brawl-primary trivia-party-entry" href="/trivia-party">PARTY TABLE · UP TO 5 PHONES</Link></details>
-    </section>
-    <details className="trivia-brawl-draft trivia-lobby-more">
-      <summary>Honour board</summary>
+      <details className="trivia-lobby-secondary"><summary>More: party, solo rules &amp; scores</summary><p>Solo has no wildcards or flash finales. Party has separate group rules, one host and saved guest seats. The host keeps the table open.</p><Link className="trivia-brawl-primary trivia-party-entry" href="/trivia-party">PARTY TABLE · UP TO 5 PHONES</Link><h3>Honour board</h3>
       {scores.length ? scores.map((entry, index) => <p key={`${entry.date}-${index}`} style={{ margin: 0 }}>{entry.date} · YOU {entry.you} - {entry.chester} CHESTER {entry.you > entry.chester ? '🏆' : entry.you < entry.chester ? '💀' : '🤝'}</p>) : <p style={{ margin: 0 }}>No results yet. The ledger awaits its first entry.</p>}
     </details>
+    </section>
+
   </main>;
 }
 
