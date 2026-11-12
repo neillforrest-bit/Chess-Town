@@ -1,0 +1,8 @@
+// Run after: npx tsc src/lib/trivia-match.ts --outDir /tmp/ct-grammar-compiled --module commonjs --target es2020 --skipLibCheck
+const assert=require('node:assert/strict');let store={};global.window={localStorage:{getItem:k=>store[k]||null,setItem:(k,v)=>store[k]=v}};
+const l=require('/tmp/ct-grammar-compiled/trivia-local.js'),m=require('/tmp/ct-grammar-compiled/trivia-match.js'),s=require('/tmp/ct-grammar-compiled/trivia-settings.js');
+(async()=>{assert.equal(s.sportFocusCategoryId('grammar'),-14);assert.equal(s.normalizeTriviaSettings({focus:'grammar',difficulty:'master'}).focus,'grammar');
+const bank=l.LOCAL_QUESTIONS[-14];assert.equal(bank.length,896);assert.equal(new Set(bank.map(q=>q.question)).size,896);for(const q of bank){assert.equal(q.wrong.length,3);assert.equal(new Set([q.correct,...q.wrong]).size,4,q.question)}
+for(const level of ['easy','medium','hard','master'])assert.equal(bank.filter(q=>q.level===level).length,224);
+let rounds=0;for(let repeat=0;repeat<100;repeat++)for(const diff of ['classic','easy','medium','hard','master']){const pick=[{id:-14,name:'Grammar'}];const match=m.planMatch(pick,pick,{p1:-14,p2:-14},{difficulty:diff});assert.equal(match.rounds.length,5);let seen=new Set();for(const r of match.rounds){const qs=await m.fetchRoundQuestions(-14,r.difficulty,seen);assert.equal(qs.length,5);for(const q of qs){assert.equal(q.category,'Grammar');assert.equal(q.difficulty,r.difficulty);assert(!seen.has(q.question));seen.add(q.question)}rounds++}assert.equal(seen.size,25)}
+console.log('PASS:896 questions,224/level,unique four-way answers,settings,500 full 5x5 loads/'+rounds+' rounds,no mixed fallback or in-match repeats');})().catch(e=>{console.error(e);process.exit(1)});
