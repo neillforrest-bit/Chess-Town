@@ -120,6 +120,7 @@ export function TapePage({ s, now, tv, pid, send }: { s: State; now: number; tv?
 }
 
 export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; tv?: boolean; pid?: PID; send?: (i: Intent) => void }) {
+  const [rulePage, setRulePage] = useState(0);
   const b = s.b8; const sh = b?.show; if (!b || !sh) return null;
   if (sh.kind === 'champ') return <TapePage s={s} now={now} tv={tv} pid={pid} send={send} />;
   if (sh.kind === 'calls') return <CallsPage s={s} now={now} tv={tv} pid={pid} send={send} />;
@@ -139,12 +140,13 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
     <TokStrip s={s} />
     <div className="cs8-top"><span className="cs-orson">{title}</span>{!hold && sh.kind !== 'round' && sh.kind !== 'seed' && <b className="cs8-clock">{left}s</b>}</div>
     {sub && <p className="cs8-sub">{sub}</p>}
-    {stage === 'explain' && <div className="cs8-explain">
-      <div className="cs8-ex"><b>1 · THE WAR ROOM</b><p>You spent 100 hype tokens, held a Golden Ticket and loaded a Silver Bullet. Four titles each survived. Two conferences, one winner.</p></div>
-      <div className="cs8-ex"><b>2 · THE SEEDING</b><p>Pure hype. Your Golden Ticket is your seed 1, the rest rank by tokens spent. Nobody else decides this, so blame yourselves.</p></div>
-      <div className="cs8-ex"><b>3 · THE PATH</b><p>Quarterfinals cross the conferences: your #1 faces their #4, your #2 faces their #3. Win three bouts and your title is tonight&apos;s film.</p></div>
-      <div className="cs8-ex"><b>4 · THE BIDS</b><p>Every bout is a tug of war. Stake wager tokens from 1 up. Every token you spend is gone for good, win or lose. Wild cards bend the odds. A Golden Ticket wins any dead heat.</p></div>
-      <div className="cs8-ex"><b>5 · THE BRACKET RETURNS</b><p>After every bout we come back here. Green means through. Struck out means gone.</p></div>
+    {stage === 'explain' && <div className="cs8-explain cs8-rules">
+      <div className={'cs8-ex' + (rulePage === 0 ? ' is-active' : '')}><b>1 · THE WAR ROOM</b><p>You spent 100 hype tokens, held a Golden Ticket and loaded a Silver Bullet. Four titles each survived. Two conferences, one winner.</p></div>
+      <div className={'cs8-ex' + (rulePage === 1 ? ' is-active' : '')}><b>2 · THE SEEDING</b><p>Pure hype. Your Golden Ticket is your seed 1, the rest rank by tokens spent. Nobody else decides this, so blame yourselves.</p></div>
+      <div className={'cs8-ex' + (rulePage === 2 ? ' is-active' : '')}><b>3 · THE PATH</b><p>Quarterfinals cross the conferences: your #1 faces their #4, your #2 faces their #3. Win three bouts and your title is tonight&apos;s film.</p></div>
+      <div className={'cs8-ex' + (rulePage === 3 ? ' is-active' : '')}><b>4 · THE BIDS</b><p>Every bout is a tug of war. Stake wager tokens from 1 up. Every token you spend is gone for good, win or lose. Wild cards bend the odds. A Golden Ticket wins any dead heat.</p></div>
+      <div className={'cs8-ex' + (rulePage === 4 ? ' is-active' : '')}><b>5 · THE BRACKET RETURNS</b><p>After every bout we come back here. Green means through. Struck out means gone.</p></div>
+      <div className="cs8-rules-nav"><button className="cs-btn" aria-label="Previous bracket rule" disabled={rulePage === 0} onClick={() => setRulePage(x => x - 1)}>‹</button><span>RULE {rulePage + 1} / 5</span><button className="cs-btn" aria-label="Next bracket rule" disabled={rulePage === 4} onClick={() => setRulePage(x => x + 1)}>›</button></div>
     </div>}
     {stage === 'rank' && <div className="cs8-rank">{ranked.map((id) => <div key={id} className="cs8-rk"><i>{b.seed[id]}</i><b>{clip(BY_ID[id].t, tv ? 30 : 17)}</b><em>{tag(id)}</em></div>)}</div>}
     {sh.kind === 'seed' && <div className="cs8-reveal">{b.matches.filter((m) => m.round === 2).map((m, i) => { const step = Math.floor((R.SEED_MS - rem) / 2600); const on = i <= step; return <div key={m.id} className={'cs8-rv' + (on ? ' is-on' : '')}><span className="is-a"><i>{b.conf[m.a as number] ? `${s.players[b.conf[m.a as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.a as number].rank}${b.conf[m.a as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.a as number].t, 17)}</b></span><em>VS</em><span className="is-b"><i>{b.conf[m.b as number] ? `${s.players[b.conf[m.b as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.b as number].rank}${b.conf[m.b as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.b as number].t, 17)}</b></span></div>; })}</div>}
