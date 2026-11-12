@@ -2010,3 +2010,9 @@ body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .chester-tel
 body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-marquee{padding:.35rem 0;font-size:.55rem}
 body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .grammar-setup-summary{display:none}
 }
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-lobby-more{min-height:0}
+@media(max-height:650px){
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .chester-teleprompter{display:none !important}
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-brawl-draft > p{display:none}
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-brawl-header > a{min-height:44px;padding:.4rem}
+}
