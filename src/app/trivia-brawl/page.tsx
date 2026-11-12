@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { recordTownActivity } from '@/lib/town-activity';
 import { TRIVIA_ACC, getTrvRoad, setTrvRoad, TRV_ROAD_MAX } from '@/games/trivia/road';
 import Link from 'next/link';
 import { ChesterTeleprompter } from '@/components/ChesterUI';
@@ -977,6 +978,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
       const record: SoloScore = { date: new Date().toISOString().slice(0, 10), you: final.you, chester: final.chester };
       try { window.localStorage.setItem(SOLO_SCORES_KEY, JSON.stringify([record, ...loadSoloScores()].slice(0, 20))); } catch { /* private browsing */ }
       setHostLine(final.you > final.chester ? SOLO_LINES.win : final.you < final.chester ? SOLO_LINES.lose : SOLO_LINES.draw);
+      recordTownActivity({ label: roadLv ? 'Road to the Landlord' : 'Trivia vs Chester', href: roadLv ? '/road/trivia' : '/trivia-brawl?solo=1', kind: 'finished', result: `You ${final.you}, Chester ${final.chester}${roadLv ? `. Level ${roadLv}${final.you > final.chester ? ' cleared' : ' attempted'}` : ''}.` });
       setPhase('finished');
       return;
     }
@@ -1124,6 +1126,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     if (nextState.phase === 'finished') {
       setSeries((cur) => nextState.score.p1 === nextState.score.p2 ? { ...cur, draws: cur.draws + 1 } : nextState.score.p1 > nextState.score.p2 ? { ...cur, a: cur.a + 1 } : { ...cur, b: cur.b + 1 });
       setHostLine(nextState.score.p1 === nextState.score.p2 ? 'A dead heat! The pub insists on a rematch.' : `${nextState.score.p1 > nextState.score.p2 ? nameA : nameB} wins the tab. Chester raises a glass to you both.`);
+      recordTownActivity({ label: 'Pass & Play', href: '/trivia-brawl?pass=1', kind: 'finished', result: `${nameA} ${nextState.score.p1}, ${nameB} ${nextState.score.p2}.` });
       setPhase('finished');
       return;
     }

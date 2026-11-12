@@ -46,3 +46,17 @@
 .hub:not(.inside) .intro small{font-size:8px;line-height:1.3;padding-top:5px}
 .tagline{font-size:10px;line-height:1.4}
 }
+/* The original Chester teleprompter, staged into short welcome/guide/start cards. */
+.hub:not(.inside) .welcomeCard{padding:12px 14px;flex:1;min-height:0}
+.hostWelcome{display:flex;flex-direction:column;gap:10px;min-height:0;height:100%;justify-content:center}
+.hostTabs{display:flex;gap:5px;flex:none}
+.hostTabs button{flex:1;min-height:34px;padding:5px 4px;border:1px solid #d4c3e5;border-radius:10px;background:#eee6f5;color:#5a4174;font:800 10px ManropeGT,Arial,sans-serif;cursor:pointer}
+.hostTabs button[aria-pressed=true]{background:#7044a4;color:white;border-color:#7044a4}
+.hostPrompter{min-height:0}
+.hostPrompter :global(.chester-teleprompter){padding:10px!important;gap:9px!important;background:#392449!important;border-color:#aa86cd!important;box-shadow:none!important;backdrop-filter:none!important}
+.hostPrompter :global(.chester-teleprompter__message){font:600 13px/1.5 ManropeGT,Arial,sans-serif!important;max-height:none!important;overflow:visible!important;text-shadow:none!important;letter-spacing:0!important}
+.hostBottom{display:flex;align-items:center;gap:8px}
+.hostBottom small{flex:1;border:0!important;padding:0!important;font-size:9px!important;line-height:1.35!important}
+.hostBottom button{min-width:58px;min-height:34px;border:0;border-radius:10px;padding:5px 9px;background:#e1d2ef;color:#4b3166;font:800 11px ManropeGT,Arial,sans-serif;cursor:pointer}
+@media(max-height:720px){.hostWelcome{gap:7px}.hostPrompter :global(.chester-teleprompter__message){font-size:12px!important;line-height:1.4!important}.hub:not(.inside) .welcomeCard{padding:10px}.hostBottom small{font-size:8px!important}}
+@media(max-height:600px){.hostWelcome{gap:5px}.hub:not(.inside) .welcome{height:74px}.hub:not(.inside) .welcomeCard{padding:8px}.hostPrompter :global(.chester-teleprompter){padding:7px!important;gap:6px!important}.hostPrompter :global(.chester-teleprompter__message){font-size:11px!important;line-height:1.35!important}.hostPrompter :global(.chester-teleprompter)>div:first-child{width:28px!important;height:28px!important}.hostTabs button{min-height:30px;font-size:9px}.hostBottom button{min-height:30px}.hostBottom small{font-size:8px!important}}

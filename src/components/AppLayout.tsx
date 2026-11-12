@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { askChesterChat } from '@/app/actions';
+import { trackTownRoute } from '@/lib/town-activity';
 import GlobalNav from '@/components/GlobalNav';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  useEffect(() => { trackTownRoute(pathname, window.location.search); }, [pathname]);
   const isTriviaRoute = pathname.startsWith('/trivia') || pathname === '/' || pathname === '/arena' || pathname.startsWith('/road/trivia');
   const engineEvaluation = useEngineEvaluation();
   const [open, setOpen] = useState(false);
