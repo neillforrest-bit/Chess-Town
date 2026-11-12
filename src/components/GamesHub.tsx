@@ -50,11 +50,11 @@ export default function GamesHub() {
       </Link><div className={styles.headerTools}><span className={styles.preview}>Preview</span><button className={styles.motion} onClick={() => setPaused(current => !current)} aria-label={paused ? 'Resume Chester animation' : 'Pause Chester animation'} aria-pressed={paused} title={paused ? 'Resume animation' : 'Pause animation'}>{paused ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4L16 10L7 16Z" fill="currentColor"/></svg> : <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5V15M13 5V15" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>}</button></div>
     </header>
     <section className={styles.welcome}>
-      <div className={styles.heroCopy}><span className={styles.hostLabel}>I&apos;m Chester. Your host.</span><h1 id="gt-title">{inside && game ? game.name : <>Good times,<br /><em>this way.</em></>}</h1><span className={styles.heroCaption}>{inside ? 'Find your favourite way to play.' : 'Four towns. Plenty of possibilities.'}</span></div>
+      <div className={styles.heroCopy}><span className={styles.hostLabel}>I&apos;m Chester. Your host.</span><h1 id="gt-title">{inside && game ? game.name : <>Good times,<br /><em>this way.</em></>}</h1>{inside && <span className={styles.heroCaption}>Find your favourite way to play.</span>}</div>
       <div className={styles.character} key={world || 'welcome'}><ChesterCompanion paused={paused}/></div>
       <div className={styles.orbit} aria-hidden="true"/>
+      {!inside && <p className={styles.heroTagline}>You can do better than doom scrolling. Play a game, find a film, maybe even test your knowledge or grammar.</p>}
     </section>
-    {!inside && <p className={styles.tagline}>You can do better than doom scrolling. Play a game, find a film, maybe even test your knowledge or grammar.</p>}
     {!inside ? <>
       <div className={styles.field}><label htmlFor="gt-game">Pick your town tonight</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World | ''; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'movie' ? 'tonight' : 'logic'); }}>
         <option value="" disabled>Pick a town tonight...</option>

@@ -60,3 +60,9 @@
 .hostBottom button{min-width:58px;min-height:34px;border:0;border-radius:10px;padding:5px 9px;background:#e1d2ef;color:#4b3166;font:800 11px ManropeGT,Arial,sans-serif;cursor:pointer}
 @media(max-height:720px){.hostWelcome{gap:7px}.hostPrompter :global(.chester-teleprompter__message){font-size:12px!important;line-height:1.4!important}.hub:not(.inside) .welcomeCard{padding:10px}.hostBottom small{font-size:8px!important}}
 @media(max-height:600px){.hostWelcome{gap:5px}.hub:not(.inside) .welcome{height:74px}.hub:not(.inside) .welcomeCard{padding:8px}.hostPrompter :global(.chester-teleprompter){padding:7px!important;gap:6px!important}.hostPrompter :global(.chester-teleprompter__message){font-size:11px!important;line-height:1.35!important}.hostPrompter :global(.chester-teleprompter)>div:first-child{width:28px!important;height:28px!important}.hostTabs button{min-height:30px;font-size:9px}.hostBottom button{min-height:30px}.hostBottom small{font-size:8px!important}}
+/* Keep the invitation inside Chester's purple hero, not between the panels. */
+.hub:not(.inside) .welcome{height:206px;align-items:flex-start;padding-bottom:60px}
+.heroTagline{position:absolute;left:20px;right:20px;bottom:15px;z-index:3;font:600 11px/1.45 ManropeGT,Arial,sans-serif;color:#f0e5ff;max-width:none;text-align:left;border-top:1px solid #dbc1ff44;padding-top:9px}
+.hub:not(.inside) .character{bottom:35px;width:158px;height:158px}
+@media(max-height:720px){.hub:not(.inside) .welcome{height:156px;padding-top:14px;padding-bottom:54px}.heroTagline{left:16px;right:16px;bottom:10px;font-size:10px;line-height:1.4;padding-top:7px}.hub:not(.inside) .character{width:126px;height:126px;bottom:26px}}
+@media(max-height:600px){.hub:not(.inside) .welcome{height:136px;padding-top:10px;padding-bottom:50px}.heroTagline{left:13px;right:13px;bottom:8px;font-size:9px;line-height:1.4;padding-top:5px}.hub:not(.inside) .character{width:105px;height:105px;bottom:27px}}
