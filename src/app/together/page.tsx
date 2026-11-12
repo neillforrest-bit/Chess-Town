@@ -8,8 +8,8 @@ const makeCode = () => Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.r
 export default function Together() {
   const router = useRouter();
   const [name, setName] = useState(''); const [code, setCode] = useState('');
-  const [joining, setJoining] = useState(false);
-  useEffect(() => { try { setName(localStorage.getItem('cs-name') || ''); } catch { /* storage optional */ } }, []);
+  const [joining, setJoining] = useState(false); const [ready, setReady] = useState(false);
+  useEffect(() => { try { setName(localStorage.getItem('cs-name') || ''); } catch { /* storage optional */ } setReady(true); }, []);
   const launch = (solo = false) => {
     const n = name.trim(); if (!n) return;
     try { localStorage.setItem('cs-name', n); } catch { /* storage optional */ }
@@ -20,7 +20,7 @@ export default function Together() {
     <section className={styles.title}><span className={styles.eyebrow}>TWO PHONES. ONE FILM.</span><h1>Movie night,<br/><em>together.</em></h1><p>The age-old problem: what do we watch? Turn it into a game with your partner.</p></section>
     <ol className={styles.steps}><li><b>Invite</b><span>Create a room and share its link.</span></li><li><b>Play</b><span>Match your moods. Draft in secret.</span></li><li><b>Choose</b><span>Battle the bracket. Crown tonight&apos;s film.</span></li></ol>
     <section className={styles.form}>
-      <label htmlFor="movie-host-name">Your callsign</label><input id="movie-host-name" autoComplete="nickname" maxLength={14} placeholder="e.g., Forrest" value={name} onChange={e => setName(e.target.value)}/>
+      <label htmlFor="movie-host-name">Your callsign</label><input id="movie-host-name" disabled={!ready} autoComplete="nickname" maxLength={14} placeholder="e.g., Forrest" value={name} onChange={e => setName(e.target.value)}/>
       <button className={styles.primary} disabled={!name.trim()} onClick={() => launch()}>CREATE A SHARE-LINK ROOM <span>→</span></button>
       <p className={styles.note}>Full Vibe → Draft → Bracket → Watch game. No bot joins your partner&apos;s seat.</p>
     </section>
