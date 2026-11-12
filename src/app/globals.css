@@ -1998,3 +1998,15 @@ body:has(.trivia-brawl-page, .trivia-party) .trivia-grammar .grammar-wildcard-me
  body:has(.trivia-brawl-page, .trivia-party) .trivia-grammar .trivia-live-board__strap{ padding: .1rem; }
 }
 @media (max-height:650px) { body:has(.trivia-brawl-page, .trivia-party) .trivia-showtime.trivia-grammar{ padding: .5rem; } }body:has(.trivia-brawl-page, .trivia-party) :is(.chester-fab,.chester-drawer) { display: none !important; }
+
+/* Keep the first Grammar screen inside the phone, with secondary rules on demand. */
+body:has(.trivia-brawl-page) .trivia-grammar .trivia-brawl-header > div > h1{font-size:1.5rem;line-height:1.05}
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-brawl-draft > .trivia-brawl-primary{margin:0;min-height:44px;padding:.5rem;font-size:.9rem}
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-brawl-draft > p{margin:0;font-size:.85rem;line-height:1.25}
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-brawl-draft h2{margin:0}
+body:has(.trivia-brawl-page) .trivia-grammar .trivia-lobby-secondary{font-size:.8rem;line-height:1.35}
+@media(max-height:650px){
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .chester-teleprompter{display:none}
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .trivia-marquee{padding:.35rem 0;font-size:.55rem}
+body:has(.trivia-brawl-page) .trivia-grammar.trivia-showtime--lobby .grammar-setup-summary{display:none}
+}

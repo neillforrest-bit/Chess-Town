@@ -1330,13 +1330,12 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
     <TriviaSetupPanel settings={settings} onChange={updateSettings} brawlModes />
     <section className="trivia-brawl-draft">
       <h2>Who are you playing?</h2>
-      <p>Friends: 25 main questions across five rounds, plus five flash finales. Chester solo: a shorter five-question quiz.</p>
+      <p>Friends: five rounds plus flash finales. Solo: five questions.</p>
       <button className="trivia-brawl-primary" onClick={onHost}>PLAY A FRIEND · SEND INVITE</button>
       <button className="trivia-brawl-primary" onClick={onSolo}>PLAY SOLO VS CHESTER · 5 QUESTIONS</button>
-      <p className="trivia-setup__note">Chester scores at your chosen difficulty. This short mode has no wildcards or flash finales.</p>
+
       <button className="trivia-brawl-primary" onClick={onPass}>PASS &amp; PLAY · ONE PHONE</button>
-      <Link className="trivia-brawl-primary trivia-party-entry" href="/trivia-party">PARTY TABLE · UP TO 5 PHONES</Link>
-      <p className="trivia-setup__note">Separate group rules, one host, saved guest seats. The host keeps the table open.</p>
+      <details className="trivia-lobby-secondary"><summary>Party table &amp; solo rules</summary><p>Solo has no wildcards or flash finales. Party has separate group rules, one host and saved guest seats. The host keeps the table open.</p><Link className="trivia-brawl-primary trivia-party-entry" href="/trivia-party">PARTY TABLE · UP TO 5 PHONES</Link></details>
     </section>
     <details className="trivia-brawl-draft trivia-lobby-more">
       <summary>Honour board</summary>
