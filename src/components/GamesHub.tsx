@@ -16,9 +16,10 @@ const worlds = {
 };
 type World = keyof typeof worlds;
 const movieModes = [
+  { id: 'movie-night', title: 'Movie night · with your partner', description: 'Solve the age-old problem of what to watch. Share a room link, match your moods, draft in secret and battle a bracket for tonight’s film.', href: 'https://chess-town-git-instinct-movie-no-calibration-20261112-neillo.vercel.app/together', action: 'Create or join Movie Night' },
   { id: 'tonight', title: 'Tonight · find a film', description: 'Pick a mood or jump straight to films. No film list or streaming setup needed.', href: 'https://chess-town-git-instinct-movie-no-calibration-20261112-neillo.vercel.app/tonight', action: 'Find a film' },
   { id: 'discover', title: 'Discovery Night', description: 'Explore films you might not have thought to look for.', href: 'https://chess-town-git-movie-night-neillo.vercel.app/discover', action: 'Explore films' },
-  { id: 'movie-night', title: 'Movie night · together', description: 'Open the existing movie-picking game and choose your night.', href: 'https://chess-town-git-movie-night-neillo.vercel.app/', action: 'Open Movie Time' },
+
 ];
 const logicModes = [
   { id: 'logic', title: 'Choose your table', description: 'Solo with Chester, pass & play or a friend battle. Choose inside the existing preview.', href: 'https://chess-town-git-instinct-brendo-gothic-neillo.vercel.app/logic-brawl', action: 'Choose your table' },
@@ -34,7 +35,7 @@ export default function GamesHub() {
   const selected = modes.find(mode => mode.id === modeId) || modes[0];
   const game = world ? worlds[world] : null;
   useEffect(() => {
-    const back = () => { const params = new URLSearchParams(window.location.search); const town = params.get('town'); if (town && town in worlds) { setWorld(town as World); setModeId(town === 'trivia' ? 'solo' : town === 'chess' ? 'chester' : town === 'movie' ? 'tonight' : 'logic'); setInside(params.get('choose') === 'mode'); } else setInside(false); };
+    const back = () => { const params = new URLSearchParams(window.location.search); const town = params.get('town'); if (town && town in worlds) { setWorld(town as World); setModeId(town === 'trivia' ? 'solo' : town === 'chess' ? 'chester' : town === 'movie' ? 'movie-night' : 'logic'); setInside(params.get('choose') === 'mode'); } else setInside(false); };
     back(); window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
@@ -56,7 +57,7 @@ export default function GamesHub() {
       {!inside && <p className={styles.heroTagline}>You can do better than doom scrolling. Play a game, find a film, maybe even test your knowledge or grammar.</p>}
     </section>
     {!inside ? <>
-      <div className={styles.field}><label htmlFor="gt-game">Pick your town tonight</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World | ''; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'movie' ? 'tonight' : 'logic'); }}>
+      <div className={styles.field}><label htmlFor="gt-game">Pick your town tonight</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World | ''; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'movie' ? 'movie-night' : 'logic'); }}>
         <option value="" disabled>Pick a town tonight...</option>
         {Object.entries(worlds).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}
       </select></div>
