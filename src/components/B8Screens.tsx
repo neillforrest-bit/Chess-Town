@@ -1,6 +1,7 @@
 'use client';
 import { isSpectacle, SPEC_TAG } from '@/utils/sabotageEngine';
 import { useEffect, useRef, useState } from 'react';
+import PlayerReadiness from './PlayerReadiness';
 import { BY_ID, TROPE_NAMES, type Intent, type PID, type State, actorHit, moodMatch } from '@/lib/game';
 import { R, bars, previewMatches, type M8 } from '@/lib/b8';
 import { Poster, secs, buzz, Scores, OrsonFace } from './shared';
@@ -113,6 +114,7 @@ export function TapePage({ s, now, tv, pid, send }: { s: State; now: number; tv?
     </div>
     <div className="cs-tape-nav"><button className="cs-btn" disabled={i === 0} onClick={() => go(-1)}>‹</button><div className="cs-tape-dots">{ms.map((_, k) => <i key={k} className={k === i ? 'is-on' : ''} onClick={() => setI(k)} />)}</div><button className="cs-btn" disabled={i >= ms.length - 1} onClick={() => go(1)}>›</button></div>
     <p className="cs-tape-or"><b>ORSON:</b> {line}</p>
+    <PlayerReadiness s={s} ready={ack} label="Bracket readiness" />
     {!tv && pid ? <button className="cs-btn cs-btn--gold" disabled={dn} onClick={() => send?.({ t: 'ack', pid })}>{dn ? 'WAITING FOR THE OTHER CORNER...' : 'START BRACKET'}</button> : <p className="cs8-sayline">{s.players.A.name}: {ack.A ? 'ready' : 'reading'} · {s.players.B.name}: {ack.B ? 'ready' : 'reading'}</p>}
   </div>;
 }
@@ -148,6 +150,7 @@ export function BracketPage({ s, now, tv, pid, send }: { s: State; now: number; 
     {sh.kind === 'seed' && <div className="cs8-reveal">{b.matches.filter((m) => m.round === 2).map((m, i) => { const step = Math.floor((R.SEED_MS - rem) / 2600); const on = i <= step; return <div key={m.id} className={'cs8-rv' + (on ? ' is-on' : '')}><span className="is-a"><i>{b.conf[m.a as number] ? `${s.players[b.conf[m.a as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.a as number].rank}${b.conf[m.a as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.a as number].t, 17)}</b></span><em>VS</em><span className="is-b"><i>{b.conf[m.b as number] ? `${s.players[b.conf[m.b as number].p].name.slice(0, 5).toUpperCase()} #${b.conf[m.b as number].rank}${b.conf[m.b as number].golden ? ' ★' : ''}` : ''}</i><b>{clip(BY_ID[m.b as number].t, 17)}</b></span></div>; })}</div>}
     {sh.kind !== 'seed' && stage === 'tree' && !explainNext && <BracketMap s={s} tv={tv} />}
     {explainNext && nxt && <div className="cs8-explain"><div className="cs8-ex is-big"><b>{ROUND_INFO[nxt.round].name}</b><p>{ROUND_INFO[nxt.round].says}</p></div></div>}
+    {(hold || sh.kind === 'round' || (sh.kind === 'seed' && rem <= 0)) && <PlayerReadiness s={s} ready={b.ack || { A: false, B: false }} label="Bracket readiness" />}
     {(hold || sh.kind === 'round' || (sh.kind === 'seed' && rem <= 0)) && (() => { const a = b.ack || { A: false, B: false }; const me = pid; const done = me ? a[me] : false; return tv || !me ? <p className="cs8-sayline">{s.players.A.name}: {a.A ? 'ready' : 'reading'} · {s.players.B.name}: {a.B ? 'ready' : 'reading'}</p> : <><button className="cs-btn cs-btn--gold" disabled={done} onClick={() => send?.({ t: 'ack', pid: me })}>{done ? 'WAITING FOR ' + s.players[me === 'A' ? 'B' : 'A'].name.toUpperCase() + '...' : stage === 'explain' ? "GOT IT, LET'S GO" : stage === 'rank' ? 'READY FOR THE BRACKET' : sh.kind === 'seed' ? 'READY · FIRST BOUT' : endRound ? 'READY FOR THE NEXT ROUND' : 'READY FOR THE NEXT BOUT'}</button></>; })()}
     {stage === 'tree' && !endRound && (nxt?.tape || sh.line) && <p className="cs8-sayline">{nxt?.tape || sh.line}</p>}
   </div>;

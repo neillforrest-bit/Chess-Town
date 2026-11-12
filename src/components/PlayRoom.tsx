@@ -1,4 +1,5 @@
 'use client';
+import PlayerReadiness from './PlayerReadiness';
 import { useMood } from './useMood';
 import { rrLive } from '@/lib/b8';
 import { useEffect, useRef, useState } from 'react';
@@ -170,19 +171,22 @@ export default function PlayRoom({ code }: { code: string }) {
   if (s.phase === 'lobby') {
     const link = typeof window !== 'undefined' ? `${location.origin}/invite?gameId=${code}` : '';
     return shell(<div className="cs-center">
-      <div className="cs-orson">ORSON</div>
-      <p className="cs-say">{them.joined ? `${them.name} has arrived. Splendid. Two humans, one disagreement.` : 'Welcome. I am Orson, your host. I require two humans and one disagreement.'}</p>
+      <div className="cs-orson">ORSON · GET YOUR TABLE READY</div>
+      <PlayerReadiness s={s} ready={s.lobbyReady || { A: false, B: false }} />
+      <p className="cs-say cs-lobby-welcome">{them.joined ? `${them.name} has arrived. Splendid. Two humans, one disagreement.` : 'Welcome. I am Orson, your host. I require two humans and one disagreement.'}</p>
       <div className="cs-code">{code}</div>
       {!them.joined && <p className="cs-small">Give your partner this code on the join screen, or send the link.</p>}
       {s.mem.last && <p className="cs-small">Last time: {s.mem.last}. I remember everything.</p>}
       {led && <p className="cs-small cs-gold">{led}</p>}
-      {pid === 'A' && <button className={'cs-toggle' + (s.roast ? ' is-on' : '')} onClick={() => send({ t: 'roast', on: !s.roast })}>ROAST MODE · {s.roast ? 'ON' : 'OFF'}</button>}
-      {pid === 'A' && <div className="cs-hr"><em>HOUSE RULES</em>
+      {pid === 'A' && <details className="cs-lobby-settings"><summary>House rules &amp; roast settings</summary><button className={'cs-toggle' + (s.roast ? ' is-on' : '')} onClick={() => send({ t: 'roast', on: !s.roast })}>ROAST MODE · {s.roast ? 'ON' : 'OFF'}</button>
+      <div className="cs-hr"><em>HOUSE RULES</em>
         <button className={'cs-toggle' + (s.hr?.wilds ? ' is-on' : '')} onClick={() => send({ t: 'hr', pid, wilds: !s.hr?.wilds, sealed: s.hr?.sealed !== false })}>WILDCARD ENTRANTS · {s.hr?.wilds ? 'ON' : 'STRICT'}</button>
         <button className={'cs-toggle' + (s.hr?.sealed !== false ? ' is-on' : '')} onClick={() => send({ t: 'hr', pid, wilds: s.hr?.wilds === true, sealed: !(s.hr?.sealed !== false) })}>SEALED SCORES · {s.hr?.sealed !== false ? 'ON' : 'OFF'}</button>
-      </div>}
+      </div></details>}
       <button className="cs-btn" onClick={() => { const msg = `Join my CineSync movie night! Room code: ${code}\n${link}`; if (navigator.share) { navigator.share({ text: msg }).catch(() => navigator.clipboard?.writeText(msg)); } else navigator.clipboard?.writeText(msg); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'COPIED' : 'COPY INVITE LINK'}</button>
-      <p className="cs-small">TV: open <b>/tv/{code}</b></p>
+      <button className={'cs-btn cs-btn--gold cs-lobby-ready' + (s.lobbyReady?.[pid] ? ' is-ready' : '')} aria-pressed={!!s.lobbyReady?.[pid]} onClick={() => send({ t: 'lobbyready', pid, ready: !s.lobbyReady?.[pid] })}>{s.lobbyReady?.[pid] ? "I'M READY · CHANGE TO NOT READY" : "I'M READY"}</button>
+      <p className="cs-small cs-lobby-help">{!them.joined ? 'Send the invite. Both players tap Ready to start.' : s.lobbyReady?.[pid] ? `Waiting for ${them.name} to tap Ready.` : 'Both joined. Tap Ready when you want to start.'}</p>
+      <p className="cs-small cs-lobby-tv">TV: open <b>/tv/{code}</b></p>
     </div>);
   }
 
