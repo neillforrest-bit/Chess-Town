@@ -6,7 +6,11 @@ export async function GET() {
   const stun = { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] };
   let relay: RTCIceServer[] = [];
   try {
-    const configured: unknown = JSON.parse(process.env.TRIVIA_TURN_SERVERS || '[]');
+    const raw = process.env.TRIVIA_TURN_SERVERS || '[]';
+    // Accept the existing saved single-quoted relay list without evaluating code.
+    let configured: unknown;
+    try { configured = JSON.parse(raw); }
+    catch { configured = JSON.parse(raw.replace(/'/g, '"')); }
     if (Array.isArray(configured)) relay = configured.filter((entry): entry is RTCIceServer => {
       if (!entry || typeof entry !== 'object') return false;
       const urls = Array.isArray(entry.urls) ? entry.urls : [entry.urls];
