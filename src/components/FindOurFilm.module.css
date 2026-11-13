@@ -28,3 +28,5 @@
 .shelfSheet{height:min(92dvh,720px);max-height:92dvh}.shelfSheet>.scroll{width:100%;box-sizing:border-box}.shelfSheet>h2{flex:none}
 
 .cardChoices{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cardChoices button{min-height:42px;padding:10px 6px;font-size:12px}.story{-webkit-line-clamp:4}@container(max-height:440px){.story{-webkit-line-clamp:4}}@container(max-height:300px){.story{-webkit-line-clamp:3}}
+
+.scroll>.card{height:100%;box-sizing:border-box}.scroll>.card>.cardTop,.scroll>.card>.scores,.scroll>.card>.cardButtons{flex:none}.scroll>.card>.story{flex:1;min-height:0;max-height:10em;display:block;overflow:hidden}.scroll>.card>.why{flex:none}@media(max-height:600px){.host p{-webkit-line-clamp:2}.cardChoices button{min-height:40px}}
