@@ -4793,3 +4793,23 @@ body:has(.good-together-hub){background:#251a36}body:has(.good-together-hub) .ap
 .chester-drawer header{color:#d8c2ff!important;font-family:ManropeGT,Arial,sans-serif}
 .chester-drawer header button{color:#fff5ed!important}
 .portrait-lock{background:#251a36!important;font-family:ManropeGT,Arial,sans-serif!important}
+
+/* ===== Trivia donkey alignment (Game Town consistency pass, 13 Nov 2026) ===== */
+body:has(.trivia-brawl-page, .trivia-party) .trivia-page{color:#fff5ed;background:radial-gradient(ellipse at 100% 0%,#3b2850 0%,#251a36 60%);font-family:ManropeGT,Arial,sans-serif}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-header span{color:#c2a4fa;font:800 .62rem/1 ManropeGT,Arial,sans-serif;letter-spacing:1.5px}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-header h1{font:800 clamp(1.8rem,8vw,3.2rem)/.95 ManropeGT,Arial,sans-serif;letter-spacing:-1px;color:#fff8ef}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-header a{border:1px solid #6f568d;border-radius:10px;color:#e1d2ef;font:800 .65rem/1 ManropeGT,Arial,sans-serif}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-game{border:1px solid #6f568d;border-radius:16px;background:rgba(46,32,66,.94);box-shadow:0 8px 28px #0e061855}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-scoreboard{border-bottom-color:#6f568d;color:#d8c2ff;font:800 .7rem/1 ManropeGT,Arial,sans-serif}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-scoreboard b{color:#d8efa1}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-question{border-left:3px solid #b987e8;background:rgba(151,96,204,.14)}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-question span{color:#d8b8f5;font:800 .62rem/1 ManropeGT,Arial,sans-serif}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-question h2{font:800 clamp(1.1rem,4vw,1.5rem)/1.25 ManropeGT,Arial,sans-serif;color:#fff8ef}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-answers button,body:has(.trivia-brawl-page, .trivia-party) .trivia-next,body:has(.trivia-brawl-page, .trivia-party) .trivia-error button{border:1px solid #8a6bb5;border-radius:12px;background:rgba(112,68,217,.14);color:#f3eaff;font:700 .88rem/1.25 ManropeGT,Arial,sans-serif}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-answers button:hover:not(:disabled){background:rgba(112,68,217,.3)}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-answers button.is-correct{border-color:#8be28b;background:rgba(139,226,139,.16);color:#dfffd8}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-answers button.is-wrong{border-color:#e88bb0;background:rgba(232,139,176,.16);color:#ffdbe9}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-host-reply{border-left-color:#d8efa1;background:rgba(216,239,161,.1);color:#f2f9d4;font:700 .9rem/1.4 ManropeGT,Arial,sans-serif}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-next,body:has(.trivia-brawl-page, .trivia-party) .trivia-error button{border-color:#a9bd6f;background:#d8efa1;color:#2a2633;font-weight:800}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-loading,body:has(.trivia-brawl-page, .trivia-party) .trivia-error{color:#c2a4fa;font:800 .72rem/1.4 ManropeGT,Arial,sans-serif}
+body:has(.trivia-brawl-page, .trivia-party) .trivia-error{color:#e88bb0}

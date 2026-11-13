@@ -19,9 +19,9 @@ const worlds = {
 type World = keyof typeof worlds;
 const movieModes = [
   { id: 'find', title: 'Find Our Film · choose together', description: 'Pick a mood, save films you love and find a match for tonight together. Orson hosts the latest private two-player film finder.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/find', action: 'Find our film' },
-  { id: 'movie-night', title: 'Movie night · with your partner', description: 'Solve the age-old problem of what to watch. Share a room link, match your moods, draft in secret and battle a bracket for tonight’s film.', href: 'https://chess-town-git-instinct-movie-no-calibration-20261112-neillo.vercel.app/together', action: 'Create or join Movie Night' },
-  { id: 'tonight', title: 'Tonight · find a film', description: 'Pick a mood or jump straight to films. No film list or streaming setup needed.', href: 'https://chess-town-git-instinct-movie-no-calibration-20261112-neillo.vercel.app/tonight', action: 'Find a film' },
-  { id: 'discover', title: 'Discovery Night', description: 'Explore films you might not have thought to look for.', href: 'https://chess-town-git-movie-night-neillo.vercel.app/discover', action: 'Explore films' },
+  { id: 'movie-night', title: 'Movie night · with your partner', description: 'Solve the age-old problem of what to watch. Share a room link, match your moods, draft in secret and battle a bracket for tonight’s film.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/together', action: 'Create or join Movie Night' },
+  { id: 'tonight', title: 'Tonight · find a film', description: 'Pick a mood or jump straight to films. No film list or streaming setup needed.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/tonight', action: 'Find a film' },
+  { id: 'discover', title: 'Discovery Night', description: 'Explore films you might not have thought to look for.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/discover', action: 'Explore films' },
 
 ];
 const logicModes = [
