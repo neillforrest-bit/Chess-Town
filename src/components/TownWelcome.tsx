@@ -20,6 +20,7 @@ export default function TownWelcome({ town, overview, onStart, paused = false }:
     try { localStorage.setItem(WELCOME_KEY, JSON.stringify({ road: road ?? 1, at: Date.now() })); } catch { /* still show the welcome without storage */ }
   }, []);
   const guides = {
+    'Checkers Town':'Checkers Town: take on Chester, invite a friend to a live board or climb the checkers road. Forced jumps and kings keep every turn interesting.',
     'Quiz Town': 'Quiz Town: five rounds against me, Trivia Brawl with a friend, Grammar, or Party Table for the whole gang. Pass & Play shares one phone. Last Call keeps the points coming. Climb 15 levels on the Road to the Landlord. Knowledge or grammar: bragging rights await.',
     'Chess Town': 'Chess Town: play me with coaching, face a friend in Local Chess Duel, or take Expert Chester on as The Underdog with a little house help. Lessons, Surprise Lab and game reviews sharpen your skills. The Daily Challenge is your two-move brain workout.',
     'Movie Town': 'Movie Town: start with Find Our Film to choose together. Switch the mode picker inside Movie Town for the original Movie Night, Tonight or Discovery Night. Orson hosts the films.',
@@ -38,6 +39,6 @@ export default function TownWelcome({ town, overview, onStart, paused = false }:
       {[{ label: state.returning ? 'Your last visit' : 'Welcome', index: 0 }, { label: town ? 'This town' : 'Town guide', index: 1 }, { label: 'Get started', index: last }].map(({ label, index }) => <button key={label} aria-pressed={index === 1 ? activePage > 0 && activePage < last : activePage === index} onClick={() => setPage(index)}>{label}</button>)}
     </div>
     <div className={styles.hostPrompter} aria-live="polite"><div className="chester-teleprompter" style={{display:"flex",alignItems:"flex-start"}}><div className={styles.hostDonkey}><ChesterCompanion paused={paused}/></div><div className="chester-teleprompter__message" style={{color:"#fff"}}>{lines[activePage]}</div></div></div>
-    <div className={styles.hostBottom}><small>{activePage > 0 && activePage < last ? `${town || ['Quiz Town', 'Chess Town', 'Movie Town', 'Puzzle Town'][activePage - 1]} · ${activePage} of ${guidePages.length}` : 'Recaps stay in this browser. Film/puzzle results are not synced.'}</small><button onClick={() => { if (activePage < last) setPage(activePage + 1); else onStart(); }}>{activePage < last ? 'Next' : 'Pick a town'} <span aria-hidden="true">→</span></button></div>
+    <div className={styles.hostBottom}><small>{activePage > 0 && activePage < last ? `${town || ['Checkers Town','Quiz Town', 'Chess Town', 'Movie Town', 'Puzzle Town'][activePage - 1]} · ${activePage} of ${guidePages.length}` : 'Recaps stay in this browser. Film/puzzle results are not synced.'}</small><button onClick={() => { if (activePage < last) setPage(activePage + 1); else onStart(); }}>{activePage < last ? 'Next' : 'Pick a town'} <span aria-hidden="true">→</span></button></div>
   </div>;
 }
