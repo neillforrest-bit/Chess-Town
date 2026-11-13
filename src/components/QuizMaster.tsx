@@ -24,7 +24,7 @@ export function QuizMaster({ question, label = 'Chester asks', className = '' }:
 export function QuizCountdown({ seconds, duration, label = 'Time to think' }: { seconds: number; duration: number; label?: string }) {
   const ratio = Math.max(0, Math.min(1, seconds / duration));
   const low = seconds <= Math.min(5, duration / 3) && seconds > 0;
-  return <div className={`quiz-countdown${low ? ' is-red' : ''}`} role="timer" aria-label={`${Math.ceil(seconds)} seconds remaining`} style={{ '--quiz-clock-colour': `hsl(${Math.round(ratio * 120)} 68% 54%)` } as React.CSSProperties}>
+  return <div className={`quiz-countdown${low ? ' is-red' : ''}`} role="timer" aria-label={`${Math.ceil(seconds)} seconds remaining`} style={{ '--quiz-clock-colour': `hsl(${low ? 0 : Math.round(ratio * 120)} 68% 54%)` } as React.CSSProperties}>
     <div className="quiz-countdown__caption"><span>{label}</span><b>{seconds > 0 ? `${Math.ceil(seconds)}s` : "Time's up"}</b></div>
     <div className="quiz-countdown__track"><i style={{ width: `${ratio * 100}%` }} /></div>
   </div>;
