@@ -16,6 +16,8 @@ async function post(body,seat,player){const r=await api.POST(req(body,seat,playe
  x=await post({join:true,invite},seatB,'b'.repeat(64));assert.equal(x.r.status,200);assert.equal(x.d.players.B.name,'Jem');
  x=await post({join:true,invite},'f'.repeat(64),'b'.repeat(64));assert.equal(x.r.status,409);
  x=await post({it:{t:'join',name:'Other'}});assert.equal(x.r.status,403);
+ // Lost-response retries carry the same action ID and must not apply twice.
+ let idem=await post({it:{t:'ready',ready:true},actionId:'1'.repeat(64)});assert.equal(idem.r.status,200);const firstV=idem.d.v;idem=await post({it:{t:'ready',ready:true},actionId:'1'.repeat(64)});assert.equal(idem.d.v,firstV);assert.equal(Object.keys(rooms.get(code).actionReceipts).length,1);
  // Remove the intentional UI debounce for deterministic fixture actions.
  const age=()=>rooms.get(code).updatedAt=0;age();x=await post({it:{t:'ready',ready:true}});assert.equal(x.r.status,200);assert.equal(x.d.phase,'lobby');age();skipCAS=true;x=await post({it:{t:'ready',ready:true}},seatB,'b'.repeat(64));assert.equal(x.r.status,200);assert.equal(x.d.phase,'brief');
  const getHeaders={'x-find-seat':seatA,'x-find-player':'a'.repeat(64)};let r=await api.GET(new Request('http://localhost/api/find-room/'+code,{headers:getHeaders}),param);assert.equal(r.status,200);const tag=r.headers.get('etag');assert(tag);r=await api.GET(new Request('http://localhost/api/find-room/'+code,{headers:{...getHeaders,'if-none-match':tag}}),param);assert.equal(r.status,304);

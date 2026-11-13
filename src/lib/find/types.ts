@@ -13,12 +13,12 @@ export type FindState = {
  movies: FindMovie[]; pool: number[]; opinions: Record<PID, Record<number, Opinion>>; saved: Record<PID, number[]>; finished: Record<PID, boolean>;
  nominations: Record<PID, number[]>; nominationDone: Record<PID, boolean>; acceptance: Record<PID, Record<number, boolean>>; acceptanceDone: Record<PID, boolean>;
  finalists: number[]; bout: { a: number; b: number; votes: Partial<Record<PID, number | 'either'>> } | null; champion: number | null; confirmed: Record<PID, boolean>;
- line: string; issue: string | null; trace: string[]; searchNotes?:string[]; cost: { calls: number; usd: number }; batch: number;
+ line: string; issue: string | null; trace: string[]; searchNotes?:string[]; cost: { calls: number; usd: number }; batch: number; actionReceipts?: Record<string, number>;
 };
 export type PublicFindState = Omit<FindState, 'inviteHash'>;
 export type Action =
  | { t: 'join'; name: string } | { t: 'ready'; ready: boolean }
- | { t: 'brief'; brief: Brief } | { t: 'editBrief' } | { t: 'spin' } | { t: 'veto' } | { t: 'keepSlice' } | { t: 'goldSlice' } | { t: 'upgradeWheel' } | { t: 'protectGenre'; id: string|null; done: boolean } | { t: 'vetoGenres'; ids: string[]; done: boolean }
+ | { t: 'brief'; brief: Brief } | { t: 'editBrief' } | { t: 'spin'; count?: number } | { t: 'veto' } | { t: 'keepSlice' } | { t: 'goldSlice' } | { t: 'upgradeWheel' } | { t: 'protectGenre'; id: string|null; done: boolean } | { t: 'vetoGenres'; ids: string[]; done: boolean }
  | { t: 'opinion'; id: number; value: Opinion } | { t: 'save'; id: number; save: boolean } | { t: 'finishCards' }
  | { t: 'nominate'; ids: number[]; done: boolean } | { t: 'accept'; ids: number[]; done: boolean }
  | { t: 'vote'; id: number | 'either' } | { t: 'agreeBout'; id: number } | { t: 'confirm'; yes: boolean } | { t: 'reopen' };
