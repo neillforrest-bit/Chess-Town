@@ -1,0 +1,18 @@
+from playwright.sync_api import sync_playwright
+base='https://chess-town-git-instinct-quiz-master-preview-20261113-neillo.vercel.app'
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox']);pg=b.new_page(viewport={'width':390,'height':844})
+ pg.goto(base+'/');pg.get_by_text('BUILD 212 · c3b0eea',exact=False).wait_for();assert 'c3b0eea' in pg.locator('body').inner_text();pg.wait_for_timeout(150);pg.screenshot(path='/downloads/quiz-latest-main390.png');pg.get_by_role('link',name='PLAY CHESTER',exact=False).click();pg.wait_for_url(base+'/play');assert pg.url==base+'/play';pg.wait_for_timeout(150);pg.screenshot(path='/downloads/quiz-latest-menu390.png')
+ for title,path in [('LOGIC & RIDDLES','/logic-brawl'),('PUB TRIVIA','/trivia-brawl'),('GRAMMAR','topic=grammar'),('PARTY TABLE','/trivia-party')]:
+  pg.goto(base+'/play');pg.locator('a').filter(has=pg.locator('b').get_by_text(title,exact=True)).first.click();pg.wait_for_url('**/*'+path.lstrip('/')+'*');assert path in pg.url;assert pg.url.startswith(base);print('PASS root/Play',title,pg.url,flush=True)
+  if title=='LOGIC & RIDDLES':
+   pg.get_by_label('Logic difficulty').select_option('3');pg.get_by_role('button',name='SOLO',exact=False).first.click();pg.locator('.quiz-master').wait_for();assert 'HARD' in pg.locator('.logic-eyebrow').inner_text();pg.wait_for_timeout(150);pg.screenshot(path='/downloads/quiz-latest-logic-hard390.png');pg.get_by_role('button',name='Game door',exact=False).click();assert pg.get_by_label('Logic difficulty').count()==1
+  elif title=='GRAMMAR':
+   pg.get_by_role('button',name='PLAY SOLO',exact=False).click();pg.get_by_label('Quiz difficulty').select_option('medium');pg.wait_for_timeout(150);pg.screenshot(path='/downloads/quiz-latest-grammar-setup390.png');pg.get_by_role('button',name='START GRAMMAR · MEDIUM',exact=True).click();pg.locator('.quiz-master').wait_for();assert pg.locator('.quiz-master__label').count()==0;pg.wait_for_timeout(150);pg.screenshot(path='/downloads/quiz-latest-grammar390.png')
+  elif title=='PARTY TABLE':
+   pg.get_by_role('button',name='OPEN A PARTY TABLE',exact=True).click();pg.locator('.trivia-setup').wait_for();pg.get_by_label('Quiz difficulty').select_option('hard') if pg.get_by_label('Quiz difficulty').count() else pg.get_by_role('button',name='HARD',exact=True).click();pg.wait_for_timeout(150);pg.screenshot(path='/downloads/quiz-latest-party-setup390.png')
+ for entry in ['PUB TRIVIA','LOGIC & RIDDLES','GRAMMAR','PARTY TABLE']:
+  pg.goto(base+'/battle-mode');pg.locator('a').filter(has=pg.locator('b').get_by_text(entry,exact=True)).first.click();pg.wait_for_timeout(800);assert pg.url.startswith(base);print('PASS Battle',entry,pg.url,flush=True)
+ for title,path in [('PUB TRIVIA','/trivia-brawl?road=1'),('LOGIC & RIDDLES','/logic-brawl?road=1')]:
+  pg.close();pg=b.new_page(viewport={'width':390,'height':844});pg.goto(base+'/road');pg.locator('a').filter(has=pg.locator('b').get_by_text(title,exact=True)).first.click();pg.get_by_role('link',name='PLAY LEVEL 1',exact=True).click();pg.wait_for_url(base+path);assert pg.url==base+path;assert pg.get_by_label('Logic difficulty').count()==1 if title=='LOGIC & RIDDLES' else (pg.get_by_role('button',name='EASY',exact=True).count()==1 or pg.get_by_label('Quiz difficulty').count()==1);print('PASS Road setup/difficulty',title,flush=True)
+ pg.close();pg=b.new_page();pg.goto(base+'/quiz');assert pg.get_by_role('link').count()>=4;pg.get_by_role('link',name='QUIZ GAMES',exact=True).first.click();assert pg.url==base+'/quiz';print('PASS quiz back/menu stays same build',flush=True);b.close()
