@@ -35,13 +35,13 @@ export function ChesterAvatar({ isThinking, size = 'default', trivia = false }: 
       )}
       
         
-      {trivia ? <svg aria-hidden="true" viewBox="0 0 64 64" style={{ width: '88%', height: '88%', zIndex: 10, overflow: 'visible', filter: 'drop-shadow(0 0 8px rgba(34,211,238,.55))' }}>
+      {trivia ? <svg aria-hidden="true" viewBox="0 0 64 64" style={{ width: '88%', height: '88%', zIndex: 10, overflow: 'visible', filter: 'drop-shadow(0 0 8px rgba(194,164,250,.55))' }}>
         <path d="M18 14 L25 4 L30 14 Z" fill="#ffd84d" />
         <path d="M28 13 L36 3 L41 15 Z" fill="#ff5ad9" />
-        <circle cx="25" cy="4" r="3" fill="#22d3ee" />
+        <circle cx="25" cy="4" r="3" fill="#c2a4fa" />
         <circle cx="36" cy="3" r="3" fill="#ffd84d" />
         <path d="M17 22 C17 13 25 9 33 10 C43 11 51 20 50 31 C49 44 40 55 29 55 C20 55 14 48 14 38 C10 36 8 33 9 29 C10 25 13 23 17 22 Z" fill="#f8f1df" />
-        <path d="M20 22 C18 15 24 10 32 11 C25 15 22 20 22 29 Z" fill="#22d3ee" opacity=".9" />
+        <path d="M20 22 C18 15 24 10 32 11 C25 15 22 20 22 29 Z" fill="#c2a4fa" opacity=".9" />
         <circle cx="35" cy="29" r="3" fill="#050708" />
         <path d="M42 39 C38 43 31 43 27 39" fill="none" stroke="#050708" strokeWidth="3" strokeLinecap="round" />
         <path d="M15 34 C11 35 10 39 13 42" fill="none" stroke="#050708" strokeWidth="3" strokeLinecap="round" />
