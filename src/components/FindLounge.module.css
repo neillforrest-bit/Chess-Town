@@ -9,3 +9,9 @@
 
 .poster{position:relative;flex:1;min-height:0;width:100%;background:#140d1e}.poster img{height:100%;width:100%;max-height:none;object-fit:contain;display:block}.poster>small{position:absolute;inset:0;display:grid;place-items:center;font-size:9px;color:#bfa8cb}.pick .poster{display:block;padding:0}.pick .poster img{max-height:none}.poster img{flex:none}
 @media(min-height:541px) and (max-height:700px){.match{max-height:230px}}
+
+.reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;flex:none}.reviews>div{border:1px solid #654570;border-radius:5px;padding:3px 1px;background:#21152b;min-width:0}.reviews b{font-size:10px;color:#ffdb83;display:block;line-height:1.1}.reviews small{font-size:7px;color:#cfb7d7;display:block;margin-top:2px}.reviews b:has(+small){overflow:hidden;text-overflow:ellipsis}.reviews b{font-size:9px}@media(max-height:540px){.reviews>div{padding:2px 0}.reviews b{font-size:7px}.reviews small{font-size:6px;margin-top:1px}.match{min-height:128px;max-height:128px}}
+
+.reviews b{font-size:8px}@media(max-height:540px){.match{min-height:120px;max-height:120px}.reviews b{font-size:7px}}
+
+@media(max-height:540px){.match{min-height:112px;max-height:112px}.lounge .pick{flex-direction:row}.pick .poster{flex:0 0 30px;height:100%;min-width:30px}.pick span{flex:1;width:auto;min-width:0;padding:3px}.pick b{font-size:9px}}
