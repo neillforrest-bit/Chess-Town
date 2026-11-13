@@ -25,7 +25,7 @@ async function post(body,seat,player){const r=await api.POST(req(body,seat,playe
  r=await api.GET(new Request('http://localhost/api/find-room/'+code+'?invite='+invite),param);assert.equal(r.status,200);const info=await r.json();assert.equal(info.players,undefined);assert.equal(info.host,'Forrest');
  allow=false;x=await post({it:{t:'spin'}});assert.equal(x.r.status,429);allow=true;
  // The clock advances on an authenticated read, and token spends survive races/retries.
- const {openLounge}=require(out+'/lib/find/lounge.js');let fixture=rooms.get(code);fixture.finalists=[1,2,3];fixture.movies=fixture.finalists.map(id=>({id,t:'Film '+id,g:[],y:2020,r:8,o:'Story'}));openLounge(fixture);
+ const {openLounge}=require(out+'/lib/find/lounge.js');let fixture=rooms.get(code);fixture.guided=false;fixture.finalists=[1,2,3];fixture.movies=fixture.finalists.map(id=>({id,t:'Film '+id,g:[],y:2020,r:8,o:'Story'}));openLounge(fixture);
  x=await post({it:{t:'loungePair',ids:[1,2]}});assert.equal(x.r.status,200);
  x=await post({it:{t:'loungeBid',id:1,tokens:8},actionId:'2'.repeat(64)});assert.equal(x.r.status,200);const bidV=x.d.v;
  x=await post({it:{t:'loungeBid',id:1,tokens:8},actionId:'2'.repeat(64)});assert.equal(x.d.v,bidV);
@@ -36,6 +36,10 @@ async function post(body,seat,player){const r=await api.POST(req(body,seat,playe
  x=await post({it:{t:'loungeWild',kind:'steal'},actionId:'3'.repeat(64)});assert.equal(x.d.lounge.bank.A,27);
  x=await post({it:{t:'loungeBid',id:1,tokens:8,round:0,stage:'bout'},actionId:'5'.repeat(64)});assert.equal(x.r.status,409);
  console.log('PASS API Lounge simultaneous bid/steal CAS, duplicate action IDs, server clock-on-read, exactly-once deduction and stale-bout rejection.');
+ // Required actor agreement gates the only catalogue search.
+ fixture=rooms.get(code);fixture.guided=true;fixture.phase='brief';fixture.brief={A:{kind:'any',mood:'learn',genres:[],exclude:[],actors:[],requireActor:false,ready:false},B:{kind:'any',mood:'feel',genres:[],exclude:[],actors:[],requireActor:false,ready:false}};
+ const actorBrief={kind:'any',mood:'think',genres:[],exclude:[],actors:['Actor One'],actorPicks:[{id:1,name:'Actor One'}],requireActor:true,ready:true};const beforeSearch=searches;
+ x=await post({it:{t:'brief',brief:actorBrief}});assert.equal(x.r.status,200);x=await post({it:{t:'brief',brief:fixture.brief.B}},seatB,'b'.repeat(64));assert.equal(x.r.status,200);assert.equal(x.d.phase,'actorAgree');assert.equal(searches,beforeSearch);x=await post({it:{t:'agreeActors',yes:true}});assert.equal(x.d.phase,'actorAgree');assert.equal(searches,beforeSearch);x=await post({it:{t:'agreeActors',yes:true}},seatB,'b'.repeat(64));assert.equal(x.r.status,200);assert.equal(searches,beforeSearch+1);assert.equal(x.d.phase,'brief');assert(x.d.issue);console.log('PASS guided actor agreement gates live search until both consent; empty verified pool returns honest edit, no substitution.');
  let network=0;global.fetch=async()=>{network++;throw Error('Paid call forbidden');};const model=require(out+'/app/api/orson/route.js');r=await model.POST(new Request('http://localhost/api/orson',{method:'POST',body:'{}'}));assert.equal(r.status,403);assert.equal(network,0);
  console.log('PASS API fixtures: exact server-owned usernames; both player and seat credentials required; occupied guest cannot be claimed; direct rename rejected; CAS retry; conditional 304; invite metadata only; durable-limit refusal; paid Orson endpoint hard-disabled with no network call. No live DB writes.');
 })().catch(e=>{console.error(e);process.exitCode=1});

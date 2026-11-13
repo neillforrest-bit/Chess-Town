@@ -12,11 +12,12 @@ export const MOOD_RULES = [
  { id:'human', name:'Drama and romance', description:'Drama or romance metadata, excluding horror, action and thriller.', genres:['Drama','Romance'], test:(m:FindMovie)=>m.g.some(g=>['Drama','Romance'].includes(g)) && !m.g.some(g=>['Horror','Action','Thriller'].includes(g)) },
  { id:'true', name:'Stranger than fiction', description:'Documentaries backed by their genre metadata.', genres:['Documentary'], test:(m:FindMovie)=>m.g.includes('Documentary') },
 ];
-const moodGenres:Record<Brief['mood'],string[]>={open:[],light:['Comedy','Family','Romance','Animation'],tense:['Thriller','Mystery','Crime','Horror'],thoughtful:['Drama','Documentary','Science Fiction','History'],adventure:['Adventure','Action','Fantasy','Science Fiction']};
+const moodGenres:Record<Brief['mood'],string[]>={laugh:['Comedy','Animation','Family'],think:['Mystery','Science Fiction','Drama','Thriller'],learn:['Documentary','History','War'],feel:['Drama','Romance','Music','Family'],surprise:[],open:[],light:['Comedy','Family','Romance','Animation'],tense:['Thriller','Mystery','Crime','Horror'],thoughtful:['Drama','Documentary','Science Fiction','History'],adventure:['Adventure','Action','Fantasy','Science Fiction']};
 export const namesMatch=(m:FindMovie,actors:string[])=>actors.some(a=>(m.c||[]).some(c=>c.toLowerCase()===a.toLowerCase()));
+export const actorMatch=(m:FindMovie,b:Brief)=>b.actorPicks?.length?b.actorPicks.some(a=>m.castIds?.includes(a.id)):namesMatch(m,b.actors);
 export function fitsContract(m:FindMovie,b:Record<PID,Brief>):boolean {
  if(m.w||!m.p) return false;
- return (['A','B'] as PID[]).every(p=>{const x=b[p];return !x.exclude.some(g=>m.g.includes(g)) && (!x.genres.length||x.genres.some(g=>m.g.includes(g))) && (!x.requireActor || !x.actors.length || namesMatch(m,x.actors));});
+ return (['A','B'] as PID[]).every(p=>{const x=b[p];return !x.exclude.some(g=>m.g.includes(g)) && (!x.genres.length||x.genres.some(g=>m.g.includes(g))) && (!x.requireActor || !x.actors.length || actorMatch(m,x));});
 }
 export function kindFits(m:FindMovie,k:Brief['kind']):boolean {
  if(k==='any')return true;
@@ -28,7 +29,7 @@ export function kindFits(m:FindMovie,k:Brief['kind']):boolean {
 }
 function score(m:FindMovie,b:Record<PID,Brief>,pid?:PID){
  let n=m.r;
- for(const p of ['A','B'] as PID[]){let v=0;if(namesMatch(m,b[p].actors))v+=7;if(moodGenres[b[p].mood].some(g=>m.g.includes(g)))v+=2;if(kindFits(m,b[p].kind))v+=1; n+=v*(pid===p?1.5:1);}
+ for(const p of ['A','B'] as PID[]){let v=0;if(actorMatch(m,b[p]))v+=7;if(moodGenres[b[p].mood].some(g=>m.g.includes(g)))v+=2;if(kindFits(m,b[p].kind))v+=1; n+=v*(pid===p?1.5:1);}
  return n;
 }
 export function eligibleMovies(b:Record<PID,Brief>,extra:FindMovie[]=[],seen:number[]=[],verifiedOnly=false):FindMovie[]{
@@ -42,13 +43,13 @@ export function slicesFor(movies:FindMovie[],b:Record<PID,Brief>):Slice[]{
  return candidates.sort((a,c)=>moodWeight(c)-moodWeight(a)).slice(0,6);
 }
 export function deal(movies:FindMovie[],ids:number[],b:Record<PID,Brief>,limit=12):FindMovie[]{
- const eligible=movies.filter(m=>ids.includes(m.id));const out:FindMovie[]=[];const add=(m:FindMovie|undefined,lane:FindMovie['lane'])=>{if(m&&!out.some(x=>x.id===m.id))out.push({...m,lane,why:[...(['A','B'] as PID[]).flatMap(p=>namesMatch(m,b[p].actors)?['Stars '+(m.c||[]).filter(c=>b[p].actors.some(a=>a.toLowerCase()===c.toLowerCase())).join(', ')]:[]),...m.g.filter(g=>b.A.genres.includes(g)||b.B.genres.includes(g)).map(g=>'Genre: '+g)]});};
+ const eligible=movies.filter(m=>ids.includes(m.id));const out:FindMovie[]=[];const add=(m:FindMovie|undefined,lane:FindMovie['lane'])=>{if(m&&!out.some(x=>x.id===m.id))out.push({...m,lane,why:[...(['A','B'] as PID[]).flatMap(p=>actorMatch(m,b[p])?['Stars '+(m.c||[]).filter(c=>b[p].actors.some(a=>a.toLowerCase()===c.toLowerCase())).join(', ')]:[]),...m.g.filter(g=>b.A.genres.includes(g)||b.B.genres.includes(g)).map(g=>'Genre: '+g)]});};
  // Reserve up to four less-seen candidates before choosing six close fits. No duplicate or silent preference relaxation.
  const ranked=[...eligible].sort((a,c)=>score(c,b)-score(a,b)||a.id-c.id);
  const gems=ranked.filter(m=>kindFits(m,'gem')).sort((a,c)=>c.r-a.r||a.pop-c.pop).slice(0,4);
  const gemIds=new Set(gems.map(m=>m.id));
  const fit=ranked.filter(m=>!gemIds.has(m.id));
- for(const p of ['A','B']as PID[])fit.filter(m=>namesMatch(m,b[p].actors)).slice(0,2).forEach(m=>{if(out.length<6)add(m,'fit');});
+ for(const p of ['A','B']as PID[])fit.filter(m=>actorMatch(m,b[p])).slice(0,2).forEach(m=>{if(out.length<6)add(m,'fit');});
  for(const p of ['A','B']as PID[])if(b[p].kind!=='any')fit.filter(m=>kindFits(m,b[p].kind)).slice(0,2).forEach(m=>{if(out.length<6)add(m,'fit');});
  for(const m of fit){if(out.length>=6)break;add(m,'fit');}
  for(const m of gems)add(m,'gem');
@@ -58,7 +59,7 @@ export function deal(movies:FindMovie[],ids:number[],b:Record<PID,Brief>,limit=1
  return out.slice(0,limit);
 }
 
-export function genreSlicesFor(movies:FindMovie[],b:Record<PID,Brief>):Slice[]{
+export function genreSlicesFor(movies:FindMovie[],b:Record<PID,Brief>,limit=8):Slice[]{
  const kinds=[b.A.kind,b.B.kind].filter(k=>k!=='any');const eligible=movies.filter(m=>fitsContract(m,b)&&(!kinds.length||kinds.some(k=>kindFits(m,k))));
- return FIND_GENRES.map(g=>({id:'genre:'+g,name:g,description:g+' films verified within both briefs. A film can belong to more than one genre.',ids:eligible.filter(m=>m.g.includes(g)).map(m=>m.id)})).filter(x=>x.ids.length>0).sort((a,c)=>c.ids.length-a.ids.length||a.name.localeCompare(c.name)).slice(0,8);
+ return FIND_GENRES.map(g=>({id:'genre:'+g,name:g,description:g+' films verified within both briefs. A film can belong to more than one genre.',ids:eligible.filter(m=>m.g.includes(g)).map(m=>m.id)})).filter(x=>x.ids.length>0).sort((a,c)=>c.ids.length-a.ids.length||a.name.localeCompare(c.name)).slice(0,limit);
 }
