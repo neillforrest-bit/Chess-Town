@@ -42,3 +42,9 @@
 .quiz-choice-pages>nav>button{min-height:36px;border:1px solid #a48ab6;border-radius:8px;background:#30263e;color:#fff1db;font:700 12px/1 system-ui,sans-serif;padding:6px 10px;cursor:pointer}
 .quiz-choice-pages>nav>button:disabled{opacity:.4;cursor:default}
 .quiz-choice-pages>nav>span{color:#e4d2ec;font:700 12px/1 system-ui,sans-serif}
+.quiz-result-pages{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px}
+.quiz-result-pages>.trivia-party-results{display:grid;grid-template-rows:repeat(2,minmax(0,1fr));flex:1;min-height:0}
+.quiz-result-pages>nav{display:flex;justify-content:space-between;align-items:center;gap:8px;flex:none}
+.quiz-result-pages>nav button{min-height:36px;padding:6px 10px;background:#30263e;border:1px solid #a48ab6;border-radius:8px;color:#fff1db;font:700 12px/1 system-ui,sans-serif;cursor:pointer}
+.quiz-result-pages>nav button:disabled{opacity:.4}
+.quiz-result-pages>nav span{font:700 12px/1 system-ui,sans-serif;color:#e4d2ec}

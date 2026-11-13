@@ -108,3 +108,13 @@ body:has(.logic-page) .chester-fab,body:has(.logic-page) .chester-drawer{display
 .logic-match:has(.logic-score>div:nth-child(4)) .quiz-countdown__caption>span{display:none}
 .logic-match:has(.logic-score>div:nth-child(4)) .quiz-countdown__track{flex:1;height:14px}
 }
+.logic-match .logic-score:has(>div:nth-child(4))>div{flex-direction:column;gap:2px}
+.logic-match .logic-score:has(>div:nth-child(4)) span{font-size:14px;line-height:1.05;max-width:100%}
+@media(max-height:650px){
+.logic-match:has(.logic-score>div:nth-child(4)) .logic-score>div{padding:3px 2px;min-height:0}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master__label{display:none}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master .quiz-master__question{font-size:15px!important;line-height:1.1!important}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:15px!important;line-height:1.08!important}
+}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:21px!important;line-height:1.16!important}
+@media(max-height:650px){.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:15px!important;line-height:1.08!important}}

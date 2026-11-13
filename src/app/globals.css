@@ -4731,3 +4731,7 @@ body .trivia-brawl-page.trivia-showtime.trivia-party-active .trivia-party-roster
 body .trivia-brawl-page.trivia-showtime.trivia-party-active .trivia-party-roster:has(>div:nth-of-type(4))>div{flex-direction:row;justify-content:center;gap:5px;min-width:0}
 body .trivia-brawl-page.trivia-showtime.trivia-party-active .trivia-party-roster:has(>div:nth-of-type(4))>div>span{font-size:14px!important;word-break:normal;overflow-wrap:normal}
 @media(max-height:650px){body .trivia-brawl-page.trivia-showtime.trivia-party-active .trivia-party-roster:has(>div:nth-of-type(4))>div>b{font-size:23px!important}body .trivia-brawl-page.trivia-showtime.trivia-party-active .trivia-party-roster:has(>div:nth-of-type(4))>div{padding:4px 1px}}
+body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:6px;padding:10px;min-height:0}
+body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div>b{font:850 17px/1.2 system-ui,sans-serif!important}
+body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div>span{font:600 14px/1.25 system-ui,sans-serif!important}
+body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div>strong{font:850 18px/1.2 system-ui,sans-serif!important;max-width:none}
