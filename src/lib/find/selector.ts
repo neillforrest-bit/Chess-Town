@@ -31,8 +31,8 @@ function score(m:FindMovie,b:Record<PID,Brief>,pid?:PID){
  for(const p of ['A','B'] as PID[]){let v=0;if(namesMatch(m,b[p].actors))v+=7;if(moodGenres[b[p].mood].some(g=>m.g.includes(g)))v+=2;if(kindFits(m,b[p].kind))v+=1; n+=v*(pid===p?1.5:1);}
  return n;
 }
-export function eligibleMovies(b:Record<PID,Brief>,extra:FindMovie[]=[],seen:number[]=[]):FindMovie[]{
- const map=new Map<number,FindMovie>();for(const m of [...MOVIES,...extra])map.set(m.id,{...map.get(m.id),...m});
+export function eligibleMovies(b:Record<PID,Brief>,extra:FindMovie[]=[],seen:number[]=[],verifiedOnly=false):FindMovie[]{
+ const map=new Map<number,FindMovie>();for(const m of [...(verifiedOnly?[]:MOVIES),...extra])map.set(m.id,{...map.get(m.id),...m});
  return [...map.values()].filter(m=>fitsContract(m,b)&&!seen.includes(m.id)).sort((a,c)=>score(c,b)-score(a,b)||a.id-c.id);
 }
 export function slicesFor(movies:FindMovie[],b:Record<PID,Brief>):Slice[]{

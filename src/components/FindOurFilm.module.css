@@ -13,3 +13,5 @@
 .sheet>h2{font-size:22px}.sheet .roundNav{flex:none}.sheet>p{flex:none}.sheet>.card{flex:none}@media(max-height:700px){.sheet{padding:14px;gap:10px;max-height:92dvh}.sheet>h2{font-size:19px}.sheet>p{font-size:13px;line-height:1.4}.sheet>.cs-btn{font-size:11px;padding:10px}.sheet .scores small{font-size:7px}.sheet .cardTop h2{font-size:17px}.sheet .story{font-size:12px}.sheet .why{display:none}.sheet .cardButtons{min-height:30px}}
 
 .sheet>p,.sheet>h2{overflow-wrap:anywhere}
+
+.issueButton{flex:none;text-align:center;background:#402f16;border:1px solid #d6a53f;color:#ffe7ac;border-radius:7px;padding:6px;font-size:10px;min-height:28px}@media(max-height:600px){.issueButton{font-size:9px;padding:4px;min-height:23px}}
