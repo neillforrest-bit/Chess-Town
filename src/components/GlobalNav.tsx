@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ChangeEvent, useState } from 'react';
 import { ChesterAvatar } from './ChesterUI';
 
 export default function GlobalNav() {
+  const pathname = usePathname();
+  const isQuiz = /^\/(quiz|logic-brawl|trivia(?:-brawl|-party)?)(?:\/|$)/.test(pathname || '');
   const [isRoyalCatsOpen, setIsRoyalCatsOpen] = useState(false);
   const [status, setStatus] = useState('');
 
@@ -55,7 +58,7 @@ export default function GlobalNav() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
         {/* <button type="button" onClick={() => setIsRoyalCatsOpen(true)} className="global-nav__return" aria-haspopup="dialog">ROYAL CATS</button> */}
-        <Link href="/" className="global-nav__return">CHESTERVILLE</Link>
+        <Link href={isQuiz ? "/quiz" : "/"} className="global-nav__return">{isQuiz ? "QUIZ GAMES" : "CHESTERVILLE"}</Link>
       </div>
       {isRoyalCatsOpen && (
         <div role="dialog" aria-modal="true" aria-label="Royal cat pieces" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0, 0, 0, 0.78)', display: 'grid', placeItems: 'center', padding: '1rem' }}>

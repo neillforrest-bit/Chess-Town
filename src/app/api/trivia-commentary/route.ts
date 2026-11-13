@@ -55,6 +55,11 @@ export async function POST(request: NextRequest) {
       throw new Error('Question and answers are required');
     }
 
+    // This visual preview is explicitly offline for banter. No paid Gemini QA is authorised.
+    if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF === 'instinct/quiz-master-preview-20261113') {
+      return NextResponse.json({ reply: getFallbackReply(payload), source: 'local-preview' });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey?.trim()) throw new Error('GEMINI_API_KEY is not configured');
 

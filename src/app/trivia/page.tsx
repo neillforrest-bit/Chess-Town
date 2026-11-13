@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import ChesterHost from '@/components/ChesterHost';
+import { QuizMaster } from '@/components/QuizMaster';
 import { fetchTriviaQuestion, type TriviaQuestion } from '@/lib/trivia';
 
 type AnswerState = 'idle' | 'submitting' | 'answered';
@@ -70,7 +70,6 @@ export default function TriviaPage() {
         <div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Last Call Quiz</h1></div>
         <Link href="/arena">Arena</Link>
       </header>
-      <ChesterHost eyebrow="THE HOUSE QUIZMASTER" instruction="Pick the right answer, collect the point, and try not to make Chester ring the shame bell." />
       <section className="trivia-game" aria-live="polite">
         <div className="trivia-scoreboard"><span>ROUND {round}</span><b>{score} POINT{score === 1 ? '' : 'S'}</b></div>
         {error ? (
@@ -81,7 +80,7 @@ export default function TriviaPage() {
           <>
             <div className="trivia-question">
               <span>{question.category} · {question.difficulty}</span>
-              <h2>{question.question}</h2>
+              <QuizMaster question={question.question} />
             </div>
             <div className="trivia-answers">
               {question.answers.map((answer) => {

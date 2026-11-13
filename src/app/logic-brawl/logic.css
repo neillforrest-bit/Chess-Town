@@ -57,3 +57,24 @@ body:has(.logic-page) .chester-fab,body:has(.logic-page) .chester-drawer{display
 .logic-ledger th,.logic-ledger td{border-bottom-color:#453a6e}
 .logic-ledger tr.is-leader td,.logic-ledger tr.is-leader th{background:#3a2c0d55;color:#ffd166}
 .logic-error{background:#3a1626;border-color:#ef476f;color:#ffd0da}
+
+/* Quiz-master preview: content stays inside the original deadline-driven surface. */
+.logic-match .logic-panel:has(>.quiz-master){overflow:hidden;gap:9px;background:#151420;border-color:#51405f;padding:13px}
+.logic-match .logic-options{gap:8px;grid-template-rows:repeat(4,minmax(44px,1fr))}
+.logic-match .logic-options button:nth-child(n){background:#202333;border:1px solid #696575;color:#fff6e7;font-size:clamp(14px,3.7vw,17px);line-height:1.25;padding:9px 11px;min-height:44px}
+.logic-match .logic-options button>span{background:#333243;border-color:#80758a;color:#ecd5a1;flex-basis:25px;width:25px;height:25px}
+.logic-match .logic-options button:disabled{opacity:.68}
+.logic-match .logic-options button.is-selected{border:2px solid #edcf91;background:#383043;opacity:1}
+.logic-match .logic-cards{margin-top:0}
+.logic-match .logic-cards button{min-height:36px;background:#262232;color:#ecdfc7}
+@media(max-height:650px){.logic-match .logic-panel:has(>.quiz-master){gap:5px;padding:8px}.logic-match .logic-options{gap:5px}.logic-match .logic-options button:nth-child(n){font-size:13px;padding:6px 8px}.logic-match .logic-cards button{min-height:32px}}
+@media(max-height:650px){
+.logic-match .logic-header{display:none}
+.logic-match .logic-score>div{padding:3px;display:flex;justify-content:center;align-items:center;gap:8px;min-height:32px}
+.logic-match .logic-options{grid-template-columns:1fr 1fr;grid-template-rows:repeat(2,minmax(64px,1fr));flex:1;min-height:133px}
+.logic-match .logic-options button:nth-child(n){align-items:center;gap:5px;min-height:64px;font-size:13px}
+.logic-match .logic-options button>span{flex-basis:20px;width:20px;height:20px;font-size:9px}
+}
+.logic-match .logic-options button:nth-child(n){background:#fff;color:#09090b;border:2px solid #fff;font-weight:800;opacity:1}
+.logic-match .logic-options button>span{background:#f0edf6;color:#19151e;border-color:#9a90a3}
+.logic-match .logic-options button.is-selected{background:#fff;color:#09090b;border:3px solid #b77c21;box-shadow:inset 0 0 0 1px #382103;opacity:1}
