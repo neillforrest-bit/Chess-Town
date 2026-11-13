@@ -8,12 +8,13 @@ import { getRating, rankFor, getLadder, LADDER_LABELS, WEAKNESS_HOMEWORK, type L
 import { DOORS } from '@/games/registry';
 import { getRoadLevel, ROAD_MAX, bossFor, isBossLevel } from '@/lib/road';
 import { loadPlayerFile, analyse, type Analysis } from '@/lib/player-file';
+import ChesterCompanion from '@/components/ChesterCompanion';
 
 const doors = DOORS.map((d) => ({ ...d, first: d.id === 'play', top: d.id === 'road' }));
 doors.splice(1, 0, { id: 'road', title: 'MAIN STREET TO BRENDO', href: '/road/brendo', icon: '♚', accent: '#51d6a0', copy: 'PJ → Rost → Andy → Byron → Brendo. Five opponents, one climb.', first: false, top: false });
 const OPENINGS = [
   { name: 'Italian Game', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4', why: 'Quick development and an early eye on f7.' },
-  { name: 'Queen\u2019s Gambit', moves: '1.d4 d5 2.c4', why: 'Offer a pawn, take the centre.' },
+  { name: 'Queen’s Gambit', moves: '1.d4 d5 2.c4', why: 'Offer a pawn, take the centre.' },
   { name: 'London System', moves: '1.d4 d5 2.Bf4', why: 'A solid setup you can play against almost anything.' },
   { name: 'Sicilian Defence', moves: '1.e4 c5', why: 'Fight for the centre from the side.' },
   { name: 'Ruy Lopez', moves: '1.e4 e5 2.Nf3 Nc6 3.Bb5', why: 'Pressure the knight that guards e5.' },
@@ -77,58 +78,55 @@ export default function ChessTownLanding() {
   ];
   const bubbleLine = chesterLines[lineIndex % chesterLines.length];
 
-  return <main className="town-night town-night--doors">
-    <div className="town-sky" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
-    <div className="town-moon" aria-hidden="true">♘</div>
-
-    <header className="town-masthead town-masthead--compact">
-      <div className="town-greet" role="note" aria-label="Chester greets you">
-        <div className="town-greet__avatar town-greet__avatar--talking town-greet__avatar--wave" aria-hidden="true">♞</div>
-        <div className="town-greet__bubble">
-          <span>{returning ? 'CHESTER SAYS' : 'CHESTER, MAYOR OF CHESTERVILLE'}</span>
-          <p key={lineIndex % chesterLines.length} className="town-greet__line">{bubbleLine}</p>
-        </div>
+  return <main className="ct-landing">
+    <section className="ct-hero" aria-label="Welcome to Chess Town">
+      <div className="ct-hero__copy">
+        <span className="ct-host-label">I’m Chester. Your host.</span>
+        <h1>Chess<br /><em>Town</em></h1>
+        <span className="ct-hero__caption">Roads, battles and lessons. One screen at a time.</span>
       </div>
-      <h1>CHESTER<em>VILLE</em></h1>
-      {rank && <Link href="/play-chester?road=1" className="town-rank">{rank.icon} {rank.name} · {rank.points} PTS</Link>}
-      {ladder && <Link href="/play-chester" className="town-rank town-rank--ladder">{ladder.grandChester ? '👑 GRAND CHESTER' : `♞ ${LADDER_LABELS[['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][ladder.unlocked]] || 'ROOKIE'} · RUNG ${ladder.unlocked + 1}/4`}</Link>}
-    </header>
+      <div className="ct-hero__character" aria-hidden="true"><ChesterCompanion /></div>
+      {(rank || ladder) && <div className="ct-chips">
+        {rank && <Link href="/play-chester?road=1" className="ct-chip">{rank.icon} {rank.name} · {rank.points} PTS</Link>}
+        {ladder && <Link href="/play-chester" className="ct-chip ct-chip--lime">{ladder.grandChester ? '👑 GRAND CHESTER' : `♞ ${LADDER_LABELS[['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][ladder.unlocked]] || 'ROOKIE'} · RUNG ${ladder.unlocked + 1}/4`}</Link>}
+      </div>}
+    </section>
 
+    <section className="ct-card ct-prompter" aria-label="Chester says">
+      <span className="ct-eyebrow">{returning ? 'Chester says' : 'Chester, mayor of Chess Town'}</span>
+      <p key={lineIndex % chesterLines.length} className="ct-prompter__line">{bubbleLine}</p>
+    </section>
 
     {returning
-      ? <section className="town-continue" aria-label="Where you left off" style={{ width: 'min(620px,100%)', padding: '0 .8rem', boxSizing: 'border-box', margin: '0 0 .5rem', position: 'relative', zIndex: 2 }}>
-          <div style={{ border: '1.5px solid rgba(255,184,0,.4)', borderRadius: 12, padding: '.6rem .8rem', background: 'rgba(10,8,14,.94)', display: 'grid', gap: '.35rem', fontSize: '.85rem', lineHeight: 1.35 }}>
-            <b style={{ color: '#ffb800', letterSpacing: '.08em', fontSize: '.72rem' }}>WHERE YOU LEFT OFF</b>
-            <span>👑 Road to Joseph: level {roadLevel} of {ROAD_MAX}{isBossLevel(roadLevel) ? ` - boss fight vs ${bossFor(roadLevel)?.name}` : ''}.</span>
-            {tip ? <span>💡 Chester&rsquo;s tip you&rsquo;re working on: {tip}</span> : <span>💡 No tip yet. Play a game and Chester will give you one.</span>}
-            {scout && scout.flagged > 0 && (() => {
-              const phaseName = scout.worstPhase === 'middlegame' ? 'the middle of the game' : scout.worstPhase || 'the middlegame';
-              const target = Math.max(1, Math.floor(scout.perGame) - 1);
-              // Drill matched to WHERE the slips happen, educationally: loose pieces live in
-              // the middlegame -> Pawn Wars trains "nothing left hanging" (same mapping as the
-              // report card's blunders habit); opening slips -> Lesson Hall; endgame -> conversion reps.
-              const drill = scout.worstPhase === 'opening' ? { text: 'Lesson Hall - develop with purpose', href: '/training' } : scout.worstPhase === 'endgame' ? { text: 'a rematch at your level - convert the ending', href: '/play-chester' } : { text: 'Pawn Wars - short sharp games, nothing left hanging', href: '/pawn-wars' };
-              return <span>📚 <b>Today&rsquo;s homework:</b> {scout.headline}{scout.topPiece ? <> Your most-dropped piece: the <b>{scout.topPiece.piece}</b> ({scout.topPiece.n}&times;).</> : null} Assignment: one game at your level, and finish with <b>&le;{target} big slip{target === 1 ? '' : 's'}</b> (your average: {scout.perGame.toFixed(1)}). {scout.lesson} Sharpen it: <Link href={drill.href} style={{ color: '#4ade80' }}>{drill.text}</Link>.{scout.trend === 'better' ? ' Trend: improving - Chester noticed.' : scout.trend === 'worse' ? ' Trend: slipping - today we fix that.' : ''}</span>;
-            })()}
-            {scout && scout.flagged === 0 && <span>📚 <b>Today&rsquo;s homework:</b> no big slips on file - rare air. One game at the NEXT level up: the homework is noticing the moment it gets hard.</span>}
-            <span>♟ Today&rsquo;s opening: <b>{openingToday().name}</b> ({openingToday().moves}). {openingToday().why} <Link href="/play-chester" style={{ color: '#4ade80' }}>Try it</Link></span>
-          </div>
+      ? <section className="ct-card ct-continue" aria-label="Where you left off">
+          <b className="ct-continue__title">WHERE YOU LEFT OFF</b>
+          <span>👑 Road to Joseph: level {roadLevel} of {ROAD_MAX}{isBossLevel(roadLevel) ? ` - boss fight vs ${bossFor(roadLevel)?.name}` : ''}.</span>
+          {tip ? <span>💡 Chester’s tip you’re working on: {tip}</span> : <span>💡 No tip yet. Play a game and Chester will give you one.</span>}
+          {scout && scout.flagged > 0 && (() => {
+            const phaseName = scout.worstPhase === 'middlegame' ? 'the middle of the game' : scout.worstPhase || 'the middlegame';
+            const target = Math.max(1, Math.floor(scout.perGame) - 1);
+            // Drill matched to WHERE the slips happen, educationally: loose pieces live in
+            // the middlegame -> Pawn Wars trains "nothing left hanging" (same mapping as the
+            // report card's blunders habit); opening slips -> Lesson Hall; endgame -> conversion reps.
+            const drill = scout.worstPhase === 'opening' ? { text: 'Lesson Hall - develop with purpose', href: '/training' } : scout.worstPhase === 'endgame' ? { text: 'a rematch at your level - convert the ending', href: '/play-chester' } : { text: 'Pawn Wars - short sharp games, nothing left hanging', href: '/pawn-wars' };
+            return <span>📚 <b>Today’s homework:</b> {scout.headline}{scout.topPiece ? <> Your most-dropped piece: the <b>{scout.topPiece.piece}</b> ({scout.topPiece.n}&times;).</> : null} Assignment: one game at your level, and finish with <b>&le;{target} big slip{target === 1 ? '' : 's'}</b> (your average: {scout.perGame.toFixed(1)}). {scout.lesson} Sharpen it: <Link href={drill.href} className="ct-link">{drill.text}</Link>.{scout.trend === 'better' ? ' Trend: improving - Chester noticed.' : scout.trend === 'worse' ? ' Trend: slipping - today we fix that.' : ''}</span>;
+          })()}
+          {scout && scout.flagged === 0 && <span>📚 <b>Today’s homework:</b> no big slips on file - rare air. One game at the NEXT level up: the homework is noticing the moment it gets hard.</span>}
+          <span>♟ Today’s opening: <b>{openingToday().name}</b> ({openingToday().moves}). {openingToday().why} <Link href="/play-chester" className="ct-link">Try it</Link></span>
         </section>
-      : <section aria-label="Welcome" style={{ width: 'min(620px,100%)', padding: '0 .8rem', boxSizing: 'border-box', margin: '0 0 .5rem', position: 'relative', zIndex: 2, fontSize: '.85rem', lineHeight: 1.4 }}>
-          <div style={{ border: '1.5px solid rgba(74,222,128,.4)', borderRadius: 12, padding: '.6rem .8rem', background: 'rgba(10,8,14,.94)' }}>
-            <b style={{ color: '#4ade80', letterSpacing: '.08em', fontSize: '.72rem' }}>NEW HERE?</b><br />Start with <b>PLAY CHESTER</b>. Pick a game, Chester coaches you in plain words. When you are ready, the <b>ROAD TO JOSEPH</b> is the long adventure.
-          </div>
+      : <section className="ct-card ct-continue" aria-label="New here">
+          <b className="ct-continue__title ct-continue__title--green">NEW HERE?</b>
+          <span>Start with <b>PLAY CHESTER</b>. Pick a game, Chester coaches you in plain words. When you are ready, the <b>ROAD TO JOSEPH</b> is the long adventure.</span>
         </section>}
 
-    <nav className="town-doors" aria-label="Chesterville destinations">
-      {doors.map((door) => <Link href={door.href} key={door.title} className={`town-door ${door.first ? 'town-door--first' : ''} ${(door as { top?: boolean }).top ? 'town-door--top' : ''}`} style={{ '--card-accent': door.accent } as React.CSSProperties}>
+    <nav className="ct-doors" aria-label="Chess Town destinations">
+      {doors.map((door) => <Link href={door.href} key={door.title} className={`ct-door ${door.first ? 'ct-door--first' : ''}`} style={{ '--door-accent': door.accent } as React.CSSProperties}>
         <i aria-hidden="true">{door.icon}</i>
         <div><b>{door.title}</b><span>{door.copy}</span></div>
         <em>→</em>
       </Link>)}
     </nav>
 
-    <style>{`@media (max-height:700px){.town-night--doors .town-greet{display:none}.town-night--doors .town-door span{display:none}.town-night--doors .town-door{padding:.45rem .8rem}}`}</style>
-    <div className="town-live"><i /> THE TOWN IS OPEN - FREE TO PLAY</div>
+    <div className="ct-live"><i /> THE TOWN IS OPEN - FREE TO PLAY</div>
   </main>;
 }

@@ -4737,3 +4737,59 @@ body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .
 body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div>strong{font:850 18px/1.2 system-ui,sans-serif!important;max-width:none}
 
 body:has(.good-together-hub){background:#251a36}body:has(.good-together-hub) .app-main{background:#251a36}
+
+/* ===== Chess Town donkey identity (Game Town alignment, 13 Nov 2026) ===== */
+@font-face{font-family:ManropeGT;src:url('/fonts/manrope/manrope-400.ttf') format('truetype');font-weight:400;font-display:swap}
+@font-face{font-family:ManropeGT;src:url('/fonts/manrope/manrope-600.ttf') format('truetype');font-weight:600;font-display:swap}
+@font-face{font-family:ManropeGT;src:url('/fonts/manrope/manrope-800.ttf') format('truetype');font-weight:800;font-display:swap}
+
+.ct-landing{--ct-ink:#30223f;--ct-muted:#665773;--ct-violet:#7044d9;--ct-lime:#d8efa1;--ct-line:#e7deef;box-sizing:border-box;min-height:100%;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:16px 18px 14px;max-width:520px;width:100%;margin:0 auto;background:radial-gradient(ellipse at 100% 0%,#3b2850 0%,#251a36 55%);color:#fff5ed;font-family:ManropeGT,Arial,sans-serif}
+.ct-landing *{box-sizing:border-box}
+.ct-hero{position:relative;isolation:isolate;flex:0 0 auto;min-height:150px;border-radius:24px;padding:18px 20px;background:radial-gradient(ellipse at 80% 35%,#9160cc 0%,#6943a0 48%,#54367e 100%);border:1px solid #b992f229;box-shadow:0 8px 24px #0e061824;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.ct-host-label{display:block;font-size:9px;color:#eadcf8;font-weight:800;letter-spacing:.8px;text-transform:uppercase;line-height:1.5}
+.ct-hero h1{margin:8px 0 0;font-size:30px;line-height:1.08;font-weight:800;letter-spacing:-1.2px;color:#fff8ef;max-width:62%}
+.ct-hero h1 em{color:#d8c2ff;font-style:normal}
+.ct-hero__caption{display:block;color:#e1cfee;font-size:10px;line-height:1.5;margin-top:9px;max-width:150px}
+.ct-hero__character{position:absolute;right:-4px;bottom:-30px;width:120px;height:175px;z-index:1;animation:ct-arrive .45s cubic-bezier(.2,.8,.3,1) both}
+.ct-hero__character svg{width:100%;height:100%}
+.ct-chips{position:absolute;left:16px;right:16px;bottom:10px;z-index:2;display:flex;gap:6px;flex-wrap:wrap}
+.ct-chip{display:inline-block;padding:4px 10px;border-radius:999px;background:#ffffff22;border:1px solid #ffffff38;color:#f3eaff;font:800 10px ManropeGT,Arial,sans-serif;text-decoration:none;letter-spacing:.3px}
+.ct-chip--lime{background:#d8efa1;border-color:#d8efa1;color:#2a2633}
+@keyframes ct-arrive{from{opacity:0;transform:translateY(12px) rotate(7deg)}to{opacity:1;transform:none}}
+.ct-card{flex:0 0 auto;background:#fcf9ff;border:1px solid var(--ct-line);border-radius:18px;padding:12px 15px;box-shadow:0 5px 20px #43285f05;color:var(--ct-ink)}
+.ct-eyebrow{display:block;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#7958a4;margin-bottom:5px}
+.ct-prompter__line{margin:0;font-size:13px;line-height:1.5;font-weight:600;color:var(--ct-ink);animation:ct-fade .4s ease both}
+@keyframes ct-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.ct-continue{display:grid;gap:5px;font-size:12px;line-height:1.45;color:var(--ct-muted)}
+.ct-continue__title{color:#8f6fd0;letter-spacing:.08em;font-size:10px}
+.ct-continue__title--green{color:#3f9153}
+.ct-continue b{color:var(--ct-ink)}
+.ct-link{color:#5a34b8;font-weight:800}
+.ct-doors{flex:0 0 auto;display:grid;gap:8px}
+.ct-door{--door-accent:#c7b0ff;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:16px;background:#fcf9ff;border:1px solid var(--ct-line);text-decoration:none;color:var(--ct-ink);box-shadow:0 3px 0 #160c2514;transition:transform .12s ease}
+.ct-door:active{transform:translateY(2px)}
+.ct-door i{flex:0 0 auto;width:36px;height:36px;border-radius:12px;background:color-mix(in srgb,var(--door-accent) 28%,#fff);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:22px;color:#483655}
+.ct-door div{flex:1;min-width:0;display:grid;gap:2px}
+.ct-door b{font-size:13px;font-weight:800;letter-spacing:.2px}
+.ct-door span{font-size:10.5px;line-height:1.4;color:var(--ct-muted)}
+.ct-door em{font-style:normal;font-size:20px;color:var(--ct-violet)}
+.ct-door--first{background:var(--ct-lime);border-color:var(--ct-lime);box-shadow:0 4px 0 #8ba65f}
+.ct-door--first span{color:#4a5138}
+.ct-door--first em{color:#2a2633}
+.ct-door--first i{background:#ffffff66}
+.ct-live{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;font-size:9px;letter-spacing:.6px;color:#b2a0c5;font-weight:800;padding:2px 0 4px}
+.ct-live i{width:7px;height:7px;border-radius:50%;background:#8be28b;box-shadow:0 0 8px #8be28b;animation:ct-pulse 2s ease-in-out infinite}
+@keyframes ct-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(max-height:700px){.ct-landing{gap:9px;padding:12px 14px 10px}.ct-hero{min-height:118px;padding:13px 16px}.ct-hero h1{font-size:24px}.ct-hero__caption{display:none}.ct-hero__character{width:95px;height:140px;bottom:-24px}.ct-prompter__line{font-size:11.5px}.ct-continue{font-size:10.5px;gap:3px}.ct-door{padding:8px 12px}.ct-door i{width:30px;height:30px;font-size:18px}.ct-door span{display:none}.ct-door b{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.ct-hero__character,.ct-prompter__line,.ct-live i{animation:none}}
+
+/* Game Town chrome: nav, chat fab and drawer in the donkey palette */
+.global-nav{background:rgba(37,26,54,.96)!important;border-bottom:1px solid #6f568d!important;backdrop-filter:blur(14px);font-family:ManropeGT,Arial,sans-serif}
+.global-nav__links a{font:800 .64rem/1 ManropeGT,Arial,sans-serif!important;color:#c5b7d6!important;letter-spacing:.6px}
+.global-nav__links a:hover,.global-nav__links a.is-active{color:#d8efa1!important;border-bottom-color:#d8efa1!important}
+.global-nav__return{color:#e1d2ef!important;border-color:#6f568d!important;font-family:ManropeGT,Arial,sans-serif!important}
+.chester-fab{border-color:#d8efa1!important;background:#251a36!important;box-shadow:0 0 24px rgba(216,239,161,.3)!important}
+.chester-drawer{border:1px solid #6f568d!important;border-radius:14px!important;background:rgba(37,26,54,.98)!important}
+.chester-drawer header{color:#d8c2ff!important;font-family:ManropeGT,Arial,sans-serif}
+.chester-drawer header button{color:#fff5ed!important}
+.portrait-lock{background:#251a36!important;font-family:ManropeGT,Arial,sans-serif!important}

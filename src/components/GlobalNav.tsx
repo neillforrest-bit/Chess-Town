@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChangeEvent, useState } from 'react';
-import { ChesterAvatar } from './ChesterUI';
 
 export default function GlobalNav() {
   const pathname = usePathname();
@@ -39,19 +38,21 @@ export default function GlobalNav() {
   return (
     <nav className="global-nav">
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ animation: 'chester-float 4s ease-in-out infinite' }}>
-            <ChesterAvatar isThinking={false} size="small" />
-          </div>
-          <span style={{ 
-            fontFamily: 'Georgia, serif', 
-            fontWeight: 900, 
-            letterSpacing: '2px', 
-            color: '#eefcff',
-            fontSize: '1.2rem',
-            textShadow: '0 0 10px rgba(0, 229, 229, 0.5)'
+        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <img src="/good-together/umbrella.svg" alt="" width={30} height={30} style={{ display: 'block' }} />
+          <span style={{
+            fontFamily: 'ManropeGT, Arial, sans-serif',
+            fontWeight: 800,
+            letterSpacing: '-0.5px',
+            color: '#fff5ed',
+            fontSize: '1.05rem',
+            lineHeight: 0.95,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1px',
           }}>
-            CHESS-TOWN
+            Game Town
+            <i style={{ fontStyle: 'normal', fontSize: '0.85rem', color: '#c2a4fa', letterSpacing: '-0.4px' }}>hosted by Chester</i>
           </span>
         </Link>
       </div>
