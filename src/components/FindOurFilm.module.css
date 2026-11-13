@@ -24,3 +24,5 @@
 
 .scroll{container-type:size}@container(max-height:440px){.cardTop>img{width:60px;height:90px}.cardTop h2{font-size:18px}.cardTop p{font-size:10px;margin:2px 0}.badge{font-size:9px;padding:3px}.card{gap:6px}.story{font-size:13px;-webkit-line-clamp:2}.why{display:none}.cardButtons button{padding:7px 5px!important}}@container(max-height:300px){.cardTop>img{width:52px;height:78px}.cardTop h2{font-size:16px}.cardTop p{font-size:9px}.cardTop .cast{-webkit-line-clamp:1}.badge{font-size:8px;padding:2px}.card{gap:5px}.story{font-size:12px}.scores>div{padding:4px 1px}.scores b{font-size:14px}.scores small{font-size:7px}.cardButtons button{padding:6px 4px!important}}
 .row>button,.actions>button{overflow-wrap:anywhere}.actions>button{max-height:72px;overflow:hidden}.row>button{max-height:72px;overflow:hidden}
+
+.shelfSheet{height:min(92dvh,720px);max-height:92dvh}.shelfSheet>.scroll{width:100%;box-sizing:border-box}.shelfSheet>h2{flex:none}

@@ -18,7 +18,7 @@ try:
    c.route('**/api/find-room/*',handler);c.route('**/api/find-meta',lambda r:r.fulfill(json={'rt':92,'mc':81,'imdb':8.1,'awards':'Won 1 Oscar.'}));c.route('**/api/orson',lambda r:(paid.append(r.request.url),r.fulfill(json={'error':'disabled'})))
    return c
   for w,h in [(390,844),(375,667),(320,568)]:
-   ss=state({'reset':True,'phase':'cards','real':True});c=context(w,h,'A');q=c.new_page()
+   ss=state({'reset':True,'phase':'cards','real':True,'clean':True});c=context(w,h,'A');q=c.new_page()
    for i in range(25):
     try:q.goto('http://localhost:3011/find/TESTABCD');break
     except:time.sleep(.2)
