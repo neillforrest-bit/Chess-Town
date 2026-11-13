@@ -6,7 +6,7 @@ export type FindMovie = Movie & { budget?: number; revenue?:number; lang?: strin
 export type Slice = { id: string; name: string; description: string; ids: number[] };
 export type Opinion = 'want' | 'maybe' | 'pass' | 'seen';
 export type LoungeBid={id:number|null;tokens:number;locked:boolean;double:boolean};
-export type Lounge={stage:'choose'|'bout'|'result';ids:number[];pair:[number,number]|null;by:PID;bank:Record<PID,number>;bids:Record<PID,LoungeBid>;wild:Record<PID,{double:boolean;steal:boolean;swap:boolean;timeout:boolean}>;endsAt:number;pauseUntil:number;history:{pair:[number,number];winner:number|null;A:number;B:number}[];winner:number|null;event:string;eventN:number;lowSaid?:boolean;lead?:number|null;leadChanged?:boolean;nextReady?:Record<PID,boolean>};
+export type Lounge={stage:'choose'|'bout'|'result';ids:number[];pair:[number,number]|null;by:PID;bank:Record<PID,number>;roundStart?:Record<PID,number>;transfers?:Record<PID,number>;bids:Record<PID,LoungeBid>;wild:Record<PID,{double:boolean;steal:boolean;swap:boolean;timeout:boolean}>;endsAt:number;pauseUntil:number;history:{pair:[number,number];winner:number|null;A:number;B:number;ledger?:Record<PID,{start:number;transfer:number;spent:number;end:number}>}[];winner:number|null;event:string;eventN:number;lowSaid?:boolean;lead?:number|null;leadChanged?:boolean;nextReady?:Record<PID,boolean>};
 export type FindState = {
  flow: 'find-v1'; code: string; v: number; createdAt: number; updatedAt: number;
  phase: 'lobby' | 'brief' | 'wheel' | 'cards' | 'nominate' | 'accept' | 'showdown' | 'lounge' | 'confirm' | 'done';
