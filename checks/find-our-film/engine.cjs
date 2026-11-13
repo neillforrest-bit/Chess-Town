@@ -4,7 +4,7 @@ compile('lib');compile('utils');fs.cpSync(root+'/data',out+'/data',{recursive:tr
 const {newFind,emptyBrief}=require(out+'/lib/find/types.js');const {reduceFind,prepareWheel}=require(out+'/lib/find/reducer.js');const {eligibleMovies,deal,fitsContract,slicesFor}=require(out+'/lib/find/selector.js');
 const movie=(id,cast=['Actor A'],genres=['Crime','Comedy'])=>({id,t:'Film '+id,y:1990,r:8,g:genres,o:'A clever heist and a pair of misfits.',p:'/fixture.jpg',w:false,pop:400,c:cast});
 let s=newFind('TESTABCD','test');for(const p of ['A','B']){s.players[p].joined=true;s.players[p].name='Test '+p;}
-let now=100000;const step=(p,a)=>s=reduceFind(s,p,a,now+=4000,()=>.1);
+let now=100000;const step=(p,a)=>s=reduceFind(s,p,a.t==='confirm'?{...a,id:s.champion}:a,now+=4000,()=>.1);
 step('A',{t:'ready',ready:true});assert.equal(s.phase,'lobby');step('B',{t:'ready',ready:true});assert.equal(s.phase,'brief');
 const b={A:{...emptyBrief(),genres:['Crime'],actors:['Actor A'],ready:true},B:{...emptyBrief(),genres:['Comedy'],actors:['Actor B'],ready:true}};
 const fixture=Array.from({length:14},(_,i)=>movie(900000+i,[i%2?'Actor A':'Actor B']));const pool=eligibleMovies(b,fixture);assert(pool.every(m=>fitsContract(m,b)));assert(!fitsContract(movie(1,['Actor A'],['Horror']),b));assert(!fitsContract(movie(1,['Actor A'],['Crime']),b));assert(fitsContract(movie(1,['Actor A'],['Crime','Comedy']),b));
