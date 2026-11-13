@@ -24,6 +24,18 @@ async function post(body,seat,player){const r=await api.POST(req(body,seat,playe
  r=await api.GET(new Request('http://localhost/api/find-room/'+code,{headers:{'x-find-seat':seatA,'x-find-player':'b'.repeat(64)}}),param);assert.equal(r.status,403);
  r=await api.GET(new Request('http://localhost/api/find-room/'+code+'?invite='+invite),param);assert.equal(r.status,200);const info=await r.json();assert.equal(info.players,undefined);assert.equal(info.host,'Forrest');
  allow=false;x=await post({it:{t:'spin'}});assert.equal(x.r.status,429);allow=true;
+ // The clock advances on an authenticated read, and token spends survive races/retries.
+ const {openLounge}=require(out+'/lib/find/lounge.js');let fixture=rooms.get(code);fixture.finalists=[1,2,3];fixture.movies=fixture.finalists.map(id=>({id,t:'Film '+id,g:[],y:2020,r:8,o:'Story'}));openLounge(fixture);
+ x=await post({it:{t:'loungePair',ids:[1,2]}});assert.equal(x.r.status,200);
+ x=await post({it:{t:'loungeBid',id:1,tokens:8},actionId:'2'.repeat(64)});assert.equal(x.r.status,200);const bidV=x.d.v;
+ x=await post({it:{t:'loungeBid',id:1,tokens:8},actionId:'2'.repeat(64)});assert.equal(x.d.v,bidV);
+ const both=await Promise.all([post({it:{t:'loungeWild',kind:'steal'},actionId:'3'.repeat(64)}),post({it:{t:'loungeBid',id:2,tokens:20},actionId:'4'.repeat(64)},seatB,'b'.repeat(64))]);assert(both.every(x=>x.r.status===200));assert.equal(rooms.get(code).lounge.bank.A,35);assert.equal(rooms.get(code).lounge.bank.B,25);assert.equal(rooms.get(code).lounge.bids.B.tokens,20);
+ fixture=rooms.get(code);fixture.lounge.endsAt=Date.now()-10;const beforeV=fixture.v;
+ r=await api.GET(new Request('http://localhost/api/find-room/'+code,{headers:getHeaders}),param);assert.equal(r.status,200);const clock=await r.json();assert.equal(clock.lounge.stage,'result');assert.equal(clock.v,beforeV+1);assert.equal(clock.lounge.bank.A,27);assert.equal(clock.lounge.bank.B,5);
+ r=await api.GET(new Request('http://localhost/api/find-room/'+code,{headers:getHeaders}),param);assert.equal(r.status,200);assert.equal((await r.json()).lounge.bank.A,27);
+ x=await post({it:{t:'loungeWild',kind:'steal'},actionId:'3'.repeat(64)});assert.equal(x.d.lounge.bank.A,27);
+ x=await post({it:{t:'loungeBid',id:1,tokens:8,round:0,stage:'bout'},actionId:'5'.repeat(64)});assert.equal(x.r.status,409);
+ console.log('PASS API Lounge simultaneous bid/steal CAS, duplicate action IDs, server clock-on-read, exactly-once deduction and stale-bout rejection.');
  let network=0;global.fetch=async()=>{network++;throw Error('Paid call forbidden');};const model=require(out+'/app/api/orson/route.js');r=await model.POST(new Request('http://localhost/api/orson',{method:'POST',body:'{}'}));assert.equal(r.status,403);assert.equal(network,0);
  console.log('PASS API fixtures: exact server-owned usernames; both player and seat credentials required; occupied guest cannot be claimed; direct rename rejected; CAS retry; conditional 304; invite metadata only; durable-limit refusal; paid Orson endpoint hard-disabled with no network call. No live DB writes.');
 })().catch(e=>{console.error(e);process.exitCode=1});

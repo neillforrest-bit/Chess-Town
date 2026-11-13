@@ -1,3 +1,5 @@
+import {openLounge,loungeAction} from './lounge';
+import {chester} from './chester';
 import type { PID } from '../game';
 import { deal, eligibleMovies, FIND_GENRES, slicesFor, genreSlicesFor } from './selector';
 import { emptyBrief, type Action, type Brief, type FindMovie, type FindState } from './types';
@@ -14,18 +16,20 @@ function finishSpin(s:FindState,keep:boolean){
  if(keep&&s.wheel.result)s.wheel.kept=Array.from(new Set([...(s.wheel.kept||[]),s.wheel.result]));
  if(s.wheel.spinCount<4&&wheelPair(s).length>0){s.wheel.turn=other(s.wheel.turn);s.wheel.result=null;s.wheel.accepted={A:false,B:false};s.wheel.protected=false;return;}
  const ids=unique(s.slices.filter(x=>s.wheel.kept?.includes(x.id)).flatMap(x=>x.ids));const chosen=deal(s.movies,ids,s.brief);if(!chosen.length){s.phase='brief';s.brief.A.ready=false;s.brief.B.ready=false;s.issue='No kept matching direction remains. Edit the brief; no rules were relaxed.';return;}
- s.pool=chosen.map(m=>m.id);const by=new Map(chosen.map(m=>[m.id,m]));const retain=unique([...s.pool,...s.saved.A,...s.saved.B,...s.nominations.A,...s.nominations.B]);s.movies=s.movies.filter(m=>retain.includes(m.id)).map(m=>by.get(m.id)||m);s.phase='cards';s.finished={A:false,B:false};s.issue=null;s.line='Wheel complete. No genre repeats. Tap WANT to save a film; each choice moves you on.';
+ s.pool=chosen.map(m=>m.id);const by=new Map(chosen.map(m=>[m.id,m]));const retain=unique([...s.pool,...s.saved.A,...s.saved.B,...s.nominations.A,...s.nominations.B]);s.movies=s.movies.filter(m=>retain.includes(m.id)).map(m=>by.get(m.id)||m);s.phase='cards';delete s.lounge;s.finished={A:false,B:false};s.issue=null;s.line='Wheel complete. No genre repeats. Tap WANT to save a film; each choice moves you on.';
 }
 function nextBout(s:FindState){
  if(s.finalists.length===1){s.champion=s.finalists[0];s.phase='confirm';s.bout=null;s.confirmed={A:false,B:false};s.line='One film remains. The important question: do you BOTH actually want it?';return;}
  if(s.finalists.length<1){s.phase='nominate';s.nominationDone={A:false,B:false};s.acceptanceDone={A:false,B:false};s.line='No shared yes yet. Choose a new shortlist together.';s.issue='No film received YES from both players. Your saved films are safe. Choose up to 3 nominees again, then each mark the films you would watch.';return;}
- s.phase='showdown';s.bout={a:s.finalists[0],b:s.finalists[1],votes:{}};s.line='Read the cards. Pick a favourite. Neither film leaves your saved shelf.';
+ openLounge(s);
 }
 export function reduceFind(prev:FindState,p:PID,a:Action,now=Date.now(),random=Math.random):FindState {
  const s:FindState=JSON.parse(JSON.stringify(prev));const o=other(p);s.v++;s.updatedAt=now;
  const valid=(id:number)=>s.movies.some(m=>m.id===id);const nominees=()=>unique([...s.nominations.A,...s.nominations.B]);
  if(!s.players[p].joined&&a.t!=='join')return prev;
+ if(a.t.startsWith('lounge')){if(!loungeAction(s,p,a,now))return prev;s.trace=[...s.trace,`${a.t}:${p}`].slice(-80);return s;}
  switch(a.t){
+ case 'openLounge':if(s.phase!=='showdown')return prev;openLounge(s);break;
  case 'join': {const name=String(a.name||'').trim().slice(0,14);if(!name)return prev;s.players[p].name=name;s.players[p].joined=true;break;}
  case 'ready':if(s.phase!=='lobby')return prev;s.players[p].ready=a.ready===true;if(s.players.A.ready&&s.players.B.ready&&s.players.A.joined&&s.players.B.joined)s.phase='brief';break;
  case 'brief':if(s.phase!=='brief'||!a.brief||typeof a.brief!=='object')return prev;s.brief[p]=cleanBrief(a.brief);s.issue=null;if(s.brief.A.ready&&s.brief.B.ready)prepareWheel(s,s.movies);break;
@@ -42,8 +46,8 @@ export function reduceFind(prev:FindState,p:PID,a:Action,now=Date.now(),random=M
  case 'accept':if(s.phase!=='accept'||!Array.isArray(a.ids))return prev;if(a.done&&!a.ids.some(id=>nominees().includes(id))){s.issue='Choose YES for at least one film you would watch, or go back to choose different nominees. No choice will be forced.';break;}s.issue=null;s.acceptance[p]=Object.fromEntries(nominees().map(id=>[id,a.ids.includes(id)]));s.acceptanceDone[p]=a.done===true;if(s.acceptanceDone.A&&s.acceptanceDone.B){s.finalists=nominees().filter(id=>s.acceptance.A[id]&&s.acceptance.B[id]);nextBout(s);}break;
  case 'vote':{if(s.phase!=='showdown'||!s.bout||!['either',s.bout.a,s.bout.b].includes(a.id))return prev;s.bout.votes[p]=a.id;const va=s.bout.votes.A,vb=s.bout.votes.B;if(va===undefined||vb===undefined)break;const winner=va===vb&&va!=='either'?va:va==='either'&&vb!=='either'?vb:vb==='either'&&va!=='either'?va:null;if(typeof winner==='number'){s.finalists=s.finalists.filter(id=>id!==s.bout!.a&&id!==s.bout!.b);s.finalists.unshift(winner);nextBout(s);}else s.line=va==='either'&&vb==='either'?'Both happy with either. Pick one together to advance.':'Different favourites. Talk it through, then both agree on one. No coin toss.';break;}
  case 'agreeBout':{if(s.phase!=='showdown'||!s.bout||![s.bout.a,s.bout.b].includes(a.id))return prev;s.bout.votes[p]=a.id;if(s.bout.votes.A===a.id&&s.bout.votes.B===a.id){s.finalists=s.finalists.filter(id=>id!==s.bout!.a&&id!==s.bout!.b);s.finalists.unshift(a.id);nextBout(s);}break;}
- case 'confirm':if(s.phase!=='confirm')return prev;s.confirmed[p]=a.yes===true;if(!a.yes){s.phase='nominate';s.nominationDone={A:false,B:false};s.confirmed={A:false,B:false};s.line='An honest no beats a disappointing evening. Your saved films are all still here.';}else if(s.confirmed.A&&s.confirmed.B){s.phase='done';s.line='Two willing humans. One film. I shall try not to look pleased.';}break;
- case 'reopen':if(s.phase==='cards'){s.finished[p]=false;s.nominationDone[p]=false;break;}if(!['nominate','accept','showdown','confirm','done'].includes(s.phase))return prev;s.phase='cards';s.finished={A:false,B:false};s.nominationDone={A:false,B:false};s.bout=null;s.confirmed={A:false,B:false};s.issue=null;break;
+ case 'confirm':if(s.phase!=='confirm')return prev;s.confirmed[p]=a.yes===true;if(!a.yes&&s.lounge){s.phase='lounge';chester(s,'return',p);s.confirmed={A:false,B:false};}else if(!a.yes){s.phase='nominate';s.nominationDone={A:false,B:false};s.confirmed={A:false,B:false};s.line='An honest no beats a disappointing evening. Your saved films are all still here.';}else if(s.confirmed.A&&s.confirmed.B){s.phase='done';chester(s,'final',p,s.champion||undefined);}break;
+ case 'reopen':if(s.phase==='cards'){s.finished[p]=false;s.nominationDone[p]=false;break;}if(!['nominate','accept','showdown','lounge','confirm','done'].includes(s.phase))return prev;s.phase='cards';delete s.lounge;s.finished={A:false,B:false};s.nominationDone={A:false,B:false};s.bout=null;s.confirmed={A:false,B:false};s.issue=null;break;
  default:return prev;
  }
  s.trace=[...s.trace,`${a.t}:${p}`].slice(-80);return s;
