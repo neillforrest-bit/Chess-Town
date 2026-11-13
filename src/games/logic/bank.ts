@@ -92,12 +92,14 @@ export function shuffle<T>(xs:T[]):T[] { const a=[...xs];for(let i=a.length-1;i>
 // Template ids (n/p/c/s/geo/draw/diff/alt/grid + number) share one puzzle idea with
 // different numbers; group them so a match never feels like the same question twice.
 export function familyOf(q:Puzzle):string { const m=q.id.match(/^(n|p|c|s|geo|draw|diff|alt|grid)\d+$/); return m?m[1]:q.id; }
-export function buildDeck(level=1,seen:string[]=[]): Puzzle[] {
+export function buildDeck(level=1,seen:string[]=[],difficulty=0): Puzzle[] {
  const used=new Set<string>(),families=new Map<string,number>(),deck:Puzzle[]=[],recent=new Set(seen);const cycle=shuffle(CATEGORIES);
  for(let r=0;r<5;r++)for(let j=0;j<6;j++){
-  const target=Math.min(3,1+Math.floor((r+Math.floor((level-1)/5))/2));
+  const target=difficulty||Math.min(3,1+Math.floor((r+Math.floor((level-1)/5))/2));
   const category=cycle[(r+j)%5];
-  const pool=PUZZLES.filter(q=>!used.has(q.id)&&(families.get(familyOf(q))||0)<2);
+  const available=PUZZLES.filter(q=>!used.has(q.id)&&(families.get(familyOf(q))||0)<2);
+  const matching=difficulty?available.filter(q=>q.difficulty===target):available;
+  const pool=matching.length?matching:available;
   const rank=(q:Puzzle)=>(Math.abs(q.difficulty-target)*10000)+(recent.has(q.id)?1000:0)+(q.category===category?0:100);
   // Fresh questions always win over recently seen ones; seen is the last resort.
   const fresh=pool.filter(q=>!recent.has(q.id));

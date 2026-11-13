@@ -33,8 +33,8 @@ function shuffle<T>(items: T[]): T[] {
   return result;
 }
 
-export async function fetchTriviaQuestion(): Promise<TriviaQuestion> {
-  const response = await fetch('https://opentdb.com/api.php?amount=1&type=multiple');
+export async function fetchTriviaQuestion(difficulty = ""): Promise<TriviaQuestion> {
+  const response = await fetch('https://opentdb.com/api.php?amount=1&type=multiple'+(['easy','medium','hard'].includes(difficulty)?'&difficulty='+difficulty:''));
   if (!response.ok) throw new Error('Trivia service request failed');
 
   const payload = await response.json() as OpenTriviaResponse;

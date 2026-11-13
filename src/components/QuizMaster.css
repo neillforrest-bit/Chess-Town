@@ -47,3 +47,6 @@
 }
 @media(max-width:600px){.logic-match .logic-options button:nth-child(n){min-height:48px}.logic-match:has(.logic-score>div:nth-child(4)) .logic-options{min-height:110px;grid-template-rows:repeat(2,minmax(48px,1fr))}}
 @media(max-height:650px){.logic-match:has(.logic-score>div:nth-child(4)) .logic-options button:nth-child(n){padding:4px 5px;font-size:12px}.logic-match:has(.logic-score>div:nth-child(4)) .logic-options button>span{flex-basis:16px;width:16px;height:16px}}
+
+@media(max-width:600px){.trivia-page .trivia-answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.trivia-page .trivia-answers button{min-width:0;overflow-wrap:anywhere}}
+.logic-page select{padding:12px;background:#1e192d;color:#fff;border:1px solid #766044;border-radius:8px;font:inherit}

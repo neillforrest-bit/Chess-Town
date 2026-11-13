@@ -8,6 +8,7 @@ import { fetchTriviaQuestion, type TriviaQuestion } from '@/lib/trivia';
 type AnswerState = 'idle' | 'submitting' | 'answered';
 
 export default function TriviaPage() {
+  const [difficulty,setDifficulty]=useState('');
   const [question, setQuestion] = useState<TriviaQuestion | null>(null);
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(1);
@@ -18,7 +19,7 @@ export default function TriviaPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchTriviaQuestion()
+    void fetchTriviaQuestion(difficulty)
       .then((nextQuestion) => {
         if (!cancelled) setQuestion(nextQuestion);
       })
@@ -28,7 +29,7 @@ export default function TriviaPage() {
     return () => {
       cancelled = true;
     };
-  }, [round]);
+  }, [round,difficulty]);
 
   const selectAnswer = async (answer: string) => {
     if (!question || answerState !== 'idle') return;
@@ -70,6 +71,7 @@ export default function TriviaPage() {
         <div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Last Call Quiz</h1></div>
         <Link href="/arena">Arena</Link>
       </header>
+      <label>Question difficulty<select aria-label="Last Call difficulty" value={difficulty} onChange={e=>{setDifficulty(e.target.value);setQuestion(null);setScore(0);setRound(1);setSelectedAnswer(null);setAnswerState("idle");setError("");}}><option value="">Mixed</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
       <section className="trivia-game" aria-live="polite">
         <div className="trivia-scoreboard"><span>ROUND {round}</span><b>{score} POINT{score === 1 ? '' : 'S'}</b></div>
         {error ? (
