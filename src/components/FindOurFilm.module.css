@@ -50,3 +50,6 @@
 .guidedRoot:has(.holding)>.host{display:none}.guidedRoot .wheelStage>.wheel{width:min(88cqw,calc(100cqh - 35px),340px)}.guidedRoot .host{padding:7px 12px}.guidedRoot .host p{font-size:14px;max-height:48px;-webkit-line-clamp:2}.guidedRoot .face{width:48px;height:48px}
 @media(max-height:600px){.actorResults button{font-size:13px;min-height:42px;padding:6px}.actorResults small{font-size:9px}.actorResults button b{font-size:13px}.guidedPage>.input{flex:none}}
 .guidedPage>.briefTiles p{flex-direction:row;align-items:center;gap:12px}.guidedPage>.briefTiles b{flex:0 0 55px}.guidedPage>.briefTiles p{font-size:14px;line-height:1.3;padding:12px}@media(max-height:600px){.guidedPage>.briefTiles p{padding:9px;font-size:13px}}
+.guidedRoot:has(.wheelStage)>.host{display:none}.guidedRoot:has(.wheelStage) .progress{font-size:11px;padding:7px}.guidedRoot:has(.wheelStage) .wheelStage>.wheel{width:min(90cqw,calc(100cqh - 32px),340px)}
+
+.guidedRoot .wheelStage>.wheelName{display:none}.guidedRoot .wheelStage svg text{font-size:17px}.guidedRoot:has(.wheelStage) .pane{gap:6px}.guidedRoot:has(.wheelStage) .wheelStage>.wheel{width:min(90cqw,calc(100cqh - 12px),340px)}
