@@ -22,3 +22,4 @@
 
 .lounge button.metaReason{font-size:7px;line-height:1.1;margin:0;padding:1px 2px;min-height:12px;max-height:12px;border:0;border-radius:0;display:block;white-space:nowrap;color:#decde5;background:transparent;overflow:hidden}
 .reviews b{white-space:nowrap;letter-spacing:-.15px}.reviews b:has(+small){text-overflow:clip}@media(max-height:540px){.reviews b{letter-spacing:-.35px}}
+@media(min-height:541px) and (max-height:700px){.lounge .pick{flex-direction:row}.pick .poster{flex:0 0 42px;height:100%;min-width:42px}.pick span{flex:1;width:auto;min-width:0;padding:4px}}

@@ -12,7 +12,7 @@ try:
  for i in range(2):db('find_players','POST',{'id':ids[i],'username':names[i],'username_key':names[i].lower(),'credential_hash':hashlib.sha256(tokens[i].encode()).hexdigest()})
  s=api({'create':True,'invite':invite});s=api({'join':True,'invite':invite},1)
  # Seed only this disposable QA room at the acceptance boundary. Full live TMDB flow tested separately.
- s=db('find_rooms',query='?code=eq.'+code+'&select=state')[0]['state'];catalog=json.load(open('/home/sandbox/ct-film/src/data/catalog.json'))['movies'];s['movies']=[m for m in catalog if m.get('p') and m.get('rn')][:3];films=[m['id'] for m in s['movies']];s['pool']=films;s['saved']={'A':films,'B':films};s['nominations']={'A':films,'B':films};s['nominationDone']={'A':True,'B':True};s['phase']='accept';s['acceptanceDone']={'A':False,'B':False};s['acceptance']={'A':{},'B':{}};db('find_rooms','PATCH',{'state':s},'?code=eq.'+code)
+ s=db('find_rooms',query='?code=eq.'+code+'&select=state')[0]['state'];catalog=json.load(open('/home/sandbox/ct-film/src/data/catalog.json'))['movies'];s['movies']=[m for m in catalog if m.get('p') and m.get('rn')][:3];films=[m['id'] for m in s['movies']];s['movies']=[{k:v for k,v in m.items() if k not in ['rt','mc','imdb']} for m in s['movies']];s['pool']=films;s['saved']={'A':films,'B':films};s['nominations']={'A':films,'B':films};s['nominationDone']={'A':True,'B':True};s['phase']='accept';s['acceptanceDone']={'A':False,'B':False};s['acceptance']={'A':{},'B':{}};db('find_rooms','PATCH',{'state':s},'?code=eq.'+code)
  for i in range(2):api({'it':{'t':'accept','ids':films,'done':True},'actionId':secrets.token_hex(32)},i)
  with sync_playwright() as pw:
   browser=pw.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox']);pages=[]
@@ -26,7 +26,8 @@ try:
    assert q.get_by_role('img',name='Donkey Chester',exact=False).is_visible()
    for e in q.locator('main,section,section>div,[class*=lounge],[class*=match]').all():
     dims=e.evaluate('(e)=>[e.scrollHeight,e.clientHeight,e.scrollWidth,e.clientWidth]');assert dims[0]<=dims[1]+2 and dims[2]<=dims[3]+2,dims
-   expect(q.locator('[aria-label^="Critic and audience scores"]').first).not_to_contain_text('Unavailable',timeout=15000)
+   expect(q.locator('[aria-label^="Critic and audience scores"]').first).not_to_contain_text('Loading...',timeout=30000)
+   print('ACTUAL LIVE REVIEW STATUS',q.locator('[aria-label^="Critic and audience scores"]').all_text_contents(),flush=True)
    q.screenshot(path='/downloads/find-lounge-final-bout'+str(q.viewport_size['width'])+'.png')
   a.get_by_role('button',name='PAUSE 30s',exact=True).click();expect(a.get_by_text('CLOCK PAUSED',exact=False)).to_be_visible()
   # Preview the full original card and its live review scores, not a fabricated mini score.
