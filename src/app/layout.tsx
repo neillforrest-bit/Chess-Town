@@ -5,8 +5,8 @@ import { EngineEvaluationProvider } from "@/components/EngineEvaluationProvider"
 import BuildWatcher from "@/components/BuildWatcher";
 
 export const metadata: Metadata = {
-  title: "Chess Town",
-  description: "The Grandmaster's Map - Beta Demo",
+  title: "Game Town",
+  description: "You can do better than doom scrolling. Play a game, find a film, maybe even test your knowledge or grammar.",
 };
 
 export const viewport: Viewport = {
