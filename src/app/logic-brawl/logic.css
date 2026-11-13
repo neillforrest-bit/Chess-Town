@@ -118,3 +118,4 @@ body:has(.logic-page) .chester-fab,body:has(.logic-page) .chester-drawer{display
 }
 .logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:21px!important;line-height:1.16!important}
 @media(max-height:650px){.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:15px!important;line-height:1.08!important}}
+@media(min-height:651px){.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:19px!important;line-height:1.16!important}}
