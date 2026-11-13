@@ -1,5 +1,2 @@
-import ChessTownLanding from '@/components/ChessTownLanding';
-
-export default function HomePage() {
-  return <ChessTownLanding />;
-}
+import GamesHub from '@/components/GamesHub';
+export default function Home(){return <GamesHub/>;}

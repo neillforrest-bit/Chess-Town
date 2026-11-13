@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { askChesterChat } from '@/app/actions';
 import { chesterOfflineChat } from '@/lib/chester-voice';
 import { getReviewChatContext, reviewMoveHelp } from '@/lib/review-chat';
+import { usePathname } from 'next/navigation';
+import { trackTownRoute } from '@/lib/town-activity';
 import GlobalNav from '@/components/GlobalNav';
 import BuildBadge from '@/components/BuildBadge';
 import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
 import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname=usePathname();
+  const isHome=pathname==='/';
+  useEffect(()=>{trackTownRoute(pathname,window.location.search)},[pathname]);
   const engineEvaluation = useEngineEvaluation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[]>([]);
@@ -41,13 +46,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
   return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">
     <div className="portrait-lock" role="status"><i aria-hidden="true">♞</i><b>ROTATE ME</b><span>Chesterville is a portrait town - turn your phone upright and the fun continues.</span></div>
-    <GlobalNav />
+    {!isHome && <GlobalNav />}
     <BuildBadge />
     <main className="app-main flex-1 overflow-hidden">{children}</main>
-    <button className="chester-fab" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="chester-drawer" aria-label="Open Chester chat"><ChesterAvatar isThinking={thinking} /></button>
-    <aside id="chester-drawer" className={`chester-drawer ${open ? 'is-open' : ''}`} aria-hidden={!open}>
+    {!isHome && <button className="chester-fab" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="chester-drawer" aria-label="Open Chester chat"><ChesterAvatar isThinking={thinking} /></button>}
+    {!isHome && <aside id="chester-drawer" className={`chester-drawer ${open ? 'is-open' : ''}`} aria-hidden={!open}>
       <header><b>CHESTER CHAT</b><button onClick={() => setOpen(false)} aria-label="Close Chester chat">×</button></header>
       <ChesterChatOverlay chatMessages={messages} chatInput={input} setChatInput={setInput} onSendMessage={send} isThinking={thinking} chatError={error} />
-    </aside>
+    </aside>}
   </div>;
 }

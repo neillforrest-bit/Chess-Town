@@ -1,0 +1,94 @@
+@font-face{font-family:ManropeGT;src:url('/fonts/manrope/manrope-400.ttf') format('truetype');font-weight:400;font-display:swap}@font-face{font-family:ManropeGT;src:url('/fonts/manrope/manrope-600.ttf') format('truetype');font-weight:600;font-display:swap}@font-face{font-family:ManropeGT;src:url('/fonts/manrope/manrope-800.ttf') format('truetype');font-weight:800;font-display:swap}
+.hub{--paper:#f4f0fb;--ink:#282137;--muted:#635b73;--violet:#7044d9;--line:#ded4ed;--accent:#c7b0ff;--soft:#eee5ff;height:100%;max-width:500px;width:100%;margin:auto;padding:20px 24px 16px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box;background:var(--paper);color:var(--ink);font-family:ManropeGT,Arial,sans-serif;font-style:normal;overflow:hidden}.hub[data-town=chess]{--accent:#b9e2d1;--soft:#e5f4ec}.hub[data-town=movie]{--accent:#ffd18b;--soft:#fff0d9}.hub[data-town=logic]{--accent:#a9d9f1;--soft:#e5f3fb}.hub *{box-sizing:border-box}.hub h1,.hub h2,.hub p{margin:0;font-style:normal}.header{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;gap:10px}.brand{display:flex;gap:8px;align-items:center;text-decoration:none;color:var(--ink);font-size:20px;font-weight:800;line-height:.95;letter-spacing:-1px}.brand img{width:36px;height:36px}.brand span{display:flex;flex-direction:column;gap:1px}.brand i{font-style:normal;font-size:17px;color:var(--violet);letter-spacing:-.8px}.headerTools{display:flex;align-items:center;gap:6px}.preview{font-size:10px;font-weight:800;color:#67567e;letter-spacing:.4px;text-transform:uppercase}.motion{background:#e8dff3;border:0;border-radius:50%;width:44px;height:44px;display:grid;place-items:center;color:#584075;cursor:pointer}.motion svg{width:19px;height:19px}.welcome{height:204px;display:flex;align-items:center;flex:0 0 auto;position:relative;isolation:isolate;border-radius:28px;background:radial-gradient(ellipse at 85% 35%,#7b52af 0%,#43285f 46%,#302040 100%);padding:24px;overflow:hidden;box-shadow:0 8px 24px #30174612}.heroCopy{position:relative;z-index:2;max-width:62%}.hostLabel{display:block;font-size:9px;color:#ddd0ef;font-weight:800;letter-spacing:.8px;text-transform:uppercase;line-height:1.5}.welcome h1{font-size:32px;line-height:1.09;margin-top:12px;font-weight:800;letter-spacing:-1.4px;color:#fff8ef}.welcome h1 em{color:var(--accent);font-style:normal}.heroCaption{display:block;color:#d6c8e6;font-size:10px;line-height:1.5;margin-top:13px;max-width:140px}.character{width:196px;height:196px;position:absolute;right:-18px;bottom:-4px;z-index:1;animation:arrive .45s cubic-bezier(.2,.8,.3,1) both}.orbit{position:absolute;width:230px;height:230px;border:1px solid #cbb8df23;border-radius:50%;right:-60px;top:-40px;z-index:0}.orbit:after{content:'';position:absolute;inset:24px;border:1px solid #cbb8df23;border-radius:50%}.tagline{font-size:12px;color:var(--muted);font-weight:600;text-align:center;margin-top:-2px!important}.field{display:flex;flex-direction:column;gap:8px;flex:0 0 auto}.field label{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.7px;text-transform:uppercase}.field select{height:56px;width:100%;padding:10px 16px;border:1.5px solid #cfc0e3;background:#fff;color:var(--ink);border-radius:16px;font:800 16px ManropeGT,Arial,sans-serif;box-shadow:0 3px 0 #e5dcef;cursor:pointer}.intro{position:relative;display:flex;flex-direction:column;justify-content:center;gap:13px;flex:1;min-height:0;padding:20px 22px;background:#fff;border:1px solid #e7deef;border-radius:24px;box-shadow:0 5px 20px #43285f05}.cardHead{display:flex;justify-content:space-between;align-items:center;gap:8px}.speaker{display:flex;gap:6px;align-items:center;font-size:10px;font-weight:800;color:#6c5583;letter-spacing:.7px;text-transform:uppercase}.speaker i{width:7px;height:7px;border-radius:50%;background:#9670d3;display:inline-block}.townNumber{font-size:10px;font-weight:600;color:#91859f}.intro h2{font-size:27px;line-height:1.18;font-weight:800;letter-spacing:-1px;display:flex;align-items:center;justify-content:space-between;gap:8px}.townGlyph{width:36px;height:36px;background:var(--soft);border-radius:12px;display:flex;justify-content:center;align-items:center;font-family:Arial,sans-serif;font-size:25px;color:#483655;flex:0 0 auto}.intro p{font-size:15px;line-height:1.6;color:#62586e}.intro small{font-size:11px;line-height:1.6;color:#756a7f;border-top:1px solid #eee8f4;padding-top:11px}.eyebrow{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#6c5583}.cta{min-height:56px;width:100%;border:0;border-radius:18px;background:#7044d9;box-shadow:0 4px 0 #4e2c9c,0 7px 20px #7044d921;color:#fff;font:800 16px ManropeGT,Arial,sans-serif;display:flex;justify-content:space-between;align-items:center;gap:12px;flex:0 0 auto;text-decoration:none;cursor:pointer;text-align:center;padding:12px 22px}.cta span{font-size:24px;font-weight:400;line-height:1}.cta:hover{background:#6035c8}.cta:active{transform:translateY(2px);box-shadow:0 2px 0 #4e2c9c}.cta:focus-visible,.back:focus-visible,.brand:focus-visible,.motion:focus-visible{outline:3px solid #b68729;outline-offset:4px}.back{border:0;background:transparent;color:#655578;font:800 12px ManropeGT,Arial,sans-serif;min-height:44px;cursor:pointer;flex:0 0 auto}.footer{font-size:9px;text-align:center;color:#85768f;flex:0 0 auto;letter-spacing:.2px}.inside .welcome{height:160px}.inside .welcome h1{font-size:29px}.inside .character{width:168px;height:168px;right:-6px;bottom:-9px}.inside .heroCaption{max-width:150px}.inside{gap:14px}.inside .intro h2{font-size:26px}.inside .intro{gap:13px}@keyframes arrive{from{opacity:0;transform:translateY(12px) rotate(7deg)}to{opacity:1;transform:none}}
+@media(max-height:720px){.hub{padding:14px 18px;gap:12px}.welcome{height:138px;padding:18px 20px;border-radius:22px}.character{width:154px;height:154px;bottom:-13px;right:-6px}.welcome h1{font-size:27px;margin-top:8px}.hostLabel{font-size:8px;letter-spacing:.4px}.heroCaption{font-size:9px;margin-top:8px;max-width:130px}.tagline{font-size:10px}.field select{height:48px;font-size:14px;border-radius:14px}.intro{padding:14px 16px;gap:10px}.intro h2{font-size:25px}.intro p{font-size:13px;line-height:1.5}.intro small{font-size:10px;line-height:1.5;padding-top:9px}.townGlyph{width:30px;height:30px;border-radius:10px;font-size:22px}.cta{min-height:48px;font-size:14px;padding:10px 18px;border-radius:15px}.brand{font-size:18px}.brand i{font-size:15px}.brand img{width:32px;height:32px}.footer{font-size:8px}.inside .welcome{height:110px}.inside .character{width:130px;height:130px;right:0;bottom:-15px}.inside .welcome h1{font-size:24px;margin-top:7px}.inside .heroCaption{font-size:9px;max-width:145px}.inside{gap:10px}.inside .intro h2{font-size:22px}.inside .intro{gap:10px}.inside .back{min-height:44px}}
+@media(max-height:600px){.hub{gap:10px;padding:10px 16px}.welcome{height:105px;padding:14px 16px}.welcome h1{font-size:24px;margin-top:6px}.heroCaption{display:none}.character{width:132px;height:132px;bottom:-17px;right:0}.hostLabel{font-size:7px}.tagline{font-size:9px}.field{gap:6px}.field label{font-size:9px}.field select{height:44px;font-size:13px;padding:8px 12px}.intro{padding:12px 14px;gap:8px;border-radius:20px}.intro h2{font-size:23px}.intro p{font-size:12px;line-height:1.48}.intro small{font-size:9px;line-height:1.45;padding-top:8px}.speaker{font-size:8px}.townNumber{font-size:9px}.intro .eyebrow{font-size:8px}.townGlyph{width:27px;height:27px;font-size:19px}.cta{min-height:46px}.inside .welcome{height:88px}.inside .welcome h1{font-size:22px}.inside .character{width:115px;height:115px;right:0;bottom:-16px}.inside .intro h2{font-size:21px}.inside .intro{gap:9px}.inside .intro p{font-size:12px;line-height:1.5}.inside .intro small{font-size:9px}.inside{gap:9px}}
+@media(prefers-reduced-motion:reduce){.character{animation:none}.cta:active{transform:none}}
+
+/* Midnight clubhouse: bolder game-launcher treatment, not the earlier cream study. */
+.hub{--paper:#251a36;--ink:#30223f;--muted:#c5b7d6;--line:#6f568d;--accent:#d8c2ff;--soft:#eee4ff;background:radial-gradient(ellipse at 100% 0%,#3b2850 0%,#251a36 55%);color:#fff5ed}
+.brand{color:#fff5ed}.brand i{color:#c2a4fa}.preview{color:#c5afd9}.motion{background:#4a355f;color:#e6d6ff}.welcome{background:radial-gradient(ellipse at 80% 35%,#9160cc 0%,#6943a0 48%,#54367e 100%);border:1px solid #b992f229;box-shadow:0 8px 24px #0e061824}.tagline{color:#cfc1df}.field label{color:#c3b0d6}.field select{background:#3c2b51;color:#fff5ed;border-color:#695180;box-shadow:0 3px 0 #160c25}.field select option{background:#3c2b51;color:#fff5ed}.intro{background:#fcf9ff;border:0;box-shadow:0 8px 26px #12091d18;color:#30223f}.intro:before{content:'';position:absolute;left:27px;top:-7px;width:18px;height:18px;transform:rotate(45deg);border-radius:3px;background:#fcf9ff}.intro p{color:#665773}.intro small{color:#7a6987}.intro h2{color:#30223f}.speaker{color:#7958a4}.townNumber{color:#95809f}.cta{background:#d8efa1;color:#2a2633;box-shadow:0 4px 0 #8ba65f,0 8px 20px #15101c2b}.cta:hover{background:#e5f6be}.cta:active{box-shadow:0 2px 0 #8ba65f}.back{color:#d4c3e4}.footer{color:#b2a0c5}.cta:focus-visible,.back:focus-visible,.brand:focus-visible,.motion:focus-visible{outline-color:#ffcf93}.heroCaption{color:#e1cfee}.hostLabel{color:#eadcf8}
+
+/* Put choosing a town ahead of the host, with an honest unselected state. */
+.hub:not(.inside){gap:14px}
+.hub:not(.inside) .welcome{height:174px}
+.hub:not(.inside) .character{width:174px;height:174px;right:-5px;bottom:-8px}
+.hub:not(.inside) .intro{flex:0 1 auto;min-height:0;padding:18px 20px;gap:10px}
+.hub:not(.inside) .intro p{font-size:14px;line-height:1.5}
+.hub:not(.inside) .intro small{font-size:10px;line-height:1.4;padding-top:8px}
+.hub:not(.inside) .field{padding:12px;border:1px solid #b799e4;border-radius:20px;background:#4a3363;box-shadow:0 0 0 3px #a97fe61c}
+.hub:not(.inside) .field label{color:#f0dfff;font-size:11px}
+.hub:not(.inside) .field select{height:64px;border:2px solid #d0b3ff;background:#f8f1ff;color:#30223f;font-size:18px;box-shadow:0 4px 0 #241435}
+.hub:not(.inside) .field select:focus-visible{outline:3px solid #e3f4b7;outline-offset:4px}
+.tagline{line-height:1.5;font-size:12px}
+.cta:disabled,.cta:disabled:hover{background:#554662;color:#c5b8d0;box-shadow:0 3px 0 #1b1126;cursor:not-allowed;opacity:.65;transform:none}
+@media(max-height:720px){
+.hub:not(.inside){gap:10px}
+.hub:not(.inside) .welcome{height:116px}
+.hub:not(.inside) .character{width:134px;height:134px;bottom:-12px}
+.hub:not(.inside) .field{padding:9px;border-radius:17px;gap:6px}
+.hub:not(.inside) .field select{height:54px;font-size:16px}
+.hub:not(.inside) .intro{padding:12px 15px;gap:7px}
+.hub:not(.inside) .intro h2{font-size:23px}
+.hub:not(.inside) .intro p{font-size:12px;line-height:1.45}
+.hub:not(.inside) .intro small{font-size:9px;line-height:1.35;padding-top:6px}
+.tagline{font-size:11px;line-height:1.4}
+}
+@media(max-height:600px){
+.hub:not(.inside){gap:8px}
+.hub:not(.inside) .welcome{height:88px;padding:10px 14px}
+.hub:not(.inside) .character{width:112px;height:112px;bottom:-14px}
+.hub:not(.inside) .welcome h1{font-size:22px;margin-top:4px}
+.hub:not(.inside) .field{padding:8px}
+.hub:not(.inside) .field select{height:50px;font-size:15px}
+.hub:not(.inside) .intro{padding:10px 13px;gap:6px}
+.hub:not(.inside) .intro h2{font-size:21px}
+.hub:not(.inside) .intro p{font-size:11px;line-height:1.4}
+.hub:not(.inside) .intro small{font-size:8px;line-height:1.3;padding-top:5px}
+.tagline{font-size:10px;line-height:1.4}
+}
+/* The original Chester teleprompter, staged into short welcome/guide/start cards. */
+.hub:not(.inside) .welcomeCard{padding:12px 14px;flex:1;min-height:0}
+.hostWelcome{display:flex;flex-direction:column;gap:10px;min-height:0;height:100%;justify-content:center}
+.hostTabs{display:flex;gap:5px;flex:none}
+.hostTabs button{flex:1;min-height:34px;padding:5px 4px;border:1px solid #d4c3e5;border-radius:10px;background:#eee6f5;color:#5a4174;font:800 10px ManropeGT,Arial,sans-serif;cursor:pointer}
+.hostTabs button[aria-pressed=true]{background:#7044a4;color:white;border-color:#7044a4}
+.hostPrompter{min-height:0}
+.hostPrompter :global(.chester-teleprompter){padding:10px!important;gap:9px!important;background:#392449!important;border-color:#aa86cd!important;box-shadow:none!important;backdrop-filter:none!important}
+.hostPrompter :global(.chester-teleprompter__message){font:600 13px/1.5 ManropeGT,Arial,sans-serif!important;max-height:none!important;overflow:visible!important;text-shadow:none!important;letter-spacing:0!important}
+.hostBottom{display:flex;align-items:center;gap:8px}
+.hostBottom small{flex:1;border:0!important;padding:0!important;font-size:9px!important;line-height:1.35!important}
+.hostBottom button{min-width:58px;min-height:34px;border:0;border-radius:10px;padding:5px 9px;background:#e1d2ef;color:#4b3166;font:800 11px ManropeGT,Arial,sans-serif;cursor:pointer}
+@media(max-height:720px){.hostWelcome{gap:7px}.hostPrompter :global(.chester-teleprompter__message){font-size:12px!important;line-height:1.4!important}.hub:not(.inside) .welcomeCard{padding:10px}.hostBottom small{font-size:8px!important}}
+@media(max-height:600px){.hostWelcome{gap:5px}.hub:not(.inside) .welcome{height:74px}.hub:not(.inside) .welcomeCard{padding:8px}.hostPrompter :global(.chester-teleprompter){padding:7px!important;gap:6px!important}.hostPrompter :global(.chester-teleprompter__message){font-size:11px!important;line-height:1.35!important}.hostPrompter :global(.chester-teleprompter)>div:first-child{width:28px!important;height:28px!important}.hostTabs button{min-height:30px;font-size:9px}.hostBottom button{min-height:30px}.hostBottom small{font-size:8px!important}}
+/* Keep the invitation inside Chester's purple hero, not between the panels. */
+.hub:not(.inside) .welcome{height:206px;align-items:flex-start;padding-bottom:60px}
+.heroTagline{position:absolute;left:20px;right:20px;bottom:15px;z-index:3;font:600 11px/1.45 ManropeGT,Arial,sans-serif;color:#f0e5ff;max-width:none;text-align:left;border-top:1px solid #dbc1ff44;padding-top:9px}
+.hub:not(.inside) .character{bottom:35px;width:158px;height:158px}
+@media(max-height:720px){.hub:not(.inside) .welcome{height:156px;padding-top:14px;padding-bottom:54px}.heroTagline{left:16px;right:16px;bottom:10px;font-size:10px;line-height:1.4;padding-top:7px}.hub:not(.inside) .character{width:126px;height:126px;bottom:26px}}
+@media(max-height:600px){.hub:not(.inside) .welcome{height:136px;padding-top:10px;padding-bottom:50px}.heroTagline{left:13px;right:13px;bottom:8px;font-size:9px;line-height:1.4;padding-top:5px}.hub:not(.inside) .character{width:105px;height:105px;bottom:27px}}
+/* The selected adult donkey host, scoped to the town landing rather than game avatars. */
+.character{width:170px;height:247px;right:-2px;bottom:-42px}
+.inside .character{width:140px;height:205px;right:5px;bottom:-40px}
+.hostDonkey{width:37px;height:48px;flex:none;overflow:hidden;border-radius:8px;background:#5d3e76}
+.hostDonkey svg{height:58px;transform:translateY(-2px)}
+@media(max-height:720px){.character{width:137px;height:200px;bottom:-44px;right:3px}.inside .character{width:116px;height:170px;bottom:-42px}.hostDonkey{width:28px;height:38px}.hostDonkey svg{height:44px}}
+@media(max-height:600px){.hub:not(.inside) .character{width:88px;height:128px;right:7px;bottom:-28px}.inside .character{width:95px;height:138px;bottom:-31px}}
+.hub:not(.inside) .character{width:135px;height:151px;bottom:55px;right:0}
+.hostBottom{flex:none}
+.hostPrompter{flex:none}
+@media(max-height:720px){.hub:not(.inside) .character{width:102px;height:104px;bottom:49px;right:6px}}
+@media(max-height:600px){.hub:not(.inside) .welcome{height:112px}.hub:not(.inside) .character{width:80px;height:72px;bottom:42px;right:7px}.hostWelcome{justify-content:space-between}.hostPrompter :global(.chester-teleprompter__message){font-size:11px!important;line-height:1.35!important}}
+/* A mode switch is an action, not a caption. Movie Town uses this first. */
+.inside .field{padding:12px;background:#48345e;border:2px solid #ae8bd9;border-radius:20px;gap:9px;box-shadow:0 0 0 4px #b89ce411}
+.inside .field label{font-size:13px;color:#f5eaff;display:flex;justify-content:space-between;letter-spacing:.6px}
+.inside .field label span{font-size:20px;line-height:14px}
+.inside .field select{height:64px;font-size:18px;border:2px solid #cdb0ee;background:#faf5ff;color:#2f2240;padding:12px 14px;border-radius:14px;white-space:normal}
+.modeHint{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid #dacee9;flex:none}
+.modeHint>svg{width:42px;height:60px;flex:0 0 42px}
+.modeHint p{font-size:13px!important;line-height:1.4!important;color:#5e427a!important;font-weight:600}
+.inside .intro{gap:10px}.inside .intro h2{font-size:23px}.inside .intro p{font-size:14px;line-height:1.45}.inside .intro small{font-size:10px}
+@media(max-height:720px){.inside .field{padding:9px}.inside .field select{height:58px;font-size:16px}.modeHint{padding-bottom:8px}.modeHint>svg{height:44px;width:32px;flex-basis:32px}.modeHint p{font-size:11px!important}.inside .intro h2{font-size:21px}.inside .intro p{font-size:12px}.inside .intro small{font-size:9px}.inside .intro{padding:12px 14px;gap:8px}}
+@media(max-height:600px){.inside .welcome{height:76px}.inside .field{padding:7px}.inside .field label{font-size:11px}.inside .field select{height:52px;font-size:15px}.inside .intro h2{font-size:18px}.inside .intro p{font-size:11px}.inside .intro small{font-size:8px}.modeHint p{font-size:10px!important}.inside{gap:7px}.inside .intro{gap:6px}.inside .back{min-height:36px}}
+
+.hostPrompter :global(.chester-teleprompter){display:flex!important;flex-direction:row!important;align-items:flex-start!important}.hostPrompter :global(.chester-teleprompter__message){flex:1;min-width:0}.hostDonkey{flex-shrink:0!important}
+.inside .field select{white-space:nowrap;line-height:1.3}

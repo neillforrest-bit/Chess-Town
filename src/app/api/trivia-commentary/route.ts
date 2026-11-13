@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // This visual preview is explicitly offline for banter. No paid Gemini QA is authorised.
-    if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF === 'instinct/quiz-master-preview-20261113') {
+    if (process.env.VERCEL_ENV === 'preview' && ['instinct/quiz-master-preview-20261113','instinct/game-town-unified-preview-20261113'].includes(process.env.VERCEL_GIT_COMMIT_REF || '')) {
       return NextResponse.json({ reply: getFallbackReply(payload), source: 'local-preview' });
     }
 

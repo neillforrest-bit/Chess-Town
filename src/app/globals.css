@@ -4735,3 +4735,5 @@ body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .
 body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div>b{font:850 17px/1.2 system-ui,sans-serif!important}
 body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div>span{font:600 14px/1.25 system-ui,sans-serif!important}
 body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages .trivia-party-results>div>strong{font:850 18px/1.2 system-ui,sans-serif!important;max-width:none}
+
+body:has(.good-together-hub){background:#251a36}body:has(.good-together-hub) .app-main{background:#251a36}
