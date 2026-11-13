@@ -6,7 +6,10 @@ import { playerHeaders } from './player';
 export type Seat={code:string;token:string;pid:PID;name:string;invite?:string};
 export const randomSecret=()=>Array.from(crypto.getRandomValues(new Uint8Array(32))).map(n=>n.toString(16).padStart(2,'0')).join('');
 export const seatKey=(code:string)=>'cs-find-seat-'+code;
-export function saveSeat(seat:Seat){localStorage.setItem(seatKey(seat.code),JSON.stringify(seat));localStorage.setItem('cs-find-last',JSON.stringify(seat));}
+export const pendingKey=(code:string)=>'cs-find-pending-'+code;
+export function pendingSeat(code:string):Seat|null{try{const s=JSON.parse(localStorage.getItem(pendingKey(code))||'null');return s&&/^[A-Z2-9]{8}$/.test(s.code)&&/^[a-f0-9]{64}$/.test(s.token)&&['A','B'].includes(s.pid)?s:null;}catch{return null;}}
+export function keepPending(seat:Seat,key=seat.code){const text=JSON.stringify(seat);localStorage.setItem(pendingKey(key),text);if(localStorage.getItem(pendingKey(key))!==text)throw Error('This browser cannot remember your seat. Allow browser storage before joining.');}
+export function saveSeat(seat:Seat){const text=JSON.stringify(seat);localStorage.setItem(seatKey(seat.code),text);if(localStorage.getItem(seatKey(seat.code))!==text)throw Error('Your seat could not be remembered. Keep this page open and retry.');localStorage.setItem('cs-find-last',text);}
 export function readSeat(code:string):Seat|null{try{const s=JSON.parse(localStorage.getItem(seatKey(code))||'null');return s?.code===code&&/^[a-f0-9]{64}$/.test(s.token)?s:null;}catch{return null;}}
 export function useFind(code:string){
  const [seat,setSeat]=useState<Seat|null>(null),[state,setState]=useState<FindState|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[connected,setConnected]=useState(false);

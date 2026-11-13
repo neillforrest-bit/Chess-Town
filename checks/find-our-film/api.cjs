@@ -10,6 +10,7 @@ function req(body,seat=seatA,player='a'.repeat(64)){return new Request('http://l
 async function post(body,seat,player){const r=await api.POST(req(body,seat,player),param);return{r,d:await r.json()};}
 (async()=>{
  let x=await post({create:true,invite,name:'Spoofed'});assert.equal(x.r.status,200);assert.equal(x.d.players.A.name,'Forrest');assert.equal(x.d.players.A.tokenHash,'');assert.equal(x.d.inviteHash,undefined);assert.equal(rooms.get(code).players.A.playerId,'player-a');
+ const version=rooms.get(code).v;x=await post({create:true,invite});assert.equal(x.r.status,200);assert.equal(rooms.get(code).v,version);x=await post({create:true,invite},seatB,'b'.repeat(64));assert.equal(x.r.status,409);
  x=await post({it:{t:'ready',ready:true}},seatA,'b'.repeat(64));assert.equal(x.r.status,403);
  x=await post({join:true,invite:'wrong'},seatB,'b'.repeat(64));assert.equal(x.r.status,403);
  x=await post({join:true,invite},seatB,'b'.repeat(64));assert.equal(x.r.status,200);assert.equal(x.d.players.B.name,'Jem');

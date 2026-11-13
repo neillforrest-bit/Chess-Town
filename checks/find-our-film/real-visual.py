@@ -15,7 +15,7 @@ try:
   def context(w,h,pid):
    c=b.new_context(viewport={'width':w,'height':h});token=('b' if pid=='B' else 'a')*64
    c.add_init_script('localStorage.setItem(\'cs-find-seat-TESTABCD\','+json.dumps(json.dumps({'code':'TESTABCD','pid':pid,'name':'Jem' if pid=='B' else 'Forrest','token':token,'invite':'c'*64}))+');')
-   c.route('**/api/find-room/*',handler);c.route('**/api/omdb',lambda r:r.fulfill(json={'rt':92,'mc':81,'imdb':8.1,'awards':'Won 1 Oscar.'}));c.route('**/api/orson',lambda r:(paid.append(r.request.url),r.fulfill(json={'error':'disabled'})))
+   c.route('**/api/find-room/*',handler);c.route('**/api/find-meta',lambda r:r.fulfill(json={'rt':92,'mc':81,'imdb':8.1,'awards':'Won 1 Oscar.'}));c.route('**/api/orson',lambda r:(paid.append(r.request.url),r.fulfill(json={'error':'disabled'})))
    return c
   for w,h in [(390,844),(375,667),(320,568)]:
    ss=state({'reset':True,'phase':'cards','real':True});c=context(w,h,'A');q=c.new_page()

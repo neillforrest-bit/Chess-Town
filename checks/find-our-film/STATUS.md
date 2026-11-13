@@ -1,24 +1,25 @@
-# Checkpoint-one working state, 13 November 2026 16:36 GMT
+# Checkpoint-one working state, 13 November 2026 17:06 GMT
 
 Branch instinct/find-our-film-20261113. Preview only. Nothing pushed/deployed. Existing public previews and production untouched.
 
 Implemented locally: isolated /find flow; strict both-player genre/exclusion and actor matching; both-ready gate; wheel with veto each; 12-card 6/4/2 target with honest smaller pools; full cards in browse/nomination/acceptance/showdown/confirm; saved Want retention; up to 3 nominations each; mutual-only showdown without random disagreement; final both consent; local remembered seat/back guard; server-owned unique username with random hashed credential; new private table migration; durable request limits; conditional GET and paused hidden/done polling; paid Orson POST hard 403 on this branch.
 
-Live checks: inherited cinesync_rooms has anon ALL USING true WITH CHECK true. Do not change it without separate owner approval. New find_* tables have NOT been created. Server credential and TMDB key exist in Vercel Preview; values not retrieved. SQL editor corrupted two input attempts; neither was run. Supabase/Vercel browser leases released and outcomes reported.
+Live checks: find_players, find_rooms and find_limits plus find_take_rate were applied to the private database. Service-role reads succeed; actual anon GET/POST/RPC are denied. Existing cinesync_rooms open anon policy remains unchanged under the explicit restriction. Live local production-server API and two real browser-context foundation tests passed: username persistence, duplicate denial, seat ownership, host/guest ready gate, draft reload, browser back guard, 304, swapped/bare credential denial. Disposable QA profiles/rooms removed.
 
-Build and fixture tests pass, but no live DB/API test exists. API mocks cover server-owned username, both identity and seat tokens, occupied guest, direct rename refusal, CAS retry, 304, invite metadata only, rate refusal, no paid network. UI mocks cover two sessions through final mutual confirm. Phone screenshots inspected at 320/375/390. Every selection phase is full card. Fixture scores are not live and must never be represented as actual source data. Real-catalogue card pixel tests still use mocked OMDb scores. Actual iPhone Safari back gesture is unverified.
+Live TMDB search passed using securely approved key use: 32 verified Drama AND Comedy titles, actual full casts and poster/overview/IMDb IDs. Tom Hanks and Viola Davis both contribute; required nonexistent actor fails closed. Search took 1.6 seconds and called no model. Actor credit buckets now receive round-robin detail shares. Five-stage brief fits 320/375/390; entry overlap caught by pixel review and fixed. Scores in old fixture screenshots are mocks; new live catalogue scores are actual TMDB audience scores. Existing preview OMDb endpoint returned503, so genuine RT/Metacritic/IMDb values remain unverified and must show Unavailable, never fixture values.
+
+Build/fixture tests pass. Live two-browser full game passed against private DB and actual TMDB through mutual confirmation and reload. Dropped successful host/guest responses followed by reload recovered both original seats; simulated storage-full after remote creation recovered the same host seat. Disposable QA rooms/profiles cleaned, including failed-run leftovers. Same-seat pending credentials now persist before claiming the remote seat, host creation retry is idempotent, and identity verification has a retry control. Drafts are tied to the server brief fingerprint. Actual iPhone Safari gesture is unverified.
 
 Open before release:
-- Apply find-foundation.sql safely using normal UI, verify new tables' anon REST reads and writes are denied. Never fall back to anon server client.
-- Verify live TMDB metadata and actor exact-resolution path. New room pool is fail-closed to live verified details only. Existing catalogue can contain stale/unreleased films; it must not be fallback.
-- Improve actor coverage fairness when candidate cap is reached; current actor-film union may let one actor crowd out another. Label no/ambiguous actor match honestly.
-- Reconcile curated mood labels with actual human-tag evidence; current lanes are explicitly genre-backed, not a guarantee of warm/tense tone.
-- Complete username/local-storage failures, guest onboarding, retries, slow-network and resume/back tests including two actual deployed browser contexts.
-- Test details/reviews/awards missing metadata; inspect genuine live scores and posters on all selection rounds. No claim of individual critic reviews.
-- All phone screens should avoid scrolling. Brief page2 genre/actor and exclusions may need another staged page at 320, not tiny text or clipped controls.
-- Live budget/rate guard and server hard-zero-model test before any sharing. Other old routes inherited; audit side effects before using them.
-- Commit/push one cohesive batch only after QA. New build has no usable link yet.
+- Extend live full-game tests to multi-film showdown disagreement, both vetoes and simultaneous brief changes. Current one-mutual-finalist path passes. Fixture reducer covers 1-6 and disagreement, not yet live. Add browser-storage entirely blocked before any remote creation checks.
+- OMDb metadata research sent to parent 16:58: free key 1000/day recommended for private personal preview, setup waiting for user decision through main. No signup or spend. Paid tiers verified; direct Fabric licensing would need quote for wider access. Owned-seat /api/find-meta now validates real room film IDs, 900/day shared cap, 8s provider timeout and cached requests. Legacy unguarded /api/omdb hard403 on this branch so adding a future key cannot expose it. Metadata fixtures pass, actual no-key responses remain honest503. No fabricated critic text or awards.
+- Reconcile mood labels with evidence: current lanes are explicitly genre-backed, not guaranteed warm/tense tone.
+- Phone details now paginated synopsis/cast/awards; saved shelf pages one full card at a time; wheel peek is paginated modal. Actual 320px synopsis/reviews/awards/shelf pixels inspected and no internal scroll. Still test max actor/exclusion summaries and error layouts.
+- Audit budget/rate guard and side effects on all routes. Paid Orson POST is hard403 with no provider request. Existing engine side effects call this disabled endpoint; no other model providers found in src scan. No paid model calls.
+- Commit/push one cohesive batch only after QA. No usable new preview link yet.
 
 Held: community library, watched ratings, email recovery, Game Town-wide landing, Discover treasure hunt. Snack Time Backlot source read-only at /tmp/snack-readonly-20261113, published revision filerevision-01M5YZ786VFZZBJ0WZFW70HY1R. No Snack changes allowed. Actual Backlot sorts Up next by priority, Watched by own review; viewer-local collection.v1, not shared DB. Reuse later, no clone build now.
 
 Spend: zero paid model calls. Spreadsheet Usage & Spend Monitor row204 records today's local session, provider cost delta not measured. Approved GBP5 ceiling / GBP1 QA remains unused.
+
+Scope check before release: original concept mentioned Secret Drawer plus human-checked mood tags. Current first skeleton has genre-backed, honestly-labelled mood lanes and no Secret Drawer. Parent must reconcile that against checkpoint scope before calling it the promised final version. Game Town-wide landing remains held.

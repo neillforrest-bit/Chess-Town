@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 15;
 /** OMDB lookup for Orson Takes the Wheel. Needs OMDB_API_KEY in the server env; without it returns 503 and the client falls back to catalogue scores. */
-export async function POST(req: Request) {
+export async function POST() {
+  return NextResponse.json({error:'This checkpoint uses owned-seat /api/find-meta lookups only.'},{status:403});
+}
+
+async function disabledLegacyPOST(req: Request) {
   const key = process.env.OMDB_API_KEY; if (!key) return NextResponse.json({ error: 'no key' }, { status: 503 });
   const b = await req.json().catch(() => ({})) as { imdb?: string; t?: string; y?: number; full?: number };
   const q = /^tt\d{6,9}$/.test(b.imdb || '') ? `i=${b.imdb}` : `t=${encodeURIComponent(b.t || '')}&y=${Number(b.y) || ''}`;
