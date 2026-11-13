@@ -15,3 +15,12 @@
 .sheet>p,.sheet>h2{overflow-wrap:anywhere}
 
 .issueButton{flex:none;text-align:center;background:#402f16;border:1px solid #d6a53f;color:#ffe7ac;border-radius:7px;padding:6px;font-size:10px;min-height:28px}@media(max-height:600px){.issueButton{font-size:9px;padding:4px;min-height:23px}}
+
+.creditLink{font:inherit;color:#c8b3d8;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}.sheet a:has(>img){background:#fff;border-radius:7px;padding:10px;align-self:flex-start}.sheet a>img{display:block;object-fit:contain}
+
+.sheet{color:#f5eafa}
+
+.error>button{margin-left:8px;background:#26192f;color:#ffe7ac;border:1px solid #b48e49;border-radius:5px;padding:4px 8px;font-size:11px}
+
+.scroll{container-type:size}@container(max-height:440px){.cardTop>img{width:60px;height:90px}.cardTop h2{font-size:18px}.cardTop p{font-size:10px;margin:2px 0}.badge{font-size:9px;padding:3px}.card{gap:6px}.story{font-size:13px;-webkit-line-clamp:2}.why{display:none}.cardButtons button{padding:7px 5px!important}}@container(max-height:300px){.cardTop>img{width:52px;height:78px}.cardTop h2{font-size:16px}.cardTop p{font-size:9px}.cardTop .cast{-webkit-line-clamp:1}.badge{font-size:8px;padding:2px}.card{gap:5px}.story{font-size:12px}.scores>div{padding:4px 1px}.scores b{font-size:14px}.scores small{font-size:7px}.cardButtons button{padding:6px 4px!important}}
+.row>button,.actions>button{overflow-wrap:anywhere}.actions>button{max-height:72px;overflow:hidden}.row>button{max-height:72px;overflow:hidden}

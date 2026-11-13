@@ -1,4 +1,4 @@
-# Checkpoint-one working state, 13 November 2026 17:20 GMT
+# Checkpoint-one working state, 13 November 2026 17:26 GMT
 
 Branch instinct/find-our-film-20261113. Preview only. Nothing pushed/deployed. Existing public previews and production untouched.
 
@@ -25,3 +25,6 @@ Spend: zero paid model calls. Spreadsheet Usage & Spend Monitor row204 records t
 Parent design call17:06: Secret Drawer and human-checked mood-tag pass follow in checkpoint two with library and Discover. Checkpoint one stays as scoped with honest genre-backed mood lanes, never a tone guarantee. Game Town-wide landing remains held.
 
 17:20 audit fix: live-only selector previously merged extra verified details into inherited catalogue rows, which could inherit stale critic fields. Removed inherited catalogue entirely from verified-only searches; poison regression verifies old critic/cast values do not leak. Current local data pipeline is now fresh-only. No released build used the new flow. Added12s read and28s action timeouts, with durable same-seat retries already proven.
+
+17:26 release audit: added TMDB-approved logo and required current non-endorsement notice in About/Credits, source https://www.themoviedb.org/about/logos-attribution and https://www.themoviedb.org/api-terms-of-use. Actual320px credit pixels inspected after fixing inherited dark footer text. Parent warned current TMDB terms restrict AI use/commercial use; model generation remains disabled. Future community/AI integration needs licensing clarification. No signup/outreach/spend.
+Mock reconnect test proves saved favourite survives aborted action and reconnect without reset;320 controls inspected. Worst-case long title,3cast,4genres,gem badge and long synopsis now fit every selection round at320/375/390 with container-sized card layout. Vote button uses bounded CHOOSE FILM1/2 visible text but retains exact title accessible labels. Fixtures have fictional titles/scores/poster and are never live evidence.
