@@ -1880,7 +1880,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
                     }
                   : {
                       type: 'summary',
-                      message: `⚡ Arena loaded: ${AI_TAGS[mode]?.title}. The board is ready. The tension is REAL.`,
+                      message: `⚡ Arena loaded: ${AI_TAGS[mode]?.title ?? 'Chess Town: Exhibition Match'}. The board is ready. The tension is REAL.`,
                     },
               })
             );
