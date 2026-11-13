@@ -78,3 +78,33 @@ body:has(.logic-page) .chester-fab,body:has(.logic-page) .chester-drawer{display
 .logic-match .logic-options button:nth-child(n){background:#fff;color:#09090b;border:2px solid #fff;font-weight:800;opacity:1}
 .logic-match .logic-options button>span{background:#f0edf6;color:#19151e;border-color:#9a90a3}
 .logic-match .logic-options button.is-selected{background:#fff;color:#09090b;border:3px solid #b77c21;box-shadow:inset 0 0 0 1px #382103;opacity:1}
+.logic-match .logic-score:has(>div:nth-child(4)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.logic-match .logic-score:has(>div:nth-child(4))>div{display:flex;flex-direction:row;justify-content:center;gap:5px;padding:5px;min-width:0}
+.logic-match .logic-score:has(>div:nth-child(4)) span{font-size:14px;overflow-wrap:anywhere}
+.logic-match .logic-score:has(>div:nth-child(4)) b{font-size:26px}
+.logic-match .logic-score:has(>div:nth-child(4)) small{display:none}
+@media(max-height:650px){
+.logic-match .logic-score:has(>div:nth-child(4))>div{padding:4px 2px;min-height:35px;gap:4px}
+.logic-match .logic-score:has(>div:nth-child(4)) span{font-size:13px;line-height:1.05}
+.logic-match .logic-score:has(>div:nth-child(4)) b{font-size:23px}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master--long .quiz-master__question{font-size:15px!important;line-height:1.1!important}
+}
+@media(max-height:650px){
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master{padding:6px;gap:6px}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master__portrait{width:40px;flex-basis:40px}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master__portrait svg{height:43px}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master__portrait>span{display:none}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master .quiz-master__question{font-size:16px!important;line-height:1.12!important}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:15px!important;line-height:1.1!important}
+.logic-match:has(.logic-score>div:nth-child(4)) .logic-panel{gap:4px;padding:6px}
+}
+@media(max-height:650px){
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master--long .quiz-master__label{display:none}
+.logic-match:has(.logic-score>div:nth-child(4)) .logic-options{min-height:143px;grid-template-rows:repeat(2,minmax(69px,1fr))}
+}
+@media(max-height:650px){
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-countdown{display:flex;flex-direction:row-reverse;align-items:center;gap:9px;padding:5px 0}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-countdown__caption{margin:0;flex:none}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-countdown__caption>span{display:none}
+.logic-match:has(.logic-score>div:nth-child(4)) .quiz-countdown__track{flex:1;height:14px}
+}
