@@ -4813,3 +4813,7 @@ body:has(.trivia-brawl-page, .trivia-party) .trivia-host-reply{border-left-color
 body:has(.trivia-brawl-page, .trivia-party) .trivia-next,body:has(.trivia-brawl-page, .trivia-party) .trivia-error button{border-color:#a9bd6f;background:#d8efa1;color:#2a2633;font-weight:800}
 body:has(.trivia-brawl-page, .trivia-party) .trivia-loading,body:has(.trivia-brawl-page, .trivia-party) .trivia-error{color:#c2a4fa;font:800 .72rem/1.4 ManropeGT,Arial,sans-serif}
 body:has(.trivia-brawl-page, .trivia-party) .trivia-error{color:#e88bb0}
+
+/* Trivia palette convergence: arena accents become donkey accents on quiz surfaces */
+body:has(.trivia-brawl-page),body:has(.trivia-party),body:has(.quiz-page){--arena-cyan:#c2a4fa;--arena-gold:#d8efa1;--arena-pink:#b987e8;--arena-acid:#7044d9;--arena-paper:#fff5ed;background:radial-gradient(ellipse at 100% 0%,#3b2850 0%,#251a36 60%)}
+body:has(.trivia-brawl-page) .trivia-showtime,body:has(.trivia-party) .trivia-showtime{background:transparent}
