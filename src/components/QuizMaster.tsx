@@ -17,7 +17,7 @@ export function QuizMaster({ question, label = 'Chester asks', className = '' }:
       <ellipse cx="33" cy="81" rx="3" ry="2" fill="#8a6f76" /><ellipse cx="62" cy="81" rx="3" ry="2" fill="#8a6f76" />
       <path d="M32 41L25 25l19 6 9-16 8 17 18-2-10 16z" fill="#d0a961" stroke="#362847" strokeWidth="2" /><circle cx="25" cy="25" r="4" fill="#e9d49c" /><circle cx="53" cy="15" r="4" fill="#e9d49c" /><circle cx="79" cy="30" r="4" fill="#e9d49c" />
     </svg><span>QUIZ MASTER</span></div>
-    <div className="quiz-master__speech"><span className="quiz-master__label">{label}</span><h2 className="quiz-master__question">{question}</h2></div>
+    <div className="quiz-master__speech"><h2 className="quiz-master__question">{question}</h2></div>
   </div>;
 }
 

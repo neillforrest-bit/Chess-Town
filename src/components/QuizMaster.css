@@ -5,7 +5,7 @@
 .quiz-master__portrait>span{display:block;font:800 7px/1.4 system-ui,sans-serif;letter-spacing:1.3px;color:#ddc48f;margin-top:3px}
 .quiz-master__speech{min-width:0;flex:1}
 .quiz-master__label{display:block;margin-bottom:7px;color:#dfc28a;font:800 9px/1.2 system-ui,sans-serif;text-transform:uppercase;letter-spacing:1.5px}
-.quiz-master .quiz-master__question{margin:0!important;padding:0!important;font:650 clamp(19px,4.8vw,27px)/1.22 system-ui,sans-serif!important;color:#fff7e8!important;text-wrap:pretty;letter-spacing:-.3px}
+.quiz-master .quiz-master__question{margin:0!important;padding:0!important;font:650 clamp(16px,4.1vw,22px)/1.28 system-ui,sans-serif!important;color:#fff7e8!important;text-wrap:pretty;letter-spacing:-.3px}
 .quiz-countdown{flex:none;width:100%;padding:9px 0 2px;box-sizing:border-box;color:#f6eddc}
 .quiz-countdown__caption{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;font:700 10px/1.2 system-ui,sans-serif;text-transform:uppercase;letter-spacing:1px}
 .quiz-countdown__caption b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--quiz-clock-colour)}
@@ -16,23 +16,9 @@
 @keyframes quiz-fuse-flow{to{transform:translateX(22px)}}
 @keyframes quiz-red-breathe{0%,100%{opacity:.2}50%{opacity:.7}}
 .logic-match:has(.quiz-countdown.is-red)::after,.trivia-brawl-page:has(.quiz-countdown.is-red)::after,.trivia-party:has(.quiz-countdown.is-red)::after{content:'';position:fixed;inset:64px 0 0;pointer-events:none;z-index:20;border:3px solid #e86b6b66;box-shadow:inset 0 0 45px #db45452b;border-radius:16px;animation:quiz-red-breathe 2.4s ease-in-out infinite}
-@media(max-width:360px){.quiz-master{gap:8px;padding:9px 8px}.quiz-master__portrait{width:62px;flex-basis:62px}.quiz-master__portrait svg{height:69px}.quiz-master .quiz-master__question{font-size:18px!important}}
-@media(max-height:650px){.quiz-master{gap:8px;padding:8px}.quiz-master__portrait{width:58px;flex-basis:58px}.quiz-master__portrait svg{height:60px}.quiz-master__portrait>span{font-size:6px}.quiz-master__label{font-size:8px;margin-bottom:4px}.quiz-master .quiz-master__question{font-size:17px!important;line-height:1.18!important}.quiz-countdown{padding-top:5px}.quiz-countdown__track{height:12px}}
+@media(max-width:360px){.quiz-master{gap:8px;padding:9px 8px}.quiz-master__portrait{width:62px;flex-basis:62px}.quiz-master__portrait svg{height:69px}.quiz-master .quiz-master__question{font-size:16px!important}}
+@media(max-height:650px){.quiz-master{gap:8px;padding:8px}.quiz-master__portrait{width:58px;flex-basis:58px}.quiz-master__portrait svg{height:60px}.quiz-master__portrait>span{font-size:6px}.quiz-master__label{font-size:8px;margin-bottom:4px}.quiz-master .quiz-master__question{font-size:15px!important;line-height:1.24!important}.quiz-countdown{padding-top:5px}.quiz-countdown__track{height:12px}}
 @media(prefers-reduced-motion:reduce){.quiz-countdown__track i{transition:none}.quiz-countdown__track i:after{animation:none}.logic-match:has(.quiz-countdown.is-red)::after,.trivia-brawl-page:has(.quiz-countdown.is-red)::after,.trivia-party:has(.quiz-countdown.is-red)::after{animation:none;opacity:.5}}
-.quiz-master.quiz-master--long{display:flow-root}
-.quiz-master--long .quiz-master__portrait{float:left;width:48px;margin:8px 10px 2px 0}
-.quiz-master--long .quiz-master__portrait svg{height:58px}
-.quiz-master--long .quiz-master__portrait>span{font-size:6px;letter-spacing:.6px}
-.quiz-master--long .quiz-master__speech{display:contents}
-.quiz-master--long .quiz-master__label{margin-top:2px}
-@media(max-height:650px){.quiz-master.quiz-master--long .quiz-master__question{font-size:17px!important;line-height:1.16!important}}
-@media(max-height:650px){
-.logic-match .quiz-master.quiz-master--long{padding:7px 8px}
-.logic-match .quiz-master.quiz-master--long .quiz-master__question{font-size:16px!important;line-height:1.13!important}
-.logic-match .quiz-master--long .quiz-master__portrait{width:38px;margin:0 8px 0 0}
-.logic-match .quiz-master--long .quiz-master__portrait svg{height:42px}
-.logic-match .quiz-master--long .quiz-master__portrait>span{display:none}
-}
 .quiz-countdown__track i{transition:width .85s linear,background-color .85s linear}
 .logic-match .quiz-countdown__track i{transition:width .15s linear,background-color .3s linear}
 @media(prefers-reduced-motion:reduce){.quiz-countdown__track i,.logic-match .quiz-countdown__track i{transition:none}}
@@ -48,3 +34,15 @@
 .quiz-result-pages>nav button{min-height:36px;padding:6px 10px;background:#30263e;border:1px solid #a48ab6;border-radius:8px;color:#fff1db;font:700 12px/1 system-ui,sans-serif;cursor:pointer}
 .quiz-result-pages>nav button:disabled{opacity:.4}
 .quiz-result-pages>nav span{font:700 12px/1 system-ui,sans-serif;color:#e4d2ec}
+
+/* Keep every question line beside the portrait, including long questions. */
+.quiz-master__portrait{width:64px;flex-basis:64px}.quiz-master__portrait svg{height:72px}
+@media(max-width:360px){.quiz-master__portrait{width:44px;flex-basis:44px}.quiz-master__portrait svg{height:52px}}
+.logic-match .quiz-master--long .quiz-master__portrait{width:44px;flex-basis:44px}.logic-match .quiz-master--long .quiz-master__portrait svg{height:52px}
+.logic-match .quiz-master--long .quiz-master__question{font-size:17px!important;line-height:1.22!important}
+@media(max-height:650px){.logic-match .quiz-master--long .quiz-master__portrait{width:32px;flex-basis:32px}.logic-match .quiz-master--long .quiz-master__portrait svg{height:42px}.logic-match .quiz-master--long .quiz-master__portrait>span{display:none}.logic-match .quiz-master--long .quiz-master__question{font-size:14px!important;line-height:1.2!important}}
+@media(max-width:600px){
+.logic-match .logic-options,.trivia-brawl-page .trivia-brawl-answers,.trivia-party .trivia-party-answers{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(2,minmax(48px,1fr))!important;gap:7px;min-height:110px}
+.logic-match .logic-options button,.trivia-brawl-page .trivia-brawl-answers button,.trivia-party .trivia-party-answers button{min-width:0;overflow-wrap:anywhere}
+}
+@media(max-width:600px){.logic-match .logic-options button:nth-child(n){min-height:48px}.logic-match:has(.logic-score>div:nth-child(4)) .logic-options{min-height:110px;grid-template-rows:repeat(2,minmax(48px,1fr))}}
