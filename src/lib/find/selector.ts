@@ -57,3 +57,8 @@ export function deal(movies:FindMovie[],ids:number[],b:Record<PID,Brief>,limit=1
  for(const m of remainder.slice(0,2))add(m,'stretch');
  return out.slice(0,limit);
 }
+
+export function genreSlicesFor(movies:FindMovie[],b:Record<PID,Brief>):Slice[]{
+ const kinds=[b.A.kind,b.B.kind].filter(k=>k!=='any');const eligible=movies.filter(m=>fitsContract(m,b)&&(!kinds.length||kinds.some(k=>kindFits(m,k))));
+ return FIND_GENRES.map(g=>({id:'genre:'+g,name:g,description:g+' films verified within both briefs. A film can belong to more than one genre.',ids:eligible.filter(m=>m.g.includes(g)).map(m=>m.id)})).filter(x=>x.ids.length>0).sort((a,c)=>c.ids.length-a.ids.length||a.name.localeCompare(c.name)).slice(0,8);
+}
