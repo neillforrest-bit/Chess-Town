@@ -22,4 +22,4 @@ Held: community library, watched ratings, email recovery, Game Town-wide landing
 
 Spend: zero paid model calls. Spreadsheet Usage & Spend Monitor row204 records today's local session, provider cost delta not measured. Approved GBP5 ceiling / GBP1 QA remains unused.
 
-Scope check before release: original concept mentioned Secret Drawer plus human-checked mood tags. Current first skeleton has genre-backed, honestly-labelled mood lanes and no Secret Drawer. Parent must reconcile that against checkpoint scope before calling it the promised final version. Game Town-wide landing remains held.
+Parent design call17:06: Secret Drawer and human-checked mood-tag pass follow in checkpoint two with library and Discover. Checkpoint one stays as scoped with honest genre-backed mood lanes, never a tone guarantee. Game Town-wide landing remains held.
