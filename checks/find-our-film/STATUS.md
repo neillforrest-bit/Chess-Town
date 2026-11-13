@@ -1,4 +1,4 @@
-# Checkpoint-one working state, 13 November 2026 17:06 GMT
+# Checkpoint-one working state, 13 November 2026 17:13 GMT
 
 Branch instinct/find-our-film-20261113. Preview only. Nothing pushed/deployed. Existing public previews and production untouched.
 
@@ -11,10 +11,10 @@ Live TMDB search passed using securely approved key use: 32 verified Drama AND C
 Build/fixture tests pass. Live two-browser full game passed against private DB and actual TMDB through mutual confirmation and reload. Dropped successful host/guest responses followed by reload recovered both original seats; simulated storage-full after remote creation recovered the same host seat. Disposable QA rooms/profiles cleaned, including failed-run leftovers. Same-seat pending credentials now persist before claiming the remote seat, host creation retry is idempotent, and identity verification has a retry control. Drafts are tied to the server brief fingerprint. Actual iPhone Safari gesture is unverified.
 
 Open before release:
-- Extend live full-game tests to multi-film showdown disagreement, both vetoes and simultaneous brief changes. Current one-mutual-finalist path passes. Fixture reducer covers 1-6 and disagreement, not yet live. Add browser-storage entirely blocked before any remote creation checks.
+- Live full-game tests now pass both vetoes, a two-mutual-finalist showdown with opposite choices, explicit shared agreement, both final consent and reload. Both saved favourites remain; actual320 pixels inspected. Browser-storage entirely blocked before remote identity/room creation passes mocked network proof; remembered-player verification errors have retry, error pixels inspected. Still test simultaneous brief changes/CAS, transient metadata outage recovery, persisted saved/nominated selections after navigation and no-match path in live UI.
 - OMDb metadata research sent to parent 16:58: free key 1000/day recommended for private personal preview, setup waiting for user decision through main. No signup or spend. Paid tiers verified; direct Fabric licensing would need quote for wider access. Owned-seat /api/find-meta now validates real room film IDs, 900/day shared cap, 8s provider timeout and cached requests. Legacy unguarded /api/omdb hard403 on this branch so adding a future key cannot expose it. Metadata fixtures pass, actual no-key responses remain honest503. No fabricated critic text or awards.
 - Reconcile mood labels with evidence: current lanes are explicitly genre-backed, not guaranteed warm/tense tone.
-- Phone details now paginated synopsis/cast/awards; saved shelf pages one full card at a time; wheel peek is paginated modal. Actual 320px synopsis/reviews/awards/shelf pixels inspected and no internal scroll. Still test max actor/exclusion summaries and error layouts.
+- Phone details now paginated synopsis/cast/awards; saved shelf pages one full card at a time; wheel peek is paginated modal. Actual 320px synopsis/reviews/awards/shelf pixels inspected and no internal scroll. Two80-character actor names and all18 exclusions fit all five pages at320/375/390. Full brief review paginated, long unbroken names wrap after pixel-found fix. Entry storage-error pixels inspected at320.
 - Audit budget/rate guard and side effects on all routes. Paid Orson POST is hard403 with no provider request. Existing engine side effects call this disabled endpoint; no other model providers found in src scan. No paid model calls.
 - Commit/push one cohesive batch only after QA. No usable new preview link yet.
 

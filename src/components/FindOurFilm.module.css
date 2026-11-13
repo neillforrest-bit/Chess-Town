@@ -11,3 +11,5 @@
 .entry .center{gap:10px}.entry .center>p{font-size:15px}.entry .center>.quiet{font-size:11px}.entry .label{margin:3px 0}.entry .resume{font-size:12px;padding:9px}.entry .center h1{margin:0}.entry .body{overflow:hidden}@media(max-height:600px){.entry .center{gap:8px;justify-content:center}.entry .center>p{font-size:13px;line-height:1.4}.entry .center>.quiet{font-size:10px}.entry .center h1{font-size:22px}.host p{max-height:none;-webkit-line-clamp:3}.entry .center>.summary{font-size:12px}.entry .center>button{padding:12px 8px;font-size:12px}}
 
 .sheet>h2{font-size:22px}.sheet .roundNav{flex:none}.sheet>p{flex:none}.sheet>.card{flex:none}@media(max-height:700px){.sheet{padding:14px;gap:10px;max-height:92dvh}.sheet>h2{font-size:19px}.sheet>p{font-size:13px;line-height:1.4}.sheet>.cs-btn{font-size:11px;padding:10px}.sheet .scores small{font-size:7px}.sheet .cardTop h2{font-size:17px}.sheet .story{font-size:12px}.sheet .why{display:none}.sheet .cardButtons{min-height:30px}}
+
+.sheet>p,.sheet>h2{overflow-wrap:anywhere}
