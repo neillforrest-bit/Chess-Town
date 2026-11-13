@@ -92,3 +92,5 @@
 
 .hostPrompter :global(.chester-teleprompter){display:flex!important;flex-direction:row!important;align-items:flex-start!important}.hostPrompter :global(.chester-teleprompter__message){flex:1;min-width:0}.hostDonkey{flex-shrink:0!important}
 .inside .field select{white-space:nowrap;line-height:1.3}
+.hostPrompter :global(.chester-teleprompter){height:auto!important;min-height:0!important;max-height:none!important;border-radius:14px}
+.hostPrompter :global(.chester-teleprompter__message){height:auto!important;min-height:0!important}
