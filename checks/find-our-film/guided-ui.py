@@ -37,14 +37,11 @@ try:
   bb.get_by_role('button',name='SPIN ROUND 2',exact=True).click(timeout=8000);bb.wait_for_timeout(3100)
   for q in [a,bb]:q.get_by_role('button',name='KEEP & NEXT TURN').click(timeout=8000)
   for q in [a,bb]:q.get_by_role('button',name='YES · SHOW OUR FILMS').click(timeout=8000)
-  for q in [a,bb]:q.get_by_role('button',name='PICK MY 3 NOMINEES').wait_for(timeout=8000)
-  # Save first four movies using real controls, preserving all favourites.
+  for q in [a,bb]:q.get_by_role('button',name='YES',exact=True).wait_for(timeout=8000)
+  # Three direct YESes, one clear lock; no second favourites choice.
   for q in [a,bb]:
-   for _ in range(4):q.get_by_role('button',name='WANT',exact=True).click()
-   q.get_by_role('button',name='PICK MY 3 NOMINEES').click();buttons=q.locator('[aria-label="Film shortlist"] button[aria-pressed]')
-   for i in range(3):
-    if buttons.nth(i).get_attribute('aria-pressed')!='true':buttons.nth(i).click()
-   q.get_by_role('button',name='ADD ONE BACKUP').click();q.locator('[aria-label="Film shortlist"] button[aria-pressed]').nth(3).click();q.screenshot(path='/downloads/find-guided-nominees-'+str(q.viewport_size['width'])+'.png');q.get_by_role('button',name='LOCK 3 + BACKUP & NEXT').click(timeout=4000)
+   for _ in range(3):q.get_by_role('button',name='YES',exact=True).click();q.wait_for_timeout(750)
+   assert q.get_by_role('button',name='YES',exact=True).is_disabled();q.screenshot(path='/downloads/find-guided-nominees-'+str(q.viewport_size['width'])+'.png');q.get_by_role('button',name='LOCK MY 3 FILMS & NEXT').click(timeout=4000)
   for q in [a,bb]:
    q.get_by_role('heading',name='Our shortlist.').wait_for(timeout=8000)
    for control in q.locator('[aria-label="Film shortlist"] button[aria-pressed]').all():control.click()
@@ -74,5 +71,5 @@ try:
   for q in [a,bb]:q.evaluate("window.dispatchEvent(new Event('focus'))");q.get_by_role('button',name='YES, I WANT THIS TONIGHT',exact=True).click(timeout=8000)
   for q in [a,bb]:q.evaluate("window.dispatchEvent(new Event('focus'))");q.get_by_role('heading',name="Tonight's film.").wait_for(timeout=8000)
   print('PASS full two-seat group/semis/final,draws resolved by both,complete not auto-final,exact both-final yes/done',flush=True)
-  assert len(state()['saved']['A'])>=4;assert len(state()['nominations']['A'])==3;assert state()['backups']['A'];print('PASS two-seat guided wheel/no singleton/review/cards/three+backup/all-yes/Cup/first bout/result, saved retention and zero paid sources',flush=True);b.close()
+  assert len(state()['saved']['A'])>=3;assert len(state()['nominations']['A'])==3;print('PASS two-seat guided wheel/no singleton/review/cards/three directyes+lock/all-yes/Cup/first bout/result, saved retention and zero paid sources',flush=True);b.close()
 finally:eng.terminate();os.killpg(server.pid,signal.SIGTERM)

@@ -8,7 +8,7 @@ export type Opinion = 'want' | 'maybe' | 'pass' | 'seen';
 export type LoungeBid={id:number|null;tokens:number;locked:boolean;double:boolean};
 export type Lounge={tournament?:{phase:'groups'|'semis'|'final'|'complete';schedule:[number,number][];index:number;points:Record<number,number>;wins:number[];ready:Record<PID,boolean>;tieChoice?:Partial<Record<PID,number>>};stage:'choose'|'bout'|'result'|'complete';ids:number[];pair:[number,number]|null;by:PID;bank:Record<PID,number>;roundStart?:Record<PID,number>;transfers?:Record<PID,number>;bids:Record<PID,LoungeBid>;wild:Record<PID,{double:boolean;steal:boolean;swap:boolean;timeout:boolean}>;endsAt:number;pauseUntil:number;history:{pair:[number,number];winner:number|null;A:number;B:number;ledger?:Record<PID,{start:number;transfer:number;spent:number;end:number}>}[];winner:number|null;event:string;eventN:number;lowSaid?:boolean;lead?:number|null;leadChanged?:boolean;nextReady?:Record<PID,boolean>};
 export type FindState = {
- guided?:boolean;actorConsent?:Record<PID,boolean>;backups?:Record<PID,number|null>; flow: 'find-v1'; code: string; v: number; createdAt: number; updatedAt: number;
+ guided?:boolean;directPicks?:boolean;actorConsent?:Record<PID,boolean>;backups?:Record<PID,number|null>; flow: 'find-v1'; code: string; v: number; createdAt: number; updatedAt: number;
  phase: 'lobby' | 'brief' | 'actorAgree' | 'wheel' | 'cards' | 'nominate' | 'accept' | 'showdown' | 'lounge' | 'confirm' | 'done';
  players: Record<PID, { name: string; joined: boolean; ready: boolean; tokenHash: string; playerId?: string }>;
  inviteHash: string; brief: Record<PID, Brief>; slices: Slice[];genreExtras?:Slice[]; wheel: { turn: PID; veto: Record<PID, boolean>; rejected: string[]; result: string | null; spunAt: number; spinCount: number; accepted: Record<PID, boolean>; rounds?: 4; kept?: string[]; gold?: Record<PID,boolean>; protected?: boolean; version?: 'genres-v2'; setup?: 'protect'|'veto'|'spin'|'review'|'suggest';suggested?:string|null;suggestedSeen?:string[]; protectPick?: Record<PID,string|null>; protectDone?: Record<PID,boolean>; vetoPicks?: Record<PID,string[]>; vetoDone?: Record<PID,boolean> };
@@ -21,7 +21,7 @@ export type PublicFindState = Omit<FindState, 'inviteHash'>;
 export type Action = ({round?:number;stage?:string}) & (
  | { t: 'join'; name: string } | { t: 'ready'; ready: boolean }
  | {t:'agreeActors';yes:boolean} | {t:'genreApprove';yes:boolean} | {t:'genreSuggest'} | {t:'genreSuggestion';yes:boolean} | { t: 'brief'; brief: Brief } | { t: 'editBrief' } | { t: 'spin'; count?: number } | { t: 'veto' } | { t: 'keepSlice' } | { t: 'goldSlice' } | { t: 'upgradeWheel' } | { t: 'protectGenre'; id: string|null; done: boolean } | { t: 'vetoGenres'; ids: string[]; done: boolean }
- | { t: 'opinion'; id: number; value: Opinion } | { t: 'save'; id: number; save: boolean } | { t: 'finishCards' }
+ | {t:'lockPicks';ids:number[]} | { t: 'opinion'; id: number; value: Opinion } | { t: 'save'; id: number; save: boolean } | { t: 'finishCards' }
  | { t: 'nominate'; ids: number[]; done: boolean;backup?:number|null } | { t: 'accept'; ids: number[]; done: boolean }
  | {t:'freshPicks'} | {t:'loungeTie';id:number} | {t:'openLounge'} | {t:'loungePair';ids:number[]} | {t:'loungeBid';id:number;tokens:number} | {t:'loungeLock'} | {t:'loungeWild';kind:'double'|'steal'|'swap'|'timeout'} | {t:'loungeNext'} | {t:'loungePropose';id:number}
  | { t: 'vote'; id: number | 'either' } | { t: 'agreeBout'; id: number } | { t: 'confirm'; yes: boolean;id?:number } | { t: 'reopen' });
