@@ -11,6 +11,11 @@ const PERSONA = "You are Orson Pemberton-Wells: a magnificently pompous, deadpan
 type Pitch = { id: number; t: string; y: number; g: string[]; o: string; c?: string[]; rt?: number | null; k?: string };
 
 export async function POST(req: Request) {
+  // Checkpoint preview has a hard zero-dollar model allowance. No provider request can run.
+  return NextResponse.json({ error: 'Model generation is disabled on this checkpoint preview. Orson uses recorded facts and rule-based lines.', budgetUsd: 0 }, { status: 403 });
+}
+
+async function disabledPaidPOST(req: Request) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return NextResponse.json({ error: 'no key' }, { status: 503 });
   const body = await req.json();
