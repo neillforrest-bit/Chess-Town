@@ -26,3 +26,5 @@
 .row>button,.actions>button{overflow-wrap:anywhere}.actions>button{max-height:72px;overflow:hidden}.row>button{max-height:72px;overflow:hidden}
 
 .shelfSheet{height:min(92dvh,720px);max-height:92dvh}.shelfSheet>.scroll{width:100%;box-sizing:border-box}.shelfSheet>h2{flex:none}
+
+.cardChoices{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cardChoices button{min-height:42px;padding:10px 6px;font-size:12px}.story{-webkit-line-clamp:4}@container(max-height:440px){.story{-webkit-line-clamp:4}}@container(max-height:300px){.story{-webkit-line-clamp:3}}
