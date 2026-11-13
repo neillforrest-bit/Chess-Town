@@ -19,11 +19,11 @@ try:
    return c
   for w,h in [(390,844),(375,667),(320,568)]:
    for phase in ['cards','nominate','accept','showdown','confirm','done']:
-    state({'reset':True,'phase':phase,'worst':True});c=context(w,h,'A');q=c.new_page()
+    state({'reset':True,'phase':phase,'worst':True,'real':True});c=context(w,h,'A');q=c.new_page()
     for i in range(25):
      try:q.goto('http://localhost:3011/find/TESTABCD');break
      except:time.sleep(.2)
-    q.get_by_role('button',name='Leave',exact=True).wait_for();q.locator('section').get_by_text('Restoring your seat...').wait_for(state='hidden');q.screenshot(path=f'/downloads/find-worst-{phase}-{w}.png');dims=q.locator('article').locator('..').evaluate('(e)=>({s:e.scrollHeight,c:e.clientHeight,w:e.scrollWidth,cw:e.clientWidth})');assert dims['s']<=dims['c']+1 and dims['w']<=dims['cw']+1,(phase,w,dims)
+    q.get_by_role('button',name='Leave',exact=True).wait_for();q.locator('section').get_by_text('Restoring your seat...').wait_for(state='hidden');q.locator('article img').evaluate('(e)=>e.decode().catch(()=>{})');q.screenshot(path=f'/downloads/find-worst-{phase}-{w}.png');dims=q.locator('article').locator('..').evaluate('(e)=>({s:e.scrollHeight,c:e.clientHeight,w:e.scrollWidth,cw:e.clientWidth})');assert dims['s']<=dims['c']+1 and dims['w']<=dims['cw']+1,(phase,w,dims)
     print(phase,w,'phone root fit',flush=True);c.close()
   b.close()
 finally:

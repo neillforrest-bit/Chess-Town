@@ -72,9 +72,8 @@ try:
   for q in pages:expect(q.get_by_role('button',name='EITHER',exact=True)).to_be_visible(timeout=10000)
   first=pages[0].locator('article h2').inner_text()
   titles=pages[0].locator('section>div>div').first.locator('button').all_text_contents()
-  choices=pages[0].locator('section').get_by_role('button').all_text_contents()
-  # The showdown renders both names as top tabs and bottom votes. Choose opposite bottom votes.
-  top=pages[0].locator('section').get_by_role('button').all_text_contents();names=[x for x in top if x not in ['Leave','FULL DETAILS','SAVE FOR LATER','SAVED ✓','EITHER']];first,second=names[0],names[1]
+  # Top tabs are numbered; their full-title accessible labels also identify bottom votes.
+  tabs=pages[0].locator('section button[aria-pressed]');first=tabs.nth(0).get_attribute('aria-label');second=tabs.nth(1).get_attribute('aria-label')
   pages[0].get_by_role('button',name=first,exact=True).last.click();time.sleep(.2)
   pages[1].get_by_role('button',name=second,exact=True).last.click();time.sleep(.2)
   for q in pages:expect(q.get_by_text('Different picks? Talk it through, then BOTH select the same film.')).to_be_visible(timeout=10000)
