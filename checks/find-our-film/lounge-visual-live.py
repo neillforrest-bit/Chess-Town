@@ -26,6 +26,7 @@ try:
    assert q.get_by_role('img',name='Donkey Chester',exact=False).is_visible()
    for e in q.locator('main,section,section>div,[class*=lounge],[class*=match]').all():
     dims=e.evaluate('(e)=>[e.scrollHeight,e.clientHeight,e.scrollWidth,e.clientWidth]');assert dims[0]<=dims[1]+2 and dims[2]<=dims[3]+2,dims
+   expect(q.locator('[aria-label^="Critic and audience scores"]').first).not_to_contain_text('Unavailable',timeout=15000)
    q.screenshot(path='/downloads/find-lounge-final-bout'+str(q.viewport_size['width'])+'.png')
   a.get_by_role('button',name='PAUSE 30s',exact=True).click();expect(a.get_by_text('CLOCK PAUSED',exact=False)).to_be_visible()
   # Preview the full original card and its live review scores, not a fabricated mini score.
