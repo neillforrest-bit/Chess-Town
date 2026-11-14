@@ -1,0 +1,3 @@
+PASS real Logic host refresh: question/deadline/answer/spent card, guest rejoin+reveal
+PASS real Trivia host refresh: same game/question/deadline/locked answer, guest rejoin+reveal
+PASS real Party host refresh: same roster/token map/question/answer; guest rejoin+reveal

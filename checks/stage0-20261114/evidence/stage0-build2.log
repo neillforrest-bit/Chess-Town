@@ -1,0 +1,82 @@
+▲ Next.js 16.3.3 (webpack)
+- Environments: .env.local
+✓ Running next.config.ts took 25ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 10.2s
+  Running TypeScript ...
+  Finished TypeScript in 5.2s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/59) ...
+  Generating static pages using 1 worker (14/59) 
+  Generating static pages using 1 worker (29/59) 
+  Generating static pages using 1 worker (44/59) 
+✓ Generating static pages using 1 worker (59/59) in 1760ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/brawl/sync
+├ ƒ /api/build
+├ ƒ /api/chat
+├ ƒ /api/chester/chat
+├ ƒ /api/chester/commentary
+├ ƒ /api/commentary
+├ ƒ /api/evaluate-move
+├ ƒ /api/gazette
+├ ƒ /api/grandmaster
+├ ƒ /api/sandbox
+├ ƒ /api/trivia-brawl/sync
+├ ƒ /api/trivia-commentary
+├ ƒ /api/trivia-ice
+├ ƒ /api/verdict
+├ ○ /arcade
+├ ○ /arena
+├ ƒ /auth/callback
+├ ○ /battle
+├ ○ /battle-mode
+├ ƒ /battle/[matchId]
+├ ○ /beta
+├ ○ /boss-rush
+├ ○ /brawl
+├ ○ /chessdle
+├ ○ /chester-challenge
+├ ○ /daily-challenge
+├ ○ /daily-leaderboard
+├ ○ /duel
+├ ○ /gameplay
+├ ○ /go-time
+├ ○ /league
+├ ○ /learn
+├ ○ /logic-brawl
+├ ○ /mate-sprint
+├ ○ /meet-chester
+├ ○ /pawn-wars
+├ ○ /play
+├ ○ /play-checkers
+├ ○ /play-chester
+├ ○ /profile
+├ ○ /puzzle-mill
+├ ○ /quiz
+├ ○ /review
+├ ○ /road
+├ ○ /road/brendo
+├ ○ /road/checkers
+├ ○ /road/chess
+├ ○ /road/logic
+├ ○ /road/trivia
+├ ○ /sandbox
+├ ○ /sign-in
+├ ○ /surprise-lab
+├ ○ /training
+├ ○ /trivia
+├ ○ /trivia-brawl
+├ ○ /trivia-party
+└ ƒ /verdict
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
