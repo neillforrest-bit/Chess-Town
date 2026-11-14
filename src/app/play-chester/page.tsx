@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import ChesterCompanion from '@/components/ChesterCompanion';
 import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -884,7 +885,7 @@ function PlayChesterGame() {
   const help = () => { if (isThinking) return; if (bossRef.current.on) { if (!bossCardsRef.current) return; bossCardsRef.current -= 1; setBossCards(bossCardsRef.current); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
-    <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two players, separate devices. Keep this host tab open; refreshing it restores the saved board.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
+    <section><div className="chester-setup-host" aria-label="Chester, your host"><ChesterCompanion /></div><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two players, separate devices. Keep this host tab open; refreshing it restores the saved board.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
       {!isFriendMode && drill && <p className="chester-drill"> TODAY'S DRILL: {drill.drill}{drill.hanging ? ` Last game: ${drill.hanging} loose piece${drill.hanging === 1 ? '' : 's'} left hanging.` : drill.missed ? ` Last game: ${drill.missed} winning tactic${drill.missed === 1 ? '' : 's'} missed.` : ''}</p>}
       {!isFriendMode && ladder.lastLevel && <p className="chester-remembers"> CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
       {introOpen && !started && (
