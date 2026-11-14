@@ -1,3 +1,4 @@
+import { guardAiRequest } from '@/lib/api-guard';
 import { GEMINI_MODEL, GEMINI_THINKING } from '@/lib/gemini-model';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
@@ -42,6 +43,7 @@ function sanitizeReply(raw: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const blocked = await guardAiRequest(request); if (blocked) return blocked;
   let payload: TriviaCommentaryPayload = {};
   try {
     payload = await request.json() as TriviaCommentaryPayload;
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // This visual preview is explicitly offline for banter. No paid Gemini QA is authorised.
-    if (process.env.VERCEL_ENV === 'preview' && ['instinct/quiz-master-preview-20261113','instinct/game-town-unified-preview-20261113'].includes(process.env.VERCEL_GIT_COMMIT_REF || '')) {
+    if (process.env.VERCEL_ENV !== 'production') {
       return NextResponse.json({ reply: getFallbackReply(payload), source: 'local-preview' });
     }
 

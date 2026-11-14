@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
-import { PEER_CONFIG } from '@/lib/p2p';
+import { saveCheckpoint, loadCheckpoint } from '@/lib/match-checkpoint';
+import { loadPeerConfig } from '@/lib/p2p';
 import { askChesterChat as askChesterChatRemote, chesterUsageByReply } from '@/app/actions';
 import { GEMINI_MODEL } from '@/lib/gemini-model';
 import QAFlagButton from '@/components/QAFlagButton';
@@ -409,23 +410,32 @@ function PlayChesterGame() {
     type DuelPeer = { on: (e: string, cb: (a?: unknown) => void) => void; destroy: () => void; connect: (id: string) => Conn };
     let peer: DuelPeer | null = null;
     let duelConnected = false;
+    let rejoin = () => {};
     const wireConn = (conn: Conn) => {
       duelConnRef.current = conn;
-      conn.on('open', () => { if (!dead) { duelConnected = true; setDuelStatus('connected'); setStarted(true); } });
+      conn.on('open', () => { if (!dead) { duelConnected = true; setDuelStatus('connected'); setStarted(true); if (requestedSeat === 'w') window.dispatchEvent(new CustomEvent('chess-sync-request')); else conn.send({ type: 'sync-request' }); } });
       conn.on('data', (data?: unknown) => {
-        const d = data as { type?: string; from?: string; to?: string; fen?: string } | undefined;
+        const d = data as { type?: string; from?: string; to?: string; fen?: string; clocks?: {w:number;b:number} } | undefined;
         if (d && d.type === 'move' && d.from && d.to) window.dispatchEvent(new CustomEvent('remote-chess-move', { detail: { from: d.from, to: d.to, fen: d.fen } }));
+        if (d?.type === 'clock' && requestedSeat === 'b' && d.clocks && Number.isFinite(d.clocks.w) && Number.isFinite(d.clocks.b)) window.dispatchEvent(new CustomEvent('chess-clock-sync', {detail:d.clocks}));
+        if (d?.type === 'sync-request' && requestedSeat === 'w') window.dispatchEvent(new CustomEvent('chess-sync-request'));
+        if (d?.type === 'sync' && requestedSeat === 'b') window.dispatchEvent(new CustomEvent('chess-sync-apply', { detail: (data as { snapshot?: unknown }).snapshot }));
         if (d && d.type === 'flag') { setFlagResult('won'); setMatchOver(true); }
       });
-      conn.on('close', () => { if (!dead) setDuelStatus('failed'); });
+      conn.on('close', () => { if (!dead) { duelConnected = false; setDuelStatus('waiting'); if (requestedSeat === 'b') rejoin(); } });
     };
     const localMoveRelay = (event: Event) => {
       const d = (event as CustomEvent<{ from: string; to: string; fen: string }>).detail;
       try { duelConnRef.current?.send({ type: 'move', from: d.from, to: d.to, fen: d.fen }); } catch {}
     };
+    const syncState = (event: Event) => { if (requestedSeat === 'w') { try { duelConnRef.current?.send({ type: 'sync', snapshot: (event as CustomEvent).detail }); } catch {} } };
+    const boardReady = () => { if (requestedSeat === 'w') window.dispatchEvent(new CustomEvent('chess-sync-request')); else { try { duelConnRef.current?.send({ type: 'sync-request' }); } catch {} } };
+    window.addEventListener('chess-sync-state', syncState); window.addEventListener('chess-board-ready', boardReady);
+    cleanupRef.push(() => { window.removeEventListener('chess-sync-state', syncState); window.removeEventListener('chess-board-ready', boardReady); });
     window.addEventListener('local-chess-move', localMoveRelay);
     setDuelStatus('waiting');
-    void import('peerjs').then(({ default: Peer }) => {
+    void import('peerjs').then(async ({ default: Peer }) => {
+      const PEER_CONFIG = await loadPeerConfig();
       if (dead) return;
       const roomId = `chess-town-duel-${requestedRoom}`;
       if (requestedSeat === 'w') {
@@ -469,6 +479,7 @@ function PlayChesterGame() {
           } catch { /* fall through to the retry */ }
           timer = setTimeout(knock, 3000);
         };
+        rejoin = () => { tries = 0; if (timer) clearTimeout(timer); timer = setTimeout(knock, 1000); };
         peer = new Peer(PEER_CONFIG as never) as unknown as DuelPeer;
         peer!.on('open', knock);
         peer!.on('error', (err?: unknown) => {
@@ -831,7 +842,11 @@ function PlayChesterGame() {
   };
 
   // Duel blitz clock: each client runs both clocks and flags itself; a flag relay tells the rival they won on time.
-  const [clocks, setClocks] = useState({ w: clockSeconds, b: clockSeconds });
+  const clockKey = `chess-clock:${requestedRoom}:${requestedSeat}:${clockSeconds}`;
+  const [clocks, setClocks] = useState(() => mode === 'PVP_REMOTE' ? loadCheckpoint<{w:number;b:number}>(clockKey, value => Boolean(value && Number.isFinite(value.w) && Number.isFinite(value.b) && value.w >= 0 && value.b >= 0)) || { w: clockSeconds, b: clockSeconds } : { w: clockSeconds, b: clockSeconds });
+  useEffect(() => { if (mode === 'PVP_REMOTE' && clockSeconds) saveCheckpoint(clockKey, clocks); }, [mode, clockKey, clockSeconds, clocks]);
+  useEffect(() => { const receive = (event: Event) => setClocks((event as CustomEvent<{w:number;b:number}>).detail); window.addEventListener('chess-clock-sync', receive); return () => window.removeEventListener('chess-clock-sync', receive); }, []);
+  useEffect(() => { if (mode === 'PVP_REMOTE' && requestedSeat === 'w' && clockSeconds && duelStatus === 'connected') { try { duelConnRef.current?.send({ type: 'clock', clocks }); } catch {} } }, [mode, requestedSeat, clockSeconds, duelStatus, Math.ceil(clocks.w), Math.ceil(clocks.b)]);
   const [flagResult, setFlagResult] = useState<'won' | 'lost' | null>(null);
   const [matchOver, setMatchOver] = useState(false);
   const turnColor: 'w' | 'b' = lastFen.split(' ')[1] === 'b' ? 'b' : 'w';
@@ -843,7 +858,7 @@ function PlayChesterGame() {
     return () => { window.removeEventListener('match-complete', over); window.removeEventListener('duel-turn', turn); };
   }, []);
   useEffect(() => {
-    if (mode !== 'PVP_REMOTE' || !clockSeconds || duelStatus !== 'connected' || !started || matchOver || flagResult) return;
+    if (mode !== 'PVP_REMOTE' || requestedSeat !== 'w' || !clockSeconds || duelStatus !== 'connected' || !started || matchOver || flagResult) return;
     const timer = setInterval(() => { setClocks((c) => ({ ...c, [turnColor]: Math.max(0, c[turnColor] - 0.25) })); }, 250);
     return () => clearInterval(timer);
   }, [mode, clockSeconds, duelStatus, started, matchOver, flagResult, turnColor]);
@@ -869,7 +884,7 @@ function PlayChesterGame() {
   const help = () => { if (isThinking) return; if (bossRef.current.on) { if (!bossCardsRef.current) return; bossCardsRef.current -= 1; setBossCards(bossCardsRef.current); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
   if (!started) return <main className="chester-start-screen">
-    <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two versus two, one device. Chester keeps score and commentary.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
+    <section><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two players, separate devices. Keep this host tab open; refreshing it restores the saved board.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
       {!isFriendMode && drill && <p className="chester-drill"> TODAY'S DRILL: {drill.drill}{drill.hanging ? ` Last game: ${drill.hanging} loose piece${drill.hanging === 1 ? '' : 's'} left hanging.` : drill.missed ? ` Last game: ${drill.missed} winning tactic${drill.missed === 1 ? '' : 's'} missed.` : ''}</p>}
       {!isFriendMode && ladder.lastLevel && <p className="chester-remembers"> CHESTER REMEMBERS: {ladder.lastGrade ? `${ladder.lastGrade} at ${LADDER_LABELS[ladder.lastLevel] || ladder.lastLevel}` : 'your last visit'}{ladder.lastResult ? ` (${ladder.lastResult})` : ''}{ladder.lastFocus ? ` - work on: ${ladder.lastFocus}` : ''}</p>}
       {introOpen && !started && (
@@ -974,7 +989,7 @@ function PlayChesterGame() {
       </div>
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : roadVariant === 'rost' ? 'DAVID ROST' : 'CHESTER')} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
-      <div className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />
+      <div style={{ position: 'relative' }} className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />{mode === 'PVP_REMOTE' && duelStatus !== 'connected' && <div role="status" style={{position:'absolute',inset:0,zIndex:50,display:'grid',placeItems:'center',background:'#100b24b8',color:'white',padding:24,textAlign:'center'}}>Reconnecting the saved board. Moves are paused until your rival returns.</div>}
         {bp.line && bp.opening && <div className="bp-line" style={{ borderColor: bp.opening.color }}>
           <small style={{ color: bp.line.kind === 'abort' ? '#f59e0b' : bp.opening.color }}>{bp.line.kind === 'abort' ? '⚠ BLUEPRINT ABORTED' : bp.line.kind === 'handoff' ? '★ BLUEPRINT COMPLETE' : `BLUEPRINT · ${bp.opening.name.toUpperCase()} · ${Math.min(bp.line.step + 1, bp.line.total)}/${bp.line.total}`}</small>
           <TypeLine text={bp.line.text} />

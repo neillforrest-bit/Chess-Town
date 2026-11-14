@@ -95,7 +95,7 @@ function buildEvidence(payload: ChatPayload): string {
 }
 
 export async function POST(req: NextRequest) {
-  const blocked = guardAiRequest(req, 24_000, 20);
+  const blocked = await guardAiRequest(req, 24_000, 20);
   if (blocked) return blocked;
   try {
     const payload = await req.json() as ChatPayload;

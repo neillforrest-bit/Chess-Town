@@ -5,7 +5,7 @@ export default function BuildBadge() {
   return (
     <div
       className="build-badge"
-      aria-hidden
+      aria-label="Preview build version"
       style={{
         position: 'fixed',
         left: 6,

@@ -14,7 +14,7 @@ import { recordGame, recordMiniGame } from '@/lib/profile';
 import Teleprompter from '@/components/Teleprompter';
 import MatchCountdown from '@/components/MatchCountdown';
 import { buildWhyLesson } from '@/lib/chester-voice';
-import { PEER_CONFIG } from '@/lib/p2p';
+import { loadPeerConfig } from '@/lib/p2p';
 import { getStockfishClient, type ChesterDifficulty, type EngineTelemetry } from '@/lib/stockfish';
 import ChessTownLanding from '@/components/ChessTownLanding';
 
@@ -387,6 +387,7 @@ function LegacyArena() {
 
   const startHostRoom = async (room: string, mode: 'fresh' | 'reload' | 'resume', resumeAttempt = 0) => {
     const { default: Peer } = await import('peerjs');
+    const PEER_CONFIG = await loadPeerConfig();
     // Retire the old peer BEFORE destroying it: a destroy fires 'disconnected', and
     // a zombie handler that reconnects an old peer re-steals the room ID from the
     // broker - host and zombie then fight over the ID forever and no knock lands.
@@ -472,6 +473,7 @@ function LegacyArena() {
       const my = attempts;
       hostRoomRef.current = null;
       const { default: Peer } = await import('peerjs');
+    const PEER_CONFIG = await loadPeerConfig();
       if (cancelled) return;
       const retired = peerRef.current;
       peerRef.current = null;

@@ -1,4 +1,6 @@
 'use client';
+import { versionLink } from '@/lib/version-link';
+import { saveCheckpoint, loadCheckpoint, hasCheckpoint } from '@/lib/match-checkpoint';
 
 import { useEffect, useRef, useState } from 'react';
 import { TRIVIA_ACC, getTrvRoad, setTrvRoad, TRV_ROAD_MAX } from '@/games/trivia/road';
@@ -304,6 +306,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
 
   const publishRoom = (next: TriviaRoom) => {
     fullRoomRef.current = next;
+    if (!saveCheckpoint(`trivia:${initialMatch}`, { room: next, seen: [...seenActionsRef.current] })) setError('This browser cannot save recovery. Keep the host tab open.');
     const view = serializeRoom(next, 'p1');
     roomRef.current = view;
     setRoom(view);
@@ -597,7 +600,10 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         if (linkedRef.current && Date.now() - hostSeenAtRef.current < 6000 && healthySince && Date.now() - healthySince > 10000) joinAttempts = 0;
       }, 3000);
       if (role === 'p1') {
-        publishRoom(createRoom(loadTriviaSettings()));
+        const saved = loadCheckpoint<{room: TriviaRoom; seen: string[]}>(`trivia:${id}`, value => Boolean(value?.room?.gameId && ['draft','intro','question','reveal','flash','flashReveal','banter','finished'].includes(value.room.phase) && Array.isArray(value.seen)));
+        if (!saved && hasCheckpoint(`trivia:${id}`)) { setError('This saved match is expired or unreadable. Start a fresh invite from the pub door. It has not been reset.'); return; }
+        if (saved) { seenActionsRef.current = new Set(saved.seen); publishRoom(saved.room); if (saved.room.match) pourRounds(saved.room.match); setHostText('Host table restored. Scores, answers and original deadlines are kept.'); }
+        else publishRoom(createRoom(loadTriviaSettings()));
         openHost(-1, true);
       } else {
         joinGuest();
@@ -778,7 +784,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     return () => clearTimeout(bell);
   }, [flashKey, player]);
 
-  const inviteUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/trivia-brawl?match=${matchId}&role=p2${room?.settings.focus === 'grammar' ? `&topic=grammar&difficulty=${room.settings.difficulty}` : ''}${isFreeTriviaCommentaryTest() ? '&triviaFreeCommentary=1' : ''}`;
+  const inviteUrl = typeof window === 'undefined' ? '' : versionLink(`${window.location.origin}/trivia-brawl?match=${matchId}&role=p2${room?.settings.focus === 'grammar' ? `&topic=grammar&difficulty=${room.settings.difficulty}` : ''}${isFreeTriviaCommentaryTest() ? '&triviaFreeCommentary=1' : ''}`);
   // Flash stages speak for themselves - never the previous question's reveal line.
   const visibleHostText = room && room.phase === 'flash' && room.flash ? FLASH_INTROS[room.flash.type][0]
     : room && room.phase === 'flashReveal' && room.flash ? FLASH_RESOLVE_LINES[room.flash.type]

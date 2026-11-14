@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client';
 
+import { saveCheckpoint, loadCheckpoint } from '@/lib/match-checkpoint';
 import { isHandicapLevel, casualChanceForLevel } from '@/lib/road';
 import { hesitationMs } from '@/lib/chester-director';
 import { useEffect, useRef } from 'react';
@@ -1461,7 +1462,22 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             return true;
           };
 
+          const chessKey = () => { const q = new URLSearchParams(window.location.search); return `chess:${q.get('room')}:${playerColor}`; };
+          const chessSnapshot = () => ({ pgn: gameRef.current.chess.pgn(), fen: gameRef.current.chess.fen(), ply: gameRef.current.ply, gradeHistory: gameRef.current.gradeHistory, timeline: gameRef.current.timeline });
+          const applyChessSnapshot = (snapshot: any) => {
+            if (!snapshot || typeof snapshot.pgn !== 'string' || snapshot.pgn.length > 100000) return;
+            try { const chess = new Chess(); if (snapshot.pgn) chess.loadPgn(snapshot.pgn); if (chess.fen() !== snapshot.fen) return;
+              gameRef.current.chess = chess; gameRef.current.ply = chess.history().length; gameRef.current.gradeHistory = snapshot.gradeHistory || []; gameRef.current.timeline = snapshot.timeline || []; gameRef.current.isGameOver = chess.isGameOver(); gameRef.current.selectedSquare = null; gameRef.current.legalTargets = [];
+              publishPositionEvaluation(chess.fen()); renderBoard(); window.dispatchEvent(new CustomEvent('duel-turn', { detail: { fen: chess.fen() } }));
+            } catch { /* Invalid peer snapshot does not replace this board. */ }
+          };
+          const readChessSnapshot = () => window.dispatchEvent(new CustomEvent('chess-sync-state', { detail: chessSnapshot() }));
+          const acceptChessSnapshot = (event: any) => { if (mode === 'PVP_REMOTE' && playerColor === 'b') applyChessSnapshot(event.detail); };
+          window.addEventListener('chess-sync-request', readChessSnapshot);
+          window.addEventListener('chess-sync-apply', acceptChessSnapshot);
+          scene.events.once('destroy', () => { window.removeEventListener('chess-sync-request', readChessSnapshot); window.removeEventListener('chess-sync-apply', acceptChessSnapshot); });
           renderBoard = () => {
+            if (mode === 'PVP_REMOTE') saveCheckpoint(chessKey(), chessSnapshot());
             if (!scene.add || !scene.sys || !scene.sys.isActive()) return; // BUILD 155: a destroyed remount scene must never paint (was 12 boot crashes)
             window.dispatchEvent(new CustomEvent('chester-position-now', { detail: { fen: gameRef.current.chess.fen(), ply: gameRef.current.ply, san: gameRef.current.chess.history().at(-1) || null } }));
             (gameRef.current as any).selectLift = null;
@@ -1861,7 +1877,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.principleStreak = 0;
             gameRef.current.playerQualities = [];
             gameRef.current.gradeHistory = [];
-            gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
+            if (!gameRef.current.timeline.length) gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
             gameRef.current.jailedCounts = { w: 0, b: 0 };
             Object.values(jailGlyphLayers).forEach((layer) => layer.removeAll(true));
             publishPositionEvaluation(gameRef.current.chess.fen());
@@ -1904,7 +1920,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             gameRef.current.principleStreak = 0;
             gameRef.current.playerQualities = [];
             gameRef.current.gradeHistory = [];
-            gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
+            if (!gameRef.current.timeline.length) gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
             gameRef.current.jailedCounts = { w: 0, b: 0 };
             Object.values(jailGlyphLayers).forEach((layer) => layer.removeAll(true));
 
@@ -2140,12 +2156,17 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
           });
 
+          if (mode === 'PVP_REMOTE') {
+            const saved = loadCheckpoint<any>(chessKey(), value => Boolean(value && typeof value.pgn === 'string' && typeof value.fen === 'string'));
+            if (saved) applyChessSnapshot(saved);
+          }
           const initialCoachingPosition = COACHING_POSITIONS[mode];
           if (initialCoachingPosition) gameRef.current.chess.load(initialCoachingPosition.fen);
-          gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
+          if (!gameRef.current.timeline.length) gameRef.current.timeline = [{ fen: gameRef.current.chess.fen(), lastMove: null, san: 'Start' }];
           publishPositionEvaluation(gameRef.current.chess.fen());
           renderBoard();
           loadRoyalCatTextures();
+          if (mode === 'PVP_REMOTE') window.dispatchEvent(new CustomEvent('chess-board-ready'));
           const refreshRoyalCats = () => {
             Object.keys(royalCatTextures).forEach((pieceType) => {
               const textureKey = royalCatTextures[pieceType as 'q' | 'k'];
@@ -2153,6 +2174,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
               delete royalCatTextures[pieceType as 'q' | 'k'];
             });
             loadRoyalCatTextures();
+          if (mode === 'PVP_REMOTE') window.dispatchEvent(new CustomEvent('chess-board-ready'));
             renderBoard();
           };
           window.addEventListener('royal-cats-updated', refreshRoyalCats);

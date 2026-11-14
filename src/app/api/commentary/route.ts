@@ -42,7 +42,7 @@ function getFallbackCommentary(payload: CommentaryPayload): string {
 }
 
 export async function POST(req: NextRequest) {
-  const blocked = guardAiRequest(req);
+  const blocked = await guardAiRequest(req);
   if (blocked) return blocked;
   let payload: CommentaryPayload = {};
   try {

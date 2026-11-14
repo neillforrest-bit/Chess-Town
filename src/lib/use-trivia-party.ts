@@ -1,4 +1,5 @@
 "use client";
+import { loadCheckpoint, saveCheckpoint, hasCheckpoint } from './match-checkpoint';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Peer from 'peerjs';
@@ -22,11 +23,13 @@ export function usePartyConnection(roomId: string, isHost: boolean) {
   const retryRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     let disposed = false, peer: Peer | null = null, hostLink: DataConnection | null = null;
-    let room: PartyRoom | null = isHost ? createParty('host', loadTriviaSettings()) : null;
+    const saved = isHost ? loadCheckpoint<{room: PartyRoom; tokens: [string,string][]; seen: string[]}>(`party:${roomId}`, value => Boolean(value?.room && Array.isArray(value.room.seats) && value.room.seats.some(seat => seat.id === 'host') && Array.isArray(value.tokens) && Array.isArray(value.seen))) : null;
+    if (isHost && !saved && hasCheckpoint(`party:${roomId}`)) { setError('This saved table is expired or unreadable. Open a fresh party invite; this table has not been reset.'); return; }
+    let room: PartyRoom | null = isHost ? saved?.room || createParty('host', loadTriviaSettings()) : null;
     let busyNow = false, attempts = 0, joined = false, recovering = false, hostSeen = 0, healthySince = 0;
     const links = new Map<string, DataConnection>();
-    const tokenSeats = new Map<string, string>();
-    const seen = new Set<string>();
+    const tokenSeats = new Map<string, string>(saved?.tokens || []);
+    const seen = new Set<string>(saved?.seen || []);
     const lastSeen = new Map<string, number>();
     const pending = new Map<string, { context: string; body: PartyAction }>();
     const offers = new Set<DataConnection>();
@@ -50,6 +53,7 @@ export function usePartyConnection(roomId: string, isHost: boolean) {
     };
     const publish = () => {
       if (!room || disposed) return;
+      if (!saveCheckpoint(`party:${roomId}`, { room, tokens: [...tokenSeats], seen: [...seen] })) setError('Recovery storage unavailable. Keep this host tab open.');
       localView = partyView(room, 'host'); setView(localView); setOnline(liveSeats()); setBusy(busyNow);
       links.forEach((link, id) => snapshot(id, link));
     };

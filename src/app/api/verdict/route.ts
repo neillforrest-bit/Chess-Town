@@ -46,7 +46,7 @@ function fallbackLines(payload: VerdictPayload): CardLines {
 }
 
 export async function POST(req: NextRequest) {
-  const blocked = guardAiRequest(req, 24_000, 10);
+  const blocked = await guardAiRequest(req, 24_000, 10);
   if (blocked) return blocked;
   let payload: VerdictPayload = {};
   try {

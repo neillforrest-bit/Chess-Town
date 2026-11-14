@@ -18,6 +18,7 @@ function getFallbackReply(message?: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const blocked = await guardAiRequest(request); if (blocked) return blocked;
   try {
     const payload = await request.json() as SandboxPayload;
     const apiKey = process.env.GEMINI_API_KEY;

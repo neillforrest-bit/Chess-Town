@@ -1,4 +1,6 @@
 "use client";
+import { versionLink } from '@/lib/version-link';
+
 
 import Link from 'next/link';
 import { QuizResultPages } from './QuizResultPages';
@@ -54,7 +56,7 @@ export default function TriviaPartyGame({ roomId, isHost }: { roomId: string; is
     node.scrollTop = 0;
     node.querySelector('.trivia-party-play-area')?.scrollIntoView({ block: 'start' });
   }, [transition]);
-  const invite = typeof window === 'undefined' ? '' : `${window.location.origin}/trivia-party?room=${roomId}`;
+  const invite = typeof window === 'undefined' ? '' : versionLink(`${window.location.origin}/trivia-party?room=${roomId}`);
   const choose = (answer: string) => {
     if (!view || !inQuestion || view.locked.includes(seatId) || seconds <= 0 || pendingRef.current?.context === context) return;
     const pick = { context, answer }; pendingRef.current = pick; setPending(pick); act({ answer });
@@ -87,7 +89,7 @@ export default function TriviaPartyGame({ roomId, isHost }: { roomId: string; is
         {view.settings.focus === 'open' && <><h3>YOUR THREE CATEGORIES</h3><div className="trivia-brawl-categories">{LOCAL_CATEGORIES.map(c => <button key={c.id} disabled={me.ready || busy} aria-pressed={chosenCategories.includes(c.id)} onClick={() => setCategories(current => { const picks = current ?? me.categories; return picks.includes(c.id) ? picks.filter(id => id !== c.id) : picks.length < 3 ? [...picks, c.id] : picks; })}>{c.name}</button>)}</div><p>{chosenCategories.length} / 3 selected. Everyone&apos;s picks feed the shared quiz. Party mode has no power category.</p></>}
         <button className="trivia-brawl-primary" disabled={busy || !me.ready && view.settings.focus === 'open' && chosenCategories.length !== 3} onClick={ready}>{me.ready ? 'NOT READY · CHANGE MY PICKS' : 'READY FOR THE PARTY'}</button>
         {isHost && <button className="trivia-brawl-primary" disabled={busy || view.seats.length < 2 || view.seats.some(s => !s.ready || !online.includes(s.id))} onClick={() => act({ start: true })}>{busy ? 'CHESTER IS PREPARING THE WHOLE QUIZ...' : 'LOCK ROSTER · PREPARE QUIZ'}</button>}
-        <p className="trivia-setup__note">The host must stay on this screen. Host refresh or closure loses this table. Guest reconnects keep their saved seats; clocks do not pause. Four guests can use more relay data than one; no paid upgrade is enabled here.</p>
+        <p className="trivia-setup__note">The host must stay on this screen. Refreshing this same tab restores its saved table for up to 24 hours. Closing it is not backed up. Guest reconnects keep their saved seats; clocks do not pause. Four guests can use more relay data than one; no paid upgrade is enabled here.</p>
       </section>}
       {(!view || view.phase === 'lobby') && <details className="trivia-brawl-draft trivia-lobby-more"><summary>PARTY RULES · SCORING &amp; WILDCARDS</summary>{PARTY_RULES.map(rule => <p key={rule}>{rule}</p>)}</details>}
       {view.phase === 'intro' && <section className="trivia-brawl-question"><h2>Roster locked. Same quiz for everyone.</h2><p>{view.settings.focus === 'open' ? 'Mixed quiz from every player\'s three house categories.' : `${sportFocusLabel(view.settings.focus)} main questions. Flash finales can use other topics.`} Five rounds of five, {view.settings.focus === 'grammar' ? 'fifteen' : 'ten'} seconds per main question. Five group flash finales. Late arrivals cannot join; saved seats can rejoin.</p>{isHost ? <button className="trivia-brawl-primary" disabled={view.seats.some(s => !online.includes(s.id))} onClick={() => act({ start: true })}>START THE PARTY</button> : <p>Waiting for the host to start.</p>}</section>}

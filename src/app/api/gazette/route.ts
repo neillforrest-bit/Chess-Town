@@ -34,6 +34,7 @@ function getFallbackDispatch(payload: GazettePayload): string {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = await guardAiRequest(req); if (blocked) return blocked;
   let payload: GazettePayload = {};
   try {
     payload = (await req.json()) as GazettePayload;

@@ -17,7 +17,7 @@ RULES: 1. Never use canned filler like "ambitious! the engine found a crack in i
 5. headlineBadge: max 5 words, uppercase. 6. Never repeat phrasing from recentLines. No emoji. Do not invent pieces or squares.`;
 
 export async function POST(req: NextRequest) {
-  const blocked = guardAiRequest(req, 8_000, 40); if (blocked) return blocked;
+  const blocked = await guardAiRequest(req, 8_000, 40); if (blocked) return blocked;
   const key = process.env.GEMINI_API_KEY; if (!key?.trim()) return NextResponse.json({ error: 'no key' }, { status: 503 });
   let body: { facts?: Record<string, unknown>; chat?: { message: string } };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'bad json' }, { status: 400 }); }

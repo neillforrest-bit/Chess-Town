@@ -1,7 +1,9 @@
 'use client';
 // BUILD 166: checkers vs Chester / vs a friend (pass-and-play). Raw skeleton, flagged untested until verified live.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PEER_CONFIG } from '@/lib/p2p';
+import { versionLink } from '@/lib/version-link';
+import { saveCheckpoint, loadCheckpoint } from '@/lib/match-checkpoint';
+import { loadPeerConfig } from '@/lib/p2p';
 import { initial, legalMoves, apply, other, count, chooseMove, chooseRoadMove, gradeMove, moveText, boardKey, sqName, type Board, type CMove, type Side, type Grade } from '@/lib/checkers';
 import { CK_DEPTH, CK_SLIP, CK_ROAD_MAX, getCkRoad, setCkRoad } from '@/games/checkers/road';
 
@@ -102,6 +104,7 @@ export default function PlayCheckers() {
   playRef.current = play;
 
   const commit = useCallback(async (m: CMove) => {
+    if (mode === 'duel' && duelStatus !== 'connected') return bdRef.current;
     const before = bdRef.current; const side = turn;
     let g: ReturnType<typeof gradeMove> | null = null;
     if (mine(side)) { g = gradeMove(before, side, m); seed.current++; }
@@ -117,7 +120,7 @@ export default function PlayCheckers() {
         l2: g.grade === 'SHAKY' || g.grade === 'BLUNDER' ? `🤖 Engine preferred ${bestTxt}. It loses about ${g.loss.toFixed(1)} of a man. ${pick(kind, seed.current)}` : `🤖 ${pick(kind, seed.current)}` });
     }
     return after;
-  }, [turn, play, mode]);
+  }, [turn, play, mode, duelStatus]);
 
   // Chester's turn
   useEffect(() => {
@@ -146,37 +149,44 @@ export default function PlayCheckers() {
 
   useEffect(() => { document.title = 'Checkers vs Chester'; }, []);
 
-  const makeInvite = () => { const room = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10)); const o = window.location.origin; setInvite({ room, url: `${o}/play-checkers?mode=duel&room=${room}`, host: `${o}/play-checkers?mode=duel&room=${room}&host=1` }); setCopied(false); };
+  const makeInvite = () => { const room = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10)); const o = window.location.origin; setInvite({ room, url: versionLink(`${o}/play-checkers?mode=duel&room=${room}`), host: versionLink(`${o}/play-checkers?mode=duel&room=${room}&host=1`) }); setCopied(false); };
   const copyInvite = async () => { if (!invite) return; try { await navigator.clipboard.writeText(invite.url); setCopied(true); } catch { setCopied(false); } };
   const shareInvite = async () => { if (!invite) return; try { if (navigator.share) await navigator.share({ title: 'Checkers battle', text: 'Battle me at checkers on Chess-Town', url: invite.url }); else await copyInvite(); } catch { /* cancelled */ } };
 
   const [duelRoom, setDuelRoom] = useState<{ room: string; host: boolean } | null>(null);
-  useEffect(() => { const q = new URLSearchParams(window.location.search); const room = (q.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24); if (q.get('mode') === 'duel' && room) { const host = q.get('host') === '1'; setMode('duel'); setMySide(host ? 'r' : 'b'); setDuelRoom({ room, host }); setStarted(true); } else if (q.get('mode') === 'chester') { setMode('chester'); const st = q.get('stage'); if (st === 'jump' || st === 'crown') { const e: Board = Array(64).fill('.'); if (st === 'jump') { e[7 * 8 + 0] = 'r'; e[6 * 8 + 1] = 'b'; e[4 * 8 + 3] = 'b'; e[1 * 8 + 6] = 'b'; e[0 * 8 + 1] = 'b'; } else { e[1 * 8 + 2] = 'r'; e[7 * 8 + 6] = 'r'; e[0 * 8 + 5] = 'b'; e[6 * 8 + 3] = 'b'; } setBd(e); setIds(e.map((p2, i) => (p2 === '.' ? -1 : i))); setStarted(true); } } else if (q.get('mode') === 'battle') { setMode('duel'); makeInvite(); } else if (q.get('road') === '1') { setMode('chester'); setRoadLv(getCkRoad()); setStarted(true); } }, []);
+  useEffect(() => { const q = new URLSearchParams(window.location.search); const room = (q.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24); if (q.get('mode') === 'duel' && room) { const host = q.get('host') === '1'; setMode('duel'); setMySide(host ? 'r' : 'b'); const saved = loadCheckpoint<{bd:Board;ids:number[];turn:Side;plies:number;quiet:number;seen:Record<string,number>;over:string|null;log:string[]}>(`checkers:${room}:${host}`, v => Boolean(v && Array.isArray(v.bd) && v.bd.length === 64 && v.bd.every(p => ['.','r','R','b','B'].includes(p)) && ['r','b'].includes(v.turn) && Array.isArray(v.ids) && v.ids.length === 64 && Array.isArray(v.log) && v.seen)); if(saved){setBd(saved.bd);bdRef.current=saved.bd;setIds(saved.ids);setTurn(saved.turn);turnRef.current=saved.turn;setPlies(saved.plies);quiet.current=saved.quiet;seen.current=saved.seen;setOver(saved.over);setLog(saved.log);updateTug(saved.bd);} setDuelRoom({ room, host }); setStarted(true); } else if (q.get('mode') === 'chester') { setMode('chester'); const st = q.get('stage'); if (st === 'jump' || st === 'crown') { const e: Board = Array(64).fill('.'); if (st === 'jump') { e[7 * 8 + 0] = 'r'; e[6 * 8 + 1] = 'b'; e[4 * 8 + 3] = 'b'; e[1 * 8 + 6] = 'b'; e[0 * 8 + 1] = 'b'; } else { e[1 * 8 + 2] = 'r'; e[7 * 8 + 6] = 'r'; e[0 * 8 + 5] = 'b'; e[6 * 8 + 3] = 'b'; } setBd(e); setIds(e.map((p2, i) => (p2 === '.' ? -1 : i))); setStarted(true); } } else if (q.get('mode') === 'battle') { setMode('duel'); makeInvite(); } else if (q.get('road') === '1') { setMode('chester'); setRoadLv(getCkRoad()); setStarted(true); } }, []);
   const advanced = useRef(false);
   useEffect(() => { if (!over || !roadLv || advanced.current) return; advanced.current = true; if (/^Red wins/.test(over) && roadLv < CK_ROAD_MAX) { setCkRoad(roadLv + 1); setRoadNote(`Level ${roadLv} cleared. Next: level ${roadLv + 1}.`); } else if (/^Red wins/.test(over)) setRoadNote('KING HENRY IS DEFEATED. You rule the board.'); else setRoadNote('Not this time. Same level, go again.'); }, [over, roadLv]);
+  useEffect(() => {
+    if (!duelRoom || busy) return;
+    saveCheckpoint(`checkers:${duelRoom.room}:${duelRoom.host}`, { bd, ids, turn, plies, quiet: quiet.current, seen: seen.current, over, log });
+  }, [duelRoom, bd, ids, turn, plies, over, log, busy]);
   useEffect(() => {
     if (!duelRoom) return;
     let dead = false; const timers: ReturnType<typeof setTimeout>[] = [];
     type Conn = { on: (e: string, cb: (a?: unknown) => void) => void; send: (d: unknown) => void };
     type DPeer = { on: (e: string, cb: (a?: unknown) => void) => void; destroy: () => void; connect: (id: string) => Conn };
-    let peer: DPeer | null = null; let connected = false;
+    let peer: DPeer | null = null; let connected = false; let rejoin = () => {};
     const wire = (conn: Conn) => {
       connRef.current = conn;
-      conn.on('open', () => { if (dead) return; connected = true; setDuelStatus('connected'); setHud({ grade: 'IDLE', title: duelRoom.host ? 'FRIEND JOINED - YOUR MOVE' : 'CONNECTED - RED MOVES FIRST', l1: duelRoom.host ? 'You are Red. Make the first move.' : 'You are Black. Wait for Red.', l2: '' }); });
+      conn.on('open', () => { if (dead) return; connected = true; setDuelStatus('connected'); if (duelRoom.host) { const state = loadCheckpoint<any>(`checkers:${duelRoom.room}:true`, value => Boolean(value?.bd)); if (state) conn.send({ type: 'sync', state }); } setHud({ grade: 'IDLE', title: duelRoom.host ? 'FRIEND JOINED - YOUR MOVE' : 'CONNECTED - RED MOVES FIRST', l1: duelRoom.host ? 'You are Red. Make the first move.' : 'You are Black. Wait for Red.', l2: '' }); });
       conn.on('data', (data?: unknown) => {
-        const d = data as { type?: string; path?: number[]; from?: number; to?: number } | undefined; if (!d) return;
+        const d = data as { type?: string; path?: number[]; from?: number; to?: number; state?: {bd:Board;ids:number[];turn:Side;plies:number;quiet:number;seen:Record<string,number>;over:string|null;log:string[]} } | undefined; if (!d) return;
         if (d.type === 'move' && Array.isArray(d.path)) { const side = turnRef.current; const m = legalMoves(bdRef.current, side).find((x) => x.from === d.from && x.to === d.to && x.path.join() === d.path!.join()); if (m) void playRef.current(m, side, bdRef.current); }
+        if (d.type === 'sync' && !duelRoom.host && d.state && Array.isArray(d.state.bd) && d.state.bd.length === 64 && d.state.bd.every(p => ['.','r','R','b','B'].includes(p)) && ['r','b'].includes(d.state.turn) && Array.isArray(d.state.ids) && d.state.ids.length === 64 && Array.isArray(d.state.log) && d.state.seen) { const s=d.state; setBd(s.bd); bdRef.current=s.bd; setIds(s.ids); setTurn(s.turn);turnRef.current=s.turn;setPlies(s.plies);quiet.current=s.quiet;seen.current=s.seen;setOver(s.over);setLog(s.log);updateTug(s.bd); }
         if (d.type === 'reset') reset();
       });
-      conn.on('close', () => { if (!dead) setDuelStatus('failed'); });
+      conn.on('close', () => { if (!dead) { connected = false; setDuelStatus('waiting'); if (!duelRoom.host) rejoin(); } });
     };
     setDuelStatus('waiting');
-    void import('peerjs').then(({ default: Peer }) => {
+    void import('peerjs').then(async ({ default: Peer }) => {
+      const PEER_CONFIG = await loadPeerConfig();
       if (dead) return; const id = `chess-town-checkers-${duelRoom.room}`;
       if (duelRoom.host) {
         let tries = 0; const open = () => { if (dead) return; tries++; try { peer = new Peer(id, PEER_CONFIG as never) as unknown as DPeer; peer.on('connection', (c?: unknown) => wire(c as Conn)); peer.on('error', (err?: unknown) => { if (dead) return; const t = (err as { type?: string })?.type || ''; if (t === 'unavailable-id' && tries < 40) { try { peer?.destroy(); } catch {} timers.push(setTimeout(open, 3000)); return; } setDuelStatus('failed'); }); } catch { if (tries < 40) timers.push(setTimeout(open, 3000)); } }; open();
       } else {
         let tries = 0; const knock = () => { if (dead || !peer || connected) return; tries++; try { wire(peer.connect(id)); } catch {} timers.push(setTimeout(knock, 3000)); };
+        rejoin = () => { tries=0; timers.push(setTimeout(knock,1000)); };
         peer = new Peer(PEER_CONFIG as never) as unknown as DPeer; peer.on('open', knock); peer.on('error', (err?: unknown) => { if (dead) return; const t = (err as { type?: string })?.type || ''; if (t === 'peer-unavailable' && tries < 60) return; setDuelStatus('failed'); });
       }
     }).catch(() => { if (!dead) setDuelStatus('failed'); });
