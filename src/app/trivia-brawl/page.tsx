@@ -381,7 +381,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     };
     setMatchId(id);
     const freeCommentary = new URLSearchParams(window.location.search).get('triviaFreeCommentary') === '1';
-    window.history.replaceState(null, '', `/trivia-brawl?match=${id}&role=${role}${freeCommentary ? '&triviaFreeCommentary=1' : ''}`);
+    window.history.replaceState(null, '', versionLink(`/trivia-brawl?match=${id}&role=${role}${freeCommentary ? '&triviaFreeCommentary=1' : ''}`));
     void (async () => {
       // The pub table must open even if the online quiz service is slow or down: local categories first, online ones merged in later.
       setCategories(LOCAL_CATEGORIES);

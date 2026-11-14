@@ -1,5 +1,6 @@
 "use client";
 
+import { versionLink } from '@/lib/version-link';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import TriviaPartyGame from '@/components/TriviaPartyGame';
@@ -18,7 +19,7 @@ export default function TriviaPartyPage() {
   }, []);
   const create = () => {
     const id = crypto.randomUUID().replaceAll('-', '').slice(0, 16);
-    window.history.replaceState(null, '', `/trivia-party?room=${id}&host=1`); setRoom(id); setHost(true);
+    window.history.replaceState(null, '', versionLink(`/trivia-party?room=${id}&host=1`)); setRoom(id); setHost(true);
   };
   if (!ready) return <main className="trivia-brawl-page trivia-showtime" />;
   if (room) return <TriviaPartyGame roomId={room} isHost={host} />;

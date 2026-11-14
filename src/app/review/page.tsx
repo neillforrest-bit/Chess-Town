@@ -29,7 +29,7 @@ function fmtLoss(cp: number | null): string {
   return `-${(cp / 100).toFixed(1)}`;
 }
 /** Measured labels, not praise: what the capped engine actually observed. */
-export function measuredLabel(p: ReviewedPly): string {
+function measuredLabel(p: ReviewedPly): string {
   if (p.terminal === 'mate') return 'CHECKMATE';
   if (p.terminal === 'draw') return 'GAME DRAWN';
   switch (p.classification) {
