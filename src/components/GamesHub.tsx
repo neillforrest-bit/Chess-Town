@@ -18,10 +18,10 @@ const worlds = {
 };
 type World = keyof typeof worlds;
 const movieModes = [
-  { id: 'find', title: 'Find Our Film · choose together', description: 'Pick a mood, save films you love and find a match for tonight together. Orson hosts the latest private two-player film finder.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/find', action: 'Find our film' },
-  { id: 'movie-night', title: 'Movie night · with your partner', description: 'Solve the age-old problem of what to watch. Share a room link, match your moods, draft in secret and battle a bracket for tonight’s film.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/together', action: 'Create or join Movie Night' },
-  { id: 'tonight', title: 'Tonight · find a film', description: 'Pick a mood or jump straight to films. No film list or streaming setup needed.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/tonight', action: 'Find a film' },
-  { id: 'discover', title: 'Discovery Night', description: 'Explore films you might not have thought to look for.', href: 'https://chess-town-git-instinct-find-our-film-20261113-neillo.vercel.app/discover', action: 'Explore films' },
+  { id: 'find', title: 'Find Our Film · choose together', description: 'Pick a mood, save films you love and find a match for tonight together. Orson hosts the latest private two-player film finder.', href: '/movie/find', action: 'Find our film' },
+  { id: 'movie-night', title: 'Movie night · with your partner', description: 'Solve the age-old problem of what to watch. Share a room link, match your moods, draft in secret and battle a bracket for tonight’s film.', href: '/movie/together', action: 'Create or join Movie Night' },
+  { id: 'tonight', title: 'Tonight · find a film', description: 'Pick a mood or jump straight to films. No film list or streaming setup needed.', href: '/movie/tonight', action: 'Find a film' },
+  { id: 'discover', title: 'Discovery Night', description: 'Explore films you might not have thought to look for.', href: '/movie/discover', action: 'Explore films' },
 
 ];
 const logicModes = [
@@ -68,7 +68,7 @@ export default function GamesHub() {
       <button className={styles.cta} disabled={!world} onClick={enter}>{game ? game.enter : 'Choose a town to enter'}<span aria-hidden="true">→</span></button>
     </> : game && selected ? <>
       <div className={styles.field}><label htmlFor="gt-mode">Switch your mode <span aria-hidden="true">↕</span></label><select id="gt-mode" value={selected.id} onChange={event => setModeId(event.target.value)}>{modes.map(mode => <option value={mode.id} key={mode.id}>{modeLabels[mode.id] || mode.title}</option>)}</select></div>
-      <section className={styles.intro} aria-live="polite"><div className={styles.modeHint}><ChesterCompanion paused={paused}/><p>Tap the mode picker above to switch. {world === 'movie' ? 'Find a film together, try the original Movie Night or explore something new.' : 'Choose the way you want to play. I will show you what each mode does.'}</p></div><span className={styles.eyebrow}>{game.type}</span><h2>{selected.title}</h2><p>{selected.description}</p><small>{world === 'movie' ? 'Film modes open their own preview in this tab. Use Back to return to Game Town.' : 'Stays in Game Town. Your usual game rules and saved progress remain.'}</small></section>
+      <section className={styles.intro} aria-live="polite"><div className={styles.modeHint}><ChesterCompanion paused={paused}/><p>Tap the mode picker above to switch. {world === 'movie' ? 'Find a film together, try the original Movie Night or explore something new.' : 'Choose the way you want to play. I will show you what each mode does.'}</p></div><span className={styles.eyebrow}>{game.type}</span><h2>{selected.title}</h2><p>{selected.description}</p><small>{world === 'movie' ? 'Film modes stay below the Game Town header. Use GAME TOWN above to return at any point.' : 'Stays in Game Town. Your usual game rules and saved progress remain.'}</small></section>
       <a className={styles.cta} href={selected.href} data-launch={selected.id} onClick={() => recordTownActivity({ label: selected.title, href: selected.href, kind: 'opened' })}>{selected.action}<span aria-hidden="true">→</span></a>
       <button className={styles.back} onClick={leave}>← Back to all games</button>
     </> : null}

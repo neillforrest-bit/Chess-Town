@@ -4851,3 +4851,23 @@ body:has(.chester-start-screen) .chester-fab{bottom:14px!important;right:14px!im
 /* Phone audit: centred overflow put the first lesson behind the nav. */
 .lesson-hall.training-page{justify-content:flex-start!important;overflow-y:auto!important;scroll-padding-top:12px}
 .lesson-hall.training-page>*{flex-shrink:0}
+
+/* BUILD215: keep match controls inside the area below the shared navigation. */
+.battle-shell { top:64px; height:calc(100dvh - 64px); padding-top:3.25rem; }
+.battle-menuwrap { top:.4rem; }
+.battle-menu { max-height:calc(100dvh - 130px); overflow-y:auto; }
+.movie-frame-page { height:100%; width:100%; background:#0b0a10; position:relative; }
+.movie-frame-page iframe { border:0; width:100%; height:100%; display:block; }
+body:has(.movie-frame-page) .chester-fab { display:none; }
+.league-page { height:100%; overflow:auto; background:#251a36; color:#fff5ed; padding:1.25rem; font-family:ManropeGT,Arial,sans-serif; }
+.league-page section { max-width:640px; margin:0 auto; }
+.league-page h1 { font-size:1.8rem; margin:.5rem 0 1rem; }
+.league-page p { font-size:1rem; line-height:1.6; }
+.league-page .league-empty { border:1px solid #80649e; border-radius:16px; padding:1.25rem; margin:1rem 0; background:#342345; }
+.league-page a { color:#d0eea9; display:inline-block; padding:.8rem 0; }
+.trivia-source { font:600 .74rem/1.4 ManropeGT,Arial,sans-serif; color:#c2a4fa; margin:.6rem 0; }
+/* The result has no menu; reclaim its reserved row so Run It Back stays in view. */
+.battle-arena:has(.battle-outcome) { padding-top:.65rem; }
+/* Commentary is in normal flow, unlike the centred floating battle banner. */
+.battle-commentary { animation:none; min-width:0; overflow-wrap:anywhere; }
+.battle-commentary > span { min-width:0; }
