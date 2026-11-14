@@ -1,7 +1,11 @@
 'use client';
+import { useEffect,useState } from 'react';
 import { BUILD_LABEL } from '@/lib/build-info';
 
 export default function BuildBadge() {
+  const [visible,setVisible]=useState(false);
+  useEffect(()=>setVisible(new URLSearchParams(location.search).get('debug')==='1'),[]);
+  if(!visible)return null;
   return (
     <div
       className="build-badge"

@@ -1230,7 +1230,7 @@ function PlayChesterGame() {
             ? <button type="button" className="is-confirm" onClick={() => { setMenuOpen(false); setResignArmed(false); window.dispatchEvent(new CustomEvent('request-resign')); }}><b>⚠ CONFIRM RESIGN?</b><small>ends the match, shows your report</small></button>
             : <button type="button" onClick={() => setResignArmed(true)}><b> RESIGN MATCH</b><small>asks again before it fires</small></button>}
           {!isFriendMode && <button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); setStarted(false); }}><b> CHANGE LEVEL</b><small>back to the level select</small></button>}
-          <Link href="/" className="chester-navdrawer__link" onClick={() => setMenuOpen(false)}><b> BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
+          <Link href="/?choose=mode&town=chess" className="chester-navdrawer__link" onClick={() => setMenuOpen(false)}><b> BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
         </div>
       </aside>
     </div>}

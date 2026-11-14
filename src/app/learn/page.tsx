@@ -101,6 +101,6 @@ export default function LearnPage() {
         <p className="learn-muted">Only swings a club player should spot are flagged. Small inaccuracies are counted, not nagged about.</p>
       </section>
     </>}
-    <Link className="learn-link" href="/">← Back to Chesterville</Link>
+    <Link className="learn-link" href="/?choose=mode&town=chess">← Back to Chesterville</Link>
   </main>;
 }

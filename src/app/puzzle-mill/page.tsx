@@ -66,7 +66,7 @@ export default function PuzzleMillPage() {
     {ready && !total && <section className="minigame-result minigame-ready">
       <p>The mill is empty - which means no mistakes graded yet. Play Chester and every real slip gets banked here, the exact position, ready to fix tomorrow.</p>
       <Link className="minigame-cta" href="/play-chester">PLAY CHESTER - FEED THE MILL ♞</Link>
-      <div className="minigame-links"><Link href="/">← Back to Chesterville</Link></div>
+      <div className="minigame-links"><Link href="/?choose=mode&town=chess">← Back to Chesterville</Link></div>
     </section>}
 
     {ready && total > 0 && !done && puzzle && <>
@@ -94,7 +94,7 @@ export default function PuzzleMillPage() {
         <button type="button" className="minigame-cta" onClick={again}>ANOTHER SHIFT</button>
         <Link className="minigame-cta minigame-cta--ghost" href="/play-chester">PLAY CHESTER</Link>
       </div>
-      <div className="minigame-links"><Link href="/">← Back to Chesterville</Link></div>
+      <div className="minigame-links"><Link href="/?choose=mode&town=chess">← Back to Chesterville</Link></div>
     </section>}
   </main>;
 }

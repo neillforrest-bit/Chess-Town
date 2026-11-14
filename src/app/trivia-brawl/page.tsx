@@ -804,7 +804,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
 
   const outcome = room?.result && room.flash?.resolvedNote !== 'void' && (room.phase === 'reveal' || room.phase === 'flashReveal') ? (player === 'p1' ? room.result.p1Correct : room.result.p2Correct) ? ' is-answer-right' : ' is-answer-wrong' : '';
   return <main ref={stageRef} className={`trivia-brawl-page trivia-showtime${room?.settings.focus === 'grammar' ? ' trivia-grammar' : ''}${room?.phase === 'flash' || room?.phase === 'flashReveal' ? ' is-flash-time' : ''}${(room?.phase === 'flash' && flashLow || room?.phase === 'question' && questionTimer.left <= 5 && questionTimer.left > 0) ? ' is-time-low' : ''}${outcome}`}>
-    <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">← Pub door</Link></header>
+    <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">Change table</Link></header>
     {room && room.phase !== 'draft' && <Scorebug p1Name={room.names.p1} p2Name={room.names.p2} p1Score={room.score.p1} p2Score={room.score.p2} round={room.round} qIndex={room.qIndex} lastCall={room.lastCall} finished={room.phase === 'finished'} p1Locked={room.phase === 'question' && Boolean(room.answers.p1)} p2Locked={room.phase === 'question' && Boolean(room.answers.p2)} />}
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile trivia />
     {error && <p className="trivia-brawl-error" role="status">{error}</p>}
@@ -1000,7 +1000,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
   };
 
   return <main className={`trivia-brawl-page trivia-showtime${settings.focus === 'grammar' ? ' trivia-grammar' : ''}${phase === 'question' && soloTimer.left <= 5 && soloTimer.left > 0 ? ' is-time-low' : ''}`}>
-    <header className="trivia-brawl-header"><div><span>SOLO AT THE BAR</span><h1>You vs Chester</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
+    <header className="trivia-brawl-header"><div><span>SOLO AT THE BAR</span><h1>You vs Chester</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>Change table</button></header>
     <Scorebug p1Name="YOU" p2Name="CHESTER" p1Score={score.you} p2Score={score.chester} round={round} finished={phase === 'finished'} />
     <ChesterTeleprompter text={hostLine} isThinking={false} isMobile trivia />
     {error && <p className="trivia-brawl-error">{error}</p>}
@@ -1240,7 +1240,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
   const powerPicker = (who: 'a' | 'b') => picks[who].length === 3 ? <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{picks[who].map((id) => <button key={id} type="button" className={power[who] === id ? 'is-starred' : ''} onClick={() => starPower(who, id)}>{power[who] === id ? '⭐ ' : ''}{nameOf(id)}</button>)}</div></div> : null;
 
   return <main className={`trivia-brawl-page trivia-showtime${settings.focus === 'grammar' ? ' trivia-grammar' : ''}${(phase === 'askA' || phase === 'askB') && turnTimer.left <= 5 && turnTimer.left > 0 ? ' is-time-low' : ''}`}>
-    <header className="trivia-brawl-header"><div><span>ONE PHONE · TWO PLAYERS</span><h1>Pass &amp; Play</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>← Pub door</button></header>
+    <header className="trivia-brawl-header"><div><span>ONE PHONE · TWO PLAYERS</span><h1>Pass &amp; Play</h1></div><button type="button" className="trivia-brawl-sabotage" onClick={onExit}>Change table</button></header>
     {match && <Scorebug p1Name={nameA} p2Name={nameB} p1Score={match.score.p1} p2Score={match.score.p2} round={match.round} qIndex={match.qIndex} lastCall={match.lastCall} finished={phase === 'finished'} />}
     <ChesterTeleprompter text={settings.focus === 'grammar' && (phase === 'askA' || phase === 'askB') ? `${answeringName}, your grammar question. ${phase === 'askA' ? nameB : nameA}, no peeking.` : hostLine} isThinking={phase === 'building'} isMobile trivia />
     {error && <p className="trivia-brawl-error">{error}</p>}
@@ -1332,7 +1332,7 @@ function TriviaLobby({ onHost, onSolo, onPass }: { onHost: () => void; onSolo: (
   useEffect(() => { setScores(loadSoloScores().slice(0, 5)); }, []);
   const updateSettings = (next: TriviaSettings) => { setSettings(next); saveTriviaSettings(next); };
   return <main className={`trivia-brawl-page trivia-showtime trivia-showtime--lobby${settings.focus === 'grammar' ? ' trivia-grammar' : ''}`}>
-    <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/quiz">← Quiz games</Link></header>
+    <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/?choose=mode&town=trivia">‹ Trivia Town</Link></header>
     <ChesterTeleprompter text="Your home turf, or a draft of both your favourites? Pick the categories and heat. I will bring the commentary." isThinking={false} isMobile trivia />
     <div className="trivia-marquee" aria-label="Friends match format"><span>5 BRAWL ROUNDS</span><i>✦</i><span>25 QUESTIONS</span><i>✦</i><span>5 FLASH FINALS</span></div>
     <TriviaSetupPanel settings={settings} onChange={updateSettings} brawlModes />

@@ -1,77 +1,41 @@
 'use client';
-
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { GAME_OPTIONS } from '@/lib/game-options';
-import styles from './GoodTogetherHub.module.css';
-import ChesterCompanion from './ChesterCompanion';
-import TownWelcome from './TownWelcome';
 import { recordTownActivity } from '@/lib/town-activity';
+import { guestInvitePath } from '@/lib/game-invites';
+import styles from './GameTownRedesign.module.css';
 
-const modeLabels:Record<string,string>={'find':'Find Our Film','movie-night':'Original Movie Night','tonight':'Tonight: quick picks','discover':'Discovery Night','logic-road':'Road to Riddlemaster','trivia-road':'Road to Landlord','chess-road':'Road to Joseph','checkers-solo':'Play Chester','checkers-battle':'Battle a friend','checkers-road':'The Road'};
-const worlds = {
-  checkers: {label:'Checkers Town · Checkers',name:'Checkers Town',type:'Your checkers town',description:'Make your jumps, crown your kings and take on Chester or a friend.',hint:'Play Chester, battle and the road.',enter:'Enter Checkers Town'},
-  trivia: { label: 'Quiz Town · Trivia', name: 'Quiz Town', type: 'Your pub quiz town', description: "Pull up a stool. Play me, challenge a friend, share a phone with your partner or bring the whole table. Pick your topic, trust your hunch and give me something to talk about.", hint: 'Solo, battle, pass & play, Grammar, Party Table and the Road to the Landlord.', enter: 'Enter Quiz Town' },
-  chess: { label: 'Chess Town · Chess', name: 'Chess Town', type: 'Your chess town', description: "Fancy learning a trick or giving someone a proper game? Take me on, share a board with a friend or partner, or practise a new move. I'll be here for the bright ideas and the blunders.", hint: 'Play Chester, local battle, The Underdog, learning and a daily challenge.', enter: 'Enter Chess Town' },
-  movie: { label: 'Movie Town · Films', name: 'Movie Town', type: 'Your film-finding town', description: "Less debating, more watching. Find a film for tonight, dig up an unexpected gem or make choosing the movie a game with your partner. I'll show you the doors. You bring the popcorn.", hint: 'Existing movie preview: Tonight, Discovery Night and Movie Night. Orson hosts inside.', enter: 'Enter Movie Town' },
-  logic: { label: 'Puzzle Town · Logic & riddles', name: 'Puzzle Town', type: 'Your logic and riddle town', description: "Come for a brain-teaser, stay for the moment it clicks. Play me, puzzle it out with a partner, battle friends or climb the road. Read twice. That innocent little question has teeth.", hint: 'Play Chester, pass & play, battle and the Road to the Riddlemaster.', enter: 'Enter Puzzle Town' },
-};
-type World = keyof typeof worlds;
-const movieModes = [
-  { id: 'find', title: 'Find Our Film · choose together', description: 'Pick a mood, save films you love and find a match for tonight together. Orson hosts the latest private two-player film finder.', href: '/movie/find', action: 'Find our film' },
-  { id: 'movie-night', title: 'Movie night · with your partner', description: 'Solve the age-old problem of what to watch. Share a room link, match your moods, draft in secret and battle a bracket for tonight’s film.', href: '/movie/together', action: 'Create or join Movie Night' },
-  { id: 'tonight', title: 'Tonight · find a film', description: 'Pick a mood or jump straight to films. No film list or streaming setup needed.', href: '/movie/tonight', action: 'Find a film' },
-  { id: 'discover', title: 'Discovery Night', description: 'Explore films you might not have thought to look for.', href: '/movie/discover', action: 'Explore films' },
-
-];
-const logicModes = [
-  { id: 'logic', title: 'Choose your table', description: 'Solo with Chester, pass & play or a friend battle. Pick Easy, Medium, Hard or Classic before you start.', href: '/logic-brawl', action: 'Choose your table' },
-  { id: 'logic-road', title: 'The Road · logic & riddles', description: 'Fifteen rising tables. Progress stays on this device.', href: '/road/logic', action: 'Open the road' },
-];
-
-export default function GamesHub() {
-  const [world, setWorld] = useState<World | ''>('');
-  const [inside, setInside] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const modes = world === 'movie' ? movieModes : world === 'logic' ? logicModes : GAME_OPTIONS.filter(mode => mode.family === world);
-  const [modeId, setModeId] = useState('solo');
-  const selected = modes.find(mode => mode.id === modeId) || modes[0];
-  const game = world ? worlds[world] : null;
-  useEffect(() => {
-    const back = () => { const params = new URLSearchParams(window.location.search); const town = params.get('town'); if (town && town in worlds) { setWorld(town as World); setModeId(town === 'trivia' ? 'solo' : town === 'chess' ? 'chester' : town === 'checkers' ? 'checkers-solo' : town === 'movie' ? 'find' : 'logic'); setInside(params.get('choose') === 'mode'); } else setInside(false); };
-    back(); window.addEventListener('popstate', back);
-    return () => window.removeEventListener('popstate', back);
-  }, []);
-  const enter = () => { if (!world) return; setInside(true); history.pushState({}, '', `${location.pathname}?choose=mode&town=${world}`); };
-  const leave = () => { setInside(false); history.replaceState({}, '', location.pathname); };
-  return <main className={`${styles.hub} ${inside ? styles.inside : ''} good-together-hub`} data-town={world} aria-labelledby="gt-title">
-    <header className={styles.header}>
-      <Link href="/" className={styles.brand} aria-label="Game Town home" onClick={leave}>
-        {/* Original vector artwork recovered from the approved preview study. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/good-together/umbrella.svg" alt="" width="40" height="40" />
-        <span>game<i>town</i></span>
-      </Link><div className={styles.headerTools}><span className={styles.preview}>Preview</span><button className={styles.motion} onClick={() => setPaused(current => !current)} aria-label={paused ? 'Resume Chester animation' : 'Pause Chester animation'} aria-pressed={paused} title={paused ? 'Resume animation' : 'Pause animation'}>{paused ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4L16 10L7 16Z" fill="currentColor"/></svg> : <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5V15M13 5V15" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>}</button></div>
-    </header>
-    <section className={styles.welcome}>
-      <div className={styles.heroCopy}><span className={styles.hostLabel}>I&apos;m Chester. Your host.</span><h1 id="gt-title">{inside && game ? game.name : <>Good times,<br /><em>this way.</em></>}</h1>{inside && <span className={styles.heroCaption}>Find your favourite way to play.</span>}</div>
-      <div className={styles.character} key={world || 'welcome'}><ChesterCompanion paused={paused}/></div>
-      <div className={styles.orbit} aria-hidden="true"/>
-      {!inside && <p className={styles.heroTagline}>You can do better than doom scrolling. Play a game, find a film, maybe even test your knowledge or grammar.</p>}
-    </section>
-    {!inside ? <>
-      <div className={styles.field}><label htmlFor="gt-game">Pick your town tonight</label><select id="gt-game" value={world} onChange={event => { const next = event.target.value as World | ''; setWorld(next); setModeId(next === 'trivia' ? 'solo' : next === 'chess' ? 'chester' : next === 'checkers' ? 'checkers-solo' : next === 'movie' ? 'find' : 'logic'); }}>
-        <option value="" disabled>Pick a town tonight...</option>
-        {Object.entries(worlds).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}
-      </select></div>
-      <section className={`${styles.intro} ${styles.welcomeCard}`} aria-label="Chester host welcome"><TownWelcome paused={paused} town={game?.name} overview={game?.description} onStart={() => { document.getElementById('gt-game')?.focus(); }} /></section>
-      <button className={styles.cta} disabled={!world} onClick={enter}>{game ? game.enter : 'Choose a town to enter'}<span aria-hidden="true">→</span></button>
-    </> : game && selected ? <>
-      <div className={styles.field}><label htmlFor="gt-mode">Switch your mode <span aria-hidden="true">↕</span></label><select id="gt-mode" value={selected.id} onChange={event => setModeId(event.target.value)}>{modes.map(mode => <option value={mode.id} key={mode.id}>{modeLabels[mode.id] || mode.title}</option>)}</select></div>
-      <section className={styles.intro} aria-live="polite"><div className={styles.modeHint}><ChesterCompanion paused={paused}/><p>Tap the mode picker above to switch. {world === 'movie' ? 'Find a film together, try the original Movie Night or explore something new.' : 'Choose the way you want to play. I will show you what each mode does.'}</p></div><span className={styles.eyebrow}>{game.type}</span><h2>{selected.title}</h2><p>{selected.description}</p><small>{world === 'movie' ? 'Film modes stay below the Game Town header. Use GAME TOWN above to return at any point.' : 'Stays in Game Town. Your usual game rules and saved progress remain.'}</small></section>
-      <a className={styles.cta} href={selected.href} data-launch={selected.id} onClick={() => recordTownActivity({ label: selected.title, href: selected.href, kind: 'opened' })}>{selected.action}<span aria-hidden="true">→</span></a>
-      <button className={styles.back} onClick={leave}>← Back to all games</button>
-    </> : null}
-    <footer className={styles.footer}>{inside ? 'Game Town · hosted by Chester' : 'Pick a town. Hear from Chester. Then Enter.'}</footer>
-  </main>;
+type Town='chess'|'trivia'|'logic'|'movie'|'checkers';
+type Mode={id:string;title:string;description:string;href:string;action:string;players?:string};
+const towns: Record<Town,{name:string;title:string;line:string}>={chess:{name:'Chess',title:'Chess Town',line:'Beat Chester or a friend'},trivia:{name:'Trivia',title:'Trivia Town',line:'Solo or up to 5 players'},logic:{name:'Logic',title:'Logic Town',line:'Riddles and puzzles'},movie:{name:'Movies',title:'Movie Town',line:'Pick a film together'},checkers:{name:'Checkers',title:'Checkers',line:'Chester or a friend, forced jumps'}};
+const movies:Mode[]=[{id:'find',title:'Find Our Film',description:'Choose a mood, save your favourites and agree on a film together.',href:'/movie/find',action:'Find our film',players:'2 players'},{id:'tonight',title:'Tonight',description:'A quick solo browse for something worth watching.',href:'/movie/tonight',action:'Find a film',players:'Solo'},{id:'discover',title:'Discovery Night',description:'Keep the films you love. Discover an unexpected winner.',href:'/movie/discover',action:'Explore films',players:'Solo'},{id:'movie-night',title:'Original Movie Night',description:'The earlier film tournament. Model-backed mode; usage limits still need checking.',href:'/movie/together',action:'Open original mode',players:'2 players'}];
+const logic:Mode[]=[{id:'logic',title:'Logic & Riddles',description:'Five rounds and five bonus Lockboxes. Choose solo, pass & play or invite friends.',href:'/logic-brawl',action:'Choose your table',players:'Solo or friends'},{id:'logic-road',title:'Road to Riddlemaster',description:'Fifteen rising tables. Your progress stays on this device.',href:'/road/logic',action:'Open the road',players:'Solo'}];
+const primary:Record<Town,string[]>={chess:['chester','chess-battle','training'],trivia:['solo','brawl','party'],logic:['logic','logic-road'],movie:['find','tonight','discover'],checkers:['checkers-solo','checkers-battle','checkers-road']};
+export default function GamesHub(){
+ const [town,setTown]=useState<Town|null>(null),[mode,setMode]=useState(''),[more,setMore]=useState(false),[page,setPage]=useState(0),[panel,setPanel]=useState<null|'settings'|'help'|'join'>(null),[reduce,setReduce]=useState(false),[invite,setInvite]=useState(''),[joinGame,setJoinGame]=useState('logic'),[error,setError]=useState('');
+ useEffect(()=>{const sync=()=>{const t=new URLSearchParams(location.search).get('town');setTown(t&&t in towns?t as Town:null);setMore(false);setPage(0);setMode('');};sync();setReduce(localStorage.getItem('gt-reduce-motion')==='1');addEventListener('popstate',sync);return()=>removeEventListener('popstate',sync)},[]);
+ const open=(t:Town|null)=>{setTown(t);setMore(false);setPage(0);setMode('');history.pushState({},'',t?`/?choose=mode&town=${t}`:'/');};
+ const modes:Mode[]=town==='movie'?movies:town==='logic'?logic:GAME_OPTIONS.filter(m=>m.family===town);
+ const available=town?(more?modes.filter(m=>!primary[town].includes(m.id)):primary[town].map(id=>modes.find(m=>m.id===id)!).filter(Boolean)):[];
+ const visible=available.slice(page*3,page*3+3);const selected=visible.find(m=>m.id===mode)||visible[0];
+ const join=()=>{const path=guestInvitePath(invite,location.origin,joinGame as 'logic'|'trivia');if(path){location.href=path;return;}setError('Use the code from your host, or paste the full Game Town invite link.');};
+ return <div className={styles.hub} data-town={town||'home'}>
+  <header className={styles.header}><button onClick={()=>open(null)} aria-label="Game Town home" className={styles.logo}>game <span>town</span></button><button className={styles.settings} onClick={()=>setPanel('settings')}>Settings</button></header>
+  {!town?<>
+   <section className={styles.host}><button className={styles.avatar} onClick={()=>setPanel('help')} aria-label="About Chester"><img src="/good-together/chester-face.png" alt="Chester"/></button><p>Hi, I am Chester. New here?<br/>Pick a game. I will show you in.</p></section>
+   <section className={styles.hero}><h1>SCROLL LESS.<br/><span>PLAY MORE.</span></h1><p>Free to play right now.</p></section>
+   <nav className={styles.tiles} aria-label="Choose your game">{(Object.keys(towns) as Town[]).map(t=><button key={t} className={`${styles.tile} ${styles[t]}`} onClick={()=>open(t)}><div className={styles.art}>{t==='checkers'?<span className={styles.checker} aria-hidden="true"/>:<img src={`/good-together/tile-${t}.png`} alt=""/>}</div><span className={styles.tileCopy}><b>{towns[t].name}</b><small>{towns[t].line}</small></span></button>)}</nav>
+   <button className={styles.ghost} onClick={()=>setPanel('join')}>Got a room code? Join</button><button className={styles.ask} onClick={()=>setPanel('help')}>About Chester & Game Town <span aria-hidden="true">➤</span></button>
+  </>:<>
+   <button className={styles.back} onClick={()=>open(null)}>‹ All games</button>
+   <section className={styles.townHero}><div><p className={styles.eyebrow}>YOUR NEXT GOOD TIME</p><h1>{towns[town].title}</h1><p>{more?'More ways to play. Pick your next adventure.':towns[town].line+'.'}</p></div><img src="/good-together/chester-face.png" alt="Chester"/></section>
+   <div className={styles.choices} role="radiogroup" aria-label="Choose a mode">{visible.map(m=><button key={m.id} role="radio" aria-checked={selected?.id===m.id} className={`${styles.mode} ${selected?.id===m.id?styles.active:''}`} onClick={()=>setMode(m.id)}><span className={styles.radio} aria-hidden="true">{selected?.id===m.id?'●':'○'}</span><span><small>{m.players||'Play your way'}</small><b>{m.title}</b><p>{m.description}</p></span></button>)}</div>
+   {available.length>3&&<div className={styles.pagination}><button disabled={!page} onClick={()=>{setPage(p=>p-1);setMode('')}}>Previous</button><span>{page+1} of {Math.ceil(available.length/3)}</span><button disabled={(page+1)*3>=available.length} onClick={()=>{setPage(p=>p+1);setMode('')}}>Next</button></div>}
+   <div className={styles.townFooter}>{(more||modes.length>primary[town].length)&&<button className={styles.ghost} onClick={()=>{setMore(x=>!x);setPage(0);setMode('')}}>{more?'‹ Main choices':'More ways to play'}</button>}{selected&&<Link className={styles.cta} href={selected.href} data-launch={selected.id} onClick={()=>{sessionStorage.setItem('gt-return-town',town);recordTownActivity({label:selected.title,href:selected.href,kind:'opened'})}}>{selected.action}<span aria-hidden="true">→</span></Link>}</div>
+  </>}
+  {panel&&<div className={styles.scrim}><section className={styles.dialog} role="dialog" aria-modal="true" aria-label={panel==='join'?'Join a game':panel==='settings'?'Settings':'About Game Town'}><header><h2>{panel==='join'?'Join your friends':panel==='settings'?'Settings':'Meet Chester'}</h2><button autoFocus aria-label="Close" onClick={()=>{setPanel(null);setError('')}}>×</button></header>
+   {panel==='help'?<><img className={styles.helpAvatar} src="/good-together/chester-face.png" alt="Chester"/><p>Chess, Trivia, Logic, Movies and Checkers. Pick a game, choose how to play and make a little time for fun.</p><p>For a game together, your host opens a table and shares its invite. Keep that host tab open while friends join.</p><p className={styles.note}>Chester's question-and-answer guide is not ready yet. This is a local welcome, not an AI chat.</p><button className={styles.cta} onClick={()=>setPanel(null)}>Choose a game</button></>:panel==='settings'?<><label className={styles.toggle}><input type="checkbox" checked={reduce} onChange={e=>{setReduce(e.target.checked);localStorage.setItem('gt-reduce-motion',e.target.checked?'1':'0');document.documentElement.dataset.reduceMotion=e.target.checked?'true':'false';}}/> Reduce motion</label><p className={styles.note}>This preference is saved on this browser. Game progress and recaps also stay here. Movie modes may ask you to claim a username.</p><p className={styles.note}>More account and safety settings are still being built.</p></>:<><p>Paste the invite your host sent, or enter a Logic or Trivia table code.</p><label>Game<select value={joinGame} onChange={e=>setJoinGame(e.target.value)}><option value="logic">Logic & Riddles</option><option value="trivia">Pub Trivia</option></select></label><label>Invite link or table code<input value={invite} autoCapitalize="none" autoCorrect="off" onChange={e=>setInvite(e.target.value)} placeholder="Paste your invite here"/></label>{error&&<p role="alert">{error}</p>}<button className={styles.cta} onClick={join}>Join the game</button><p className={styles.note}>The host must keep the original table open. An expired table needs a fresh invite.</p></>}
+  </section></div>}
+ </div>
 }

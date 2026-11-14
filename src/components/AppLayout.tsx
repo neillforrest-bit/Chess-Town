@@ -1,58 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { askChesterChat } from '@/app/actions';
-import { chesterOfflineChat } from '@/lib/chester-voice';
-import { getReviewChatContext, reviewMoveHelp } from '@/lib/review-chat';
 import { usePathname } from 'next/navigation';
 import { trackTownRoute } from '@/lib/town-activity';
 import GlobalNav from '@/components/GlobalNav';
 import BuildBadge from '@/components/BuildBadge';
-import { ChesterChatOverlay, ChesterAvatar } from '@/components/ChesterUI';
-import { useEngineEvaluation } from '@/components/EngineEvaluationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname=usePathname();
   const isHome=pathname==='/';
   useEffect(()=>{trackTownRoute(pathname,window.location.search)},[pathname]);
-  const engineEvaluation = useEngineEvaluation();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'chester'; text: string; education?: string; kind?: 'chat' | 'analysis' }[]>([]);
-  const [input, setInput] = useState('');
-  const [thinking, setThinking] = useState(false);
-  const [error, setError] = useState('');
-  const send = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const message = input.trim();
-    if (!message || thinking) return;
-    setInput('');
-    setError('');
-    setMessages((current) => [...current, { role: 'user', text: message }]);
-    setThinking(true);
-    try {
-      // Bounded move help while a review position is on screen: answer offline, no paid call.
-      const reviewCtx = getReviewChatContext();
-      const offline = reviewCtx ? (reviewMoveHelp(message, reviewCtx) ?? 'I can help here with the move on screen: ask what happened, how it graded, why it was a mistake, or what the engine preferred. This is saved move help, not a live analysis chat.') : null;
-      const reply = offline ?? await askChesterChat(JSON.stringify({ type: 'chat', message, engineTelemetry: engineEvaluation, conversationHistory: messages.slice(-6) }));
-      const text = reply && !/messenger|delayed|unavailable/i.test(reply)
-        ? reply
-        : chesterOfflineChat(message, { persona: 'INTERMEDIATE', historyCount: messages.length });
-      setMessages((current) => [...current, { role: 'chester', text, kind: 'chat' }]);
-    } catch {
-      setError('Chester is briefly off the board. Try again.');
-    } finally {
-      setThinking(false);
-    }
-  };
+  useEffect(()=>{const show=()=>setOpen(v=>!v);window.addEventListener('gt-open-chester',show);if(localStorage.getItem('gt-reduce-motion')==='1')document.documentElement.dataset.reduceMotion='true';return()=>window.removeEventListener('gt-open-chester',show)},[]);
   return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">
     <div className="portrait-lock" role="status"><i aria-hidden="true">♞</i><b>ROTATE ME</b><span>Chesterville is a portrait town - turn your phone upright and the fun continues.</span></div>
     {!isHome && <GlobalNav />}
     <BuildBadge />
     <main className="app-main flex-1 overflow-hidden">{children}</main>
-    {!isHome && <button className="chester-fab" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="chester-drawer" aria-label="Open Chester chat"><ChesterAvatar isThinking={thinking} /></button>}
+
     {!isHome && <aside id="chester-drawer" className={`chester-drawer ${open ? 'is-open' : ''}`} aria-hidden={!open}>
-      <header><b>CHESTER CHAT</b><button onClick={() => setOpen(false)} aria-label="Close Chester chat">×</button></header>
-      <ChesterChatOverlay chatMessages={messages} chatInput={input} setChatInput={setInput} onSendMessage={send} isThinking={thinking} chatError={error} />
+      <header><b>MEET CHESTER</b><button onClick={() => setOpen(false)} aria-label="Close Chester guide">×</button></header>
+      <div className="gt-guide-stub"><p>Pick a game, choose how to play and make a little time for fun.</p><p>Playing with friends? Your host shares the invite and keeps the host tab open while everyone joins.</p><p>Chester's question-and-answer guide is not ready yet. This welcome is local, not an AI chat.</p><button onClick={() => setOpen(false)}>Back to the game</button></div>
     </aside>}
   </div>;
 }

@@ -207,7 +207,7 @@ export default function PlayCheckers() {
         <div className="ck-row"><button onClick={() => void copyInvite()}>{copied ? '✅ Copied' : '📋 Copy link'}</button><button onClick={() => void shareInvite()}>📤 Share</button><button onClick={makeInvite}>🔄 New room</button></div>
         <button className="ck-go" onClick={() => { window.location.href = invite.host; }}>OPEN MY ROOM</button>
         <p className="ck-tiny">Keep this page open until your friend joins. Live phone-to-phone, no account needed.</p></div>}
-      <p className="ck-tiny">Raw build, being verified.</p>
+      <p className="ck-tiny">Forced jumps. Fair play. Your next move.</p>
     </main>);
 
   const arrowSq = hint ? hint.to : null;

@@ -69,7 +69,7 @@ export default function TriviaPage() {
     <main className="trivia-page">
       <header className="trivia-header">
         <div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Last Call Quiz</h1></div>
-        <Link href="/">Game Town</Link>
+        <Link href="/?choose=mode&town=trivia">Game Town</Link>
       </header>
       <label>Question difficulty<select aria-label="Last Call difficulty" value={difficulty} onChange={e=>{setDifficulty(e.target.value);setQuestion(null);setScore(0);setRound(1);setSelectedAnswer(null);setAnswerState("idle");setError("");}}><option value="">Mixed</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
       <section className="trivia-game" aria-live="polite">
