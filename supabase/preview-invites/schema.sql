@@ -52,6 +52,14 @@ begin
  return jsonb_build_object('status','active','game',r.game,'roomId',r.room_id,'hostName',r.host_name,'phase',r.phase,'expiresAt',r.expires_at,'hostSeenAt',r.host_seen_at,'waitingCount',(select count(*) from public.preview_invite_seats_v1 where game=p_game and room_id=p_room));
 end $$;
 
+
+create table if not exists public.preview_party_revoked_v1 (
+ game text not null default 'trivia-party' check(game='trivia-party'), room_id text not null, seat_hash text not null,
+ primary key(game,room_id,seat_hash), foreign key(game,room_id) references public.preview_invites_v1(game,room_id) on delete cascade
+);
+alter table public.preview_party_revoked_v1 enable row level security;
+revoke all on public.preview_party_revoked_v1 from anon,authenticated;
+
 create or replace function public.preview_invite_wait_v1(p_game text,p_room text,p_secret text,p_name text)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare r public.preview_invites_v1; h text; total integer; cap integer;
@@ -62,6 +70,7 @@ begin
  if not found then raise exception 'Invite not found'; end if;
  if r.expires_at<=now() then raise exception 'Invite expired'; end if;
  h=encode(extensions.digest(p_secret,'sha256'),'hex');
+ if p_game='trivia-party' and exists(select 1 from public.preview_party_revoked_v1 where game=p_game and room_id=p_room and seat_hash=h) then raise exception 'The host removed this saved seat. Ask for a new party if you should return.'; end if;
  if exists(select 1 from public.preview_invite_seats_v1 where game=p_game and room_id=p_room and seat_hash=h) then
   update public.preview_invite_seats_v1 set display_name=left(trim(p_name),32) where game=p_game and room_id=p_room and seat_hash=h;
  else
@@ -97,3 +106,19 @@ end $$;
 
 revoke all on function public.preview_invite_create_v1(text,text,text,text,jsonb),public.preview_invite_summary_v1(text,text),public.preview_invite_wait_v1(text,text,text,text),public.preview_invite_host_v1(text,text,text,bigint,jsonb,text),public.preview_invite_delete_v1(text,text,text) from public;
 grant execute on function public.preview_invite_create_v1(text,text,text,text,jsonb),public.preview_invite_summary_v1(text,text),public.preview_invite_wait_v1(text,text,text,text),public.preview_invite_host_v1(text,text,text,bigint,jsonb,text),public.preview_invite_delete_v1(text,text,text) to anon,authenticated;
+
+-- Host may free an explicitly removed Party lobby reservation. Isolated preview only.
+create or replace function public.preview_party_release_v1(p_room text,p_secret text,p_guest_hash text)
+returns boolean language plpgsql security definer set search_path='' as $$
+declare r public.preview_invites_v1;
+begin
+ select * into r from public.preview_invites_v1 where game='trivia-party' and room_id=p_room for update;
+ if not found or r.host_hash<>encode(extensions.digest(coalesce(p_secret,''),'sha256'),'hex') then raise exception 'Host recovery key not accepted'; end if;
+ if r.expires_at<=now() or r.phase<>'waiting' then raise exception 'Only waiting Party reservations can be removed'; end if;
+ if p_guest_hash is null or p_guest_hash !~ '^[a-f0-9]{64}$' then raise exception 'Invalid reservation'; end if;
+ insert into public.preview_party_revoked_v1(game,room_id,seat_hash) values('trivia-party',p_room,p_guest_hash) on conflict do nothing;
+ delete from public.preview_invite_seats_v1 where game='trivia-party' and room_id=p_room and seat_hash=p_guest_hash;
+ return found;
+end $$;
+revoke all on function public.preview_party_release_v1(text,text,text) from public;
+grant execute on function public.preview_party_release_v1(text,text,text) to anon,authenticated;

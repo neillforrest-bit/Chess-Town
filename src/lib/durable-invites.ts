@@ -25,6 +25,7 @@ export function createInviteStore(config:Config){
   wait:(game:InviteGame,room:string,secret:string,name:string)=>rpc<InviteSummary>('preview_invite_wait_v1',{p_game:game,p_room:room,p_secret:secret,p_name:name}),
   restore:<T>(game:InviteGame,room:string,secret:string)=>rpc<HostResult<T>>('preview_invite_host_v1',{p_game:game,p_room:room,p_secret:secret}),
   save:<T>(game:InviteGame,room:string,secret:string,revision:number,snapshot:T,phase:InvitePhase)=>rpc<HostResult<T>>('preview_invite_host_v1',{p_game:game,p_room:room,p_secret:secret,p_expected:revision,p_snapshot:snapshot,p_phase:phase}),
+  releasePartySeat:(room:string,secret:string,guestHash:string)=>rpc<boolean>('preview_party_release_v1',{p_room:room,p_secret:secret,p_guest_hash:guestHash}),
   remove:(game:InviteGame,room:string,secret:string)=>rpc<boolean>('preview_invite_delete_v1',{p_game:game,p_room:room,p_secret:secret})
  };
 }
