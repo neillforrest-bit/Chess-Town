@@ -4,7 +4,7 @@ export const townHref=(town:TownKey)=>`/?choose=mode&town=${town}`;
 export function townForPath(path:string):TownKey{
  if(/checkers/.test(path))return 'checkers';
  if(/^\/movie(?:\/|$)/.test(path))return 'movie';
- if(/logic/.test(path))return 'logic';
+ if(/logic|haywire/.test(path))return 'logic';
  if(/^\/(trivia|quiz)/.test(path)||path==='/road/trivia')return 'trivia';
  return 'chess';
 }
