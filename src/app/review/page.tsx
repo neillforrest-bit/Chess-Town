@@ -71,7 +71,7 @@ export default function ReviewPage() {
   const [oppBusy, setOppBusy] = useState(false);
   const [oppCoverage, setOppCoverage] = useState('');
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     try { setAnalyzed(loadReviews().map((r) => r.gameUrl)); } catch { /* private mode */ }
@@ -114,9 +114,9 @@ export default function ReviewPage() {
     setBusy(false);
   };
 
-  const startAnalysis = async (game: CcGame) => {
+  const startAnalysis = async (game: CcGame, reviewOwner = username.trim()) => {
     setError('');
-    const cached = loadReviews().find((r) => r.gameUrl === game.url);
+    const cached = loadReviews().find((r) => r.gameUrl === game.url && (r as ReviewedGame & {ownerUsername?:string}).ownerUsername?.toLowerCase() === reviewOwner.toLowerCase() && r.meta.userColor === game.userColor);
     if (cached) { setReview(cached); setWalkIdx(-1); setStage('report'); return; }
     const moves: ParsedMove[] = parseGamePgn(game.pgn);
     if (moves.length < 4) { setError('That game was too short to review.'); return; }
@@ -124,6 +124,7 @@ export default function ReviewPage() {
     try {
       const engine = getStockfishClient();
       const done = await analyzeGame(engine, game, moves, (d, t) => { if (mounted.current) setProgress({ done: d, total: t }); });
+      (done as ReviewedGame & {ownerUsername?:string}).ownerUsername = reviewOwner;
       saveReview(done);
       // Bank the player's own slips into the Puzzle Mill (existing retry feature).
       for (const p of done.plies) {
@@ -148,6 +149,21 @@ export default function ReviewPage() {
       if (mounted.current) { setError('The engine stalled on that game - try another one.'); setStage('pick'); }
     }
   };
+
+  const consumedImport = useRef(false);
+  useEffect(() => {
+    if (consumedImport.current || new URLSearchParams(location.search).get('import') !== 'lab') return;
+    consumedImport.current = true;
+    try {
+      const raw = sessionStorage.getItem('ct-review-import-v1');
+      const value = raw ? JSON.parse(raw) : null;
+      const g = value?.game;
+      if (!g || typeof g.pgn !== 'string' || g.pgn.length > 200000 || !/^https:\/\/(www\.)?chess\.com\/game\/(live|daily)\/\d+\/?$/.test(g.url) || !/^[a-zA-Z0-9_-]{2,50}$/.test(value.username)) throw Error('Invalid match handoff. Return to Chess Lab and load it again.');
+      sessionStorage.removeItem('ct-review-import-v1');
+      setUsername(value.username);
+      void startAnalysis(g, value.username);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not open the selected match.'); }
+  }, []);
 
   const opponents = useMemo(() => {
     const m = new Map<string, number>();
@@ -305,7 +321,7 @@ export default function ReviewPage() {
   return <main className={`lab-shell review-shell${stage === 'pick' && oppRows ? ' review-shell--table' : ''}`}>
     <header className="review-head">
       <Link href="/learn" className="review-back">← Lessons</Link>
-      <h1>Game Review</h1>
+      <h1>Game Review</h1><Link href="/chess-lab">Chess Lab →</Link>
     </header>
 
     {error ? <p className="review-error">{error}</p> : null}

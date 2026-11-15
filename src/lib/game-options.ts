@@ -26,6 +26,7 @@ export const GAME_OPTIONS: GameOption[] = [
   { id:'chess-battle',family:'chess',title:'Live Chess Battle',players:'2 players · separate devices',description:'Invite a friend to your live chess board.',href:'/battle',action:'Open live battle'},
   { id:'chess-road',family:'chess',title:'Road to Joseph',players:'1 player',description:'Climb fifteen chess levels and meet the bosses.',href:'/road/chess',action:'Open the road'},
   { id:'brendo',family:'chess',title:'Road to Brendo',players:'1 player',description:'PJ, Rost, Andy, Byron and Brendo. A shorter teaching road.',href:'/road/brendo',action:'Open Brendo road'},
+  { id:'chess-lab',family:'chess',title:'My Chess Lab',players:'Your Chess.com games',description:'Match links,monthly trends,local-engine patterns and guided practice.',href:'/chess-lab',action:'Open my chess lab'},
   { id:'review',family:'chess',title:'Chester Highlights',players:'1 player',description:'Review your Chess.com games, replay the moves and find your turning points.',href:'/review',action:'Review my games'},
   { id:'surprise',family:'chess',title:'Surprise Lab',players:'1 player',description:'Learn unusual openings with guided replies and no-hints practice.',href:'/surprise-lab',action:'Explore openings'},
   { id:'learning',family:'chess',title:'My Learning',players:'1 player',description:'Find your patterns and what to practise next.',href:'/learn',action:'Open my learning'},
