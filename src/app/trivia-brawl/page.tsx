@@ -196,6 +196,7 @@ function questionText(view: ViewerQuestion | null): { question: string; answers:
 
 function FlashBrawl({ flash, player, p1Name, p2Name, onAnswer, onPick, onTimeLow }: { flash: NonNullable<Room['flash']>; player: Player; p1Name: string; p2Name: string; onAnswer: (answer: string) => void; onPick: (option: string) => void; onTimeLow: (low: boolean) => void }) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [showRules,setShowRules]=useState(false);
   const flashPickKey = `${flash.type}:${flash.question || flash.prompt}:${flash.turn}:${flash.picked?.length || 0}`;
   const [pendingFlashPick, setPendingFlashPick] = useState<{ key: string; option: string } | null>(null);
   const flashPick = pendingFlashPick?.key === flashPickKey ? pendingFlashPick.option : null;
@@ -214,8 +215,8 @@ function FlashBrawl({ flash, player, p1Name, p2Name, onAnswer, onPick, onTimeLow
   useEffect(() => { onTimeLow(low); }, [low, onTimeLow]);
   useEffect(() => () => onTimeLow(false), [onTimeLow]);
   const nameOf = (who: Player) => (who === 'p1' ? p1Name : p2Name);
-  return <section className="trivia-brawl-question trivia-flash">
-    <div className={`trivia-flash-title trivia-flash-title--${flash.type}`}><span>{flash.type === 'duel' ? '20' : flash.type === 'fastest' ? '⚡' : flash.type === 'lastorders' ? '◷' : '?'}</span><div><small>⚡ FLASH FINALE</small><h3>{FLASH_LABEL[flash.type]}</h3><p>{flash.type === 'duel' ? 'Take turns. Find ten. Avoid three strikes.' : flash.type === 'fastest' ? 'Race to the right answer. Winner banks double.' : flash.type === 'lastorders' ? 'Both can score. First correct gets a bonus.' : 'One sharp little puzzle. Double points up for grabs.'}</p></div></div>
+  return <section className="trivia-brawl-question trivia-flash">{showRules&&<div className="trivia-flash-help" role="dialog" aria-modal="true" aria-label="Flash Finale rules"><div><h2>{FLASH_LABEL[flash.type]}</h2><p>{flash.type==='duel'?'Take turns tapping one option. Ten are correct, ten are not. Three strikes and your rival banks the flash. Clear all ten and the fuller basket wins; level baskets split it, one each. Use More answers to see every option.':flash.type==='fastest'?'First correct answer banks double. A wrong answer locks you out and gives your rival a free swing. Arrival order at the host decides.':flash.type==='lastorders'?'Both can bank double. The first correct answer arriving at the host gets a bonus point. Twenty seconds.':'Answer the puzzle. A correct answer banks double.'}</p><button onClick={()=>setShowRules(false)}>BACK TO FLASH</button></div></div>}
+    <div className={`trivia-flash-title trivia-flash-title--${flash.type}`}><span>{flash.type === 'duel' ? '20' : flash.type === 'fastest' ? '⚡' : flash.type === 'lastorders' ? '◷' : '?'}</span><div><small>⚡ FLASH FINALE</small><h3>{FLASH_LABEL[flash.type]}</h3><button className="trivia-flash-rules-button" onClick={()=>setShowRules(true)}>RULES</button><p>{flash.type === 'duel' ? 'Take turns. Find ten. Avoid three strikes.' : flash.type === 'fastest' ? 'Race to the right answer. Winner banks double.' : flash.type === 'lastorders' ? 'Both can score. First correct gets a bonus.' : 'One sharp little puzzle. Double points up for grabs.'}</p></div></div>
     {flash.type === 'duel' && flash.options ? <>
       <QuizMaster question={flash.prompt || ''} />
       <p>Take turns tapping one option. A wrong tap is a strike - three strikes and {nameOf(flash.turn === 'p1' ? 'p2' : 'p1')} banks the flash. Clear all ten and the fuller basket wins (level baskets split it, one each).</p>
@@ -809,9 +810,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile trivia />
     {error && <p className="trivia-brawl-error" role="status">{error}</p>}
     {joinStopped && <button className="trivia-brawl-primary" onClick={() => { setJoinStopped(false); reconnectRef.current?.(); }}>TRY CONNECTION AGAIN</button>}
-    {relayConfigured === false && !linked && <p className="trivia-setup__note">Direct connection only: a relay is not configured. Some WiFi and mobile networks will not connect. No need to keep changing your settings.</p>}
+    {relayConfigured === false && !linked && <p className="trivia-setup__note">{room?.phase === 'flash' ? 'Direct connection only. Some networks cannot connect.' : 'Direct connection only: a relay is not configured. Some WiFi and mobile networks will not connect. No need to keep changing your settings.'}</p>}
     <FlashBanner banner={bannerBody} />
-    {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : 'Pub table open - send the invite and hold this screen.') : 'Connecting to the host table...'}</p>}
+    {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : room.phase === 'flash' ? 'Waiting for your rival to reconnect.' : 'Pub table open - send the invite and hold this screen.') : 'Connecting to the host table...'}</p>}
     {room && !error && player === 'p1' && !linked && guestJoined && room.phase === 'flash' && room.flash?.type === 'duel' && !room.flash.done && <div className="trivia-brawl-void">
       <button className="trivia-brawl-primary" onClick={() => void patchRoom({ voidFlash: true }).catch(() => undefined)}>VOID THE DUEL - NO FLASH POINTS</button>
       <p>Only here while {room.names.p2} is away - nobody banks, scores so far stand.</p>

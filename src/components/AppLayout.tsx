@@ -10,6 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname=usePathname();
   const isHome=pathname==='/';
   useEffect(()=>{trackTownRoute(pathname,window.location.search)},[pathname]);
+  useEffect(()=>{const viewport=window.visualViewport;const size=()=>document.documentElement.style.setProperty('--gt-viewport-height',(viewport?.height||window.innerHeight)+'px');size();viewport?.addEventListener('resize',size);window.addEventListener('resize',size);return()=>{viewport?.removeEventListener('resize',size);window.removeEventListener('resize',size);document.documentElement.style.removeProperty('--gt-viewport-height');};},[]);
   const [open, setOpen] = useState(false);
   useEffect(()=>{const show=()=>setOpen(v=>!v);window.addEventListener('gt-open-chester',show);if(localStorage.getItem('gt-reduce-motion')==='1')document.documentElement.dataset.reduceMotion='true';return()=>window.removeEventListener('gt-open-chester',show)},[]);
   return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">

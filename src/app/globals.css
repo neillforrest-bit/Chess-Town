@@ -4889,3 +4889,64 @@ body:has(.checkers-page) .app-main{background:#2d0f55}
 .logic-title h1,.logic-panel h2,.logic-panel h3,.logic-panel input,.logic-panel label,.logic-modes,.logic-primary,.logic-host,.logic-note,.logic-status{font-family:ManropeGT,Arial,sans-serif!important;font-style:normal!important}.logic-page{background:radial-gradient(ellipse at 50% 0%,#482080,#2d0f55 75%)!important}.logic-panel{background:#44207a!important;border-color:#855fbb!important}.logic-primary{background:#d9ee9c!important;color:#2d0f55!important}
 
 .gt-guide-stub{padding:18px;font:400 14px/1.55 ManropeGT,Arial,sans-serif;color:#fff3c7}.gt-guide-stub p{margin:0 0 16px}.gt-guide-stub button{min-height:44px;border:0;border-radius:12px;background:#d9ee9c;color:#2d0f55;padding:10px 18px;font-weight:800}
+
+/* BUILD225: one viewport budget, including Safari's keyboard and shared header. */
+:root{--gt-nav-height:56px}
+.app-shell{height:var(--gt-viewport-height,100dvh)!important;min-height:0}
+.app-main{min-height:0;position:relative}
+body:has(.gt-shared-nav) .global-nav.gt-shared-nav{height:var(--gt-nav-height)!important;min-height:var(--gt-nav-height)!important;flex-basis:var(--gt-nav-height)!important}
+.app-main>.trivia-brawl-page,.app-main>.logic-page.logic-match,.app-main>.trivia-page:has(.quiz-master){height:100%!important;max-height:100%;min-height:0!important;box-sizing:border-box}
+/* The remote Flash has TWO panels. Both must share the same bounded space. */
+body .trivia-brawl-page.trivia-showtime:has(.quiz-master)>.trivia-flash-shell{padding:0;border:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;container-type:size;container-name:flash-panel}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell>.trivia-flash{display:flex;flex-direction:column;flex:1;min-height:0;gap:6px;padding:9px;overflow:hidden;margin:0;box-sizing:border-box}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-title{flex:none;padding:3px;gap:7px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-title h3{font:800 15px/1.1 system-ui,sans-serif;margin:0}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-title>span{font-size:22px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-title p{display:none}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash>p:not(.trivia-flash-turn){display:none}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-turn{flex:none;font:800 12px/1.2 system-ui,sans-serif!important;margin:0}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-versus{display:flex;flex:none;gap:6px;padding:0}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-versus>div{display:flex;align-items:center;justify-content:space-between;gap:4px;flex:1;min-width:0;padding:4px;font:600 10px/1.2 system-ui,sans-serif}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-versus b{font-size:14px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-versus b small{display:none}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-versus i{font-size:10px;width:14px;height:14px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-choice-pages{flex:1;min-height:147px;gap:6px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-choice-pages>nav{min-height:40px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-choice-pages>nav>button{min-height:40px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-choice-pages .trivia-duel-grid button{min-height:44px!important;font-size:14px!important;line-height:1.15!important;padding:6px!important;overflow-wrap:anywhere}
+@container flash-panel (max-height:440px){
+ .trivia-flash-shell .quiz-master{padding:7px;gap:7px}
+ .trivia-flash-shell .quiz-master__portrait{width:42px;flex-basis:42px}
+ .trivia-flash-shell .quiz-master__portrait svg{height:44px}
+ .trivia-flash-shell .quiz-master__portrait>span{display:none}
+ body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-master .quiz-master__question{font-size:17px!important;line-height:1.2!important}
+}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-title>div{display:grid;grid-template-columns:1fr auto;align-items:center;gap:3px 8px;flex:1;min-width:0}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-title small{grid-column:1}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash-title h3{grid-column:1}
+.trivia-flash-rules-button{grid-column:2;grid-row:1/3;min-height:40px;padding:6px;border:1px solid #9e80b9;border-radius:8px;color:#fff1db;background:#30263e;font:700 10px system-ui,sans-serif}
+.trivia-flash-help{position:fixed;inset:0;z-index:10000;background:#100b19ed;padding:18px;display:grid;place-items:center}
+.trivia-flash-help>div{max-width:420px;max-height:90%;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:20px;border:1px solid #b096c4;border-radius:15px;background:#2c203a}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-help p{display:block!important;font:500 15px/1.45 system-ui,sans-serif!important;color:#fff4e4}
+.trivia-flash-help button{min-height:44px;padding:10px;border-radius:9px;border:1px solid #bca1d0;color:#fff4de;background:#493253;font:700 12px system-ui,sans-serif}
+/* Flash keeps the scoreboard and connection truth, not the repeated page masthead. */
+body .trivia-brawl-page.trivia-showtime.is-flash-time>.trivia-brawl-header{display:none}
+body .trivia-brawl-page.trivia-showtime.is-flash-time>.trivia-setup__note{font:500 11px/1.25 system-ui,sans-serif!important;margin:0;padding:3px 5px}
+body .trivia-brawl-page.trivia-showtime.is-flash-time>.trivia-brawl-error{font:600 12px/1.25 system-ui,sans-serif!important;padding:5px 7px;margin:0}
+body .trivia-brawl-page.trivia-showtime.is-flash-time .trivia-live-board .trivia-scorebug{padding:5px 7px}
+body .trivia-brawl-page.trivia-showtime.is-flash-time .trivia-live-board .trivia-scorebug__side{flex-direction:row;gap:6px;align-items:center}
+body .trivia-brawl-page.trivia-showtime.is-flash-time .trivia-live-board .trivia-scorebug__side small{font-size:13px!important}
+body .trivia-brawl-page.trivia-showtime.is-flash-time .trivia-live-board .trivia-scorebug__side b{font-size:28px!important}
+body .trivia-brawl-page.trivia-showtime.is-flash-time .trivia-live-board .trivia-scorebug__side small{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body .trivia-brawl-page.trivia-showtime.is-flash-time .trivia-live-board .trivia-scorebug__side b{flex-shrink:0}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-choice-pages{min-height:140px}
+@container flash-panel (max-height:440px){
+ body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-master{padding:5px;gap:5px;min-height:0}
+ body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-master__portrait{width:34px;flex-basis:34px;min-width:34px}
+ body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-master__portrait svg{height:38px}
+}
+@container flash-panel (max-height:440px){
+ body .trivia-brawl-page.trivia-showtime .trivia-flash-shell>.trivia-flash{gap:4px;padding:6px}
+}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash>.quiz-countdown{flex-shrink:0;margin:0;min-height:40px}
+body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash>.trivia-brawl-answers{min-height:100px;flex:1}
