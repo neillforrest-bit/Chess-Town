@@ -1,4 +1,7 @@
 'use client';
+import {durableGameSession} from '@/lib/durable-game-session';
+import {hasHostIdentity} from '@/lib/durable-invites';
+import {createLogicChannel} from '@/games/logic/channel';
 import { versionLink } from '@/lib/version-link';
 import { saveCheckpoint, loadCheckpoint, hasCheckpoint } from '@/lib/match-checkpoint';
 
@@ -264,6 +267,8 @@ function FlashResultBrawl({ flash, result, p1Name, p2Name, player, advancing, on
 const HOST_QUIET_MSG = 'Connection interrupted. Rejoining this table and syncing the score...';
 
 function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Player }) {
+  type DurableTrivia={room:TriviaRoom;seen:string[];guestSeat:string};
+  const durableSession=useRef<Awaited<ReturnType<typeof durableGameSession<DurableTrivia>>>|null>(null),usingDurable=useRef(false),durableGuest=useRef('');const [inviteExpiry,setInviteExpiry]=useState(''),[savedStatus,setSavedStatus]=useState('Saving your invite...');
   const [matchId, setMatchId] = useState('');
   const [player, setPlayer] = useState<Player>(role);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -308,7 +313,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const nameOf = (categoryId: number) => categoriesRef.current.find((category) => category.id === categoryId)?.name;
 
   const publishRoom = (next: TriviaRoom) => {
+    if(usingDurable.current)next={...next,updatedAt:Math.max(Date.now(),(fullRoomRef.current?.updatedAt||0)+1)};
     fullRoomRef.current = next;
+    if(usingDurable.current)void durableSession.current?.save({room:next,seen:[...seenActionsRef.current],guestSeat:durableGuest.current},next.phase==='draft'?'waiting':next.phase==='finished'?'finished':'playing');
     if (!saveCheckpoint(`trivia:${initialMatch}`, { room: next, seen: [...seenActionsRef.current] })) setError('This browser cannot save recovery. Keep the host tab open.');
     const view = serializeRoom(next, 'p1');
     roomRef.current = view;
@@ -383,6 +390,36 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       timers.add(timer);
     };
     setMatchId(id);
+    const params=new URLSearchParams(location.search),creating=role==='p1'&&!params.get('match');
+    usingDurable.current=creating||params.get('durable')==='1';
+    if(usingDurable.current){
+      let channel:ReturnType<typeof createLogicChannel>|null=null,helloTimer:ReturnType<typeof setTimeout>|undefined,syncTimer:ReturnType<typeof setInterval>|undefined,accepted=false,attempts=0,exhausted=false;
+      const hello=()=>{if(cancelled||accepted||!channel?.hostSeat)return;if(helloTimer)clearTimeout(helloTimer);if(attempts++>=5){exhausted=true;setError('Your seat has not been confirmed. Tap TRY CONNECTION AGAIN.');setJoinStopped(true);return;}channel.send({type:'hello'});helloTimer=setTimeout(()=>{helloTimer=undefined;hello();},3000);};
+      void(async()=>{
+       const ds=await durableGameSession<DurableTrivia>('trivia-duel',id,'Trivia host',creating,()=>({room:createRoom(loadTriviaSettings()),seen:[],guestSeat:''}),setError,setInviteExpiry);
+       if(cancelled){ds.stop();return;}durableSession.current=ds;setPlayer(ds.isHost?'p1':'p2');setCategories(LOCAL_CATEGORIES);setSavedStatus(ds.isHost?'Saved table ready. Send your invite.':'Your place is saved. Waiting for the host to return.');
+       history.replaceState(null,'',versionLink(`/trivia-brawl?match=${id}&role=${ds.isHost?'p1':'p2'}&durable=1&triviaFreeCommentary=1`));
+       if(ds.isHost){const saved=ds.snapshot!;if(!saved.room?.gameId||!Array.isArray(saved.seen))throw Error('This saved table could not be read. Nothing was reset.');durableGuest.current=saved.guestSeat||'';if(saved.room.names.p1!=='PLAYER 1')setMyName(saved.room.names.p1);seenActionsRef.current=new Set(saved.seen);publishRoom(saved.room);if(saved.room.match)pourRounds(saved.room.match);}
+       const sendCurrent=(ack?:string)=>{if(fullRoomRef.current&&durableGuest.current)channel?.send({type:'room',to:durableGuest.current,room:serializeRoom(fullRoomRef.current,'p2'),ack});};
+       channel=createLogicChannel({namespace:'trivia-duel',waitForHost:true,roomId:id,seatId:ds.seat,isHost:ds.isHost,onStatus:setSavedStatus,onError:setError,
+        onOpen:()=>{if(ds.isHost)sendCurrent();else{accepted=false;attempts=0;hello();}},
+        onHostFound:()=>{if(!ds.isHost){accepted=false;attempts=0;exhausted=false;hello();}},
+        onPresence:seats=>{if(cancelled)return;const live=ds.isHost?!!durableGuest.current&&seats.includes(durableGuest.current):!!channel?.open;if(!live&&!ds.isHost)accepted=false;setLinked(live&&(ds.isHost||accepted));linkedRef.current=live&&(ds.isHost||accepted);},
+        onMessage:m=>{if(cancelled)return;if(ds.isHost){
+         if(m.type==='hello'){if(durableGuest.current&&durableGuest.current!==m.from){channel?.send({type:'guest-error',to:m.from,message:'This table already has its guest. Reopen your original invite in the same browser.'});return;}durableGuest.current=m.from;guestLinkRef.current={send:(msg:any)=>channel?.send({...msg,to:m.from})};setGuestJoined(true);setLinked(true);linkedRef.current=true;publishRoom(fullRoomRef.current!);return;}
+         if(m.from!==durableGuest.current)return;
+         if(m.type==='sync'){sendCurrent();return;}
+         if(m.type==='action'){const actionId=String(m.actionId||'');if(!actionId)return;if(seenActionsRef.current.has(actionId)){sendCurrent(actionId);return;}const current=fullRoomRef.current;if(m.context&&current&&m.context!==contextOf(serializeRoom(current,'p2'))){sendCurrent(actionId);return;}seenActionsRef.current.add(actionId);if(seenActionsRef.current.size>512)seenActionsRef.current.delete(seenActionsRef.current.values().next().value!);void hostApply('p2',m.body||{},m.context).then(()=>sendCurrent(actionId));}
+        }else if(m.from===channel?.hostSeat){
+         if(m.type==='room'&&m.room){if(roomRef.current&&m.room.updatedAt<roomRef.current.updatedAt)return;accepted=true;if(helloTimer)clearTimeout(helloTimer);setLinked(true);linkedRef.current=true;setJoinStopped(false);setError('');roomRef.current=m.room;setRoom(m.room);setMyName(previous=>previous||(m.room.names.p2!=='PLAYER 2'?m.room.names.p2:''));if(m.ack)pendingActionsRef.current.delete(String(m.ack));const context=contextOf(m.room);for(const[actionId,pending]of pendingActionsRef.current){if(pending.context!==context){pendingActionsRef.current.delete(actionId);continue;}channel?.send({type:'action',actionId,context,body:pending.body});}}
+         if(m.type==='guest-error'){setError(String(m.message));pendingActionsRef.current.clear();}
+        }} });
+       if(!ds.isHost)hostLinkRef.current={get open(){return !!channel?.open&&accepted;},send:(msg:any)=>channel?.send(msg)};
+       syncTimer=setInterval(()=>{if(!ds.isHost&&channel?.open){if(accepted)channel.send({type:'sync'});else if(!exhausted&&!helloTimer)hello();}},5000);
+       reconnectRef.current=()=>{setError('');attempts=0;exhausted=false;accepted=false;hello();};
+      })().catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:'Saved invite could not open.');});
+      return()=>{cancelled=true;if(helloTimer)clearTimeout(helloTimer);if(syncTimer)clearInterval(syncTimer);channel?.close();durableSession.current?.stop();};
+    }
     const freeCommentary = new URLSearchParams(window.location.search).get('triviaFreeCommentary') === '1';
     window.history.replaceState(null, '', versionLink(`/trivia-brawl?match=${id}&role=${role}${freeCommentary ? '&triviaFreeCommentary=1' : ''}`));
     void (async () => {
@@ -787,7 +824,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     return () => clearTimeout(bell);
   }, [flashKey, player]);
 
-  const inviteUrl = typeof window === 'undefined' ? '' : versionLink(`${window.location.origin}/trivia-brawl?match=${matchId}&role=p2${room?.settings.focus === 'grammar' ? `&topic=grammar&difficulty=${room.settings.difficulty}` : ''}${isFreeTriviaCommentaryTest() ? '&triviaFreeCommentary=1' : ''}`);
+  const inviteUrl = typeof window === 'undefined' ? '' : versionLink(`${window.location.origin}/trivia-brawl?match=${matchId}&role=p2${room?.settings.focus === 'grammar' ? `&topic=grammar&difficulty=${room.settings.difficulty}` : ''}${isFreeTriviaCommentaryTest() ? '&triviaFreeCommentary=1' : ''}${usingDurable.current?'&durable=1':''}`);
   // Flash stages speak for themselves - never the previous question's reveal line.
   const visibleHostText = room && room.phase === 'flash' && room.flash ? FLASH_INTROS[room.flash.type][0]
     : room && room.phase === 'flashReveal' && room.flash ? FLASH_RESOLVE_LINES[room.flash.type]
@@ -814,19 +851,19 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     {joinStopped && <button className="trivia-brawl-primary" onClick={() => { setJoinStopped(false); reconnectRef.current?.(); }}>TRY CONNECTION AGAIN</button>}
     {relayConfigured === false && !linked && <p className="trivia-setup__note">{(room?.phase === 'flash' || room?.inviteVersion && room.phase==='draft') ? 'Direct connection only. Some networks cannot connect.' : 'Direct connection only: a relay is not configured. Some WiFi and mobile networks will not connect. No need to keep changing your settings.'}</p>}
     <FlashBanner banner={bannerBody} />
-    {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : room.phase === 'flash' ? 'Waiting for your rival to reconnect.' : 'Pub table open - send the invite and hold this screen.') : 'Connecting to the host table...'}</p>}
+    {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : room.phase === 'flash' ? 'Waiting for your rival to reconnect.' : (usingDurable.current?'Saved invite ready. Play when both players are online.':'Pub table open - send the invite and hold this screen.')) : 'Connecting to the host table...'}</p>}
     {room && !error && player === 'p1' && !linked && guestJoined && room.phase === 'flash' && room.flash?.type === 'duel' && !room.flash.done && <div className="trivia-brawl-void">
       <button className="trivia-brawl-primary" onClick={() => void patchRoom({ voidFlash: true }).catch(() => undefined)}>VOID THE DUEL - NO FLASH POINTS</button>
       <p>Only here while {room.names.p2} is away - nobody banks, scores so far stand.</p>
     </div>}
-    {!room ? <section className="trivia-brawl-question"><h2>{joinStopped ? 'Connection paused' : 'Opening the pub table...'}</h2>{joinStopped && <p>The room has not reached this screen. You can retry above or return to the pub door.</p>}</section> : room.phase === 'draft' ? <section className="trivia-brawl-draft">
+    {!room ? <section className="trivia-brawl-question"><h2>{inviteExpiry?'Your place is saved':joinStopped ? 'Connection paused' : 'Opening the pub table...'}</h2>{usingDurable.current&&<p role="status">{savedStatus}{inviteExpiry?' Invite lasts until '+new Date(inviteExpiry).toLocaleString('en-GB')+'. Reopen this same link to return.':''}</p>}{joinStopped && <p>The room has not reached this screen. You can retry above or return to the pub door.</p>}</section> : room.phase === 'draft' ? <section className="trivia-brawl-draft">
       {(() => {
         const focusPicks = focusedDraft(room.settings);
         const draftName = room.names[player] !== (player === 'p1' ? 'PLAYER 1' : 'PLAYER 2') ? room.names[player] : `Player ${player === 'p1' ? 'One' : 'Two'}`;
         const choosing = draftStage === 'categories' || player === 'p2' && room.inviteJoined;
         return <>
           <h2>{room.inviteVersion && player === 'p2' && !room.inviteJoined ? `${room.names.p1} invited you` : `${draftName}: ${focusPicks ? `Confirm ${sportFocusLabel(room.settings.focus)}` : 'Choose 3 Categories'}`}</h2>
-          {room.inviteVersion ? <div className={`trivia-invite-summary${choosing ? ' is-choosing' : ''}`}><b>LOCKED INVITE · {sportFocusLabel(room.settings.focus)} · {difficultyLabel(room.settings.difficulty)}</b><p>Five rounds of five questions, plus five Flash finales. {room.settings.focus === 'open' ? 'Each player chooses three categories and a Power round.' : 'Main rounds stay on this topic. Flash and roulette may use other topics.'}</p><small>Setup fixed for both. New table to change it.</small></div> : <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1' || room.categories.p1.length === 3 || room.categories.p2.length === 3} compact brawlModes />}
+          {room.inviteVersion ? <div className={`trivia-invite-summary${choosing ? ' is-choosing' : ''}`}><b>LOCKED INVITE · {sportFocusLabel(room.settings.focus)} · {difficultyLabel(room.settings.difficulty)}</b><p>Five rounds of five questions, plus five Flash finales. {room.settings.focus === 'open' ? 'Each player chooses three categories and a Power round.' : 'Main rounds stay on this topic. Flash and roulette may use other topics.'}</p><small>{inviteExpiry?'Invite until '+new Date(inviteExpiry).toLocaleDateString('en-GB')+'. Host returns in this browser.':'Setup fixed for both. New table to change it.'}</small></div> : <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1' || room.categories.p1.length === 3 || room.categories.p2.length === 3} compact brawlModes />}
           {(!room.inviteVersion || !choosing) && <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name) void patchRoom({ name }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />}
           {room.inviteVersion && player === 'p2' && !room.inviteJoined ? <button className="trivia-brawl-primary" disabled={!myName.trim() || !linked} onClick={() => void patchRoom({name:myName,joinInvite:true}).catch(()=>undefined)}>JOIN THIS MATCH</button> : <>
           {player === 'p1' && room.categories.p2.length === 0 && (!room.inviteVersion || !choosing) && <div style={{ display: 'grid', gap: '.45rem' }}>
@@ -837,7 +874,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
           {room.inviteVersion && player==='p1' && <button className="trivia-draft-back" onClick={()=>setDraftStage('invite')}>‹ INVITE &amp; JOIN RECEIPT</button>}
           {focusPicks ? <p className="trivia-setup__locked">Single topic: {sportFocusLabel(room.settings.focus)} for the main rounds · {difficultyLabel(room.settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-category-paged"><div className="trivia-brawl-categories">{(room.inviteVersion ? categories.slice(categoryPage*4,categoryPage*4+4) : categories).map((category) => <button key={category.id} onClick={() => toggleCategory(category.id)} aria-pressed={selectedCategories.includes(category.id)}>{selectedCategories.includes(category.id) && powerId === category.id ? `POWER · ${category.name}` : category.name}</button>)}</div>{room.inviteVersion && categories.length>4 && <nav aria-label="Category pages"><button disabled={categoryPage===0} onClick={()=>setCategoryPage(p=>p-1)}>Previous</button><span>{categoryPage+1} / {Math.ceil(categories.length/4)}</span><button disabled={(categoryPage+1)*4>=categories.length} onClick={()=>setCategoryPage(p=>p+1)}>More categories</button></nav>}</div> : <p>Loading the pub ledger...</p>}
           {!focusPicks && selectedCategories.length === 3 && <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{selectedCategories.map((id) => <button key={id} type="button" className={powerId === id ? 'is-starred' : ''} onClick={() => starPower(id)}>{powerId === id ? 'POWER · ' : ''}{categories.find((category) => category.id === id)?.name || `Category ${id}`}</button>)}</div></div>}
-          <button className="trivia-brawl-primary" disabled={room.categories[player].length === 3 || (!focusPicks && selectedCategories.length !== 3) || isSubmitting} onClick={() => void submitDraft()}>{room.categories[player].length === 3 ? '✓ READY - WAITING FOR YOUR RIVAL' : focusPicks ? `LOCK ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}` : `LOCK CATEGORIES (${selectedCategories.length}/3)`}</button>
+          <button className="trivia-brawl-primary" disabled={room.categories[player].length === 3 || (!focusPicks && selectedCategories.length !== 3) || isSubmitting || player==='p2'&&!linked} onClick={() => void submitDraft()}>{room.categories[player].length === 3 ? '✓ READY - WAITING FOR YOUR RIVAL' : focusPicks ? `LOCK ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}` : `LOCK CATEGORIES (${selectedCategories.length}/3)`}</button>
           </>}
           </>}
           <div className="trivia-ready-board" aria-label="Player readiness">{(['p1', 'p2'] as Player[]).map((who) => <div key={who} className={room.categories[who].length === 3 ? 'is-ready' : ''}><span>{room.names[who]}</span><b>{room.categories[who].length === 3 ? '✓ Ready' : room.inviteVersion && who === 'p2' ? room.inviteJoined ? (linked ? '✓ Joined · Not ready' : 'Joined · Connection lost') : 'Invite not accepted' : '○ Not ready'}</b></div>)}</div>
@@ -1373,7 +1410,7 @@ export default function TriviaBrawlPage() {
     const urlMatch = params.get('match');
     if (urlMatch && /^[a-z0-9]{6,24}$/i.test(urlMatch)) {
       setMatch(urlMatch);
-      setRole(params.get('role') === 'p2' ? 'p2' : 'p1');
+      setRole(params.get('durable')==='1'?(hasHostIdentity('trivia-duel',urlMatch)?'p1':'p2'):params.get('role') === 'p2' ? 'p2' : 'p1');
       setView('brawl');
     } else if (params.get('solo') === '1') {
       setView('solo');

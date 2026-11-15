@@ -1,9 +1,9 @@
 import { createClient } from '@/utils/supabase/client';
 type Message = Record<string,any>;
-type Options={waitForHost?:boolean;roomId:string;seatId:string;isHost:boolean;onStatus:(s:string)=>void;onError:(s:string)=>void;onOpen:()=>void;onPresence:(seats:string[])=>void;onMessage:(m:Message)=>void;onHostFound:()=>void};
+type Options={namespace?:string;waitForHost?:boolean;roomId:string;seatId:string;isHost:boolean;onStatus:(s:string)=>void;onError:(s:string)=>void;onOpen:()=>void;onPresence:(seats:string[])=>void;onMessage:(m:Message)=>void;onHostFound:()=>void};
 // A dedicated game channel uses the existing server connection, not database polling.
 export function createLogicChannel(o:Options){
- const db=createClient();let closed=false,open=false,hostSeat='',subscribed=false,ownReady=false,tracked=false,transportError=false;
+ const prefix=o.namespace||'logic';const db=createClient();let closed=false,open=false,hostSeat='',subscribed=false,ownReady=false,tracked=false,transportError=false;
  let timeout:ReturnType<typeof setTimeout>;let interval:ReturnType<typeof setInterval>;let lastSend=0,lastSettled=0,offline=false;
  const seen=new Map<string,number>();
  const fail=(message:string)=>{if(closed)return;transportError=true;o.onError(message);};
@@ -13,13 +13,13 @@ export function createLogicChannel(o:Options){
  const wentOffline=()=>{offline=true;open=false;o.onPresence([]);fail('Your device is offline. Return to a connection, then tap RETRY CONNECTION if needed.');};const cameOnline=()=>{offline=false;db.realtime.connect();connected();};if(typeof window!=='undefined'){window.addEventListener('offline',wentOffline);window.addEventListener('online',cameOnline);}
  const directs=new Map<string,ReturnType<typeof db.channel>>();
  const deliver=(payload:any)=>{if(closed||!payload||typeof payload.from!=='string')return;if(payload.type==='ping'){seen.set(payload.from,Date.now());reportPresence();return;}if(payload.from===o.seatId||(payload.to&&payload.to!==o.seatId))return;seen.set(payload.from,Date.now());recovered();o.onMessage(payload);};
- const own=db.channel(`logic-seat-v1:${o.roomId}:${o.seatId}`);own.on('broadcast',{event:'game'},({payload})=>deliver(payload));own.subscribe(state=>{if(closed)return;ownReady=state==='SUBSCRIBED';if(ownReady)connected();else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED'){open=false;fail('Live connection interrupted. Keep this page open or tap RETRY CONNECTION.');}});
- const channel=db.channel(`logic-v1:${o.roomId}`,{config:{presence:{key:o.seatId},broadcast:{self:false,ack:true}}});
+ const own=db.channel(`${prefix}-seat-v1:${o.roomId}:${o.seatId}`);own.on('broadcast',{event:'game'},({payload})=>deliver(payload));own.subscribe(state=>{if(closed)return;ownReady=state==='SUBSCRIBED';if(ownReady)connected();else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED'){open=false;fail('Live connection interrupted. Keep this page open or tap RETRY CONNECTION.');}});
+ const channel=db.channel(`${prefix}-v1:${o.roomId}`,{config:{presence:{key:o.seatId},broadcast:{self:false,ack:true}}});
  const api={get open(){return open;},get hostSeat(){return hostSeat;},send:(m:Message)=>{
   if(closed||!subscribed)return;const payload={...m,from:o.seatId},sequence=++lastSend;
   const report=(result:string)=>{if(closed||m.type==='ping'||sequence<lastSettled)return;lastSettled=sequence;if(result==='ok')recovered();else fail(m.type==='action'?'Your action was not confirmed. Check the table before trying again, or tap RETRY CONNECTION.':'Table sync delayed. Keep this page open or tap RETRY CONNECTION.');};
   const transmit=(outgoing:ReturnType<typeof db.channel>)=>{void outgoing.send({type:'broadcast',event:'game',payload}).then(report).catch(()=>report('error'));};
-  if(m.to){let direct=directs.get(m.to);if(!direct){direct=db.channel(`logic-seat-v1:${o.roomId}:${m.to}`,{config:{broadcast:{ack:true}}});directs.set(m.to,direct);const outgoing=direct;outgoing.subscribe(state=>{if(state==='SUBSCRIBED'&&!closed)transmit(outgoing);});}else transmit(direct);}else transmit(channel);
+  if(m.to){let direct=directs.get(m.to);if(!direct){direct=db.channel(`${prefix}-seat-v1:${o.roomId}:${m.to}`,{config:{broadcast:{ack:true}}});directs.set(m.to,direct);const outgoing=direct;outgoing.subscribe(state=>{if(state==='SUBSCRIBED'&&!closed)transmit(outgoing);});}else transmit(direct);}else transmit(channel);
  },close:()=>{closed=true;open=false;if(typeof window!=='undefined'){window.removeEventListener('offline',wentOffline);window.removeEventListener('online',cameOnline);}clearTimeout(timeout);clearInterval(interval);void db.removeChannel(channel);void db.removeChannel(own);for(const direct of directs.values())void db.removeChannel(direct);}};
  timeout=setTimeout(()=>{if(!closed&&!open){if(o.waitForHost&&subscribed&&ownReady&&tracked){o.onStatus('Your place is saved. Waiting for the host to return.');return;}o.onStatus('Connection needs attention.');fail('Could not connect to the table within 15 seconds. Keep the host table open, then tap RETRY CONNECTION. No match has started.');}},15000);
  channel.on('broadcast',{event:'game'},({payload})=>deliver(payload));

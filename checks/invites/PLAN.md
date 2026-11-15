@@ -72,3 +72,9 @@ HAYWIRE and Logic now use the isolated storage on new `durable=1` links. Same-br
 Logic presence now disables Ready until the current host connection is open, rather than trusting a stale rendered roster after host refresh. Its lobby is a compact phone stage; name/difficulty are in a menu and six seats paginate two at a time. 320/390/430 host/wait captures and320 six-seat pixels inspected. Hub parser preserves durable links and understands HAYWIRE.
 
 This is only the HAYWIRE/Logic deployment stage. Trivia, Checkers, Chess and film adapters remain open. No native Safari claim. Local engine/client/build regression checks pass. Dedicated QA records were deleted and count read zero before aged tests; those tests also delete their exact records.
+
+## BUILD236 Trivia/Grammar stage
+
+New Trivia duel (including Grammar/sport focus) invites use durableGameSession and an isolated trivia-duel realtime namespace. Existing non-durable PeerJS links are unchanged. Private full room, seen action IDs and the stable guest seat are saved. Public snapshots are monotonic, rejoin is idempotent, periodic5s active-game resync repairs missed broadcasts, the seating retry budget remains bounded. No paid commentary is enabled on this path.
+
+Local actual-service tests pass for mixed and Grammar: six-day-aged creation/expiry,host closed,guest17s wait,new host tab same guest link,category lock followed immediately by reload,both-answer reveal,both host/guest close and reopen new tabs preserving saved reveal/seats. Mixed320/390/430 and Grammar390 host/320 guest inspected. Short-height header/roster layout corrected after pixels exposed overlap/clipping,then retested. Build and client/channel regressions pass. Exact failed-run QA IDs inspected and deleted, never user rooms. Still not all-game complete: Party,Checkers,Chess,film remain.
