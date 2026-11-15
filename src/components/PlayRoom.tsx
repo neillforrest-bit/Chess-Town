@@ -161,7 +161,7 @@ export default function PlayRoom({ code,durableSeat }: { code: string;durableSea
   if (!s&&saveError) return <main className="cs-saved-entry"><h1>Your saved table has not reset.</h1><p role="alert">{saveError}</p><button onClick={retrySave}>RECONNECT</button><a href="/together">Movie Town</a></main>;
   if (!s) return <main className="cs-play"><div className="cs-wait">{online ? 'Looking for the room...' : 'Connecting...'}</div></main>;
   const me = s.players[pid], them = s.players[other];
-  const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span>{s.gm && <u className="cs-gmchip">{s.gm === 'oscar' ? '🏆 OSCAR GAUNTLET' : s.gm === 'rotten' ? '🍅 ROTTEN ROLL' : `⚔ ${(s.cl || []).join(' vs ').toUpperCase()}`}</u>}</header>;
+  const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span>{s.gm && <u className="cs-gmchip">{s.gm === 'oscar' ? '🏆 OSCAR GAUNTLET' : s.gm === 'rotten' ? '🍅 ROTTEN ROLL' : s.gm.startsWith('docs')?'DOC NIGHT': `⚔ ${(s.cl || []).join(' vs ').toUpperCase()}`}</u>}</header>;
   const foot = <footer className="cs-foot"><Meter cost={s.cost} /><i>{BUILD}</i></footer>;
   const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
   const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
