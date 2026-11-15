@@ -14,7 +14,7 @@ export function guestInvitePath(text:string,origin:string,game:'logic'|'trivia')
     if(u.pathname==='/play-chester'&&u.searchParams.get('mode')==='duel'&&id&&/^[a-z0-9-]{1,24}$/i.test(id))return '/play-chester?mode=duel&room='+encodeURIComponent(id)+durable+(u.searchParams.get('war')==='1'?'&war=1':'')+(/^\d{1,4}$/.test(u.searchParams.get('clock')||'')?'&clock='+u.searchParams.get('clock'):'');
     if(/^\/battle\/[a-z0-9-]{6,24}$/i.test(u.pathname))return u.pathname+(durable?'?durable=1':'');
    }
-   if(u.origin===FILM_ORIGIN&&/^\/find\/[a-z0-9]+$/i.test(u.pathname))return '/movie/find?invite='+encodeURIComponent(u.href);
+   if(u.origin===FILM_ORIGIN){if(/^\/find\/[a-z0-9]+$/i.test(u.pathname))return '/movie/find?invite='+encodeURIComponent(u.href);if(/^\/saved-movie\/[a-f0-9]{16}$/i.test(u.pathname))return '/movie/together?invite='+encodeURIComponent(u.href);}
   }catch{}
   return null;
  }
