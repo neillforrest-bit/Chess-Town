@@ -1,0 +1,9 @@
+# Display names without a username gate
+
+Preview only. No unique-name claims or writes to find_players for new sessions. Existing table constraints/RLS unchanged. Existing valid credentials resolve the original DB identity first. New identities are stable opaque UUIDs derived from a random browser secret, not the display name. Name is an arbitrary label, up to40characters; duplicates/spaces/Unicode/reserved words accepted. Empty API label falls back to Player. UI asks for non-empty input. Name never grants ownership of another identity or room seat.
+
+Actual live phone tests: two independent ForrestRanger names return different player IDs; spaces,&,Unicode and admin accepted;reload retains own player. Two same-name browsers create/join/reload a real private room. Using the other browser's identity with the host seat token fails403. Existing DB-format QA identity resolves same id on GET/retried POST,restores local UI. Only task-created QA legacy identity and exact two QA rooms deleted after checks. No existing player/room/policy edited.
+
+Backlot link now explicit pale foreground/no default browser underline;320x568,390x664/844,430x932 pixels captured;contrast styles asserted and phone pixels inspected. Main continue/create control in viewport. Native Safari unverified.
+
+Known limit: name does not recover a missing private browser credential. Same-name entry starts a distinct player;old seat requires original stored credentials. Device-local film library remains independent of names. Find invites authorize by seat secret + opaque playerId; same names allowed,UI may display two identical labels. No global score lookup by name found in Find code. Original Movie Night saved-room mode uses its own private seats,unchanged. GameTown production iframe/Find alias unchanged;this is a direct Preview URL only.

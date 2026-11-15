@@ -38,7 +38,7 @@ export function reduceFind(prev:FindState,p:PID,a:Action,now=Date.now(),random=M
  if(a.t.startsWith('lounge')){if(!loungeAction(s,p,a,now))return prev;s.trace=[...s.trace,`${a.t}:${p}`].slice(-80);return s;}
  switch(a.t){
  case 'openLounge':if(s.phase!=='showdown')return prev;openLounge(s);break;
- case 'join': {const name=String(a.name||'').trim().slice(0,14);if(!name)return prev;s.players[p].name=name;s.players[p].joined=true;break;}
+ case 'join': {const name=String(a.name||'').trim().slice(0,40);if(!name)return prev;s.players[p].name=name;s.players[p].joined=true;break;}
  case 'ready':if(s.phase!=='lobby')return prev;s.players[p].ready=a.ready===true;if(s.players.A.ready&&s.players.B.ready&&s.players.A.joined&&s.players.B.joined)s.phase='brief';break;
  case 'brief':if(s.phase!=='brief'||!a.brief||typeof a.brief!=='object')return prev;s.brief[p]=cleanBrief(a.brief);s.issue=null;if(s.brief.A.ready&&s.brief.B.ready){s.actorConsent={A:false,B:false};if(s.guided&&(['A','B']as PID[]).some(q=>s.brief[q].requireActor&&s.brief[q].actors.length))s.phase='actorAgree';else prepareWheel(s,s.movies);}break;
  case 'agreeActors':if(s.phase!=='actorAgree')return prev;if(!a.yes){s.phase='brief';s.brief[p].ready=false;s.brief[o].ready=false;break;}s.actorConsent??={A:false,B:false};s.actorConsent[p]=true;if(s.actorConsent.A&&s.actorConsent.B)prepareWheel(s,s.movies);break;
