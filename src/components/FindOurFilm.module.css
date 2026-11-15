@@ -69,3 +69,7 @@
 @media(max-height:650px){.loungeRoot:has(.partnerWait)>.host{display:none}}
 
 .narrowNotice{flex:none;border:1px solid #775877;background:#2a1b31;border-radius:8px;padding:6px;font-size:10px;display:flex;align-items:center;gap:6px}.narrowNotice span{flex:1}.narrowNotice button{font-size:9px;padding:7px;max-width:135px;min-height:38px}
+
+.scores{grid-template-columns:repeat(4,minmax(0,1fr));width:100%;box-sizing:border-box}.scores>div{min-width:0;overflow:hidden}.scores b{max-width:100%;font-size:clamp(11px,4.5vw,19px);white-space:nowrap}.scores b:has(+small){text-overflow:ellipsis;overflow:hidden}.loungeRoot:has([class*=FindAuction])>.host{display:none}
+
+.root:has([class*=finalWheelFrame])>.host,.root:has([class*=finalWheelFrame])>.journey{display:none}@media(max-height:650px){.root:has([class*=finalWheelFrame]) .confirmHero{min-height:0}.root:has([class*=finalWheelFrame]) .body{gap:4px;padding:5px 12px}.root:has([class*=finalWheelFrame]) .body h1{font-size:17px}.root:has([class*=finalWheelFrame]) .body button{min-height:30px;padding:6px}.root:has([class*=finalWheelFrame]) .scores>div{padding:3px}}
