@@ -46,7 +46,7 @@ export default function Home() {
       <div className="cs-step"><span>2</span> Pick tonight&apos;s game</div>
       <div className="cs-nights">{NIGHTS.map((n) => <button key={n.id} className={night === n.id ? 'is-on' : ''} onClick={() => setNight(n.id)}><b>{n.ic} {n.n}</b><i>{n.t}</i></button>)}</div>
       <div className="cs-step"><span>3</span> Go</div>
-      <button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&n2=${encodeURIComponent(p2.trim())}${night === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>START {NIGHTS.find((x) => x.id === night)!.n.toUpperCase()} ROOM</button>
+      <button className="cs-btn cs-btn--gold" onClick={() => go(`/together?kind=${night==='series'?'series':'movie'}${gm?'&gm='+gm:''}`)}>START {NIGHTS.find((x) => x.id === night)!.n.toUpperCase()} ROOM</button>
       <div className="cs-row"><input className="cs-input cs-input--code" placeholder="PARTNER CODE" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
         <button className="cs-btn" disabled={code.length < 4} onClick={() => go(`/play/${code}?p=B&n=${encodeURIComponent(name.trim())}`)}>JOIN</button></div>
       <div className="cs-row"><button className="cs-btn cs-btn--gold" onClick={() => go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(name.trim())}&solo=1${night === 'series' ? '&k=series' : gm ? '&gm=' + gm : ''}`)}>1V1 VS ORSON</button>

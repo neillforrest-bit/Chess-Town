@@ -41,7 +41,7 @@ export default function Repository() {
     fetch('/api/omdb', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imdb: open.im, full: 1 }) }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (on && j && (j.rt != null || j.awards)) setLive({ rtScore: j.rt ?? null, awards: j.awards || '', genreMatrix: j.genres?.length ? j.genres : metaOf(open).genreMatrix, src: 'omdb' }); }).catch(() => {});
     return () => { on = false; };
   }, [open]);
-  const launch = (gm: string) => { const n = (localStorage.getItem('cs-name') || 'Player 1').trim(); const n2 = (localStorage.getItem('cs-p2') || 'Player 2').trim(); th.go(`/play/${makeCode()}?p=A&n=${encodeURIComponent(n)}&n2=${encodeURIComponent(n2)}${gm ? '&gm=' + gm : ''}`); };
+  const launch = (gm: string) => { const n = (localStorage.getItem('cs-name') || 'Player 1').trim(); const n2 = (localStorage.getItem('cs-p2') || 'Player 2').trim(); th.go(`/together${gm?'?gm='+gm:''}`); };
   const mt = open ? (live || metaOf(open)) : null;
   return <div className={'cs-repo' + (th.dark ? ' is-dark' : '')}>
     <div className="cs-repo-bar">

@@ -15,17 +15,20 @@ export default function ColdOpen({ s, pid, send }: { s: State; pid: PID; send: (
   const code = s.code; const nights = s.mem?.nights || 0;
   const spec = useMemo(() => tonightSpectrum(code, nights), [code, nights]);
   const idx = useMemo(() => actorIndex(), []);
-  const [beat, setBeat] = useState(0);
-  const [actors, setActors] = useState<string[]>([]);
+  const progressKey='gt-movie-coldopen:'+code+':'+pid+':'+s.vibe.set;
+  const [saved]=useState(()=>{try{return JSON.parse(localStorage.getItem(progressKey)||'{}');}catch{return {};}});
+  const [beat, setBeat] = useState<number>(Number.isInteger(saved.beat)&&saved.beat>=0&&saved.beat<=5?saved.beat:0);
+  const [actors, setActors] = useState<string[]>(Array.isArray(saved.actors)?saved.actors:[]);
   const [q, setQ] = useState('');
-  const [pos, setPos] = useState(50);
-  const [trophy, setTrophy] = useState<TrophyPick | null>(null);
+  const [pos, setPos] = useState<number>(typeof saved.pos==='number'?saved.pos:50);
+  const [trophy, setTrophy] = useState<TrophyPick | null>(['trophy','trash','both'].includes(saved.trophy)?saved.trophy:null);
   const cards = useMemo(() => swipeFilms(code, nights, s.kind), [code, nights, s.kind]);
-  const [swiped, setSwiped] = useState<Record<number, boolean>>({});
+  const [swiped, setSwiped] = useState<Record<number, boolean>>(saved.swiped&&typeof saved.swiped==='object'?saved.swiped:{});
   const liked = useMemo(() => cards.filter((id) => swiped[id] === true), [cards, swiped]);
   const picks = useMemo(() => tropePicks(code, spec, pos, liked), [code, spec, pos, liked]);
   const tags = useMemo(() => tasteTags(spec, pos, trophy, liked), [spec, pos, trophy, liked]);
   const read = useMemo(() => orsonRead({ actors, spec, pos, trophy, likedIds: liked }), [actors, spec, pos, trophy, liked]);
+  useEffect(()=>{try{localStorage.setItem(progressKey,JSON.stringify({beat,actors,pos,trophy,swiped}));}catch{/* server-confirmed choices remain safe */}},[progressKey,beat,actors,pos,trophy,swiped]);
   const locked = beat >= 5;
   const tasteSent = useRef(false);
   // Stage 2 of the handshake: the engine only accepts 'taste' once BOTH players' tropes are locked

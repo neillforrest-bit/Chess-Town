@@ -1,4 +1,6 @@
 'use client';
+import type {MovieSeat} from '@/lib/saved-movie-client';
+import SavedMovieCard from './SavedMovieCard';
 import PlayerReadiness from './PlayerReadiness';
 import { useMood } from './useMood';
 import { rrLive } from '@/lib/b8';
@@ -89,12 +91,12 @@ function SubDeck({ deck, mine, other, onSwipe, themName }: { deck: string[]; min
   </div>;
 }
 
-export default function PlayRoom({ code }: { code: string }) {
+export default function PlayRoom({ code,durableSeat }: { code: string;durableSeat?:MovieSeat }) {
   const sp = useSearchParams();
-  const pid = (sp.get('p') === 'B' ? 'B' : 'A') as PID;
-  const name = sp.get('n') || '';
-  const solo = sp.get('solo') === '1';
-  const { state: s, send, skew, online } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie', sp.get('gm') || undefined, solo);
+  const pid = durableSeat?.pid || (sp.get('p') === 'B' ? 'B' : 'A') as PID;
+  const name = durableSeat?.name || sp.get('n') || '';
+  const solo = !durableSeat&&sp.get('solo') === '1';
+  const { state: s, send, skew, online,error:saveError,pending:saving,retry:retrySave } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie', sp.get('gm') || undefined, solo,!!durableSeat);
   // Solo 1v1: the host's browser plays Orson (pid B) straight from room state. Rule-based, zero AI spend.
   const sRef = useRef(s); sRef.current = s;
   useEffect(() => {
@@ -110,7 +112,7 @@ export default function PlayRoom({ code }: { code: string }) {
     return () => { dead = true; if (t) clearTimeout(t); clearInterval(iv); };
   }, [solo, pid, s, send]);
   const now = useNow(skew);
-  useEffect(() => { const n2 = sp.get('n2'); if (pid === 'A' && n2) { const t = setTimeout(() => send({ t: 'preset', pid: 'B', name: n2 }), 1200); return () => clearTimeout(t); } }, [pid]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const n2 = sp.get('n2'); if (!durableSeat && pid === 'A' && n2) { const t = setTimeout(() => send({ t: 'preset', pid: 'B', name: n2 }), 1200); return () => clearTimeout(t); } }, [pid]); // eslint-disable-line react-hooks/exhaustive-deps
   const other: PID = pid === 'A' ? 'B' : 'A';
   const [copied, setCopied] = useState(false);
   const [pitchText, setPitchText] = useState('');
@@ -127,6 +129,7 @@ export default function PlayRoom({ code }: { code: string }) {
   const [dis, setDis] = useState<Record<string, boolean>>({});
   useEffect(() => { try { const o: Record<string, boolean> = {}; ['vibe', 'draft'].forEach((k) => { if (sessionStorage.getItem(`cs-int-${code}-${k}`)) o[k] = true; }); setDis(o); } catch { /* no storage */ } }, [code]);
   const [go, setGo] = useState(0);
+  useEffect(()=>{if(durableSeat&&s){try{if(localStorage.getItem('gt-movie-intro:'+code+':'+pid+':'+s.vibe.set))setGo(2);}catch{}}},[code,pid,!!durableSeat,s?.vibe.set]);
   const [cd, setCd] = useState(0);
   const [cont, setCont] = useState(false);
   const [det, setDet] = useState<number | null>(null);
@@ -155,6 +158,7 @@ export default function PlayRoom({ code }: { code: string }) {
 
   const curM = s && s.b8 && s.phase === 'bracket' ? (s.b8.matches[s.b8.cur] as unknown as { a?: number } | undefined) : undefined; const curF = curM?.a ? BY_ID[curM.a] : null;
   useMood({ poster: curF?.p || null, genres: curF ? curF.g : s?.sab?.genre ? [s.sab.genre] : s?.cl ? s.cl : undefined, gm: s?.gm || null });
+  if (!s&&saveError) return <main className="cs-saved-entry"><h1>Your saved table has not reset.</h1><p role="alert">{saveError}</p><button onClick={retrySave}>RECONNECT</button><a href="/together">Movie Town</a></main>;
   if (!s) return <main className="cs-play"><div className="cs-wait">{online ? 'Looking for the room...' : 'Connecting...'}</div></main>;
   const me = s.players[pid], them = s.players[other];
   const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span>{s.gm && <u className="cs-gmchip">{s.gm === 'oscar' ? '🏆 OSCAR GAUNTLET' : s.gm === 'rotten' ? '🍅 ROTTEN ROLL' : `⚔ ${(s.cl || []).join(' vs ').toUpperCase()}`}</u>}</header>;
@@ -163,19 +167,19 @@ export default function PlayRoom({ code }: { code: string }) {
   const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
   const hud = s.b8 && s.phase === 'bracket' ? <TokenHUD s={s} me={pid} /> : null;
   const eco = s.b8 && s.phase === 'bracket' && !s.b8.show ? <EconomyBar s={s} me={pid} code={code} /> : null;
-  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} now={now} send={send as (i: Intent) => void}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{eco}{foot}<PostMortem s={s} /></CineSyncPipeline>;
+  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} now={now} send={send as (i: Intent) => void}>{durableSeat&&<div className={'cs-saved-status'+(saveError?' is-error':'')} role={saveError?'alert':'status'}>{saveError?<>{saveError} <button onClick={()=>location.reload()}>RESTORE</button></>:saving?'Saving your choice...':online?'Saved movie night · same link to return':'Reconnecting · your last confirmed table is safe'}</div>}<fieldset className="cs-saved-fieldset" disabled={!!durableSeat&&(!!saveError||saving)}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{eco}{foot}<PostMortem s={s} /></fieldset></CineSyncPipeline>;
   const led = ledgerLine(s);
   const sealed = s.hr?.sealed !== false && !(s.phase === 'final' && s.fin.revealed) && s.phase !== 'done';
 
   // ---- LOBBY
   if (s.phase === 'lobby') {
-    const link = typeof window !== 'undefined' ? `${location.origin}/invite?gameId=${code}` : '';
+    const link = typeof window !== 'undefined' ? durableSeat?`${location.origin}/saved-movie/${code}#invite=${durableSeat.invite||''}`:`${location.origin}/invite?gameId=${code}` : '';
     return shell(<div className="cs-center">
       <div className="cs-orson">ORSON · GET YOUR TABLE READY</div>
       <PlayerReadiness s={s} ready={s.lobbyReady || { A: false, B: false }} />
       <p className="cs-say cs-lobby-welcome">{them.joined ? `${them.name} has arrived. Splendid. Two humans, one disagreement.` : 'Welcome. I am Orson, your host. I require two humans and one disagreement.'}</p>
-      <div className="cs-code">{code}</div>
-      {!them.joined && <p className="cs-small">Give your partner this code on the join screen, or send the link.</p>}
+      <div className="cs-code">{durableSeat?code.slice(0,4)+' '+code.slice(4,8)+' '+code.slice(8,12)+' '+code.slice(12):code}</div>
+      {!them.joined && <p className="cs-small">{durableSeat?'Send the private saved link. The four-letter join box is for older rooms.':'Give your partner this code on the join screen, or send the link.'}</p>}
       {s.mem.last && <p className="cs-small">Last time: {s.mem.last}. I remember everything.</p>}
       {led && <p className="cs-small cs-gold">{led}</p>}
       {pid === 'A' && <details className="cs-lobby-settings"><summary>House rules &amp; roast settings</summary><button className={'cs-toggle' + (s.roast ? ' is-on' : '')} onClick={() => send({ t: 'roast', on: !s.roast })}>ROAST MODE · {s.roast ? 'ON' : 'OFF'}</button>
@@ -186,7 +190,7 @@ export default function PlayRoom({ code }: { code: string }) {
       <button className="cs-btn" onClick={() => { const msg = `Join my CineSync movie night! Room code: ${code}\n${link}`; if (navigator.share) { navigator.share({ text: msg }).catch(() => navigator.clipboard?.writeText(msg)); } else navigator.clipboard?.writeText(msg); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'COPIED' : 'COPY INVITE LINK'}</button>
       <button className={'cs-btn cs-btn--gold cs-lobby-ready' + (s.lobbyReady?.[pid] ? ' is-ready' : '')} aria-pressed={!!s.lobbyReady?.[pid]} onClick={() => send({ t: 'lobbyready', pid, ready: !s.lobbyReady?.[pid] })}>{s.lobbyReady?.[pid] ? "I'M READY · CHANGE TO NOT READY" : "I'M READY"}</button>
       <p className="cs-small cs-lobby-help">{!them.joined ? 'Send the invite. Both players tap Ready to start.' : s.lobbyReady?.[pid] ? `Waiting for ${them.name} to tap Ready.` : 'Both joined. Tap Ready when you want to start.'}</p>
-      <p className="cs-small cs-lobby-tv">TV: open <b>/tv/{code}</b></p>
+      {!durableSeat&&<p className="cs-small cs-lobby-tv">TV: open <b>/tv/{code}</b></p>}{durableSeat&&<p className="cs-small">Seven-day invite. Keep this browser for your private seat. Neither name nor a URL flag can take the other seat.</p>}
     </div>);
   }
 
@@ -199,7 +203,7 @@ export default function PlayRoom({ code }: { code: string }) {
       <div className="cs-intro-face"><OrsonFace mood="smug" talking /></div>
       <h2 className="cs-q">Welcome to CineSync. Tonight we find the one film you BOTH want to watch.</h2>
       <p className="cs-say">Swipe a few vibes, draft your favourites in secret, then watch them fight it out in a bracket with Popcorn Tokens. One winner. I will be rude about it.</p>
-      <button className="cs-btn cs-btn--gold" onClick={() => { setGo(2); setCd(0); }}>LET&apos;S FIND A FILM</button>
+      <button className="cs-btn cs-btn--gold" onClick={() => { if(durableSeat)localStorage.setItem('gt-movie-intro:'+code+':'+pid+':'+s.vibe.set,'1');setGo(2); setCd(0); }}>LET&apos;S FIND A FILM</button>
     </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
     // V2 COLD OPEN: five Orson-hosted beats replace the mood/swiper calibration; it emits the same
     // sliders + tropes + taste intents, so everything downstream (discovery, draft) is unchanged.
@@ -243,6 +247,7 @@ export default function PlayRoom({ code }: { code: string }) {
     const runtime = m.sr ? `${m.sr.s} season${m.sr.s === 1 ? '' : 's'} · ${m.sr.e} eps · ~${m.rn} min` : m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
     const vn = s.dx?.vn[pid] ?? (pw.bullet ? 1 : 0); const gt = s.dx?.gt[pid] ?? false; const golden = s.dx?.gold.A === id || s.dx?.gold.B === id;
     const press = (kind: 'veto' | 'surprise' | 'gold') => { const key = kind + ':' + id; if (arm === key) { buzz([40, 30, 60]); setArm(''); send({ t: kind, pid, id }); } else setArm(key); };
+    if(durableSeat)return shell(<><PivotModal s={s} pid={pid} send={send as (i:Intent)=>void}/><SavedMovieCard key={id} m={m} sealed={sealed} count={picks.length} fit={mm.pct} golden={gt} vetoes={golden?0:vn} surprise={pw.surprise} armed={arm} onPower={press} onChoice={ask}/></>);
     return shell(<div className="cs-draft"
       onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
       onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70 && pend === null) ask(dx > 0); }}>
@@ -405,7 +410,7 @@ export default function PlayRoom({ code }: { code: string }) {
     <div className="cs-row">
       {!s.b8 && iLost && !s.fin.rematchUsed && !s.fin.tie && <button className="cs-btn cs-btn--bullet" onClick={() => { buzz(60); send({ t: 'rematch' }); }}>REMATCH</button>}
       <button className="cs-btn" onClick={() => shareReceipts(s)}>SHARE</button>
-      <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'reset' })}>AGAIN</button>
+      <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'reset' })}>{durableSeat?((s as typeof s & {restart?:Partial<Record<PID,boolean>>}).restart?.[pid]?'REMATCH REQUESTED · WAITING':'REQUEST ANOTHER NIGHT'):'AGAIN'}</button>
     </div>
   </div>);
 }
