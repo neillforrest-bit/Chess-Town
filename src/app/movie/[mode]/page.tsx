@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-const modes: Record<string,string> = { find:'Find Our Film', together:'Original Movie Night', tonight:'Tonight', discover:'Discovery Night' };
+const modes: Record<string,string> = { library:'The Backlot film library',find:'Find Our Film', together:'Original Movie Night', tonight:'Tonight', discover:'Discovery Night' };
 export default async function MoviePage({ params,searchParams }: { params: Promise<{mode:string}>,searchParams:Promise<{invite?:string}> }) {
   const { mode } = await params;
   if (!modes[mode]) notFound();
