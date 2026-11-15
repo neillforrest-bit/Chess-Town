@@ -54,3 +54,13 @@ Only then report that mode live and tested. Complete all modes before claiming t
 ## Queued HAYWIRE expansion
 
 After invite durability: clearer interactive explanation of crossed controls; longer selectable rounds; a prominent remaining-time display and 3-2-1 start; a level ladder with varied solvable wiring, a quiet teaching mode and a quick duet mode; a standalone shell using the same invite/recovery contract. Do not change the existing game's engine and invite backend together without separate regression gates. Physical phone strikes, stakes, anti-cheat and unsupported team modes are not part of the current prototype.
+
+## Adapter checkpoint at 12:57, not deployed
+
+Uncommitted HAYWIRE/Logic integration plus `durable-game-session.ts`, `durable-haywire.ts`, `preview-invite-store.ts`. Build passes. Preview store config is the new project's public API key and is hostname-gated away from production. New room links have `durable=1`; legacy rooms keep old handling.
+
+`/tmp/haywire234-durable.py` passed actual live isolated-storage host-close → guest wait17s → new host tab same-browser recovery → both Ready/start → active round recovery. Screenshots `/downloads/invite234/hay-guest-wait-320.png`, `hay-host-return-390.png`. This is local app QA, not a deployed preview claim. HAYWIRE round recovery reconstructs remaining timer from the latest saved snapshot.
+
+`/tmp/logic234-durable.py` passed host-close, guest17s waiting, host-new-tab recovery and deliberately dropped guest hello, then failed immediate reload after host Ready: remote save had not landed before reload, so readiness disappeared. This must be fixed before deployment. Add a revision-aware local write-ahead checkpoint or an explicit saved-state gate, while preserving CAS safety across multiple host tabs. Do not simply add sleep to the test or call that fixed. Check HAYWIRE for the same last-save race.
+
+Two exact leftover QA records from failed runs were inspected and deleted (HAYWIRE ec7a5736-eb7e-4b81-a6d5-b10099845859, Logic7666d61fac954afe); dedicated preview table read back empty at12:57. Temporary database password file removed. No browser leases or server processes remain. Live deployed unified preview is still233/c710796; no adapter has been deployed. The tests use the existing public realtime project for transport, new isolated project for invite storage. Do not change existing policies.

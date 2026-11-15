@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/client';
 type Message = Record<string,any>;
-type Options={roomId:string;seatId:string;isHost:boolean;onStatus:(s:string)=>void;onError:(s:string)=>void;onOpen:()=>void;onPresence:(seats:string[])=>void;onMessage:(m:Message)=>void;onHostFound:()=>void};
+type Options={waitForHost?:boolean;roomId:string;seatId:string;isHost:boolean;onStatus:(s:string)=>void;onError:(s:string)=>void;onOpen:()=>void;onPresence:(seats:string[])=>void;onMessage:(m:Message)=>void;onHostFound:()=>void};
 // A dedicated game channel uses the existing server connection, not database polling.
 export function createHaywireChannel(o:Options){
  const db=createClient();let closed=false,open=false,hostSeat='',subscribed=false,ownReady=false,tracked=false,transportError=false;
@@ -8,7 +8,7 @@ export function createHaywireChannel(o:Options){
  const seen=new Map<string,number>();
  const fail=(message:string)=>{if(closed)return;transportError=true;o.onError(message);};
  const recovered=()=>{if(transportError){transportError=false;o.onError('');}};
- const reportPresence=()=>{if(closed)return;const entries=Object.values(channel.presenceState()).flat() as any[];const active=offline?[]:entries.filter(p=>seen.has(p.seat)&&Date.now()-seen.get(p.seat)!<25000);const previous=hostSeat;hostSeat=active.find(p=>p.host===true)?.seat||'';open=!offline&&subscribed&&ownReady&&tracked&&(o.isHost||!!hostSeat);o.onPresence(active.map(p=>p.seat));if(!o.isHost&&previous!==hostSeat){if(hostSeat){clearTimeout(timeout);o.onStatus('Host found. Taking your seat...');o.onHostFound();}else{o.onStatus('Host is offline. Waiting for the host to return.');fail('The host is not connected. Keep this page open or ask them to return to the original host tab.');}}};
+ const reportPresence=()=>{if(closed)return;const entries=Object.values(channel.presenceState()).flat() as any[];const active=offline?[]:entries.filter(p=>seen.has(p.seat)&&Date.now()-seen.get(p.seat)!<25000);const previous=hostSeat;hostSeat=active.find(p=>p.host===true)?.seat||'';open=!offline&&subscribed&&ownReady&&tracked&&(o.isHost||!!hostSeat);o.onPresence(active.map(p=>p.seat));if(!o.isHost&&previous!==hostSeat){if(hostSeat){clearTimeout(timeout);o.onStatus('Host found. Taking your seat...');o.onHostFound();}else{o.onStatus('Host is offline. Waiting for the host to return.');if(!o.waitForHost)fail('The host is not connected. Keep this page open or ask them to return to the original host tab.');}}};
  const connected=()=>{if(closed||offline||!subscribed||!ownReady||!tracked)return;reportPresence();recovered();if(o.isHost)clearTimeout(timeout);o.onOpen();};
  const wentOffline=()=>{offline=true;open=false;o.onPresence([]);fail('Your device is offline. Return to a connection, then tap RECONNECT if needed.');};const cameOnline=()=>{offline=false;db.realtime.connect();connected();};if(typeof window!=='undefined'){window.addEventListener('offline',wentOffline);window.addEventListener('online',cameOnline);}
  const directs=new Map<string,ReturnType<typeof db.channel>>();
@@ -21,7 +21,7 @@ export function createHaywireChannel(o:Options){
   const transmit=(outgoing:ReturnType<typeof db.channel>)=>{void outgoing.send({type:'broadcast',event:'game',payload}).then(report).catch(()=>report('error'));};
   if(m.to){let direct=directs.get(m.to);if(!direct){direct=db.channel(`haywire-seat-v1:${o.roomId}:${m.to}`,{config:{broadcast:{ack:true}}});directs.set(m.to,direct);const outgoing=direct;outgoing.subscribe(state=>{if(state==='SUBSCRIBED'&&!closed)transmit(outgoing);});}else transmit(direct);}else transmit(channel);
  },close:()=>{closed=true;open=false;if(typeof window!=='undefined'){window.removeEventListener('offline',wentOffline);window.removeEventListener('online',cameOnline);}clearTimeout(timeout);clearInterval(interval);void db.removeChannel(channel);void db.removeChannel(own);for(const direct of directs.values())void db.removeChannel(direct);}};
- timeout=setTimeout(()=>{if(!closed&&!open){o.onStatus('Connection needs attention.');fail('Could not connect to the table within 15 seconds. Keep the host table open, then tap RECONNECT. No match has started.');}},15000);
+ timeout=setTimeout(()=>{if(!closed&&!open){if(o.waitForHost&&subscribed&&ownReady&&tracked){o.onStatus('Your place is saved. Waiting for the host to return.');return;}o.onStatus('Connection needs attention.');fail('Could not connect to the table within 15 seconds. Keep the host table open, then tap RECONNECT. No match has started.');}},15000);
  channel.on('broadcast',{event:'game'},({payload})=>deliver(payload));
  channel.on('presence',{event:'sync'},()=>{if(closed)return;const entries=Object.values(channel.presenceState()).flat() as any[];for(const entry of entries)if(!seen.has(entry.seat))seen.set(entry.seat,Date.now());seen.set(o.seatId,Date.now());reportPresence();});
  interval=setInterval(()=>{if(closed||!subscribed)return;seen.set(o.seatId,Date.now());api.send({type:'ping'});reportPresence();},10000);
