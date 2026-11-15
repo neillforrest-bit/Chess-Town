@@ -16,13 +16,13 @@ const moodGenres:Record<Brief['mood'],string[]>={laugh:['Comedy','Animation','Fa
 export const namesMatch=(m:FindMovie,actors:string[])=>actors.some(a=>(m.c||[]).some(c=>c.toLowerCase()===a.toLowerCase()));
 export const actorMatch=(m:FindMovie,b:Brief)=>b.actorPicks?.length?b.actorPicks.some(a=>m.castIds?.includes(a.id)):namesMatch(m,b.actors);
 export function featureQuality(m:FindMovie):boolean {
- if(!Number.isFinite(m.r)||m.r<6||!Number.isFinite(m.rn)||(m.rn||0)<60||m.w||!m.p)return false;
+ if((m.pop||0)<50||!Number.isFinite(m.r)||m.r<6||!Number.isFinite(m.rn)||(m.rn||0)<60||m.w||!m.p)return false;
  const text=[m.t,m.o,...(m.kw||[])].join(' ');
- return !/\b(compilation|dvd collection|dvd compilation|collection of episodes|television episode|tv episode|short film|short horror|short mockumentary|anthology series|episodes from|episode compilation)\b/i.test(text)&&!(m.kw||[]).some(k=>/^(short|short film|tv series|tv episode|compilation)$/.test(k));
+ return !/\b(compilation|dvd collection|dvd compilation|collection of episodes|television episode|tv episode|short film|short horror|short mockumentary|anthology series|episodes from|episode compilation|making of|behind the scenes)\b/i.test(text)&&!(m.kw||[]).some(k=>/^(short|short film|tv series|tv episode|compilation)$/.test(k));
 }
 export function fitsContract(m:FindMovie,b:Record<PID,Brief>):boolean {
  if(!featureQuality(m)) return false;
- return (['A','B'] as PID[]).every(p=>{const x=b[p];return !x.exclude.some(g=>m.g.includes(g)) && (!x.genres.length||x.genres.some(g=>m.g.includes(g))) && (!x.requireActor || !x.actors.length || actorMatch(m,x));});
+ return (['A','B'] as PID[]).every(p=>{const x=b[p];return !x.exclude.some(g=>m.g.includes(g)) && (!x.genres.length||x.genres.some(g=>m.g.includes(g)));});
 }
 export function kindFits(m:FindMovie,k:Brief['kind']):boolean {
  if(k==='any')return true;
@@ -49,9 +49,9 @@ export function slicesFor(movies:FindMovie[],b:Record<PID,Brief>):Slice[]{
 }
 export function deal(movies:FindMovie[],ids:number[],b:Record<PID,Brief>,limit=12,passed:number[]=[]):FindMovie[]{
  const declined=movies.filter(m=>passed.includes(m.id));const rankedScore=(m:FindMovie)=>score(m,b)-Math.min(2,declined.reduce((n,d)=>n+(d.g.filter(g=>m.g.includes(g)&&!b.A.genres.includes(g)&&!b.B.genres.includes(g)).length*.25),0));
- const eligible=movies.filter(m=>ids.includes(m.id)&&fitsContract(m,b)&&!passed.includes(m.id));const softOnly=limit>12&&!(['A','B']as PID[]).some(p=>b[p].requireActor);const isActor=(m:FindMovie)=>(['A','B']as PID[]).some(p=>actorMatch(m,b[p]));const out:FindMovie[]=[];const add=(m:FindMovie|undefined,lane:FindMovie['lane'])=>{if(m&&softOnly&&isActor(m)&&out.filter(isActor).length>=4&&eligible.some(x=>!isActor(x)&&!out.some(o=>o.id===x.id)))return;if(m&&!out.some(x=>x.id===m.id))out.push({...m,lane,why:[...(['A','B'] as PID[]).flatMap(p=>actorMatch(m,b[p])?['Stars '+(m.c||[]).filter(c=>b[p].actors.some(a=>a.toLowerCase()===c.toLowerCase())).join(', ')]:[]),...m.g.filter(g=>b.A.genres.includes(g)||b.B.genres.includes(g)).map(g=>'Genre: '+g)]});};
+ const eligible=movies.filter(m=>ids.includes(m.id)&&fitsContract(m,b)&&!passed.includes(m.id));const softOnly=false;const isActor=(m:FindMovie)=>(['A','B']as PID[]).some(p=>actorMatch(m,b[p]));const out:FindMovie[]=[];const add=(m:FindMovie|undefined,lane:FindMovie['lane'])=>{if(m&&softOnly&&isActor(m)&&out.filter(isActor).length>=4&&eligible.some(x=>!isActor(x)&&!out.some(o=>o.id===x.id)))return;if(m&&!out.some(x=>x.id===m.id))out.push({...m,lane,why:[...(['A','B'] as PID[]).flatMap(p=>actorMatch(m,b[p])?['Stars '+(m.c||[]).filter(c=>b[p].actors.some(a=>a.toLowerCase()===c.toLowerCase())).join(', ')]:[]),...m.g.filter(g=>b.A.genres.includes(g)||b.B.genres.includes(g)).map(g=>'Genre: '+g)]});};
  // Reserve up to four less-seen candidates before choosing six close fits. No duplicate or silent preference relaxation.
- const ranked=[...eligible].sort((a,c)=>rankedScore(c)-rankedScore(a)||a.id-c.id);
+ const ranked=[...eligible].sort((a,c)=>Number(isActor(c))-Number(isActor(a))||rankedScore(c)-rankedScore(a)||a.id-c.id);
  const gems=ranked.filter(m=>kindFits(m,'gem')).sort((a,c)=>c.r-a.r||a.pop-c.pop).slice(0,4);
  const gemIds=new Set(gems.map(m=>m.id));
  const fit=ranked.filter(m=>!gemIds.has(m.id));
@@ -63,7 +63,7 @@ export function deal(movies:FindMovie[],ids:number[],b:Record<PID,Brief>,limit=1
  const remainder=ranked.filter(m=>!out.some(x=>x.id===m.id)&&m.r>=6.5).reverse();
  for(const m of remainder.slice(0,2))add(m,'stretch');
  if(limit>12)for(const m of ranked){if(out.length>=limit)break;add(m,'fit');}
- return out.slice(0,limit);
+ return out.slice(0,limit).sort((a,c)=>Number(isActor(c))-Number(isActor(a))||rankedScore(c)-rankedScore(a)||a.id-c.id);
 }
 
 export function genreSlicesFor(movies:FindMovie[],b:Record<PID,Brief>,limit=8):Slice[]{
