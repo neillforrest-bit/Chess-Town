@@ -1,0 +1,56 @@
+# Durable invites, preview build work
+
+## State
+
+BUILD233 (`c710796`) is deployed and verified. It repairs HAYWIRE and Logic heartbeat warnings and retries the guest seating handshake. This document describes unfinished next work, not live functionality.
+
+A separate Supabase Free project, `Game Town Invites PREVIEW`, has been created in Europe. Its observed dashboard is https://supabase.com/dashboard/project/chsatuxnkfstvsqhzqru . The isolated schema is applied there and live HTTPS security tests pass. It is not wired into any game yet. The existing Chess-town project and its policies are unchanged. The preview project's initial branch is called `main PRODUCTION` by Supabase, but it is a separate preview-only project, not the live game database.
+
+`supabase/preview-invites/schema.sql` must be applied only to that dedicated preview project, never by the production migration pipeline. It is deliberately outside `supabase/migrations`.
+
+## Contract
+
+- New invitations last seven days from creation, with an explicit date in the UI. No silent lifetime extension.
+- The shared guest URL contains a random room identifier, never the private host recovery key.
+- Host and guest recovery keys are separate 256-bit browser-local capabilities. The database stores their hashes. The host key is not derived from `host=1` in a URL.
+- A guest can register and wait while the host is away. This does not start a game or mark the host online.
+- The host can close the tab and recover the saved game later in the same browser. Cross-device host recovery is not claimed.
+- Private host snapshots, including quiz answers, are never returned by the guest summary API.
+- Private snapshots use compare-and-swap revisions. A stale host tab stops rather than replacing a newer game.
+- Direct anonymous table reads and writes are denied. Narrow RPCs are the only client access.
+- Hard preview bounds: 200 active rooms, 256KB maximum snapshot each, guest count limited to each game's seats. Expired records are removed when a new invite is created. No paid plan or production database dependency.
+- Invite storage failure is a visible failure, never a claim that an invite was saved. Existing user rooms remain legacy until a deliberate supported migration exists.
+
+## Verification completed locally
+
+`checks/invites/storage.sql` passes against PostgreSQL14 with pgcrypto, running as the anonymous API role: direct-table denial; hidden snapshot exclusion; wrong-host rejection; guest seat deduplication; guest cap; stale revision conflict; six-day delayed join and host-away snapshot recovery; expiry rejection. The local database survives restart with the saved snapshot intact. Tests roll back or explicitly delete their QA data.
+
+`checks/invites/client.cjs` passes: separate host/guest identities, same-browser return, frozen snapshots, serialized revisions, conflict stop, explicit missing-config/offline errors. Full app build passes with the new, currently unused client module.
+
+The same security contract also passes on the dedicated live preview database over HTTPS with its public API key: raw table denial, private snapshot protection, wrong-host rejection, guest deduplication and revision conflict. The exact QA room was deleted and then read absent. These are not deployed end-to-end game tests. No adapter is complete.
+
+## Adapter inventory
+
+| Mode | Existing state and transport | Needed work |
+| --- | --- | --- |
+| HAYWIRE | Host realtime channel; sessionStorage machine and seat | Durable bootstrap before connect; host snapshot writer; local recovery authority and stable seat; waiting guest UI; reconnect after host return; active-round timer pause policy |
+| Logic & Riddles | Host realtime; tab checkpoint with answers and lantern removals | Restore full checkpoint before opening transport; private snapshots; stable host/guest seat; waiting roster; no premature guest room acceptance |
+| Trivia duel, Grammar | PeerJS host; `trivia:<id>` tab checkpoint; action IDs | Bootstrap before peer registration; preserve seen action IDs; delayed guest waiting and retry; restore question/flash clock semantics |
+| Trivia Party | PeerJS host; party checkpoint includes seat tokens and seen action IDs | Same bootstrap; preserve token-to-seat map and action ledger; roster reconciliation; five-seat cap |
+| Checkers Battle | PeerJS; tab board checkpoint; host encoded in URL | Host capability separate from URL role; restore board and move history before advertising host; guest waiting; move/rejoin tests |
+| Live Chess Battle | Realtime; browser state plus inherited `battle_matches` row | Read adapter and ownership review first; do not widen inherited table policies; preserve seat identity, clocks and move revision; seven-day invite wrapper |
+| Find Our Film / Cup | Separate movie preview and secured server-backed rooms | Inspect existing lifetime and membership semantics; adapt invitation wrapper without changing existing room policies or the parked reveal work |
+| Original Movie Night | Separate server-backed `cinesync_rooms` | Existing policies are explicitly out of scope; add wrapper/recovery without policy changes, or report the missing safe path |
+| Solo and pass-and-play | No shared-room invite | Ordinary app/game links, not fake multiplayer rooms |
+
+All shared-link parsers need to accept each supported canonical route, strip host-only role parameters from guest links, and preserve the full room identifier. In particular the existing hub parser has no HAYWIRE route yet.
+
+## Remaining verification gate
+
+For every invite-based mode: create host; close host; guest opens the same link after a real wait and a simulated six-day-old creation; guest waits without an incorrect network warning; host returns in a fresh tab of the same browser; saved roster/state and authority restore; both join and play; retry does not duplicate seats or replay actions; wrong host and extra guest are rejected; expiry and unavailable storage are clear; inspect 320/390/430 actual pixels. Separate native iOS Safari test remains needed; phone-shaped Chromium is not native Safari.
+
+Only then report that mode live and tested. Complete all modes before claiming the user's all-game request is done.
+
+## Queued HAYWIRE expansion
+
+After invite durability: clearer interactive explanation of crossed controls; longer selectable rounds; a prominent remaining-time display and 3-2-1 start; a level ladder with varied solvable wiring, a quiet teaching mode and a quick duet mode; a standalone shell using the same invite/recovery contract. Do not change the existing game's engine and invite backend together without separate regression gates. Physical phone strikes, stakes, anti-cheat and unsupported team modes are not part of the current prototype.
