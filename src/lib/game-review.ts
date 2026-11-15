@@ -55,6 +55,7 @@ export type ReviewedPly = {
 };
 
 export type ReviewedGame = {
+  ownerUsername?: string;
   gameUrl: string;
   analyzedAt: number;
   meta: Omit<CcGame, 'pgn'>;

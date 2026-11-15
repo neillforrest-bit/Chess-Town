@@ -175,7 +175,8 @@ export default function ReviewPage() {
     (resultFilter === 'all' ? true : g.result === resultFilter));
 
   const tps = useMemo(() => (review ? turningPoints(review) : []), [review]);
-  const clock = useMemo(() => (review ? clockReport(review) : null), [review]);
+  // Owner-labelled imports omit the legacy clock estimate until same-player clock parsing is verified.
+  const clock = useMemo(() => (review && !review.ownerUsername ? clockReport(review) : null), [review]);
   const counts = useMemo(() => (review ? classCounts(review) : []), [review]);
   const sc = useMemo(() => (review ? scorecardFor(review) : []), [review]);
   const measures = useMemo(() => (review ? { user: playerMeasure(review, true), opp: playerMeasure(review, false) } : null), [review]);
