@@ -1,38 +1,5 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-
-// Safari-safe room id: crypto.randomUUID is missing on iOS < 15.4, so fall back.
-function makeRoomId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID().slice(0, 8);
-  return Math.random().toString(36).slice(2, 10);
-}
-
-export default function DuelLobby() {
-  // Room id is client-only (random) - generating it during SSR caused a React #418
-  // hydration mismatch on every visit. Start blank, generate after mount.
-  const [room, setRoom] = useState('');
-  useEffect(() => { setRoom(makeRoomId()); }, []);
-  const [copied, setCopied] = useState(false);
-  const origin = typeof window === 'undefined' ? '' : window.location.origin;
-  const friendUrl = `${origin}/play-chester?mode=duel&room=${room}`;
-  const hostUrl = `${friendUrl}&host=1`;
-
-  // BUILD 101 (his call): one job - copy the link. The clipboard gets his invite
-  // line plus the URL so pasting straight into a text reads right.
-  const share = async () => {
-    try { await navigator.clipboard.writeText(`Join me for a lovely game of chess. ${friendUrl}`); setCopied(true); } catch { setCopied(false); }
-  };
-
-  return <main style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', background: '#050708', color: '#e8f4f6', padding: '1rem', fontFamily: 'Arial, sans-serif' }}>
-    <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
-      <span style={{ color: '#ffd84d', fontSize: '.68rem', fontWeight: 900, letterSpacing: '2px' }}>CHESS-TOWN LIVE DUEL</span>
-      <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '1.7rem', margin: '.4rem 0 .3rem' }}>Challenge a Friend</h1>
-      <p style={{ color: '#9db2b7', fontSize: '.84rem', lineHeight: 1.5, margin: '0 0 1.2rem' }}>Two phones, one board. Chester commentates every move on both screens - verdicts, win odds and all. Room <b style={{ color: '#ffd84d' }}>{room || '…'}</b>.</p>
-      <a href={hostUrl} style={{ display: 'block', padding: '.9rem', marginBottom: '.6rem', background: '#ffd84d', color: '#171106', fontWeight: 900, letterSpacing: '1px', borderRadius: 8, textDecoration: 'none' }}>OPEN YOUR ROOM - YOU ARE WHITE</a>
-      <button type="button" onClick={() => void share()} style={{ display: 'block', width: '100%', padding: '.9rem', marginBottom: '.6rem', background: 'rgba(34,211,238,.12)', color: '#22d3ee', border: '1px solid #22d3ee', fontWeight: 900, letterSpacing: '1px', borderRadius: 8, cursor: 'pointer' }}>{copied ? 'COPIED - PASTE IT IN A TEXT' : 'COPY THE LINK'}</button>
-      <p style={{ color: '#71878b', fontSize: '.7rem', lineHeight: 1.5 }}>Send the link first, then open your room. The game starts the moment your friend joins - they play Black, and each of you sees your own pieces on the bottom row.</p>
-      <input readOnly value={friendUrl} onFocus={(e) => e.currentTarget.select()} style={{ width: '100%', marginTop: '.4rem', padding: '.55rem .6rem', background: '#0b1113', color: '#9db2b7', border: '1px solid rgba(238,252,255,.18)', borderRadius: 6, fontSize: '.68rem', boxSizing: 'border-box' }} />
-    </div>
-  </main>;
-}
+import {useState} from 'react';
+import {durableGameSession} from '@/lib/durable-game-session';
+import {newDuelSaved} from '@/lib/durable-duel';
+export default function DuelLobby(){const [busy,setBusy]=useState(false),[error,setError]=useState(''),[link,setLink]=useState(''),[copied,setCopied]=useState(false),[war,setWar]=useState(false),[clock,setClock]=useState(0);return <main className="saved-ck saved-ck-entry"><h1>Challenge a friend</h1><p>Two phones, one saved board. Your invite lasts seven days. Return using this same link in this browser.</p>{error&&<p role="alert">{error}</p>}{!link?<><label>Game <select aria-label="Duel game" value={war?'war':'chess'} onChange={e=>setWar(e.target.value==='war')}><option value="chess">Chess with Chester</option><option value="war">Pawn War</option></select></label><label>Clock <select aria-label="Duel clock" value={clock} onChange={e=>setClock(Number(e.target.value))}><option value={0}>No clock</option><option value={180}>3 minutes each</option><option value={600}>10 minutes each</option></select></label><p>Both players tap Ready. Active clocks keep running if you leave.</p><button disabled={busy} onClick={()=>{setBusy(true);const id=crypto.randomUUID().replaceAll('-','').slice(0,16);void durableGameSession('chess','duel-'+id,'Duel host',true,()=>newDuelSaved(war,clock),setError,()=>{}).then(s=>{s.stop();setLink(location.origin+'/play-chester?mode=duel&room='+id+'&durable=1'+(war?'&war=1':'')+(clock?'&clock='+clock:''));}).catch(e=>{setError(e instanceof Error?e.message:'Invite could not save.');setBusy(false);});}}>{busy?'SAVING INVITE...':'CREATE SAVED DUEL INVITE'}</button></>:<><input aria-label="Duel invite link" value={link} readOnly onFocus={e=>e.target.select()}/><button onClick={()=>void navigator.clipboard.writeText('Join me for a game. '+link).then(()=>setCopied(true)).catch(()=>setError('Select the link to copy it.'))}>{copied?'COPIED DUEL INVITE':'COPY DUEL INVITE'}</button><a className="saved-ck-button" href={link}>OPEN YOUR SAVED ROOM - WHITE</a><p>Send the link, then open your room. Your friend has a saved Black seat and can wait while you are away.</p></>}<a href="/?choose=mode&town=chess">Chess Town</a></main>;}

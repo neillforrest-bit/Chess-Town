@@ -20,6 +20,9 @@ import MatchCountdown from '@/components/MatchCountdown';
 import BossAvatar from '@/components/BossAvatar';
 import { buildStoryRecap, getVerdict, personaCoaching, chesterOfflineChat, PERSONA_DESC, buildWhyLesson, buildCoachBullets, winOddsPct, winProbOf, accPoints, accPointsFromDelta } from '@/lib/chester-voice';
 import { isMuted, setMuted, playSfx, isHaptics, setHaptics, buzz } from '@/lib/sounds';
+import {hasHostIdentity} from '@/lib/durable-invites';
+import {useDurableDuel} from '@/lib/use-durable-duel';
+import {duelSnapshot,foldDuel} from '@/lib/durable-duel';
 import PawnWarDuel from '@/components/PawnWarDuel';
 import { bumpPlayStreak } from '@/lib/streak';
 import { RUSH_LEVELS, getRush, rushWin, rushLoss } from '@/lib/boss-rush';
@@ -77,9 +80,12 @@ function PlayChesterGame() {
   const roadVariant: RoadVariant = roadParam === 'brendo' ? 'brendo' : roadParam === 'rost' ? 'rost' : 'joseph';
   const roadActive = roadParam === '1' || roadParam === 'brendo' || roadParam === 'rost';
   const requestedRoom = (searchParams.get('room') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
-  const requestedSeat: 'w' | 'b' = searchParams.get('host') === '1' ? 'w' : 'b';
-  const warMode = requestedMode === 'duel' && searchParams.get('war') === '1';
-  const clockSeconds = Math.min(3600, Math.max(0, parseInt(searchParams.get('clock') || '0', 10) || 0));
+  const durableDuel=requestedMode==='duel'&&searchParams.get('durable')==='1';
+  const savedDuelHost=durableDuel&&hasHostIdentity('chess','duel-'+requestedRoom);
+  const duel=useDurableDuel(requestedRoom,durableDuel,savedDuelHost,false);
+  const requestedSeat: 'w' | 'b' = durableDuel?(savedDuelHost?'w':'b'):searchParams.get('host')==='1'?'w':'b';
+  const warMode = durableDuel&&duel.view?duel.view.war:requestedMode === 'duel' && searchParams.get('war') === '1';
+  const clockSeconds = durableDuel&&duel.view?duel.view.clock:Math.min(3600, Math.max(0, parseInt(searchParams.get('clock') || '0', 10) || 0));
   const mode = requestedMode === '1v1' ? 'PVP_LOCAL' : requestedMode === '2v2' ? '2V2' : requestedMode === 'duel' ? 'PVP_REMOTE' : requestedMode || 'COACH_OPENING';
   const [countdown, setCountdown] = useState(0);
   const coachPromptRef = useRef<CoachPrompt | null>(null);
@@ -185,7 +191,7 @@ function PlayChesterGame() {
   const [mateStage, setMateStage] = useState<0 | 1 | 2>(0);
   const posState = (() => { try { if (!liveFen) return { check: false, mate: false, side: 'w', kingSq: '' }; const c = new Chess(liveFen); let kingSq = ''; if (c.inCheck()) { for (const row of c.board()) for (const q of row) if (q && q.type === 'k' && q.color === c.turn()) kingSq = q.square; } return { check: c.inCheck(), mate: c.isCheckmate(), side: c.turn(), kingSq }; } catch { return { check: false, mate: false, side: 'w', kingSq: '' }; } })();
   const inCheckSide = posState.check ? posState.side : null;
-  const mateNow = posState.mate ? { you: posState.side === 'b' } : null;
+  const mateNow = posState.mate ? { you: mode==='PVP_REMOTE'?posState.side!==requestedSeat:posState.side === 'b' } : null;
   const mateKey = mateNow ? (mateNow.you ? 'w' : 'l') + liveFen : '';
   useEffect(() => { setMateStage(0); if (!mateKey) return; setMateStage(1); try { playSfx('select'); } catch { /* ignore */ } const t = window.setTimeout(() => setMateStage(2), 1100); return () => window.clearTimeout(t); }, [mateKey]);
   const turning = (() => { let best: WhyCard | null = null; for (const c of cardsRef.current) if (c.cp != null && c.cp >= 120 && (!best || (c.cp || 0) > (best.cp || 0))) best = c; return best; })();
@@ -397,14 +403,15 @@ function PlayChesterGame() {
   const [heroTipOpen, setHeroTipOpen] = useState(false);
   const dismissHeroTip = () => { setHeroTipOpen(false); try { localStorage.setItem('ct-hero-tip-seen', '1'); } catch {} };
   useEffect(() => {
-    if (!started) return;
+
+  if (!started) return;
     try { if (!localStorage.getItem('ct-hero-tip-seen')) setHeroTipOpen(true); } catch { setHeroTipOpen(true); }
   }, [started]);
 
   const [duelStatus, setDuelStatus] = useState<'idle' | 'waiting' | 'connected' | 'failed'>('idle');
   const duelConnRef = useRef<{ send: (d: unknown) => void } | null>(null);
   useEffect(() => {
-    if (mode !== 'PVP_REMOTE' || !requestedRoom) return;
+    if (durableDuel||mode !== 'PVP_REMOTE' || !requestedRoom) return;
     let dead = false;
     const cleanupRef: Array<() => void> = [];
     type Conn = { on: (e: string, cb: (a?: unknown) => void) => void; send: (d: unknown) => void };
@@ -494,8 +501,12 @@ function PlayChesterGame() {
     }).catch(() => { if (!dead) setDuelStatus('failed'); });
     return () => { dead = true; cleanupRef.forEach((fn) => fn()); window.removeEventListener('local-chess-move', localMoveRelay); try { peer?.destroy(); } catch {} };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, requestedRoom, requestedSeat]);
+  }, [mode, requestedRoom, requestedSeat,durableDuel]);
 
+  const duelLatest=useRef(duel);duelLatest.current=duel;
+  useEffect(()=>{if(!durableDuel)return;(window as any).__savedDuelCanMove=duel.online&&!duel.pending&&!duel.view?.state.result;return()=>{(window as any).__savedDuelCanMove=false;};},[durableDuel,duel.online,duel.pending,duel.view?.state.result]);
+  useEffect(()=>{if(!durableDuel)return;const propose=(e:Event)=>{const d=(e as CustomEvent).detail;const latest=duelLatest.current;if(latest.online&&!latest.pending)latest.act({move:{from:d?.from,to:d?.to}});};const ready=()=>{const v=duelLatest.current.view;if(v)window.dispatchEvent(new CustomEvent('saved-duel-state',{detail:{snapshot:duelSnapshot(v),state:v.state,result:v.state.result,war:v.war}}));};window.addEventListener('saved-duel-propose',propose);window.addEventListener('chess-board-ready',ready);return()=>{window.removeEventListener('saved-duel-propose',propose);window.removeEventListener('chess-board-ready',ready);};},[durableDuel]);
+  useEffect(()=>{if(!durableDuel)return;setDuelStatus(duel.online?'connected':'waiting');const v=duel.view;if(!v)return;if(v.ready.length===2)setStarted(true);window.dispatchEvent(new CustomEvent('saved-duel-state',{detail:{snapshot:duelSnapshot(v),state:v.state,result:v.state.result,war:v.war}}));setLastFen(v.state.fen);try{const c=new Chess();if(v.state.pgn)c.loadPgn(v.state.pgn);setCapturedPieces(c.history({verbose:true}).filter(m=>m.captured).map(m=>({color:m.color==='w'?'b':'w',type:m.captured!})));}catch{}},[durableDuel,duel.view,duel.online]);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'chester'; text: string; kind?: 'chat' | 'reaction' }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState('');
@@ -534,13 +545,13 @@ function PlayChesterGame() {
   }, [roadActive, isBossFight, isFriendMode, roadLevel, started]);
 
 
-  useEffect(() => { if (started) setCountdown((n) => n + 1); }, [started]);
+  useEffect(() => { if (started&&(!durableDuel||!duelLatest.current.view?.state.pgn)) setCountdown((n) => n + 1); }, [started]);
 
   useEffect(() => {
     if (!started) return;
     setHelpRemaining(bossRef.current.on ? 2 : difficulty === 'BEGINNER' ? 5 : 3); const bc = bossRef.current.on ? 2 : 0; bossCardsRef.current = bc; setBossCards(bc); setCoachPrompt(null);
-    const timer = window.setTimeout(() => window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } })), 0);
-    const capture = (event: Event) => setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
+    const timer = window.setTimeout(() => {if(!durableDuel)window.dispatchEvent(new CustomEvent('load-puzzle', { detail: { mode } }));}, 0);
+    const capture = (event: Event) => !durableDuel&&setCapturedPieces((current) => [...current, (event as CustomEvent<CapturedPiece>).detail]);
     const gameReport = (event: Event) => {
       const detail = (event as CustomEvent<GameReport>).detail;
       if (!isFriendMode) bumpPlayStreak();
@@ -558,7 +569,7 @@ function PlayChesterGame() {
         window.dispatchEvent(new CustomEvent('chester-clear-better'));
         setFreeze(null);
         setEndBanner({ outcome: oc as 'you' | 'opp' | 'draw', cause: causeTxt });
-        setFinalResult(oc === 'draw' ? `DRAW - ${causeTxt.toUpperCase()}` : oc === 'you' ? (causeTxt === 'resignation' ? 'YOU WIN - CHESTER RESIGNED' : `YOU WIN - ${causeTxt.toUpperCase()}`) : (causeTxt === 'resignation' ? 'CHESTER WINS - YOU RESIGNED' : `CHESTER WINS - ${causeTxt.toUpperCase()}`));
+        setFinalResult(oc === 'draw' ? `DRAW - ${causeTxt.toUpperCase()}` : oc === 'you' ? (causeTxt === 'resignation' ? (isFriendMode?'YOU WIN - RIVAL RESIGNED':'YOU WIN - CHESTER RESIGNED') : `YOU WIN - ${causeTxt.toUpperCase()}`) : (causeTxt === 'resignation' ? (isFriendMode?'RIVAL WINS - YOU RESIGNED':'CHESTER WINS - YOU RESIGNED') : `${isFriendMode?'RIVAL':'CHESTER'} WINS - ${causeTxt.toUpperCase()}`));
         } // no auto-advance: the player taps the banner when they have finished inspecting the final board (parent review)
       if (!isFriendMode) {
         const result = /1-0\s*$/.test(detail.pgn || '') ? 'win' : /0-1\s*$/.test(detail.pgn || '') ? 'loss' : 'draw';
@@ -813,7 +824,7 @@ function PlayChesterGame() {
       setChatMessages([...history, { role: 'chester', text: text.charAt(0).toUpperCase() + text.slice(1), kind: 'chat' }]); setChatBusy(false);
       return;
     }
-    if (!geminiTierOn()) { // BUILD 165: deterministic analyzer is the default (0p); Gemini tier only when this flag is on AND credit exists
+    if (durableDuel||!geminiTierOn()) { // BUILD 165: deterministic analyzer is the default (0p); Gemini tier only when this flag is on AND credit exists
       window.setTimeout(() => { setChatMessages([...history, { role: 'chester', text: deterministic(), kind: 'chat' }]); setChatBusy(false); }, 250);
       return;
     }
@@ -845,9 +856,9 @@ function PlayChesterGame() {
   // Duel blitz clock: each client runs both clocks and flags itself; a flag relay tells the rival they won on time.
   const clockKey = `chess-clock:${requestedRoom}:${requestedSeat}:${clockSeconds}`;
   const [clocks, setClocks] = useState(() => mode === 'PVP_REMOTE' ? loadCheckpoint<{w:number;b:number}>(clockKey, value => Boolean(value && Number.isFinite(value.w) && Number.isFinite(value.b) && value.w >= 0 && value.b >= 0)) || { w: clockSeconds, b: clockSeconds } : { w: clockSeconds, b: clockSeconds });
-  useEffect(() => { if (mode === 'PVP_REMOTE' && clockSeconds) saveCheckpoint(clockKey, clocks); }, [mode, clockKey, clockSeconds, clocks]);
+  useEffect(() => { if (!durableDuel&&mode === 'PVP_REMOTE' && clockSeconds) saveCheckpoint(clockKey, clocks); }, [mode, clockKey, clockSeconds, clocks]);
   useEffect(() => { const receive = (event: Event) => setClocks((event as CustomEvent<{w:number;b:number}>).detail); window.addEventListener('chess-clock-sync', receive); return () => window.removeEventListener('chess-clock-sync', receive); }, []);
-  useEffect(() => { if (mode === 'PVP_REMOTE' && requestedSeat === 'w' && clockSeconds && duelStatus === 'connected') { try { duelConnRef.current?.send({ type: 'clock', clocks }); } catch {} } }, [mode, requestedSeat, clockSeconds, duelStatus, Math.ceil(clocks.w), Math.ceil(clocks.b)]);
+  useEffect(() => { if (!durableDuel&&mode === 'PVP_REMOTE' && requestedSeat === 'w' && clockSeconds && duelStatus === 'connected') { try { duelConnRef.current?.send({ type: 'clock', clocks }); } catch {} } }, [mode, requestedSeat, clockSeconds, duelStatus, Math.ceil(clocks.w), Math.ceil(clocks.b)]);
   const [flagResult, setFlagResult] = useState<'won' | 'lost' | null>(null);
   const [matchOver, setMatchOver] = useState(false);
   const turnColor: 'w' | 'b' = lastFen.split(' ')[1] === 'b' ? 'b' : 'w';
@@ -859,18 +870,21 @@ function PlayChesterGame() {
     return () => { window.removeEventListener('match-complete', over); window.removeEventListener('duel-turn', turn); };
   }, []);
   useEffect(() => {
-    if (mode !== 'PVP_REMOTE' || requestedSeat !== 'w' || !clockSeconds || duelStatus !== 'connected' || !started || matchOver || flagResult) return;
+    if (durableDuel||mode !== 'PVP_REMOTE' || requestedSeat !== 'w' || !clockSeconds || duelStatus !== 'connected' || !started || matchOver || flagResult) return;
     const timer = setInterval(() => { setClocks((c) => ({ ...c, [turnColor]: Math.max(0, c[turnColor] - 0.25) })); }, 250);
     return () => clearInterval(timer);
   }, [mode, clockSeconds, duelStatus, started, matchOver, flagResult, turnColor]);
   useEffect(() => {
-    if (flagResult || !clockSeconds || !started || matchOver) return;
+    if (durableDuel||flagResult || !clockSeconds || !started || matchOver) return;
     if (clocks.w > 0 && clocks.b > 0) return;
     setMatchOver(true);
     const flagged = clocks.w <= 0 ? 'w' : 'b';
     if (flagged === requestedSeat) { setFlagResult('lost'); try { duelConnRef.current?.send({ type: 'flag' }); } catch {} }
     else setFlagResult('won');
   }, [clocks, clockSeconds, flagResult, started, matchOver, requestedSeat]);
+  useEffect(()=>{if(!durableDuel)return;const update=()=>{const v=duelLatest.current.view;if(!v)return;const t=foldDuel(v,Date.now());setClocks({w:t.w/1000,b:t.b/1000});if(v.state.result){setMatchOver(true);if(v.state.result.startsWith('timeout:'))setFlagResult(v.state.result==='timeout:'+requestedSeat?'lost':'won');}};update();const t=setInterval(update,200);return()=>clearInterval(t);},[durableDuel,requestedSeat]);
+  const savedDuelLink=typeof window==='undefined'?'':location.origin+'/play-chester?mode=duel&room='+requestedRoom+'&durable=1'+(warMode?'&war=1':'')+(clockSeconds?'&clock='+clockSeconds:'');
+  const savedDuelStatus=durableDuel?<div className="saved-duel-status" role="status">{duel.error||(!duel.online?(duel.view?.clock?'Rival away. Moves paused; active clock keeps running.':'Rival away. Your saved board is waiting.'):duel.pending?'Sending move. Waiting for host confirmation.':'Saved duel · same link to return')}{duel.view?.state.result&&<b>{duel.view.state.result.startsWith('resign:')?(duel.view.state.result==='resign:'+requestedSeat?' You resigned.':' Rival resigned. You win.'):duel.view.state.result.startsWith('win:')?' '+(duel.view.state.result.split(':')[1]==='w'?'White':'Black')+' wins by '+duel.view.state.result.split(':')[2]+'.':duel.view.state.result.startsWith('draw:')?' Draw.':''} <a href="/duel">New duel</a></b>}</div>:null;
   const fmtClock = (secs: number) => { const t = Math.max(0, Math.ceil(secs)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
   const rivalSeat: 'w' | 'b' = requestedSeat === 'w' ? 'b' : 'w';
   const clockBar = clockSeconds > 0 ? <div className="duel-clock-bar" aria-live="off">
@@ -884,6 +898,7 @@ function PlayChesterGame() {
   const spendShield = () => { if (!loot.shield) return; setLoot((l) => ({ ...l, shield: l.shield - 1 })); rewindAndRetry(); };
   const help = () => { if (isThinking) return; if (bossRef.current.on) { if (!bossCardsRef.current) return; bossCardsRef.current -= 1; setBossCards(bossCardsRef.current); } else { if (!helpRemaining) return; setHelpRemaining((n) => n - 1); } setIsThinking(true); window.dispatchEvent(new CustomEvent('chester-help-request')); };
 
+  if(durableDuel&&(!duel.view||duel.view.ready.length!==2))return <main className="saved-ck saved-ck-entry"><h1>Your saved duel</h1><p role="status">{duel.status}</p>{duel.error&&<p role="alert">{duel.error}</p>}{duel.expiry&&<p>Invite until {new Date(duel.expiry).toLocaleDateString('en-GB')}. Use this same link in this browser.</p>}{duel.view?<><p>{duel.view.war?'Pawn War':'Chess with Chester'} · {duel.view.clock?duel.view.clock/60+' minutes each, active clocks keep running while away.':'No clock.'}</p><p>{duel.online?'Both saved players connected.':'Waiting for your rival to return.'} You are {requestedSeat==='w'?'White':'Black'}.</p>{savedDuelHost&&<input aria-label="Duel invite link" readOnly value={savedDuelLink} onFocus={e=>e.target.select()}/>}<p>{duel.view.hostName}: {duel.view.ready.includes(0)?'Ready':'Not ready'} · {duel.view.guestName}: {duel.view.ready.includes(1)?'Ready':'Not ready'}</p><button disabled={!duel.online||duel.pending||duel.view.ready.includes(savedDuelHost?0:1)} onClick={()=>duel.act({ready:true})}>{duel.view.ready.includes(savedDuelHost?0:1)?'READY · WAITING':'READY FOR THE DUEL'}</button></>:<p>Your place is saved if the invite is active. The host may be away.</p>}<a href="/duel">New duel</a></main>;
   if (!started) return <main className="chester-start-screen">
     <section><div className="chester-setup-host" aria-label="Chester, your host"><ChesterCompanion /></div><span>{isFriendMode ? modeKicker : 'CHESS-TOWN ACADEMY'}</span><h1>{isFriendMode ? modeTitle : 'PLAY CHESTER'}</h1><p>{isFriendMode ? (mode === 'PVP_LOCAL' ? 'Two players, one device. Hand it over after each move - Chester commentates every blunder.' : 'Two players, separate devices. Keep this host tab open; refreshing it restores the saved board.') : 'Pick your opponent. Chester coaches the first three decisions, then lets you fight.'}</p>
       {!isFriendMode && drill && <p className="chester-drill"> TODAY'S DRILL: {drill.drill}{drill.hanging ? ` Last game: ${drill.hanging} loose piece${drill.hanging === 1 ? '' : 's'} left hanging.` : drill.missed ? ` Last game: ${drill.missed} winning tactic${drill.missed === 1 ? '' : 's'} missed.` : ''}</p>}
@@ -940,7 +955,7 @@ function PlayChesterGame() {
     </section>
   </main>;
 
-  if (warMode) return <PawnWarDuel playerColor={requestedSeat} clockBar={clockBar} flagBanner={flagBanner} onTurn={(f) => setLastFen(f)} onGameOver={() => setMatchOver(true)} />;
+  if (warMode) return <div className={durableDuel?"saved-war-shell":""}>{savedDuelStatus}<PawnWarDuel durable={durableDuel} locked={durableDuel&&(!duel.online||duel.pending||!!duel.view?.state.result)} playerColor={requestedSeat} clockBar={clockBar} flagBanner={flagBanner} onTurn={(f) => setLastFen(f)} onGameOver={() => setMatchOver(true)} /></div>;
 
   const lesson = LESSONS[lessonStep];
   const material = splitMaterial(capturedPieces, 'w');
@@ -970,7 +985,8 @@ function PlayChesterGame() {
     const next = Math.max(0, Math.min(total - 1, cur + d));
     window.dispatchEvent(new CustomEvent('replay-step', { detail: { index: next } }));
   };
-  return <main data-challenge={challenge && !challenge.done ? '1' : '0'} className={`chester-game${boss ? ` boss-${boss.name.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}`} aria-label="Play Chester guided game">
+  return <main data-challenge={challenge && !challenge.done ? '1' : '0'} className={`chester-game${durableDuel?' chester-game--saved-duel':''}${boss ? ` boss-${boss.name.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}`} aria-label="Play Chester guided game">
+    {savedDuelStatus}
     {bossStrike > 0 && <div key={bossStrike} className="boss-strike" aria-hidden="true" />}
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-hud">
@@ -990,7 +1006,7 @@ function PlayChesterGame() {
       </div>
       <HeroScoreboard material={material} youLabel={isFriendMode ? 'P1' : 'YOU'} oppLabel={isFriendMode ? 'P2' : (boss ? boss.name.toUpperCase() : roadVariant === 'rost' ? 'DAVID ROST' : 'CHESTER')} oppThinking={isThinking || calculating} turnSide={turnSide} tugPct={tugPct} lead={material.lead} />
       {isJosephFight && started && <div className="joseph-gauge" aria-label={`Joseph pressure ${Math.round(josephPressure)} percent`}><i style={{ height: `${josephPressure}%` }} /><span>JOSEPH<br/>PRESSURE</span></div>}
-      <div style={{ position: 'relative' }} className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />{mode === 'PVP_REMOTE' && duelStatus !== 'connected' && <div role="status" style={{position:'absolute',inset:0,zIndex:50,display:'grid',placeItems:'center',background:'#100b24b8',color:'white',padding:24,textAlign:'center'}}>Reconnecting the saved board. Moves are paused until your rival returns.</div>}
+      <div style={{ position: 'relative' }} className={`chester-board-frame ${shake ? 'chester-board-frame--shake' : ''} ${coachPrompt?.mate ? 'is-mate' : coachPrompt?.check ? 'is-check' : ''}`}><DojoEngine mode={mode} playerColor={mode === 'PVP_REMOTE' ? requestedSeat : null} difficulty={difficulty} rookieTeaching={difficulty === 'BEGINNER' && !isFriendMode} domJails />{mode === 'PVP_REMOTE' && (duelStatus !== 'connected'||durableDuel&&(duel.pending)) && <div role="status" style={{position:'absolute',inset:0,zIndex:50,display:'grid',placeItems:'center',background:'#100b24b8',color:'white',padding:24,textAlign:'center'}}>{duel.view?.state.result?'Match finished.':duel.pending?'Waiting for confirmed move.':'Reconnecting the saved board. Moves are paused until your rival returns.'}</div>}
         {bp.line && bp.opening && <div className="bp-line" style={{ borderColor: bp.opening.color }}>
           <small style={{ color: bp.line.kind === 'abort' ? '#f59e0b' : bp.opening.color }}>{bp.line.kind === 'abort' ? '⚠ BLUEPRINT ABORTED' : bp.line.kind === 'handoff' ? '★ BLUEPRINT COMPLETE' : `BLUEPRINT · ${bp.opening.name.toUpperCase()} · ${Math.min(bp.line.step + 1, bp.line.total)}/${bp.line.total}`}</small>
           <TypeLine text={bp.line.text} />
@@ -1021,13 +1037,13 @@ function PlayChesterGame() {
         <ArrowOverlay kingSq={posState.kingSq} mate={!!mateNow} arrows={[...(arrowsOn && whyCard ? whyCard.boardOverlayArrows : []), ...(chipArrow ? [{ ...chipArrow, intent: 'ENGINE_BEST' as const }] : hintStage === 3 && hintInfo?.engineBestUci ? [{ from: hintInfo.engineBestUci.slice(0,2), to: hintInfo.engineBestUci.slice(2,4), intent: 'ENGINE_BEST' as const }] : [])]} rings={[...(arrowsOn && whyCard ? whyCard.highlightedSquares.filter((q) => q.type === 'HANGING_PIECE').map((q) => q.square) : []), ...(hintStage > 0 && hintInfo?.hintSquare ? [hintInfo.hintSquare, ...(hintStage === 3 && hintInfo.engineBestUci ? [hintInfo.engineBestUci.slice(2,4)] : [])] : [])]} />
         {endBanner && typeof document !== 'undefined' && createPortal(<div className={`chester-endbanner chester-endbanner--${endBanner.outcome}`} role="alertdialog" aria-label="Game over" onClick={() => { setEndBanner(null); setReportOpen(true); }}>
           {endBanner.outcome === 'you' && <span className="chester-endbanner__confetti" aria-hidden="true">    </span>}
-          <b>{endBanner.outcome === 'draw' ? ' DRAW' : endBanner.outcome === 'you' ? ' YOU WIN' : ' CHESTER WINS'}</b>
+          <b>{endBanner.outcome === 'draw' ? ' DRAW' : endBanner.outcome === 'you' ? ' YOU WIN' : isFriendMode?' RIVAL WINS':' CHESTER WINS'}</b>
           <span>{endBanner.outcome === 'draw' ? `by ${endBanner.cause}` : endBanner.cause === 'resignation' ? 'by resignation' : `by ${endBanner.cause}`}</span>
           <small>tap to see the full report</small>
         </div>, document.body)}
         {inCheckSide && !mateNow && <div className="chester-check-banner" role="status">⚠ CHECK!</div>}
-        {mateNow && !endBanner && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔ CHECKMATE - YOU WIN!' : ' CHECKMATE - CHESTER WINS!'}</div>}
-        {mateStage === 2 && mateNow && !endBanner && !(reportOpen && finalResult) && <div className="chester-turning" role="dialog" aria-label="Match debrief">
+        {mateNow && !endBanner && <div className={`chester-mate-ribbon chester-mate-ribbon--${mateNow.you ? 'win' : 'loss'}`} role="status">{mateNow.you ? '⚔ CHECKMATE - YOU WIN!' : isFriendMode?' CHECKMATE - RIVAL WINS!':' CHECKMATE - CHESTER WINS!'}</div>}
+        {!durableDuel&&mateStage === 2 && mateNow && !endBanner && !(reportOpen && finalResult) && <div className="chester-turning" role="dialog" aria-label="Match debrief">
           <b>{mateNow.you ? ' WELL PLAYED' : 'CRITICAL TURNING POINT'}</b>
           {mateNow.you ? <p>{cardsRef.current.filter((c) => c.grade === 'BRILLIANT' || c.grade === 'STRONG').length} engine-grade moves. Chester wants a rematch.</p>
             : turning ? <p>Move {turning.moveNo}: {turning.san} cost {(turning.cp! / 100).toFixed(1)} pawns. {turning.engineBlueprintLine.replace(/^\s*/, '')}</p> : <p>No single big mistake. It was a slow squeeze: take the engine-grade move more often.</p>}
@@ -1079,7 +1095,7 @@ function PlayChesterGame() {
           }} />}
         </div>
         <div className="chester-teleprompter__body" ref={teleRef} aria-live="polite">
-          {replyNow && <div className="chester-reply-now"><b>{boss?.name || 'Chester'} played {replyNow.san}. Your move.</b>{replyNow.check && <p>Your king is in check. Answer the check before following any earlier suggestion.</p>}</div>}
+          {!isFriendMode&&replyNow && <div className="chester-reply-now"><b>{boss?.name || 'Chester'} played {replyNow.san}. Your move.</b>{replyNow.check && <p>Your king is in check. Answer the check before following any earlier suggestion.</p>}</div>}
           {pendingCard
             ? <div className="chester-why chester-why--pending" key={`pending-${pendingCard.ply}`}>
                 <div className="chester-why__head"><span className="chester-why__san">{pendingCard.san}</span><span className="chester-why__grade"> GRADING…</span></div>
@@ -1095,7 +1111,7 @@ function PlayChesterGame() {
                 {castLine && castLine.key === `${whyCard.ply}-${whyCard.san}` && <p className="chester-why__row chester-why__row--cast">{castLine.text}</p>}
                 {!isFriendMode && <button type="button" className="chester-chat-nudge" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }}>{whyCard.grade === 'BLUNDER' || whyCard.grade === 'SHAKY' ? ' Not sure why? Ask Chester to explain' : ' Want more? Ask Chester about this move'}</button>}
               </div>
-            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt && coachReply ? coachReply : lesson.body || 'Make a move. I will grade it here, in plain English, with the exact squares.'}</p>}
+            : <p className="chester-teleprompter__prose" key={verdictKey}>{coachPrompt && coachReply ? coachReply : durableDuel&&duel.view?.state.pgn?'Last confirmed move: '+(turnColor==='w'?'Black':'White')+' '+(duelSnapshot(duel.view).timeline.at(-1)?.san||'')+'. '+(duel.view.state.result?'The match is finished.':(turnColor==='w'?'White':'Black')+' to move. Use Hint or Chat for a fresh engine idea.'):lesson.body || 'Make a move. I will grade it here, in plain English, with the exact squares.'}</p>}
           {hintStage > 0 && <p className="chester-why__hint" aria-live="polite"> HINT {hintStage}/3 - {hintFor(hintInfo, hintStage as 1 | 2 | 3)}</p>}
         </div>
         {!endBanner && <div className="chester-hud-actions" role="group" aria-label="Chester actions">
@@ -1227,7 +1243,7 @@ function PlayChesterGame() {
         </div>
         <div className="chester-navdrawer__actions">
           {resignArmed
-            ? <button type="button" className="is-confirm" onClick={() => { setMenuOpen(false); setResignArmed(false); window.dispatchEvent(new CustomEvent('request-resign')); }}><b>⚠ CONFIRM RESIGN?</b><small>ends the match, shows your report</small></button>
+            ? <button type="button" className="is-confirm" onClick={() => { setMenuOpen(false); setResignArmed(false); if(durableDuel)duel.act({resign:true});else window.dispatchEvent(new CustomEvent('request-resign')); }}><b>⚠ CONFIRM RESIGN?</b><small>ends the match, shows your report</small></button>
             : <button type="button" onClick={() => setResignArmed(true)}><b> RESIGN MATCH</b><small>asks again before it fires</small></button>}
           {!isFriendMode && <button type="button" onClick={() => { setMenuOpen(false); setResignArmed(false); setStarted(false); }}><b> CHANGE LEVEL</b><small>back to the level select</small></button>}
           <Link href="/?choose=mode&town=chess" className="chester-navdrawer__link" onClick={() => setMenuOpen(false)}><b> BACK TO HUB</b><small>leave the board for Chesterville</small></Link>
@@ -1314,7 +1330,7 @@ function FreezeSpotlight({ from, to }: { from: string; to: string }) {
 
 // BUILD 165: Gemini tier is ON only for Vercel PREVIEW hosts (hostname contains "-git-") and never in production; any failure keeps the deterministic card.
 function geminiTierOn(): boolean { return false; }
-async function askChesterChat(payload: string): Promise<string> { return geminiTierOn() ? askChesterChatRemote(payload) : ''; }
+async function askChesterChat(payload: string): Promise<string> { if(typeof window!=='undefined'&&new URLSearchParams(location.search).get('durable')==='1')return '';return geminiTierOn() ? askChesterChatRemote(payload) : ''; }
 
 function MoveChipText({ text, onChip }: { text: string; onChip: (san: string) => void }) {
   const parts = text.split(/(\bO-O(?:-O)?[+#]?|\b[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)/g);

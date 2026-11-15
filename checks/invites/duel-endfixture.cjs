@@ -1,0 +1,1 @@
+const {Chess}=require('/home/sandbox/ct-fit/node_modules/chess.js'),fs=require('fs');const war=process.argv[2]==='war';const c=new Chess(war?'4k3/P7/8/8/8/8/7p/4K3 w - - 0 1':undefined);if(!war)for(const san of ['f3','e5','g4'])c.move(san);fs.writeFileSync('/tmp/duel240-endfixture.json',JSON.stringify({pgn:c.pgn(),fen:c.fen()}));

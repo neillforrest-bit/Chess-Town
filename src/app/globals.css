@@ -5074,3 +5074,17 @@ body .trivia-brawl-page.trivia-showtime.trivia-party-active .quiz-result-pages>n
 .battle-arena-saved .live-accuracy{width:100%;max-height:28px;min-height:0;flex:none}.battle-arena-saved .battle-actions{margin:0;width:100%;max-width:580px;gap:4px;flex:none}.battle-arena-saved .battle-wildcards{position:static;width:100%;padding:4px;margin:0;box-sizing:border-box}.battle-arena-saved .battle-wildcards__label{display:none}.battle-arena-saved .battle-wildcards__row{gap:4px}.battle-arena-saved .battle-btn--wild{font-size:11px;min-height:34px;padding:6px;flex:1;white-space:nowrap}.battle-arena-saved .battle-btn--timeout{min-height:30px;font-size:11px;padding:5px 10px;margin:0}.battle-arena-saved .battle-outcome{font-size:14px;margin:2px 0}.battle-arena-saved .battle-dossier{display:none}
 .battle-shell.battle-arena-saved{inset:auto;top:0}.battle-arena-saved .acc2{flex:none;margin:0;width:100%;max-width:580px;min-height:24px;max-height:28px}.battle-arena-saved .acc2__title{display:none}.battle-arena-saved .acc2__row{font-size:10px;min-height:10px}.battle-arena-saved .acc2__name,.battle-arena-saved .acc2__pct{font-size:10px}
 .battle-arena-saved .battle-actions{display:flex;flex-direction:column;align-items:center;justify-content:center}.battle-arena-saved .acc2__cap{display:none}.battle-arena-saved .battle-commentary-slot{height:34px;min-height:34px;max-height:34px}.battle-arena-saved .battle-board{width:min(100%,calc(100dvh - 370px),520px)}
+
+/* Saved duels keep their status visible without covering the match menu. */
+body:has(.chester-game--saved-duel) nav.gt-shared-nav {display:none!important}
+.chester-game--saved-duel>.saved-duel-status {flex:0 0 22px;min-height:22px;font:700 11px/1.25 Arial,sans-serif;color:#f2e7ff;background:#30203e;border:1px solid #8863b1;border-radius:6px;padding:3px 6px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center}
+.chester-game.chester-game--saved-duel .chester-game__board .chester-board-frame {width:min(100%,500px,calc(var(--ct-vh,100dvh) - 354px))!important}
+.saved-war-shell {height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.saved-war-shell>.saved-duel-status {flex:0 0 auto;font:700 11px/1.25 Arial,sans-serif;padding:4px 8px;text-align:center;color:#f2e7ff;background:#30203e}
+.saved-war-shell>.minigame-page {flex:1;min-height:0;height:auto;overflow:hidden;padding:8px;gap:6px}
+.saved-war-shell .minigame-board {width:min(100%,calc(100dvh - 310px),440px);flex:0 0 auto}
+.saved-war-shell .minigame-head h1 {font-size:24px;margin:2px}
+.saved-war-shell .minigame-head p {font-size:12px;margin:2px}
+.saved-war-shell .minigame-message {font-size:12px;margin:2px}
+body:has(.chester-game--saved-duel) nav.global-nav.gt-shared-nav {display:none!important}
+.chester-game--saved-duel>.saved-duel-status{gap:4px;flex-wrap:wrap;height:auto;flex-basis:auto;flex-shrink:0;min-height:22px}.saved-duel-status a{color:#d8efa1;text-decoration:underline}

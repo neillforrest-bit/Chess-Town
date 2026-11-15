@@ -54,8 +54,8 @@ function oneStepAway(chess: Chess, playerColor: 'w' | 'b'): string | null {
   return null;
 }
 
-export default function PawnWarDuel({ playerColor, clockBar = null, flagBanner = null, onTurn, onGameOver }: {
-  playerColor: 'w' | 'b';
+export default function PawnWarDuel({ durable=false,locked=false,playerColor, clockBar = null, flagBanner = null, onTurn, onGameOver }: {
+  durable?:boolean;locked?:boolean;playerColor: 'w' | 'b';
   clockBar?: React.ReactNode;
   flagBanner?: React.ReactNode;
   onTurn?: (fen: string) => void;
@@ -72,6 +72,7 @@ export default function PawnWarDuel({ playerColor, clockBar = null, flagBanner =
 
   const applyMove = useCallback((from: string, to: string, mover: 'w' | 'b', viaRelay: boolean) => {
     if (outcomeRef.current) return;
+    if(durable&&!viaRelay){if(!locked)window.dispatchEvent(new CustomEvent('saved-duel-propose',{detail:{from,to}}));return;}
     const chess = chessRef.current;
     if (chess.turn() !== mover) return;
     const before = chess.fen();
@@ -97,17 +98,19 @@ export default function PawnWarDuel({ playerColor, clockBar = null, flagBanner =
     const who = mover === playerColor ? 'You' : 'Rival';
     const tail = chess.turn() === playerColor ? 'Your move.' : 'Rival to move.';
     setNote(tension ? `${tension} ${tail}` : `${who}: ${describeMove(before, `${from}${to}`) || move.san}. ${tail}`);
-  }, [onTurn, onGameOver, playerColor]);
+  }, [onTurn, onGameOver, playerColor,durable,locked]);
 
   useEffect(() => {
     const onRemote = (event: Event) => {
       const d = (event as CustomEvent<{ from?: string; to?: string }>).detail;
-      if (d?.from && d?.to) applyMove(d.from, d.to, playerColor === 'w' ? 'b' : 'w', true);
+      if (!durable&&d?.from && d?.to) applyMove(d.from, d.to, playerColor === 'w' ? 'b' : 'w', true);
     };
     window.addEventListener('remote-chess-move', onRemote);
     return () => window.removeEventListener('remote-chess-move', onRemote);
   }, [applyMove, playerColor]);
 
+  const applyRef=useRef(applyMove);applyRef.current=applyMove;
+  useEffect(()=>{if(!durable)return;const receive=(e:Event)=>{const data=(e as CustomEvent).detail?.snapshot;if(!data||typeof data.pgn!=='string'||data.fen===chessRef.current.fen())return;try{const c=new Chess(WAR_START);if(data.pgn)c.loadPgn(data.pgn);if(c.fen()!==data.fen)return;const old=chessRef.current.history(),next=c.history();if(next.length===old.length+1&&next.slice(0,-1).join('|')===old.join('|')&&c.history({verbose:true}).at(-1)?.before===chessRef.current.fen()){const m=c.history({verbose:true}).at(-1)!;applyRef.current(m.from,m.to,m.color,true);}if(chessRef.current.fen()!==c.fen()){chessRef.current=c;plyRef.current=next.length;setFen(c.fen());const m=c.history({verbose:true}).at(-1);setLastMove(m?{from:m.from,to:m.to}:null);const judged=judge(c);outcomeRef.current=judged;setOutcome(judged);setNote(c.turn()===playerColor?'Saved board restored. Your move.':'Saved board restored. Rival to move.');onTurn?.(c.fen());if(judged)onGameOver?.();}}catch{}};window.addEventListener('saved-duel-state',receive);window.dispatchEvent(new CustomEvent('chess-board-ready'));return()=>window.removeEventListener('saved-duel-state',receive);},[durable,playerColor]);
   const localMove = useCallback((from: string, to: string) => applyMove(from, to, playerColor, false), [applyMove, playerColor]);
 
   const iWon = Boolean(outcome && outcome.winner === playerColor);
@@ -120,7 +123,7 @@ export default function PawnWarDuel({ playerColor, clockBar = null, flagBanner =
     {clockBar}
     {flagBanner}
     <div className={`minigame-board ${outcome ? (iWon ? 'minigame-board--hit' : outcome.winner === 'draw' ? '' : 'minigame-board--miss') : ''}`}>
-      <TapBoard fen={fen} orientation={playerColor} locked={Boolean(outcome)} lastMove={lastMove} onMove={localMove} label="Pawn War duel board - your pieces at the bottom" />
+      <TapBoard fen={fen} orientation={playerColor} locked={locked||Boolean(outcome)} lastMove={lastMove} onMove={localMove} label="Pawn War duel board - your pieces at the bottom" />
     </div>
     <p className={`minigame-message ${outcome && iWon ? 'minigame-message--win' : ''}`} aria-live="polite">
       {outcome ? `${iWon ? '🏆 ' : outcome.winner === 'draw' ? '🤝 ' : '💀 '}${reasonFor(outcome, playerColor)}` : note}

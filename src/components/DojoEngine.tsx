@@ -1361,7 +1361,9 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }, responseDelay);
           };
 
+          const savedDuel = mode==='PVP_REMOTE'&&new URLSearchParams(window.location.search).get('durable')==='1';
           const playUserMove = (from: string, to: string, isRemote = false) => {
+            if(savedDuel&&!isRemote){if(!(window as any).__savedDuelCanMove)return;window.dispatchEvent(new CustomEvent('saved-duel-propose',{detail:{from,to}}));return;}
             const fenBeforeMove = gameRef.current.chess.fen();
             const moveResult = gameRef.current.chess.move({ from, to, promotion: 'q' });
             if (!moveResult) return;
@@ -1427,7 +1429,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
 
           const canControlPiece = (pieceColor: string) => {
             if (gameRef.current.isGameOver || pieceColor !== gameRef.current.chess.turn()) return false;
-            if (mode === 'PVP_REMOTE') return pieceColor === playerColor;
+            if (mode === 'PVP_REMOTE') return (!savedDuel||(window as any).__savedDuelCanMove)&&pieceColor === playerColor;
             if (mode === 'PVP_LOCAL') return true;
             return pieceColor === 'w';
           };
@@ -1472,12 +1474,15 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             } catch { /* Invalid peer snapshot does not replace this board. */ }
           };
           const readChessSnapshot = () => window.dispatchEvent(new CustomEvent('chess-sync-state', { detail: chessSnapshot() }));
-          const acceptChessSnapshot = (event: any) => { if (mode === 'PVP_REMOTE' && playerColor === 'b') applyChessSnapshot(event.detail); };
+          const acceptChessSnapshot = (event: any) => { if (!savedDuel&&mode === 'PVP_REMOTE' && playerColor === 'b') applyChessSnapshot(event.detail); };
+          const acceptSavedDuel=(event:any)=>{if(!savedDuel)return;const snapshot=event.detail?.snapshot;if(!snapshot||snapshot.fen===gameRef.current.chess.fen())return;try{const c=new Chess();if(snapshot.pgn)c.loadPgn(snapshot.pgn);const old=gameRef.current.chess.history(),next=c.history();if(next.length===old.length+1&&next.slice(0,-1).join('|')===old.join('|')&&c.history({verbose:true}).at(-1)?.before===gameRef.current.chess.fen()){const move=c.history({verbose:true}).at(-1);playUserMove(move.from,move.to,true);}if(gameRef.current.chess.fen()!==snapshot.fen)applyChessSnapshot(snapshot);}catch{}};
+          window.addEventListener('saved-duel-state',acceptSavedDuel);
+          scene.events.once('destroy',()=>window.removeEventListener('saved-duel-state',acceptSavedDuel));
           window.addEventListener('chess-sync-request', readChessSnapshot);
           window.addEventListener('chess-sync-apply', acceptChessSnapshot);
           scene.events.once('destroy', () => { window.removeEventListener('chess-sync-request', readChessSnapshot); window.removeEventListener('chess-sync-apply', acceptChessSnapshot); });
           renderBoard = () => {
-            if (mode === 'PVP_REMOTE') saveCheckpoint(chessKey(), chessSnapshot());
+            if (!savedDuel&&mode === 'PVP_REMOTE') saveCheckpoint(chessKey(), chessSnapshot());
             if (!scene.add || !scene.sys || !scene.sys.isActive()) return; // BUILD 155: a destroyed remount scene must never paint (was 12 boot crashes)
             window.dispatchEvent(new CustomEvent('chester-position-now', { detail: { fen: gameRef.current.chess.fen(), ply: gameRef.current.ply, san: gameRef.current.chess.history().at(-1) || null } }));
             (gameRef.current as any).selectLift = null;
@@ -2015,7 +2020,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
           };
           window.addEventListener('brawl-position', handleBrawlPosition);
           const handleRemoteMove = (event: any) => {
-            if (mode !== 'PVP_REMOTE') return;
+            if (savedDuel||mode !== 'PVP_REMOTE') return;
             const { from, to, fen } = event.detail || {};
             if (from && to && gameRef.current.chess.turn() !== playerColor) {
               playUserMove(from, to, true);
@@ -2156,7 +2161,7 @@ export default function DojoEngine({ mode = 'STANDBY', playerColor = null, diffi
             }
           });
 
-          if (mode === 'PVP_REMOTE') {
+          if (!savedDuel&&mode === 'PVP_REMOTE') {
             const saved = loadCheckpoint<any>(chessKey(), value => Boolean(value && typeof value.pgn === 'string' && typeof value.fen === 'string'));
             if (saved) applyChessSnapshot(saved);
           }
