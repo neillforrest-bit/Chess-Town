@@ -1,6 +1,6 @@
 import requests,json,pathlib,secrets,hashlib,uuid
 from playwright.sync_api import sync_playwright,expect
-base='https://chess-town-piu9f608j-neillo.vercel.app';env=json.load(open('/tmp/name-fix-project-env.json'));url=next(e['value'] for e in env['envs'] if e['key']=='NEXT_PUBLIC_SUPABASE_URL' and 'preview' in e.get('target',[]));key=pathlib.Path('/home/sandbox/.vault/supabase-service-role-key-hnhltrftwbxpwdjxdijv-fe5f60/password').read_text().strip();h={'apikey':key,'Authorization':'Bearer '+key};pid=str(uuid.uuid4());token=secrets.token_hex(32);name='QA'+secrets.token_hex(4);row={'id':pid,'username':name,'username_key':name.lower(),'credential_hash':hashlib.sha256(token.encode()).hexdigest()}
+base='https://chess-town-piu9f608j-neillo.vercel.app';url='https://hnhltrftwbxpwdjxdijv.supabase.co';key=pathlib.Path('/home/sandbox/.vault/supabase-service-role-key-hnhltrftwbxpwdjxdijv-fe5f60/password').read_text().strip();h={'apikey':key,'Authorization':'Bearer '+key};pid=str(uuid.uuid4());token=secrets.token_hex(32);name='QA'+secrets.token_hex(4);row={'id':pid,'username':name,'username_key':name.lower(),'credential_hash':hashlib.sha256(token.encode()).hexdigest()}
 r=requests.post(url+'/rest/v1/find_players',headers=h,json=row);r.raise_for_status()
 try:
  r=requests.get(base+'/api/find-identity',headers={'x-find-player':token});r.raise_for_status();assert r.json()=={'id':pid,'username':name};r=requests.post(base+'/api/find-identity',headers={'x-find-player':token},json={'username':'Any New Name'});r.raise_for_status();assert r.json()['id']==pid
