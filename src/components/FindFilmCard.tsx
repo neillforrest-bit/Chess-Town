@@ -4,8 +4,8 @@ import { poster } from '@/lib/game';
 import {useFilmReviews} from '@/lib/find/reviews';
 import type { FindMovie } from '@/lib/find/types';
 import styles from './FindOurFilm.module.css';
-export default function FindFilmCard({movie,save,saved,onDetails,simple=false}:{movie:FindMovie;save?:()=>void;saved?:boolean;onDetails?:(open:boolean)=>void;simple?:boolean}){
- const code=typeof location==='undefined'?'':location.pathname.split('/').pop()||'',{meta,retry}=useFilmReviews(code,movie.id);
+export default function FindFilmCard({movie,save,saved,onDetails,simple=false,localOnly=false}:{movie:FindMovie;save?:()=>void;saved?:boolean;onDetails?:(open:boolean)=>void;simple?:boolean;localOnly?:boolean}){
+ const code=typeof location==='undefined'?'':location.pathname.split('/').pop()||'',{meta,retry}=useFilmReviews(code,movie.id,!localOnly);
  const [details,setDetails]=useState(false),[tab,setTab]=useState<'story'|'scores'|'awards'>('story'),[page,setPage]=useState(0);
  useEffect(()=>{onDetails?.(details);return()=>onDetails?.(false);},[details,onDetails]);
  const chunks=(text:string,size=360)=>{const words=text.split(/\s+/),pages:string[]=[];let line='';for(const word of words){if(line.length+word.length>size&&line){pages.push(line);line='';}line+=(line?' ':'')+word;}if(line)pages.push(line);return pages.length?pages:['Unavailable'];};
