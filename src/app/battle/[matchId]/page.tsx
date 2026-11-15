@@ -3,6 +3,9 @@
 // seated, moves + clocks + results synced over a Realtime broadcast channel. Each phone also keeps a
 // local copy so a reload (or a closed opponent tab) does not lose the game.
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import {hasHostIdentity} from '@/lib/durable-invites';
+import {useDurableBattle} from '@/lib/use-durable-battle';
+import {FRESH,type Synced} from '@/lib/durable-battle';
 import { useParams } from 'next/navigation';
 import { Chess } from 'chess.js';
 import TapBoard from '@/components/TapBoard';
@@ -16,16 +19,6 @@ import type { PieceTheme } from '@/lib/piece-sprites';
 import { createClient } from '@/utils/supabase/client';
 import { getStockfishClient } from '@/lib/stockfish';
 
-const START_MS = 10 * 60 * 1000;
-type Synced = {
-  pgn: string; playerOneTime: number; playerTwoTime: number; playerOneTimeoutUsed: boolean; playerTwoTimeoutUsed: boolean;
-  rev: number; result: string | null; drawBy: 0 | 1 | null; rematchBy: 0 | 1 | null; pausedBy: 0 | 1 | null; flipped: boolean;
-  // WILD CARDS (one each per fighter per game)
-  takebackBy: 0 | 1 | null; playerOneTakebackUsed: boolean; playerTwoTakebackUsed: boolean;
-  ghost: { by: 0 | 1; square: string; untilPly: number; castPly: number } | null; playerOneGhostUsed: boolean; playerTwoGhostUsed: boolean;
-  playerOneHintUsed: boolean; playerTwoHintUsed: boolean;
-};
-const FRESH: Synced = { pgn: '', playerOneTime: START_MS, playerTwoTime: START_MS, playerOneTimeoutUsed: false, playerTwoTimeoutUsed: false, rev: 0, result: null, drawBy: null, rematchBy: null, pausedBy: null, flipped: false, takebackBy: null, playerOneTakebackUsed: false, playerTwoTakebackUsed: false, ghost: null, playerOneGhostUsed: false, playerTwoGhostUsed: false, playerOneHintUsed: false, playerTwoHintUsed: false };
 type Peer = { id: string; at: number; seat: 0 | 1 | null; fid?: string; name?: string };
 // BUILD 150 fun pass: Chester calls the fight like a corner-man with a microphone.
 const OPENERS = [
@@ -63,8 +56,11 @@ function seatMap(peers: Peer[]): Record<string, 0 | 1 | null> {
   return out;
 }
 
-export default function BattlePage() {
+export default function BattlePage(){const [route,setRoute]=useState<'loading'|'saved'|'legacy'>('loading');useEffect(()=>{setRoute(new URLSearchParams(location.search).get('durable')==='1'?'saved':'legacy');},[]);return route==='loading'?null:<BattleTable durable={route==='saved'}/>;}
+function BattleTable({durable}:{durable:boolean}) {
   const { matchId } = useParams<{ matchId: string }>();
+  const savedHost=typeof window!=='undefined'&&hasHostIdentity('chess','arena-'+matchId);
+  const saved=useDurableBattle(matchId,durable,savedHost,false);
   const me = useRef('');
   const fid = useRef('');
   const [peers, setPeers] = useState<Peer[]>([]);
@@ -110,14 +106,16 @@ export default function BattlePage() {
     try { localStorage.setItem(key + ':state', JSON.stringify(s)); } catch { /* private mode */ }
   }, [key]);
   const commit = useCallback((patch: Partial<Synced>, event: 'state' | 'pause_game' | 'resume_game' = 'state') => {
+    if(durable){saved.act({patch});return;}
     const next = { ...stateRef.current, ...patch, rev: stateRef.current.rev + 1 };
     apply(next, false);
     void chanRef.current?.send({ type: 'broadcast', event, payload: next });
     // Durable copy (table is created by supabase/migrations/20261003_battle_matches.sql). Silent if absent.
     void dbRef.current?.from('battle_matches').upsert({ match_id: matchIdRef.current, state: next, updated_at: new Date().toISOString() }).then(() => undefined, () => undefined);
-  }, [apply]);
+  }, [apply,durable,saved.act]);
 
   useEffect(() => {
+    if(durable)return;
     let sb: ReturnType<typeof createClient>;
     try { sb = createClient(); } catch (e) { setErr((e as Error).message); return; }
     try {
@@ -159,8 +157,11 @@ export default function BattlePage() {
       }
     });
     return () => { void sb.removeChannel(ch); };
-  }, [matchId, key, apply]);
+  }, [matchId, key, apply,durable]);
 
+  useEffect(()=>{if(!durable)return;try{setZen(localStorage.getItem('ct-zen')==='1');setMotion(localStorage.getItem('ct-motion')!=='0');setPieceTheme(localStorage.getItem('ct-piece-theme')==='neon'?'neon':'metallic');setNameDraft(localStorage.getItem('ct-fighter-name')||'');}catch{}},[durable]);
+  useEffect(()=>{if(!durable)return;const own=savedHost?'arena-host':'arena-guest';me.current=own;const snapshot=saved.view;if(!snapshot)return;fid.current=(savedHost?snapshot.hostFid:snapshot.guestFid)||localStorage.getItem('ct-fighter-id')||own;stateRef.current=snapshot.state;setState(snapshot.state);stamp.current=snapshot.at;setReady(true);setMyName(savedHost?snapshot.hostName:snapshot.guestName);nameRef.current=savedHost?snapshot.hostName:snapshot.guestName;setPeers([{id:'arena-host',at:0,seat:0,name:snapshot.hostName,fid:snapshot.hostFid||'arena-host-'+matchId},...(snapshot.guest?[{id:'arena-guest',at:1,seat:1 as const,name:snapshot.guestName,fid:snapshot.guestFid||snapshot.guest}]:[])]);},[durable,savedHost,saved.view]);
+  useEffect(()=>{if(!durable||!saved.chit)return;setChitIn({key:Date.now(),text:String(saved.chit.text).slice(0,60),from:saved.chit.by});},[durable,saved.chit]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 100); return () => clearInterval(t); }, []);
   // Route marker so global chrome (Chester fab, build badge) can clear the arena's bottom rows.
   useEffect(() => { document.body.classList.add('battle-route'); return () => document.body.classList.remove('battle-route'); }, []);
@@ -169,7 +170,7 @@ export default function BattlePage() {
   const seat = ready && me.current in seats ? seats[me.current] : null;
   // Claim and remember my seat so a reload keeps it.
   useEffect(() => {
-    if (seat === null || trackedSeat.current === seat) return;
+    if (durable||seat === null || trackedSeat.current === seat) return;
     trackedSeat.current = seat;
     try { sessionStorage.setItem(key + ':seat', String(seat)); } catch { /* ignore */ }
     void chanRef.current?.track({ at: joinedAt.current, seat, fid: fid.current, name: nameRef.current });
@@ -177,8 +178,8 @@ export default function BattlePage() {
 
   const seated = peers.filter((p) => seats[p.id] !== null && seats[p.id] !== undefined).length;
   const started = state.rev > 0 && state.pgn !== '' || state.result !== null;
-  const connected = seated >= 2 || (started && seat !== null);
-  const opponentHere = seated >= 2;
+  const connected = durable?!!saved.view&&saved.view.ready.length===2:seated >= 2 || (started && seat !== null);
+  const opponentHere = durable?saved.online:seated >= 2;
   const myColor = state.flipped ? (seat === 1 ? 'w' : 'b') : seat === 1 ? 'b' : 'w';
   const chess = useMemo(() => loadChess(state.pgn), [state.pgn]);
 
@@ -230,9 +231,9 @@ export default function BattlePage() {
   const elapsed = running ? now - stamp.current : 0;
   const liveOne = state.playerOneTime - (turn === 'w' && running ? elapsed : 0);
   const liveTwo = state.playerTwoTime - (turn === 'b' && running ? elapsed : 0);
-  const myTurn = connected && seat !== null && turn === myColor && !over;
-  const mine = seat === 1 ? liveTwo : liveOne;
-  const theirs = seat === 1 ? liveOne : liveTwo;
+  const myTurn = connected && (!durable||saved.online&&!saved.pending) && seat !== null && turn === myColor && !over;
+  const mine = durable?(myColor==='w'?liveOne:liveTwo):seat === 1 ? liveTwo : liveOne;
+  const theirs = durable?(myColor==='w'?liveTwo:liveOne):seat === 1 ? liveOne : liveTwo;
   // CLUTCH TIME: either fighter under 30 seconds turns the arena red.
   const clutch = running && ((liveOne <= 30000 && liveOne > 0) || (liveTwo <= 30000 && liveTwo > 0));
   const clutchRef = useRef(false);
@@ -241,7 +242,7 @@ export default function BattlePage() {
 
   // Flag fall: whoever's clock hit zero loses. Every phone checks, identical commits are harmless (rev gate).
   useEffect(() => {
-    if (!running || seat === null) return;
+    if (durable||!running || seat === null) return;
     if (liveOne <= 0) commit({ result: 'timeout:w', playerOneTime: 0 });
     else if (liveTwo <= 0) commit({ result: 'timeout:b', playerTwoTime: 0 });
   }, [running, liveOne, liveTwo, seat, commit]);
@@ -448,7 +449,7 @@ export default function BattlePage() {
     if (Date.now() < chitCool.current || seat === null) return;
     chitCool.current = Date.now() + 8000;
     setChitIn({ key: Date.now(), text: c.text, from: seat });
-    void chanRef.current?.send({ type: 'broadcast', event: 'chit', payload: { id: c.id, text: c.text, by: seat } });
+    if(durable)saved.sendChit({id:c.id,text:c.text,by:seat});else void chanRef.current?.send({ type: 'broadcast', event: 'chit', payload: { id: c.id, text: c.text, by: seat } });
     if (c.id === 'ticktock') buzz([24, 70, 24]);
   };
 
@@ -466,6 +467,7 @@ export default function BattlePage() {
   const [cornerBusy, setCornerBusy] = useState(false);
   const [cornerInput, setCornerInput] = useState('');
   const askCorner = useCallback(async (message: string, history: Msg[]) => {
+    if(durable){setCorner([{role:'chester',text:'Preview uses the on-device engine only. Resume when ready.'}]);return;}
     setCornerBusy(true);
     try {
       const r = await fetch('/api/chester/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'corner-man', message, fen: loadChess(stateRef.current.pgn).fen(), principalVariation: bestRef.current ? [bestRef.current] : [], evaluationAfter: pawnsRef.current === null ? null : Math.round(pawnsRef.current * 100), conversationHistory: history }) });
@@ -498,6 +500,7 @@ export default function BattlePage() {
   const [chatBusy, setChatBusy] = useState(false);
   const [chatErr, setChatErr] = useState('');
   const askChat = useCallback(async (message: string, history: Msg[]) => {
+    if(durable){setChatMsgs([...history,{role:'chester',text:'Preview chat is paused. On-device move commentary and wildcards still work.'}]);return;}
     setChatBusy(true); setChatErr('');
     // Grounded offline fallback: when the AI route is down (e.g. provider credits), still
     // answer from the match's own engine read - clearly labelled, never a canned non-answer.
@@ -523,13 +526,13 @@ export default function BattlePage() {
   const onMove = useCallback((from: string, to: string, promotion?: string) => {
     const s = stateRef.current;
     const c = loadChess(s.pgn);
-    if (c.turn() !== myColor || s.result) return;
+    if (c.turn() !== myColor || s.result || durable&&(!saved.online||saved.pending)) return;
     const spent = s.pgn ? Date.now() - stamp.current : 0;
     try { c.move({ from, to, promotion: promotion ?? 'q' }); } catch { return; }
     commit({ pgn: c.pgn(), drawBy: null, playerOneTime: myColor === 'w' ? s.playerOneTime - spent : s.playerOneTime, playerTwoTime: myColor === 'b' ? s.playerTwoTime - spent : s.playerTwoTime });
-  }, [myColor, commit]);
+  }, [myColor, commit,durable,saved.online,saved.pending]);
 
-  const link = typeof window === 'undefined' ? '' : window.location.href;
+  const link = typeof window === 'undefined' ? '' : window.location.origin+window.location.pathname+(durable?'?durable=1':'');
   const copy = async () => { try { await navigator.clipboard.writeText(`Step into the arena. ${link}`); setCopied(true); } catch { setCopied(false); } };
   const lastMove = (() => { const h = chess.history({ verbose: true }); const m = h[h.length - 1]; return m ? { from: m.from, to: m.to } : null; })();
 
@@ -554,7 +557,7 @@ export default function BattlePage() {
   // The ghost follows its piece: replay every move since it was cast.
   let ghostSq = ghostLive ? ghostLive.square : '';
   if (ghostLive) for (let i = ghostLive.castPly; i < histVerbose.length; i++) { if (histVerbose[i].from === ghostSq) ghostSq = histVerbose[i].to; }
-  const ghostOwnerColor = ghostLive ? (ghostLive.by === 1 ? 'b' : 'w') : null;
+  const ghostOwnerColor = ghostLive ? (durable&&state.flipped?(ghostLive.by===1?'w':'b'):(ghostLive.by === 1 ? 'b' : 'w')) : null;
   const ghostPieceGone = ghostLive ? (() => { const pc = chess.get(ghostSq as never) as { color: string } | null; return !pc || pc.color !== ghostOwnerColor; })() : true;
   // The ghost is invisible on the OPPONENT's board, a shimmer on yours.
   const ghostSquares: Record<string, number> = ghostLive && !ghostPieceGone ? { [ghostSq]: ghostLive.by === seat ? 0.25 : 0 } : {};
@@ -607,6 +610,7 @@ export default function BattlePage() {
     return 'Game drawn.';
   })();
 
+  if(durable&&(!saved.view||saved.view.ready.length!==2))return <main className="saved-ck saved-ck-entry"><h1>The saved arena</h1><p role="status">{saved.status}</p>{saved.error&&<p role="alert">{saved.error}</p>}{saved.expiry&&<p>Invite until {new Date(saved.expiry).toLocaleDateString('en-GB')}. Return through this same link in this browser.</p>}{saved.view?<><p>{saved.online?'Both fighters connected. Both tap Ready.':'Waiting for the other saved fighter.'} Ten minutes each. Clocks keep running during an active game, even if you leave.</p><input aria-label="Arena fighter name" value={nameDraft} placeholder={myName||'Your fighter name'} maxLength={18} onChange={e=>setNameDraft(e.target.value)}/>{savedHost&&<><input aria-label="Arena invite link" value={link} readOnly onFocus={e=>e.target.select()}/><button onClick={()=>void copy()}>{copied?'COPIED ARENA INVITE':'COPY ARENA INVITE'}</button></>}<p>{saved.view.hostName}: {saved.view.ready.includes(0)?'Ready':'Not ready'} · {saved.view.guestName}: {saved.view.ready.includes(1)?'Ready':'Not ready'}</p><button disabled={!saved.online||saved.pending||saved.view.ready.includes(savedHost?0:1)} onClick={()=>{saved.act({ready:true,...(nameDraft.trim()?{name:nameDraft}:{})});}}>{saved.view.ready.includes(savedHost?0:1)?'READY · WAITING':'READY FOR THE ARENA'}</button></>:<p>Your place is saved if the invite is active. The host may be away.</p>}<a href="/battle">New arena</a></main>;
   if (err) return <main className="battle-shell"><p className="battle-sub">{err}</p></main>;
   if (ready && peers.length >= 2 && seat === null && seated >= 2) return <main className="battle-shell battle-tunnel">
     <span className="battle-kicker">BATTLE MODE</span>
@@ -620,7 +624,7 @@ export default function BattlePage() {
     <p className="battle-sub">{peers.length < 1 ? 'Connecting...' : 'Waiting for your opponent to walk out...'}</p>
     <div className="battle-dots"><i /><i /><i /></div>
     <button type="button" className="battle-btn" onClick={() => void copy()}>{copied ? 'COPIED - SEND IT TO YOUR OPPONENT' : 'COPY INVITE LINK'}</button>
-    <form className="battle-nameform" onSubmit={(e) => { e.preventDefault(); const v = nameDraft.trim().slice(0, 18).toUpperCase(); if (!v) return; setMyName(v); nameRef.current = v; try { localStorage.setItem('ct-fighter-name', v); } catch { /* private mode */ } void chanRef.current?.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: v }); }}>
+    <form className="battle-nameform" onSubmit={(e) => { e.preventDefault(); const v = nameDraft.trim().slice(0, 18).toUpperCase(); if (!v) return; setMyName(v); nameRef.current = v; try { localStorage.setItem('ct-fighter-name', v); } catch { /* private mode */ } if(durable)saved.act({name:v});else void chanRef.current?.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: v }); }}>
       <label htmlFor="battle-name">YOUR FIGHTER NAME</label>
       <div className="battle-nameform__row">
         <input id="battle-name" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} placeholder="e.g. LIEUTENANT DAN" maxLength={18} autoComplete="off" />
@@ -632,7 +636,8 @@ export default function BattlePage() {
   </main>;
 
   const iCalled = paused && state.pausedBy === seat;
-  return <main className={`battle-shell battle-arena${swing ? (swing.good ? ' battle-arena--roar' : ' battle-arena--silent') : ''}${clutch ? ' battle-arena--clutch' : ''}${motion ? '' : ' battle-arena--nomotion'}`}>
+  return <main className={`battle-shell battle-arena${durable?' battle-arena-saved':''}${swing ? (swing.good ? ' battle-arena--roar' : ' battle-arena--silent') : ''}${clutch ? ' battle-arena--clutch' : ''}${motion ? '' : ' battle-arena--nomotion'}`}>
+    {durable&&<div className="battle-saved-status" role="status">{saved.error||(!saved.online?'Rival away. Moves paused; active clock keeps running.':saved.pending?'Sending. Waiting for host confirmation.':'Saved arena · same link to return')}</div>}
     <div className="battle-glow" aria-hidden="true" />
     {clutch && <div className="battle-clutch" aria-hidden="true" />}
     {!over && <div className="battle-menuwrap">
@@ -645,7 +650,7 @@ export default function BattlePage() {
           <button type="button" role="menuitem" onClick={() => { const v = !zen; setZen(v); try { localStorage.setItem('ct-zen', v ? '1' : '0'); } catch { /* private mode */ } }}>{zen ? '🧘 ZEN MODE: ON' : '🧘 ZEN MODE: OFF'}</button>
           <button type="button" role="menuitem" onClick={() => { const v = !motion; setMotion(v); try { localStorage.setItem('ct-motion', v ? '1' : '0'); } catch { /* private mode */ } }}>{motion ? '🎢 MOTION FX: ON' : '🎢 MOTION FX: OFF'}</button>
           <button type="button" role="menuitem" onClick={() => { const v = pieceTheme === 'metallic' ? 'neon' : 'metallic'; setPieceTheme(v); try { localStorage.setItem('ct-piece-theme', v); } catch { /* private mode */ } }}>{pieceTheme === 'metallic' ? '🎨 PIECES: METALLIC' : '🎨 PIECES: NEON'}</button>
-          <form className="battle-nameform battle-nameform--menu" onSubmit={(e) => { e.preventDefault(); const v = nameDraft.trim().slice(0, 18).toUpperCase(); if (!v) return; setMyName(v); nameRef.current = v; try { localStorage.setItem('ct-fighter-name', v); } catch { /* private mode */ } void chanRef.current?.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: v }); }}>
+          <form className="battle-nameform battle-nameform--menu" onSubmit={(e) => { e.preventDefault(); const v = nameDraft.trim().slice(0, 18).toUpperCase(); if (!v) return; setMyName(v); nameRef.current = v; try { localStorage.setItem('ct-fighter-name', v); } catch { /* private mode */ } if(durable)saved.act({name:v});else void chanRef.current?.track({ at: joinedAt.current, seat: trackedSeat.current ?? null, fid: fid.current, name: v }); }}>
             <label htmlFor="battle-name-menu">YOUR FIGHTER NAME</label>
             <div className="battle-nameform__row">
               <input id="battle-name-menu" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} placeholder={myName || 'FIGHTER NAME'} maxLength={18} autoComplete="off" />
