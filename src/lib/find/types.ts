@@ -20,7 +20,7 @@ export type FindState = {
 export type PublicFindState = Omit<FindState, 'inviteHash'>;
 export type Action = ({round?:number;stage?:string}) & (
  | { t: 'join'; name: string } | { t: 'ready'; ready: boolean }
- | {t:'agreeActors';yes:boolean} | {t:'genreApprove';yes:boolean} | {t:'genreReview'} | {t:'genreSuggest'} | {t:'genreSuggestion';yes:boolean} | { t: 'brief'; brief: Brief } | { t: 'editBrief' } | { t: 'spin'; count?: number } | { t: 'veto' } | { t: 'keepSlice'; count?:number; id?:string } | { t:'rejectSlice'; count:number; id:string } | { t: 'goldSlice' } | { t: 'upgradeWheel' } | { t: 'protectGenre'; id: string|null; done: boolean } | { t: 'vetoGenres'; ids: string[]; done: boolean }
+ | {t:'agreeActors';yes:boolean} | {t:'genreApprove';yes:boolean} | {t:'widenActor'} | {t:'genreReview'} | {t:'genreSuggest'} | {t:'genreSuggestion';yes:boolean} | { t: 'brief'; brief: Brief } | { t: 'editBrief' } | { t: 'spin'; count?: number } | { t: 'veto' } | { t: 'keepSlice'; count?:number; id?:string } | { t:'rejectSlice'; count:number; id:string } | { t: 'goldSlice' } | { t: 'upgradeWheel' } | { t: 'protectGenre'; id: string|null; done: boolean } | { t: 'vetoGenres'; ids: string[]; done: boolean }
  | {t:'lockPicks';ids:number[]} | { t: 'opinion'; id: number; value: Opinion } | { t: 'save'; id: number; save: boolean } | { t: 'finishCards' }
  | { t: 'nominate'; ids: number[]; done: boolean;backup?:number|null } | { t: 'accept'; ids: number[]; done: boolean }
  | {t:'freshPicks'} | {t:'loungeTie';id:number} | {t:'openLounge'} | {t:'loungePair';ids:number[]} | {t:'loungeBid';id:number;tokens:number} | {t:'loungeLock'} | {t:'loungeWild';kind:'double'|'steal'|'swap'|'timeout'} | {t:'loungeNext'} | {t:'loungePropose';id:number}
