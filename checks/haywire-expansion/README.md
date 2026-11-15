@@ -1,0 +1,7 @@
+# BUILD243 HAYWIRE expansion
+
+New invites use versioned rules2: eight-level campaign, endless shift, three-level quick shift and local solo practice. Old saved snapshots keep original circuits and 90-second rounds. Duet campaign rounds now last180/210seconds with large m:ss countdown. Changing circuits, operator-specific wiring, more faults, two station swaps in later levels and moving gauge positions add variety. New invite snapshots use the existing isolated Free preview storage, no schema/policy change.
+
+Local actual Chromium two-device tests completed all eight campaign levels with correct saved progress, one swap in levels1-4 and two in5-8. Host absent17seconds before guest joins, immediate Ready/reload, and fresh host result restoration at level3 passed. Selected endless and quick modes each completed their first actual two-phone level and preserved mode through reload. Their host Ready write was deliberately failed503, then recovered from the private journal on reload. Engine tests cover full campaign/endless/blitz/practice, circuits, swapping, timing, retry and original saved-room behavior. Practice actual play, running clock restore, result restore and320/390/430 screens pass.
+
+Four-page instructions and key entry/run/swap/result screens inspected as actual pixels at320x568; shared navigation stays visible. Native iOS Safari remains unverified. Only exact QA invites created by each script are deleted. Never delete unidentified rooms. Scripts expect the established isolated preview config and local build environment; no secrets are committed.
