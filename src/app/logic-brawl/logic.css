@@ -119,3 +119,31 @@ body:has(.logic-page) .chester-fab,body:has(.logic-page) .chester-drawer{display
 .logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:21px!important;line-height:1.16!important}
 @media(max-height:650px){.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:15px!important;line-height:1.08!important}}
 @media(min-height:651px){.logic-match:has(.logic-score>div:nth-child(4)) .quiz-master.quiz-master--long .quiz-master__question{font-size:19px!important;line-height:1.16!important}}
+
+/* Compact battle waiting room: invite, roster and Ready share one phone screen. */
+.logic-battle-lobby{height:calc(100dvh - 56px);min-height:0;display:flex;flex-direction:column;gap:7px;padding:10px 12px;overflow:hidden}
+.logic-battle-lobby .logic-header,.logic-battle-lobby .logic-host,.logic-battle-lobby>.logic-rules,.logic-battle-lobby>footer{display:none}
+.logic-battle-lobby .logic-title{padding:0;margin:0;text-align:left}
+.logic-battle-lobby .logic-title>span,.logic-battle-lobby .logic-title>p{display:none}
+.logic-battle-lobby .logic-title h1{font-size:26px;margin:0}
+.logic-battle-lobby .logic-status{font-size:12px;margin:0;line-height:1.2}
+.logic-battle-lobby .logic-panel{padding:12px;display:flex;flex-direction:column;gap:7px;margin:0;min-height:0;flex:1}
+.logic-battle-lobby .logic-panel h2{font-size:22px;margin:0}
+.logic-battle-lobby .logic-panel p{font-size:12px;line-height:1.25;margin:0}
+.logic-battle-lobby .logic-panel button{padding:8px;min-height:42px;font-size:13px;margin:0}
+.logic-battle-lobby .logic-share{gap:7px;margin:0}
+.logic-battle-lobby .logic-panel input{font-size:12px;padding:8px;margin:0;min-height:36px}
+.logic-battle-lobby .logic-roster{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:0;padding:0;flex:1;align-content:start}
+.logic-battle-lobby .logic-roster li{padding:7px;display:flex;flex-direction:column;gap:3px;min-width:0;font-size:13px}
+.logic-battle-lobby .logic-roster li b{overflow-wrap:anywhere}
+.logic-battle-lobby .logic-roster li span{font-size:12px}
+.logic-battle-lobby .logic-lobby-settings{font-size:13px}
+.logic-battle-lobby .logic-lobby-settings[open]{position:absolute;inset:100px 12px 12px;background:#241640;padding:18px;border:2px solid #d6b663;border-radius:18px;z-index:5;overflow:auto}
+.logic-battle-lobby .logic-lobby-settings[open] summary{margin-bottom:16px}
+.logic-battle-lobby .logic-lobby-settings[open] label{font-size:15px;margin:15px 0}
+
+.logic-battle-lobby .logic-roster-wrap{flex:1;min-height:58px;width:100%}
+.logic-battle-lobby .logic-roster-wrap nav{display:flex;justify-content:space-between;align-items:center;gap:5px;font-size:12px}
+.logic-battle-lobby .logic-roster-wrap nav button{min-height:30px;padding:4px 8px;font-size:12px}
+.logic-battle-lobby>*{width:100%;box-sizing:border-box}
+@media(max-height:600px){.logic-battle-lobby{gap:5px;padding:8px 10px}.logic-battle-lobby .logic-panel{gap:5px;padding:10px}.logic-battle-lobby .logic-panel p{font-size:11px}.logic-battle-lobby .logic-title h1{font-size:24px}.logic-battle-lobby .logic-roster li{padding:4px}}

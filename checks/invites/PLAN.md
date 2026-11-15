@@ -64,3 +64,11 @@ Uncommitted HAYWIRE/Logic integration plus `durable-game-session.ts`, `durable-h
 `/tmp/logic234-durable.py` passed host-close, guest17s waiting, host-new-tab recovery and deliberately dropped guest hello, then failed immediate reload after host Ready: remote save had not landed before reload, so readiness disappeared. This must be fixed before deployment. Add a revision-aware local write-ahead checkpoint or an explicit saved-state gate, while preserving CAS safety across multiple host tabs. Do not simply add sleep to the test or call that fixed. Check HAYWIRE for the same last-save race.
 
 Two exact leftover QA records from failed runs were inspected and deleted (HAYWIRE ec7a5736-eb7e-4b81-a6d5-b10099845859, Logic7666d61fac954afe); dedicated preview table read back empty at12:57. Temporary database password file removed. No browser leases or server processes remain. Live deployed unified preview is still233/c710796; no adapter has been deployed. The tests use the existing public realtime project for transport, new isolated project for invite storage. Do not change existing policies.
+
+## BUILD234 two-game stage, 13:09
+
+HAYWIRE and Logic now use the isolated storage on new `durable=1` links. Same-browser host/seat recovery and host-away guest waiting pass against the actual preview database, including QA creation/expiry shifted to six-day-old invites before joining. Immediate Ready then reload passes in both games without a sleep. The synchronous write-ahead journal reconciles by remote revision and private writer/sequence lineage; queued save, lost acknowledgement, foreign host writer and cleanup unit checks pass. Stale competing writes stop on CAS conflict.
+
+Logic presence now disables Ready until the current host connection is open, rather than trusting a stale rendered roster after host refresh. Its lobby is a compact phone stage; name/difficulty are in a menu and six seats paginate two at a time. 320/390/430 host/wait captures and320 six-seat pixels inspected. Hub parser preserves durable links and understands HAYWIRE.
+
+This is only the HAYWIRE/Logic deployment stage. Trivia, Checkers, Chess and film adapters remain open. No native Safari claim. Local engine/client/build regression checks pass. Dedicated QA records were deleted and count read zero before aged tests; those tests also delete their exact records.

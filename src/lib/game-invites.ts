@@ -4,9 +4,10 @@ export function guestInvitePath(text:string,origin:string,game:'logic'|'trivia')
  const value=text.trim();
  if(/^https:\/\//i.test(value)){
   try{
-   const u=new URL(value),id=u.searchParams.get('room'),match=u.searchParams.get('match');
+   const u=new URL(value),durable=u.searchParams.get('durable')==='1'?'&durable=1':'',id=u.searchParams.get('room'),match=u.searchParams.get('match');
    if(u.origin===origin){
-    if(u.pathname==='/logic-brawl'&&id&&/^[a-z0-9]{6,24}$/i.test(id))return '/logic-brawl?room='+encodeURIComponent(id.toLowerCase());
+    if(u.pathname==='/logic-brawl'&&id&&/^[a-z0-9]{6,24}$/i.test(id))return '/logic-brawl?room='+encodeURIComponent(id.toLowerCase())+durable;
+    if(u.pathname==='/haywire'&&id&&/^[a-f0-9-]{36}$/i.test(id))return '/haywire?room='+encodeURIComponent(id)+durable;
     if(u.pathname==='/trivia-brawl'&&match&&/^[a-z0-9]{6,24}$/i.test(match))return '/trivia-brawl?match='+encodeURIComponent(match)+'&role=p2';
     if(u.pathname==='/trivia-party'&&id&&/^[a-z0-9]{8,24}$/i.test(id))return '/trivia-party?room='+encodeURIComponent(id);
     if(u.pathname==='/play-checkers'&&u.searchParams.get('mode')==='duel'&&id&&/^[a-z0-9-]{1,24}$/i.test(id))return '/play-checkers?mode=duel&room='+encodeURIComponent(id);

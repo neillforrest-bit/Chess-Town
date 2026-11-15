@@ -29,11 +29,26 @@ export function createInviteStore(config:Config){
  };
 }
 export type InviteStore=ReturnType<typeof createInviteStore>;
-// Serializes host writes and stops on revision conflict. Never overwrites another host tab's newer game.
-export function inviteWriter<T>(store:InviteStore,game:InviteGame,room:string,secret:string,revision:number,onError:(message:string)=>void,onSaved:(expiresAt:string)=>void){
- let nextRevision=revision,stopped=false,chain=Promise.resolve();
+// Each write has a private journal entry before the network call. A return can
+// replay an interrupted same-writer update, never another host tab's newer save.
+const journalKey=(game:InviteGame,room:string)=>PREFIX+'journal:'+game+':'+room;
+export function recoverInviteJournal<T>(game:InviteGame,room:string,remote:{revision:number;snapshot:T},storage:Storage=localStorage):{snapshot:T;phase:InvitePhase}|null{
+ try{const j=JSON.parse(storage.getItem(journalKey(game,room))||'null');if(!j||!j.snapshot||typeof j.baseRevision!=='number')return null;
+ const local=j.snapshot.__inviteWrite,other=(remote.snapshot as any)?.__inviteWrite;
+ if(j.baseRevision===remote.revision||(local?.writer&&local.writer===other?.writer&&local.sequence>=other.sequence))return {snapshot:j.snapshot,phase:j.phase};
+ storage.removeItem(journalKey(game,room));return null;
+ }catch{return null;}
+}
+export function inviteWriter<T>(store:InviteStore,game:InviteGame,room:string,secret:string,revision:number,onError:(message:string)=>void,onSaved:(expiresAt:string)=>void,storage?:Storage){
+ let nextRevision=revision,stopped=false,chain=Promise.resolve(),sequence=0;const writer=inviteSecret();
+ const local=storage||(typeof localStorage!=='undefined'?localStorage:undefined);
  return {save:(snapshot:T,phase:InvitePhase)=>{
-  const frozen=JSON.parse(JSON.stringify(snapshot)) as T;
-  chain=chain.then(async()=>{if(stopped)return;try{const result=await store.save(game,room,secret,nextRevision,frozen,phase);if(result.status==='conflict'){stopped=true;onError('This game was changed in another host tab. Return there or reload to recover the latest saved game.');return;}nextRevision=result.revision;onSaved(result.expiresAt);}catch(e){stopped=true;onError(e instanceof Error?e.message:'Invite save failed.');}});return chain;
+  const frozen={...JSON.parse(JSON.stringify(snapshot)),__inviteWrite:{writer,sequence:++sequence}} as T;
+  const thisSequence=sequence;
+  try{local?.setItem(journalKey(game,room),JSON.stringify({baseRevision:nextRevision,snapshot:frozen,phase}));}catch{stopped=true;onError('This browser cannot save recovery. Keep this tab open.');return chain;}
+  chain=chain.then(async()=>{if(stopped)return;try{const result=await store.save(game,room,secret,nextRevision,frozen,phase);if(result.status==='conflict'){stopped=true;onError('This game was changed in another host tab. Return there or reload to recover the latest saved game.');return;}nextRevision=result.revision;
+   const j=local?JSON.parse(local.getItem(journalKey(game,room))||'null'):null;if(j?.snapshot?.__inviteWrite?.writer===writer){if(j.snapshot.__inviteWrite.sequence===thisSequence)local?.removeItem(journalKey(game,room));else {j.baseRevision=nextRevision;local?.setItem(journalKey(game,room),JSON.stringify(j));}}
+   onSaved(result.expiresAt);
+  }catch(e){stopped=true;onError(e instanceof Error?e.message:'Invite save failed.');}});return chain;
  },flush:()=>chain,stop:()=>{stopped=true;},get stopped(){return stopped;}};
 }

@@ -3,3 +3,5 @@
 
 .hay>header,.hay-brand,.hay-status,.hay-line,.hay-help,.hay-levers,.hay>.hay-main,.hay>footer{flex-shrink:0}.hay>header{min-height:14px}
 .hay{box-sizing:border-box}
+
+.hay-expiry{display:block;margin-top:3px}
