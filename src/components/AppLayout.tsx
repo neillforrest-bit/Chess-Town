@@ -10,7 +10,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname=usePathname();
   const isHome=pathname==='/';
   useEffect(()=>{trackTownRoute(pathname,window.location.search)},[pathname]);
-  useEffect(()=>{const viewport=window.visualViewport;const size=()=>document.documentElement.style.setProperty('--gt-viewport-height',(viewport?.height||window.innerHeight)+'px');size();viewport?.addEventListener('resize',size);window.addEventListener('resize',size);return()=>{viewport?.removeEventListener('resize',size);window.removeEventListener('resize',size);document.documentElement.style.removeProperty('--gt-viewport-height');};},[]);
+  useEffect(()=>{
+    const root=document.documentElement,viewport=window.visualViewport,main=document.querySelector<HTMLElement>('.app-main');
+    const size=()=>{root.style.setProperty('--gt-viewport-height',(viewport?.height||window.innerHeight)+'px');root.style.setProperty('--gt-viewport-top',(viewport?.offsetTop||0)+'px');if(main){const rect=main.getBoundingClientRect();root.style.setProperty('--gt-main-height',rect.height+'px');root.style.setProperty('--ct-vh',rect.height+'px');root.style.setProperty('--ct-vtop',rect.top+'px');}};
+    const observer=new ResizeObserver(size);if(main)observer.observe(main);size();viewport?.addEventListener('resize',size);viewport?.addEventListener('scroll',size);window.addEventListener('resize',size);
+    return()=>{observer.disconnect();viewport?.removeEventListener('resize',size);viewport?.removeEventListener('scroll',size);window.removeEventListener('resize',size);};
+  },[]);
   const [open, setOpen] = useState(false);
   useEffect(()=>{const show=()=>setOpen(v=>!v);window.addEventListener('gt-open-chester',show);if(localStorage.getItem('gt-reduce-motion')==='1')document.documentElement.dataset.reduceMotion='true';return()=>window.removeEventListener('gt-open-chester',show)},[]);
   return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">

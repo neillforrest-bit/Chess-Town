@@ -66,12 +66,6 @@ function TypeLine({ text }: { text: string }) {
 }
 
 function PlayChesterGame() {
-  // Safari's visible viewport changes with browser bars and the keyboard.
-  useEffect(() => {
-    const sync = () => { const v = window.visualViewport; document.documentElement.style.setProperty('--ct-vh', `${v?.height || window.innerHeight}px`); document.documentElement.style.setProperty('--ct-vtop', `${v?.offsetTop || 0}px`); };
-    sync(); window.visualViewport?.addEventListener('resize', sync); window.visualViewport?.addEventListener('scroll', sync); window.addEventListener('resize', sync);
-    return () => { window.visualViewport?.removeEventListener('resize', sync); window.visualViewport?.removeEventListener('scroll', sync); window.removeEventListener('resize', sync); };
-  }, []);
   const searchParams = useSearchParams();
   const requestedMode = searchParams.get('mode');
   const requestedLevel = searchParams.get('level');
@@ -991,7 +985,7 @@ function PlayChesterGame() {
     {started && countdown > 0 && <MatchCountdown key={countdown} />}
     <header className="chester-hud">
       <button type="button" className="chester-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open match menu"><b>☰ MENU</b></button>
-      <div className="chester-matchbar chester-matchbar--hud">
+      <button type="button" className="chester-layout-btn" onClick={()=>setStyleOpen(true)} aria-label="Board layouts and pieces">▦ BOARD</button><div className="chester-matchbar chester-matchbar--hud">
         <span className={`chester-matchbar__turn ${isThinking ? 'is-thinking' : ''}`}>{isThinking ? 'CHESTER…' : mode === 'PVP_REMOTE' ? (turnColor === requestedSeat ? 'YOUR MOVE' : 'RIVAL…') : mode === 'PVP_LOCAL' || mode === '2V2' ? (turnColor === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE') : turnColor === 'w' ? 'YOUR MOVE' : 'CHESTER…'}</span>
         {boss && started && <span className={`chester-matchbar__boss${freeze?.tone === 'red' ? ' is-mocking' : ''}`} aria-label={`Boss fight: ${boss.name}`}><span className="road-strip__boss-emoji road-strip__boss-emoji--walk" aria-hidden="true"><BossAvatar level={roadLevel} size={22} /></span> {isBossFight ? 'BOSS' : 'OPPONENT'}</span>}
         <span className={`chester-matchbar__score ${material.lead > 0 ? 'is-ahead' : material.lead < 0 ? 'is-behind' : ''}`} key={`mb-${capturedPieces.length}`}>{material.lead > 0 ? `+${material.lead}` : material.lead < 0 ? `${material.lead}` : '±0'}</span>
@@ -1139,7 +1133,7 @@ function PlayChesterGame() {
           {loot.torch > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendTorch} disabled={!torchReady()} aria-label="Use torch power-up for the full engine answer"><b> TORCH</b><small>{loot.torch} LEFT</small></button>}
           {loot.shield > 0 && <button type="button" className="chester-console__pill chester-console__pill--loot" onClick={spendShield} aria-label="Use shield power-up for a free take-back"><b> SHIELD</b><small>{loot.shield} LEFT</small></button>}
           <button type="button" className="chester-console__pill chester-console__pill--chat" onClick={() => { dismissHeroTip(); setChatOpen(true); }} aria-label="Chat with Chester"><b><Ico n="chat" /> CHAT</b><small>CHESTER</small></button>
-          <button type="button" className="chester-console__pill chester-console__pill--style" onClick={() => { dismissHeroTip(); setStyleOpen((v) => !v); }} aria-label="Change board and piece style" aria-expanded={styleOpen}><b> STYLE</b><small>{skinNow}</small></button>
+          <button type="button" className="chester-console__pill chester-console__pill--style" onClick={() => { dismissHeroTip(); setStyleOpen((v) => !v); }} aria-label="Change board and piece style" aria-expanded={styleOpen}><b>▦ BOARD / PIECES</b><small>{skinNow}</small></button>
                   </div>
         {styleOpen && (() => {
           const SWATCHES: Record<string, [string, string]> = { GOTHIC: ['#ededed', '#232323'], NEON: ['#fffaf0', '#ecd9b0'], RETRO: ['#e8d9b5', '#4a3728'], FOREST: ['#eaf3e2', '#2f6b3a'], OCEAN: ['#e2f0f7', '#1c4f7a'], ROYAL: ['#efe4f5', '#5c2b7a'], EMBER: ['#ffe8c9', '#9a4a1c'], SHADOW: ['#cfc3e8', '#3d2b5c'], CRIMSON: ['#f5d0d0', '#7a1020'], FROST: ['#eaf7ff', '#5c93b8'], GOLD: ['#fff3c2', '#8a6a1c'] };

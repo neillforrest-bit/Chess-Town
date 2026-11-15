@@ -8,6 +8,7 @@ import { saveCheckpoint, loadCheckpoint, hasCheckpoint } from '@/lib/match-check
 import { useEffect, useRef, useState } from 'react';
 import { TRIVIA_ACC, getTrvRoad, setTrvRoad, TRV_ROAD_MAX } from '@/games/trivia/road';
 import Link from 'next/link';
+import {QuizGamePanel,QuizWildcardPicker} from '@/components/QuizPopup';
 import { QuizChoicePages } from '@/components/QuizChoicePages';
 import { QuizMaster, QuizCountdown } from '@/components/QuizMaster';
 import { ChesterTeleprompter } from '@/components/TriviaChesterUI';
@@ -162,7 +163,7 @@ function WildcardBar({ cardsUsed, activeCards, canPlayAnswers, canShakespeare, o
       </button>;
     })}
   </div></section>;
-  return compact ? <details className="grammar-wildcard-menu"><summary>Wildcards · one of each per match</summary>{deck}</details> : deck;
+  return compact ? <QuizWildcardPicker>{deck}</QuizWildcardPicker> : deck;
 }
 
 // BUILD 183: unmistakable per-player reveal after every question.
@@ -883,7 +884,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
     </section>
     : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>{room.settings.focus === 'open' ? 'Mixed quiz. Both drafts are ready.' : `${sportFocusLabel(room.settings.focus)}. Your home court.`}</h2><p className="trivia-start-summary">{room.settings.focus === 'open' ? 'Three category picks each. Main rounds mix both selections. Power rounds pay double.' : `Every main question is ${sportFocusLabel(room.settings.focus)} at ${difficultyLabel(room.settings.difficulty)} heat.`} Five rounds of five questions. A flash mini-game after each. Flash and roulette surprises can use other topics.</p><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : `Waiting for ${room.names.p1} to start.`) : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => void patchRoom({ start: true })}>START THE BRAWL</button>}</section>
     : room.phase === 'finished' ? <section className="trivia-brawl-question"><h2>{room.score.p1} - {room.score.p2}</h2><p>{room.score.p1 === room.score.p2 ? 'A dead heat. Chester demands a rematch - the pub insists.' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} wins the tab. Chester raises a glass to you both.`}</p>{(series.p1 + series.p2 + series.draws) > 0 && <p className="trivia-series">SERIES · {room.names.p1} {series.p1} - {series.p2} {room.names.p2}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>}<button className="trivia-brawl-primary" onClick={() => void patchRoom({ rematch: true })}>REMATCH - SAME PUB, NEW QUESTIONS</button></section>
-    : <section className={`trivia-brawl-question${room.phase === 'flash' || room.phase === 'flashReveal' ? ' trivia-flash-shell' : ''}`}>
+    : <QuizGamePanel popup={room.phase==='flash'||room.phase==='flashReveal'} title="FLASH FINALE · SHARED TABLE" score={room.names.p1+' '+room.score.p1+' : '+room.score.p2+' '+room.names.p2} className={`trivia-brawl-question${room.phase === 'flash' || room.phase === 'flashReveal' ? ' trivia-flash-shell' : ''}`}>
       {room.phase !== 'flash' && room.phase !== 'flashReveal' && room.phase !== 'banter' && <>
         <MatchBadges difficulty={room.lastCall ? undefined : room.roundMeta?.[room.round]?.difficulty} isDouble={room.isDoubleQuestion} powerForMe={room.powerRoundFor.includes(player)} streak={room.streak[player]} lastCall={room.lastCall} roulette={Boolean(room.currentQuestion?.roulette)} />
         <span>{room.currentQuestion?.category}</span>
@@ -909,7 +910,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         {(room.answers[player] || pendingAnswer?.key === questionKey) && <p className="trivia-answer-status" role="status">{room.answers[player] ? '✓ Answer locked. Waiting for your rival.' : reconnecting ? 'Reconnecting. Your choice is saved on this screen, not yet confirmed.' : 'Sending your choice. Waiting for host confirmation...'}</p>}
         <WildcardBar compact cardsUsed={myCardsUsed} activeCards={myActiveCards} canPlayAnswers={questionTimer.left > 0 && !room.answers[player] && pendingAnswer?.key !== questionKey && Boolean(room.currentQuestion)} canShakespeare={!room.lastCall && room.round < MATCH_ROUNDS - 1} onPlay={(card) => void playWildcard(card)} />
       </>}
-    </section>}
+    </QuizGamePanel>}
   </main>;
 }
 
@@ -1310,15 +1311,15 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     </section>}
     {phase === 'cover' && <section className="trivia-brawl-question"><h2>🔒 {match?.answers.p1 === QUESTION_TIMEOUT_ANSWER ? "Time's up" : "Answer locked"}</h2><p>Pass the phone to {nameB}. The question is hidden until you take it.</p>
       <button className="trivia-brawl-primary" onClick={() => { setPhase('askB'); setHostLine(`${nameB}, same question. ${nameA} - eyes off the screen!`); }}>I AM {nameB.toUpperCase()} - SHOW QUESTION</button></section>}
-    {(phase === 'flashA' || phase === 'flashB') && match?.flash?.question && <section className="trivia-brawl-question trivia-flash">
+    {(phase === 'flashA' || phase === 'flashB') && match?.flash?.question && <QuizGamePanel popup title="FLASH FINALE" className="trivia-brawl-question trivia-flash">
       <span className="trivia-badge trivia-badge--flash">⚡ FLASH FINALE · {FLASH_LABEL[match.flash.type]} · DOUBLE POINTS</span>
       <span>{match.flash.question.category} · {phase === 'flashB' ? nameB : nameA} to answer</span><QuizMaster question={match.flash.question.question} />
       {match.flash.type === 'lastorders' && <p>Both of you can bank double - the swifter correct glass gets a +1 top-up. Quick about it.</p>}
       <div className="trivia-brawl-answers">{match.flash.question.answers.map((option) => <button key={option} onClick={() => answerFlashFor(phase === 'flashB' ? 'p2' : 'p1', option)}>{option}</button>)}</div><PpCountdown seconds={25} resetKey={`${match.round}-${phase}`} />
-    </section>}
+    </QuizGamePanel>}
     {phase === 'flashCover' && <section className="trivia-brawl-question"><h2>🔒 Flash answer locked</h2><p>Pass the phone to {nameB}. The flash question stays hidden.</p>
       <button className="trivia-brawl-primary" onClick={() => { setPhase('flashB'); setHostLine(`${nameB}, same flash. ${nameA} - eyes off!`); }}>I AM {nameB.toUpperCase()} - SHOW FLASH</button></section>}
-    {phase === 'flashShared' && match?.flash && <section className="trivia-brawl-question trivia-flash">
+    {phase === 'flashShared' && match?.flash && <QuizGamePanel popup title="FLASH FINALE" className="trivia-brawl-question trivia-flash">
       <span className="trivia-badge trivia-badge--flash">⚡ FLASH FINALE · {FLASH_LABEL[match.flash.type]} · DOUBLE POINTS</span>
       {match.flash.type === 'fastest' && match.flash.question && <>
         <span>{match.flash.question.category}</span><QuizMaster question={match.flash.question.question} />
@@ -1352,13 +1353,13 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
           return <button key={option} disabled={Boolean(picked)} onClick={() => duelPickFor(match.flash?.turn || 'p1', option)} className={wasCorrect ? 'is-correct' : picked ? 'is-strike' : ''}>{option}{wasCorrect ? ' ✓' : picked ? ' ✗' : ''}</button>;
         })}</QuizChoicePages>
       </>}
-    </section>}
-    {phase === 'flashReveal' && match?.result && match.flash && <section className="trivia-brawl-question trivia-flash">
+    </QuizGamePanel>}
+    {phase === 'flashReveal' && match?.result && match.flash && <QuizGamePanel popup title="FLASH FINALE" className="trivia-brawl-question trivia-flash">
       <span className="trivia-badge trivia-badge--flash">⚡ {FLASH_LABEL[match.flash.type]} - SETTLED</span>
       <h2>{match.flash.question?.question || match.flash.board?.prompt}</h2>
       {match.flash.type === 'duel' ? <p>{match.result.p1Points === match.result.p2Points ? 'Level baskets - a point each.' : `${match.result.p1Points > match.result.p2Points ? nameA : nameB} takes The Twenty and banks double.`} {`The full shelf: ${match.flash.board?.correct.join(', ')}.`}</p>
         : <p>The answer was <b>{match.result.correctAnswer}</b>. {match.result.p1Points === match.result.p2Points ? (match.result.p1Points ? 'Both bank double.' : 'Nobody banked it.') : `${match.result.p1Points > match.result.p2Points ? nameA : nameB} banks ${Math.max(match.result.p1Points, match.result.p2Points)}.`}</p>}
-      <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void next()}>{advancing ? 'POURING...' : 'ROUND SUMMARY'}</button></section>}
+      <button className="trivia-brawl-primary" disabled={advancing} onClick={() => void next()}>{advancing ? 'POURING...' : 'ROUND SUMMARY'}</button></QuizGamePanel>}
     {phase === 'reveal' && match?.result && q && <section className="trivia-brawl-question">
       <span>{q.category}</span><h2>{q.question}</h2>
       <RevealCards p1Name={nameA} p2Name={nameB} answers={match.answers} result={match.result} />
