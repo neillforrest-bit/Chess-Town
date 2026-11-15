@@ -4,3 +4,5 @@
 .bankPaid{display:inline-block;animation:bankPaid .65s ease-out}@keyframes bankPaid{0%{transform:scale(1.18);color:#fff8d3}100%{transform:scale(1);color:#ffda80}}@media(prefers-reduced-motion:reduce){.bankPaid{animation:none}}
 
 .progress{display:flex;flex-direction:column;gap:2px;flex:none;border-left:3px solid #ffda80;padding:5px 8px;background:#2a1a35;border-radius:4px;color:#ffe3a9}.progress b{font-size:12px}.progress span{font-size:10px;color:#d8c6e1}@media(max-height:650px){.progress{padding:3px 7px;gap:1px}.progress b{font-size:11px}.progress span{font-size:9px}.cup{gap:5px}}
+
+.restart{display:block;text-align:center;padding:11px 8px;border:1px solid #80628b;border-radius:10px;color:#f4e7fa;background:#30213d;text-decoration:none;font-size:11px;font-weight:700}
