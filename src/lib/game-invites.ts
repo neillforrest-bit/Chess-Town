@@ -10,7 +10,7 @@ export function guestInvitePath(text:string,origin:string,game:'logic'|'trivia')
     if(u.pathname==='/haywire'&&id&&/^[a-f0-9-]{36}$/i.test(id))return '/haywire?room='+encodeURIComponent(id)+durable;
     if(u.pathname==='/trivia-brawl'&&match&&/^[a-z0-9]{6,24}$/i.test(match))return '/trivia-brawl?match='+encodeURIComponent(match)+'&role=p2'+durable;
     if(u.pathname==='/trivia-party'&&id&&/^[a-z0-9]{8,24}$/i.test(id))return '/trivia-party?room='+encodeURIComponent(id)+durable;
-    if(u.pathname==='/play-checkers'&&u.searchParams.get('mode')==='duel'&&id&&/^[a-z0-9-]{1,24}$/i.test(id))return '/play-checkers?mode=duel&room='+encodeURIComponent(id);
+    if(u.pathname==='/play-checkers'&&u.searchParams.get('mode')==='duel'&&id&&/^[a-z0-9-]{1,24}$/i.test(id))return '/play-checkers?mode=duel&room='+encodeURIComponent(id)+durable;
     if(/^\/battle\/[a-z0-9-]{6,24}$/i.test(u.pathname))return u.pathname;
    }
    if(u.origin===FILM_ORIGIN&&/^\/find\/[a-z0-9]+$/i.test(u.pathname))return '/movie/find?invite='+encodeURIComponent(u.href);

@@ -1,6 +1,7 @@
 'use client';
 // BUILD 166: checkers vs Chester / vs a friend (pass-and-play). Raw skeleton, flagged untested until verified live.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {SavedCheckersEntry} from '@/components/SavedCheckers';
 import { versionLink } from '@/lib/version-link';
 import { saveCheckpoint, loadCheckpoint } from '@/lib/match-checkpoint';
 import { loadPeerConfig } from '@/lib/p2p';
@@ -33,7 +34,8 @@ function sfx(kind: 'move' | 'cap' | 'crown' | 'combo' | 'bad') {
 }
 const GRADE_ICON: Record<Grade, string> = { BRILLIANT: '💎', STRONG: '🎯', SOLID: '👍', SHAKY: '😬', BLUNDER: '🚨' };
 
-export default function PlayCheckers() {
+export default function PlayCheckers(){const [route,setRoute]=useState<'loading'|'saved'|'legacy'>('loading');useEffect(()=>{const q=new URLSearchParams(location.search);setRoute(q.get('durable')==='1'||q.get('mode')==='battle'?'saved':'legacy');},[]);return route==='loading'?null:route==='saved'?<SavedCheckersEntry/>:<LegacyCheckers/>;}
+function LegacyCheckers() {
   const [started, setStarted] = useState(false);
   const [mode, setMode] = useState<Mode>('chester');
   const [level, setLevel] = useState<Level>('CASUAL');
@@ -198,7 +200,7 @@ export default function PlayCheckers() {
     <main className="ck-root ck-start">
       <style>{CSS}</style>
       <h1>🏁 CHECKERS</h1><p className="ck-sub">8x8 American rules. Forced captures, multi-jumps, kings.</p>
-      <div className="ck-row"><button className={mode !== 'duel' ? 'on' : ''} onClick={() => setMode('chester')}>🤖 Play Chester</button><button className={mode === 'duel' ? 'on' : ''} onClick={() => { setMode('duel'); if (!invite) makeInvite(); }}>⚔️ Battle a friend</button></div>
+      <div className="ck-row"><button className={mode !== 'duel' ? 'on' : ''} onClick={() => setMode('chester')}>🤖 Play Chester</button><button className={mode === 'duel' ? 'on' : ''} onClick={() => {window.location.href=versionLink('/play-checkers?mode=battle&durable=1');}}>⚔️ Battle a friend</button></div>
       {mode !== 'duel' && <><div className="ck-row">{(['BEGINNER', 'CASUAL', 'CLUB', 'SHARP'] as Level[]).map((l) => <button key={l} className={level === l ? 'on' : ''} onClick={() => setLevel(l)}>{l}</button>)}</div>
         <button className="ck-go" onClick={() => { setStarted(true); reset(); }}>START</button>
         <button className="ck-link" onClick={() => { setMode('friend'); setStarted(true); reset(); }}>or pass-and-play on this phone</button></>}
