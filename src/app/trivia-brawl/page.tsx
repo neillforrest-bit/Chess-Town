@@ -277,6 +277,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const [advancing, setAdvancing] = useState(false);
   const [linked, setLinked] = useState(false);
   const [guestJoined, setGuestJoined] = useState(false);
+  const [draftStage,setDraftStage]=useState<'invite'|'categories'>('invite');
   const [relayConfigured, setRelayConfigured] = useState<boolean | null>(null);
   const [joinStopped, setJoinStopped] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -804,13 +805,13 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   const nextRoundReady = room?.phase === 'banter' ? (room.round + 1 >= MATCH_ROUNDS || room.lastCall ? true : Boolean(room.roundMeta?.[room.round + 1]?.ready)) : true;
 
   const outcome = room?.result && room.flash?.resolvedNote !== 'void' && (room.phase === 'reveal' || room.phase === 'flashReveal') ? (player === 'p1' ? room.result.p1Correct : room.result.p2Correct) ? ' is-answer-right' : ' is-answer-wrong' : '';
-  return <main ref={stageRef} className={`trivia-brawl-page trivia-showtime${room?.settings.focus === 'grammar' ? ' trivia-grammar' : ''}${room?.phase === 'flash' || room?.phase === 'flashReveal' ? ' is-flash-time' : ''}${(room?.phase === 'flash' && flashLow || room?.phase === 'question' && questionTimer.left <= 5 && questionTimer.left > 0) ? ' is-time-low' : ''}${outcome}`}>
+  return <main ref={stageRef} className={`trivia-brawl-page trivia-showtime${room?.inviteVersion && room.phase==='draft' ? ' trivia-invite-stage' : ''}${room?.settings.focus === 'grammar' ? ' trivia-grammar' : ''}${room?.phase === 'flash' || room?.phase === 'flashReveal' ? ' is-flash-time' : ''}${(room?.phase === 'flash' && flashLow || room?.phase === 'question' && questionTimer.left <= 5 && questionTimer.left > 0) ? ' is-time-low' : ''}${outcome}`}>
     <header className="trivia-brawl-header"><div><span>CHESTER&apos;S PUB TRIVIA</span><h1>Trivia Brawl</h1></div><Link href="/trivia-brawl">Change table</Link></header>
     {room && room.phase !== 'draft' && <Scorebug p1Name={room.names.p1} p2Name={room.names.p2} p1Score={room.score.p1} p2Score={room.score.p2} round={room.round} qIndex={room.qIndex} lastCall={room.lastCall} finished={room.phase === 'finished'} p1Locked={room.phase === 'question' && Boolean(room.answers.p1)} p2Locked={room.phase === 'question' && Boolean(room.answers.p2)} />}
     <ChesterTeleprompter text={visibleHostText} isThinking={isSubmitting} isMobile trivia />
     {error && <p className="trivia-brawl-error" role="status">{error}</p>}
     {joinStopped && <button className="trivia-brawl-primary" onClick={() => { setJoinStopped(false); reconnectRef.current?.(); }}>TRY CONNECTION AGAIN</button>}
-    {relayConfigured === false && !linked && <p className="trivia-setup__note">{room?.phase === 'flash' ? 'Direct connection only. Some networks cannot connect.' : 'Direct connection only: a relay is not configured. Some WiFi and mobile networks will not connect. No need to keep changing your settings.'}</p>}
+    {relayConfigured === false && !linked && <p className="trivia-setup__note">{(room?.phase === 'flash' || room?.inviteVersion && room.phase==='draft') ? 'Direct connection only. Some networks cannot connect.' : 'Direct connection only: a relay is not configured. Some WiFi and mobile networks will not connect. No need to keep changing your settings.'}</p>}
     <FlashBanner banner={bannerBody} />
     {room && !error && !linked && <p className="trivia-brawl-error">{player === 'p1' ? (guestJoined && room.phase !== 'draft' ? `${room.names.p2} has left the table - they can rejoin from the same invite link.` : room.phase === 'flash' ? 'Waiting for your rival to reconnect.' : 'Pub table open - send the invite and hold this screen.') : 'Connecting to the host table...'}</p>}
     {room && !error && player === 'p1' && !linked && guestJoined && room.phase === 'flash' && room.flash?.type === 'duel' && !room.flash.done && <div className="trivia-brawl-void">
@@ -821,18 +822,24 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
       {(() => {
         const focusPicks = focusedDraft(room.settings);
         const draftName = room.names[player] !== (player === 'p1' ? 'PLAYER 1' : 'PLAYER 2') ? room.names[player] : `Player ${player === 'p1' ? 'One' : 'Two'}`;
+        const choosing = draftStage === 'categories' || player === 'p2' && room.inviteJoined;
         return <>
-          <h2>{draftName}: {focusPicks ? `Confirm ${sportFocusLabel(room.settings.focus)}` : 'Choose 3 Categories'}</h2>
-          <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1' || room.categories.p1.length === 3 || room.categories.p2.length === 3} compact brawlModes />
-          <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name) void patchRoom({ name }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />
-          {player === 'p1' && room.categories.p2.length === 0 && <div style={{ display: 'grid', gap: '.45rem' }}>
-            <button type="button" className="trivia-brawl-primary" onClick={() => { if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: 'Chester is hosting. Five rounds of five - you, me, no mercy.', url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>SEND THE INVITE</button>
-            <input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Invite link for Player 2" />
+          <h2>{room.inviteVersion && player === 'p2' && !room.inviteJoined ? `${room.names.p1} invited you` : `${draftName}: ${focusPicks ? `Confirm ${sportFocusLabel(room.settings.focus)}` : 'Choose 3 Categories'}`}</h2>
+          {room.inviteVersion ? <div className={`trivia-invite-summary${choosing ? ' is-choosing' : ''}`}><b>LOCKED INVITE · {sportFocusLabel(room.settings.focus)} · {difficultyLabel(room.settings.difficulty)}</b><p>Five rounds of five questions, plus five Flash finales. {room.settings.focus === 'open' ? 'Each player chooses three categories and a Power round.' : 'Main rounds stay on this topic. Flash and roulette may use other topics.'}</p><small>Setup fixed for both. New table to change it.</small></div> : <TriviaSetupPanel settings={room.settings} onChange={(next) => void updateRoomSettings(next)} readOnly={player !== 'p1' || room.categories.p1.length === 3 || room.categories.p2.length === 3} compact brawlModes />}
+          {(!room.inviteVersion || !choosing) && <input value={myName} onChange={(event) => setMyName(event.target.value)} onBlur={(event) => { const name = event.currentTarget.value.trim(); if (name) void patchRoom({ name }).catch(() => undefined); }} placeholder={player === 'p1' ? 'Your name (host)' : 'Your name'} maxLength={14} aria-label="Your name" />}
+          {room.inviteVersion && player === 'p2' && !room.inviteJoined ? <button className="trivia-brawl-primary" disabled={!myName.trim() || !linked} onClick={() => void patchRoom({name:myName,joinInvite:true}).catch(()=>undefined)}>JOIN THIS MATCH</button> : <>
+          {player === 'p1' && room.categories.p2.length === 0 && (!room.inviteVersion || !choosing) && <div style={{ display: 'grid', gap: '.45rem' }}>
+            <button type="button" className="trivia-brawl-primary" disabled={Boolean(room.inviteVersion && !myName.trim())} onClick={() => { if (myName.trim()) void patchRoom({name:myName}); if (typeof navigator.share === 'function') { void navigator.share({ title: 'Trivia Brawl', text: `${myName.trim() || room.names.p1} invited you to Trivia Brawl. ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}. Five rounds plus Flash finales. Same locked setup for both players.`, url: inviteUrl }).catch(() => undefined); } else { void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined); } }}>SEND THE INVITE</button>
+            <details className="trivia-invite-link"><summary>SHOW INVITE LINK</summary><input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} aria-label="Invite link for Player 2" /></details>
           </div>}
+          {room.inviteVersion && !choosing ? <button className="trivia-brawl-primary" onClick={()=>setDraftStage('categories')}>{focusPicks ? 'CONFIRM MY TOPIC' : 'CHOOSE MY CATEGORIES'}</button> : <>
+          {room.inviteVersion && player==='p1' && <button className="trivia-draft-back" onClick={()=>setDraftStage('invite')}>‹ INVITE &amp; JOIN RECEIPT</button>}
           {focusPicks ? <p className="trivia-setup__locked">Single topic: {sportFocusLabel(room.settings.focus)} for the main rounds · {difficultyLabel(room.settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggleCategory(category.id)} aria-pressed={selectedCategories.includes(category.id)}>{selectedCategories.includes(category.id) && powerId === category.id ? `POWER · ${category.name}` : category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
           {!focusPicks && selectedCategories.length === 3 && <div className="trivia-power"><span>Star your POWER category - your points count double in its round:</span><div className="trivia-power__picks">{selectedCategories.map((id) => <button key={id} type="button" className={powerId === id ? 'is-starred' : ''} onClick={() => starPower(id)}>{powerId === id ? 'POWER · ' : ''}{categories.find((category) => category.id === id)?.name || `Category ${id}`}</button>)}</div></div>}
           <button className="trivia-brawl-primary" disabled={room.categories[player].length === 3 || (!focusPicks && selectedCategories.length !== 3) || isSubmitting} onClick={() => void submitDraft()}>{room.categories[player].length === 3 ? '✓ READY - WAITING FOR YOUR RIVAL' : focusPicks ? `LOCK ${sportFocusLabel(room.settings.focus)} · ${difficultyLabel(room.settings.difficulty)}` : `LOCK CATEGORIES (${selectedCategories.length}/3)`}</button>
-          <div className="trivia-ready-board" aria-label="Player readiness">{(['p1', 'p2'] as Player[]).map((who) => <div key={who} className={room.categories[who].length === 3 ? 'is-ready' : ''}><span>{room.names[who]}</span><b>{room.categories[who].length === 3 ? '✓ Ready' : '○ Not ready'}</b></div>)}</div>
+          </>}
+          </>}
+          <div className="trivia-ready-board" aria-label="Player readiness">{(['p1', 'p2'] as Player[]).map((who) => <div key={who} className={room.categories[who].length === 3 ? 'is-ready' : ''}><span>{room.names[who]}</span><b>{room.categories[who].length === 3 ? '✓ Ready' : room.inviteVersion && who === 'p2' ? room.inviteJoined ? (linked ? '✓ Joined · Not ready' : 'Joined · Connection lost') : 'Invite not accepted' : '○ Not ready'}</b></div>)}</div>
         </>;
       })()}
     </section>

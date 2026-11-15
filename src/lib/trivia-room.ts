@@ -13,6 +13,8 @@ export type { FlashState, FlashType } from './trivia-match';
 
 export type TriviaRoom = {
   gameId: string;
+  inviteVersion?: 1;
+  inviteJoined?: boolean;
   flashEndsAt?: number;
   questionEndsAt?: number;
   categories: Record<Player, number[]>;
@@ -99,6 +101,8 @@ const MAX_CATEGORIES = 3;
 export function createRoom(settings: TriviaSettings = DEFAULT_TRIVIA_SETTINGS): TriviaRoom {
   return {
     gameId: crypto.randomUUID(),
+    inviteVersion: 1,
+    inviteJoined: false,
     categories: { p1: [], p2: [] },
     names: { p1: 'PLAYER 1', p2: 'PLAYER 2' },
     power: { p1: 0, p2: 0 },
@@ -140,7 +144,7 @@ export function serializeRoom(room: TriviaRoom, viewer: Player): PublicRoom {
   };
 }
 
-export type RoomAction = { rematch?: unknown; settings?: unknown; categories?: unknown; power?: unknown; answer?: unknown; wildcard?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown; flashAnswer?: unknown; duelPick?: unknown; questionTimeout?: unknown; flashTimeout?: unknown; voidFlash?: unknown };
+export type RoomAction = { joinInvite?: unknown; rematch?: unknown; settings?: unknown; categories?: unknown; power?: unknown; answer?: unknown; wildcard?: unknown; advance?: unknown; start?: unknown; hostMessage?: unknown; name?: unknown; flashAnswer?: unknown; duelPick?: unknown; questionTimeout?: unknown; flashTimeout?: unknown; voidFlash?: unknown };
 
 export async function applyRoomAction(room: TriviaRoom, player: Player, body: RoomAction): Promise<{ room: TriviaRoom; error?: string; justLocked?: boolean }> {
   const next: TriviaRoom = { ...room, categories: { ...room.categories }, names: { ...room.names }, power: { ...room.power } };
@@ -157,11 +161,13 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
   if (body.rematch === true && next.phase === 'finished') {
     const fresh = createRoom(next.settings);
     fresh.names = { ...next.names };
+    if (!next.inviteVersion) { delete fresh.inviteVersion; delete fresh.inviteJoined; }
     fresh.hostMessage = '';
     return { room: fresh };
   }
 
   if (body.settings && player === 'p1' && next.phase === 'draft') {
+    if (next.inviteVersion) return { room, error: 'This invite has a fixed setup. Start a new table to change it.' };
     if (next.categories.p1.length || next.categories.p2.length) return { room, error: 'Change the match setup before either player locks categories.' };
     next.settings = normalizeTriviaSettings(body.settings);
   }
@@ -171,7 +177,13 @@ export async function applyRoomAction(room: TriviaRoom, player: Player, body: Ro
     if (clean) next.names[player] = clean;
   }
 
+  if (body.joinInvite === true && player === 'p2' && next.inviteVersion && next.phase === 'draft') {
+    if (!next.names.p2 || next.names.p2 === 'PLAYER 2') return { room, error: 'Enter your name to join this invite.' };
+    next.inviteJoined = true;
+  }
+
   if (Array.isArray(body.categories) && next.phase === 'draft') {
+    if (next.inviteVersion && player === 'p2' && !next.inviteJoined) return { room, error: 'Join this invite before choosing categories.' };
     const picked = body.categories.filter((category): category is number => Number.isInteger(category) && category !== 0).slice(0, MAX_CATEGORIES);
     if (picked.length !== MAX_CATEGORIES) return { room, error: 'Choose exactly three categories' };
     const power = Number.isInteger(body.power) && picked.includes(body.power as number) ? (body.power as number) : picked[0];

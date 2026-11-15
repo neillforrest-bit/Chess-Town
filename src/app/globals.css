@@ -4950,3 +4950,28 @@ body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .quiz-choice-pages{m
 }
 body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash>.quiz-countdown{flex-shrink:0;margin:0;min-height:40px}
 body .trivia-brawl-page.trivia-showtime .trivia-flash-shell .trivia-flash>.trivia-brawl-answers{min-height:100px;flex:1}
+/* Fresh invites show the same immutable setup, never duplicate controls. */
+.trivia-invite-summary{padding:10px;border:1px solid #9679ae;border-radius:10px;background:#281d38;color:#fff0d9;font:500 13px/1.35 system-ui,sans-serif}
+.trivia-invite-summary p{margin:6px 0}.trivia-invite-summary small{font-size:11px;color:#dfcfe8}
+.trivia-ready-board b{font-size:12px}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-header{min-height:32px;flex:none;margin:0}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-header h1{font-size:18px;margin:0}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-header span{display:none}
+body .trivia-brawl-page.trivia-invite-stage>.chester-teleprompter{display:none}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-setup__note{font:500 11px/1.2 system-ui,sans-serif;margin:0;padding:2px}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-error{font:600 12px/1.2 system-ui,sans-serif;padding:4px;margin:0}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-draft{gap:6px;padding:8px}
+body .trivia-brawl-page.trivia-invite-stage .trivia-invite-summary{font-size:12px;padding:7px}
+body .trivia-brawl-page.trivia-invite-stage .trivia-invite-summary.is-choosing p,body .trivia-brawl-page.trivia-invite-stage .trivia-invite-summary.is-choosing small{display:none}
+body .trivia-brawl-page.trivia-invite-stage .trivia-ready-board{margin:0;gap:5px}
+body .trivia-brawl-page.trivia-invite-stage .trivia-ready-board>div{padding:5px}
+body .trivia-brawl-page.trivia-invite-stage .trivia-ready-board :is(span,b){font:600 11px/1.3 system-ui,sans-serif}
+.trivia-draft-back{border:1px solid #9271ad;border-radius:8px;background:#33203f;color:#f5e5ff;min-height:40px;font:700 11px system-ui,sans-serif}
+body .trivia-brawl-page.trivia-invite-stage>.chester-teleprompter{display:none!important}
+body .trivia-brawl-page.trivia-invite-stage :is(input,.trivia-brawl-primary){min-height:42px;padding:8px;font-size:12px}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-draft>h2{font-size:16px;margin:0}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-header a{height:40px;min-height:40px!important;padding:4px 8px!important}
+body .trivia-brawl-page.trivia-invite-stage>.trivia-brawl-header h1{font-size:18px!important}
+.trivia-invite-link{font:600 10px/1.2 system-ui,sans-serif;color:#ddc9ed}.trivia-invite-link summary{min-height:28px;padding:7px;cursor:pointer}.trivia-invite-link input{width:100%}
+body .trivia-brawl-page.trivia-invite-stage .trivia-invite-link:not([open]){height:28px;max-height:28px;min-height:28px;overflow:hidden;padding:0;margin:0}
+body .trivia-brawl-page.trivia-invite-stage .trivia-invite-link>summary{padding:6px;min-height:28px;height:28px}
