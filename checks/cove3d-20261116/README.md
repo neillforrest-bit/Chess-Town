@@ -24,3 +24,15 @@ The Preview now has three terrain variants: Smuggler's Ridge, Lantern Lagoon and
 - `python checks/cove3d-20261116/cove-storage.py`: blocked localStorage still permits a completed solo practice game and shows an honest save warning.
 
 Blocked-storage QA also found the shared layout read its optional reduced-motion preference without a guard. That read now fails safely, allowing the Cove to load when browser storage is disabled.
+
+## Player / drone feedback checkpoint
+
+Gameplay now has one player/drone switch, auto-read moving slope grid in drone view, drag and zoom scouting, and an animated original cartoon golfer. Sound, quality and aim-snap settings live in the field guide. The pre-putt character faces the player before Lock In & Putt. The aim line is a normal feature, not an earned clue; it simulates selected power/slope only until first wall, rock, tunnel or pond contact. It never reveals a bounce or the tunnel exit.
+
+Moving balls use real occlusion, interpolated positions, a short hidden tunnel interval and a high follow camera. Cliff decorations can disappear when they block the camera, while physical hazards never disappear. The earlier large downward camera crop is removed. The guide provides drone recentering and a practice rescue to the tee. Rescue preserves strokes but excludes that round from solo personal bests.
+
+- `node checks/cove3d-20261116/cove-contact.cjs`: 750 all-course shot samples, first-contact cutoffs, finite traces and +72-degree paths.
+- `python checks/cove3d-20261116/cove-feedback.py`: character/swing/tunnel stage sequence, drone pan/zoom, 320/390 layouts, rescue and guide pages.
+- `python checks/cove3d-20261116/cove-camera.py`: a non-scoring tunnel route, seven end-lie camera angles including +72 degrees, ball stays in frame, rescue keeps strokes.
+
+A real iPhone screenshot exposed the old camera problem; the exact seven-shot session could not be reconstructed from the screenshot. These tests exercise that class of failure, not a claim of reproducing the exact session or certifying native Safari performance. The art is original procedural cartoon art, not a licensed character or paid asset.

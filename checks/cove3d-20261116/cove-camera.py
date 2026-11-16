@@ -1,0 +1,9 @@
+from playwright.sync_api import sync_playwright
+import os,pathlib
+base=os.environ.get('COVE_URL','http://localhost:3037');out=pathlib.Path('/downloads/cove3d')
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']);c=b.new_context(viewport={'width':390,'height':844},has_touch=True,is_mobile=True);q=c.new_page();errs=[];q.on('pageerror',lambda e:errs.append(str(e)));q.goto(base+'/golf-cove');q.wait_for_selector('[data-cove-ready=true]',timeout=60000);q.get_by_role('button',name='STEP INTO THE SUMMER').click();q.get_by_label('Play mode').select_option('solo');q.get_by_role('button',name='GATHER THE CREW').click();q.get_by_label('Adventure route').select_option('0');q.get_by_role('button',name='LOCK IN & PUTT').click();q.get_by_role('button',name='USE SLIDERS INSTEAD').click();q.get_by_label('Putt direction',exact=True).fill('-30');q.get_by_label('Putt power',exact=True).fill('39');q.get_by_role('button',name='PUTT · 39%').click();q.wait_for_selector('[data-moving=true]');q.wait_for_selector('[data-moving=false]',timeout=30000)
+ for a in [-180,-120,-72,0,72,120,180]:
+  q.get_by_label('Putt direction',exact=True).fill(str(a));q.wait_for_timeout(1800);assert q.locator('canvas').get_attribute('data-ball-in-frame')=='true',a
+  if a in [-180,72,180]:q.screenshot(path=str(out/f'camera-tunnelexit-aim{a}.png'))
+ q.get_by_role('button',name='Open field guide').click();q.get_by_role('button',name='PRACTICE RESCUE',exact=False).click();assert q.locator('[data-ball-z]').get_attribute('data-ball-z')=='12.5';assert q.locator('[data-strokes]').get_attribute('data-strokes')=='1';assert not errs,errs;print('PASS tunnel non-scoring lie,7camera angles incl+72,ball in frame,rescue keeps stroke',flush=True);c.close();b.close()
