@@ -1,4 +1,4 @@
-const fs=require('fs'),ts=require('/home/sandbox/ct-fit/node_modules/typescript');fs.writeFileSync('/tmp/cove-physics.cjs',ts.transpileModule(fs.readFileSync('/home/sandbox/ct-cove3d/src/games/cove3d/physics.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText);
+const fs=require('fs'),ts=require(require('path').join(process.cwd(),'node_modules/typescript'));fs.writeFileSync('/tmp/cove-physics.cjs',ts.transpileModule(fs.readFileSync(require('path').join(process.cwd(),'src/games/cove3d/physics.ts'),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText);
 const {roll,height,gradient,TEE,CUP,center}=require('/tmp/cove-physics.cjs'),assert=require('assert');
 console.log('terrain heights',[-12,-8,-4,0,4,8,12].map(z=>[z,height(0,z)]));
 for(let a=-180;a<180;a+=15)for(let p=1;p<=100;p+=9){const t=roll(TEE,a,p);assert(t.points.every(v=>Number.isFinite(v.x)&&Number.isFinite(v.y)&&Number.isFinite(v.z)));assert(Math.abs(t.end.z)<=14.01);assert(Math.abs(t.end.x-center(t.end.z))<=3.06);}

@@ -6,7 +6,7 @@ export function gradient(x:number,z:number){const d=.015;return {x:(height(x+d,z
 export const ROCKS=[{x:1.5,z:5,r:.7},{x:-1.6,z:-3.7,r:.65},{x:2.1,z:-10.3,r:.55}];
 export const POND={x:1.8,z:-6.4,r:1.18};export const ENTRY={x:-1.75,z:1.4},EXIT={x:.1,z:-4.4};
 export type Shot={points:{x:number;y:number;z:number;warp?:boolean}[];end:V;sunk:boolean;water:boolean;tunnel:boolean;hits:number;seconds:number};
-export function roll(start:V,angle:number,power:number):Shot|null{
+export function roll(start:V,angle:number,power:number,challenge:{cupRadius:number;captureSpeed:number}={cupRadius:.28,captureSpeed:3}):Shot|null{
  if(!Number.isFinite(angle)||!Number.isFinite(power)||power<1||power>100||!Number.isFinite(start.x)||!Number.isFinite(start.z))return null;
  let x=start.x,z=start.z,vx=Math.sin(angle*Math.PI/180)*(1+power*.145),vz=-Math.cos(angle*Math.PI/180)*(1+power*.145),sunk=false,water=false,tunnel=false,hits=0,still=0,cooldown=0;
  const dt=1/120,points:Shot['points']=[{x,y:height(x,z)+.13,z}];let step=0;
@@ -20,7 +20,7 @@ export function roll(start:V,angle:number,power:number):Shot|null{
   for(const r of ROCKS){let dx=x-r.x,dz=z-r.z,d=Math.hypot(dx,dz);if(d<r.r+.13){dx/=d||1;dz/=d||1;x=r.x+dx*(r.r+.135);z=r.z+dz*(r.r+.135);const dot=vx*dx+vz*dz;if(dot<0){vx-=1.75*dot*dx;vz-=1.75*dot*dz;}hits++;}}
   if(cooldown)cooldown--;if(!cooldown&&Math.hypot(x-ENTRY.x,z-ENTRY.z)<.4){points.push({x,y:height(x,z)+.13,z});x=EXIT.x;z=EXIT.z;points.push({x,y:height(x,z)+.13,z,warp:true});tunnel=true;cooldown=400;vx*=.55;vz=-Math.max(1,Math.abs(vz)*.6);}
   if(Math.hypot(x-POND.x,z-POND.z)<POND.r-.08){water=true;points.push({x,y:.25,z});x=start.x;z=start.z;break;}
-  if(Math.hypot(x-CUP.x,z-CUP.z)<.28&&Math.hypot(vx,vz)<3){sunk=true;x=CUP.x;z=CUP.z;points.push({x,y:height(x,z)-.08,z});break;}
+  if(Math.hypot(x-CUP.x,z-CUP.z)<challenge.cupRadius&&Math.hypot(vx,vz)<challenge.captureSpeed){sunk=true;x=CUP.x;z=CUP.z;points.push({x,y:height(x,z)-.08,z});break;}
   if(step%4===0)points.push({x,y:height(x,z)+.13,z});
  }
  points.push({x,y:height(x,z)+.13,z});return {points,end:{x,z},sunk,water,tunnel,hits,seconds:step*dt};
