@@ -1,0 +1,7 @@
+from playwright.sync_api import sync_playwright,expect
+import os
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']);q=b.new_page(viewport={'width':320,'height':568});q.goto(os.environ.get('COVE_URL','http://localhost:3037')+'/golf-cove');q.wait_for_selector('[data-cove-ready=true]');q.get_by_role('button',name='STEP INTO THE SUMMER').click();q.get_by_label('Play mode').select_option('solo');q.get_by_role('button',name='GATHER THE CREW').click();q.get_by_label('Adventure route').select_option('0');q.get_by_role('button',name='LOCK IN & PUTT').click();q.get_by_role('button',name='USE SLIDERS INSTEAD').click()
+ for i in range(8):
+  q.get_by_label('Putt direction',exact=True).fill('180');q.get_by_label('Putt power',exact=True).fill('1');q.get_by_role('button',name='PUTT · 1%',exact=True).click();q.wait_for_selector('[data-moving=true]');q.wait_for_selector('[data-moving=false]',timeout=25000)
+ q.wait_for_selector('[data-cove-phase=end]');saved=q.evaluate("JSON.parse(localStorage.getItem('cove-passport-v1'))");assert saved['stamps']==[0] and saved['completed']==1 and not saved['holeBest'] and not saved['soloRoutes'],saved;expect(q.get_by_text('Day tripper · 0/6 medals',exact=True)).to_be_visible();q.screenshot(path='/downloads/cove3d/solo-cap320.png');print('PASS eight real capped strokes finish with postcard but no sunk-putt medals');b.close()

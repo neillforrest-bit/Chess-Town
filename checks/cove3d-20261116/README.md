@@ -12,7 +12,7 @@ Browser checks use Playwright and software WebGL in headless Chromium. Their fra
 
 Modes in this slice share one device, with turns after every stroke. Team play sums players 1 + 3 versus 2 + 4. There are no new 3D online rooms or cloud saves. The original nine-hole route remains separate.
 
-Challenge changes cup radius/capture speed and aim guide. Pro starts without flag snap. Green-reading arrows show the actual downhill surface gradient, not a predicted ball route. Scenery, art and audio are procedural and original. Three.js licence is included with the source.
+Challenge changes cup radius/capture speed. Pro starts without flag snap. Green-reading arrows show the actual downhill surface gradient, not a predicted ball route. Scenery, art and audio are procedural and original. Three.js licence is included with the source.
 
 ## Three-hole journey checkpoint
 
@@ -36,3 +36,11 @@ Moving balls use real occlusion, interpolated positions, a short hidden tunnel i
 - `python checks/cove3d-20261116/cove-camera.py`: a non-scoring tunnel route, seven end-lie camera angles including +72 degrees, ball stays in frame, rescue keeps strokes.
 
 A real iPhone screenshot exposed the old camera problem; the exact seven-shot session could not be reconstructed from the screenshot. These tests exercise that class of failure, not a claim of reproducing the exact session or certifying native Safari performance. The art is original procedural cartoon art, not a licensed character or paid asset.
+
+## Solo medals checkpoint
+
+The welcome passport opens a two-leaf browser-local memory book. Six solo goals give titles from Day tripper to Harbour legend: par or better on each hole, a fully sunk three-hole journey, a par-13 journey and a Pro par-13 journey. Earned titles never change physics, cups or aim tools. Practice can earn a hole medal, but not a journey medal. Capped holes do not earn medals. A rescue disables further records in that round; records already earned on earlier holes stay. Existing v1 scores/stamps remain, but do not retroactively claim new sunk-putt medals.
+
+Postcards now write immediately at each hole's completed scorecard, before leaving for the next hole. Only final journey/practice completion increments the existing adventure count. Partial journeys keep earned postcards but are not resumable games.
+
+- `python checks/cove3d-20261116/cove-progression.py`: real Pro solo journey, all six goals, hole-by-hole persistence, completion count once, title reload, 320px passport leaves/finish and rescue exclusions.
