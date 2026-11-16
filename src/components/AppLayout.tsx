@@ -17,7 +17,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return()=>{observer.disconnect();viewport?.removeEventListener('resize',size);viewport?.removeEventListener('scroll',size);window.removeEventListener('resize',size);};
   },[]);
   const [open, setOpen] = useState(false);
-  useEffect(()=>{const show=()=>setOpen(v=>!v);window.addEventListener('gt-open-chester',show);if(localStorage.getItem('gt-reduce-motion')==='1')document.documentElement.dataset.reduceMotion='true';return()=>window.removeEventListener('gt-open-chester',show)},[]);
+  useEffect(()=>{const show=()=>setOpen(v=>!v);window.addEventListener('gt-open-chester',show);try{if(localStorage.getItem('gt-reduce-motion')==='1')document.documentElement.dataset.reduceMotion='true';}catch{/* Optional preference: blocked storage must not prevent games loading. */}return()=>window.removeEventListener('gt-open-chester',show)},[]);
   return <div className="app-shell h-[100dvh] w-screen overflow-hidden flex flex-col">
     <div className="portrait-lock" role="status"><i aria-hidden="true">♞</i><b>ROTATE ME</b><span>Chesterville is a portrait town - turn your phone upright and the fun continues.</span></div>
     {!isHome && <GlobalNav />}

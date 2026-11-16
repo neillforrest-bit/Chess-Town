@@ -6,3 +6,8 @@
 @media(max-height:680px){.setup{padding:12px 13px;gap:7px;overflow:hidden}.setup h1{font-size:27px}.setup .kicker{margin-bottom:0}.setup input,.setup select{padding:6px;min-height:33px}.setup label{font-size:9px;gap:3px}.setup>p:not(.kicker){font-size:10px;line-height:1.3}.setup .textButton{padding:2px}.backdrop>section{gap:10px;padding:17px 14px;overflow:hidden}.backdrop h2{font-size:26px}.backdrop p,.backdrop li{font-size:10px}.backdrop .kicker{margin:0}.backdrop .primary{min-height:39px;padding:10px}}
 
 @media(max-height:680px){.crewFinish{padding:11px 13px;gap:6px;overflow:hidden}.crewFinish h1{font-size:25px}.crewFinish>.kicker{margin:0;font-size:7px}.crewFinish>p:not(.kicker){font-size:10px;line-height:1.3}.crewFinish .score{gap:2px}.crewFinish .score>div{padding:2px 0}.crewFinish .score b{font-size:11px}.crewFinish .score strong{font-size:20px}.crewFinish .primary{min-height:39px;padding:10px}.crewFinish>a{padding:2px;font-size:8px!important}}
+
+.score b small{font:9px Arial;color:#cfdbcc}.score{flex:none}
+@media(max-height:680px){.setup{gap:5px;padding:10px 12px}.setup h1{font-size:24px}.setup .names{gap:5px}.setup input,.setup select{min-height:30px;padding:5px}.setup .primary{min-height:38px;padding:9px}.setup>p:not(.kicker){font-size:9px}.crewFinish h1{font-size:24px}.crewFinish .score b small{font-size:8px}}
+
+.saved{font-size:8px;color:#d7dbc8;text-align:center;line-height:1.3}.crewFinish .saved{font-size:7px}

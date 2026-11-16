@@ -1,15 +1,16 @@
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {CUP,ENTRY,EXIT,POND,ROCKS,TEE,V,Shot,center,height,gradient} from './physics';
+import {V,Shot,Course,createCourse} from './physics';
 export type View='cinema'|'putt'|'survey';
-export function createScene(el:HTMLDivElement,onMetrics:(fps:number)=>void,onLost:()=>void){
- const scene=new T.Scene();const sky=document.createElement('canvas');sky.width=8;sky.height=256;const skyCtx=sky.getContext('2d')!;const skyGradient=skyCtx.createLinearGradient(0,0,0,256);skyGradient.addColorStop(0,'#6faec4');skyGradient.addColorStop(.65,'#c9d5ca');skyGradient.addColorStop(1,'#f6d1a0');skyCtx.fillStyle=skyGradient;skyCtx.fillRect(0,0,8,256);const skyTexture=new T.CanvasTexture(sky);skyTexture.colorSpace=T.SRGBColorSpace;scene.background=skyTexture;scene.fog=new T.FogExp2('#b6c8bf',.009);
+export function createScene(el:HTMLDivElement,onMetrics:(fps:number)=>void,onLost:()=>void,course:Course=createCourse()){
+ const {CUP,ENTRY,EXIT,POND,ROCKS,TEE,center,height,gradient,info,level}=course;
+ const scene=new T.Scene();const sky=document.createElement('canvas');sky.width=8;sky.height=256;const skyCtx=sky.getContext('2d')!;const skyGradient=skyCtx.createLinearGradient(0,0,0,256);skyGradient.addColorStop(0,info.sky[0]);skyGradient.addColorStop(.65,info.sky[1]);skyGradient.addColorStop(1,info.sky[2]);skyCtx.fillStyle=skyGradient;skyCtx.fillRect(0,0,8,256);const skyTexture=new T.CanvasTexture(sky);skyTexture.colorSpace=T.SRGBColorSpace;scene.background=skyTexture;scene.fog=new T.FogExp2('#b6c8bf',.009);
  const camera=new T.PerspectiveCamera(48,1,.08,160);
  const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'low-power',alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;el.appendChild(renderer.domElement);
  renderer.domElement.setAttribute('aria-label','Three-dimensional pirate cove, rolling green, animated sea and pirates');renderer.domElement.setAttribute('role','img');
  const lost=(e:Event)=>{e.preventDefault();onLost();};renderer.domElement.addEventListener('webglcontextlost',lost);
- const hemi=new T.HemisphereLight('#d5eeef','#72957b',2);scene.add(hemi);
- const sun=new T.DirectionalLight('#ffdfae',2.8);sun.position.set(-12,22,9);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-22,right:22,top:23,bottom:-23,near:1,far:65});sun.shadow.bias=-.001;scene.add(sun);
+ const hemi=new T.HemisphereLight(level===1?'#a6a3d5':'#d5eeef','#72957b',level===1?1.4:2);scene.add(hemi);
+ const sun=new T.DirectionalLight(level===1?'#c6c4ff':'#ffdfae',level===1?1.6:2.8);sun.position.set(-12,22,9);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-22,right:22,top:23,bottom:-23,near:1,far:65});sun.shadow.bias=-.001;scene.add(sun);
  const mat=(color:T.ColorRepresentation,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
  const green=mat('#5b8e5d'),sand=mat('#c7a77a'),wood=mat('#715144'),trim=mat('#d2b080'),stone=mat('#6a7774'),black=mat('#242c31'),red=mat('#9f5544'),cream=mat('#efdbaf'),leaf=mat('#41684c'),leafLight=mat('#537951'),farStoneA=mat('#698982'),farStoneB=mat('#617b7a');
  const mesh=(geo:T.BufferGeometry,material:T.Material,x:number,y:number,z:number,parent:T.Object3D=scene)=>{const m=new T.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;};
@@ -18,15 +19,15 @@ export function createScene(el:HTMLDivElement,onMetrics:(fps:number)=>void,onLos
  const cyl=(a:number,b:number,h:number,m:T.Material,x:number,y:number,z:number,parent:T.Object3D=scene)=>mesh(new T.CylinderGeometry(a,b,h,10),m,x,y,z,parent);
  // Terrain uses the exact same height function as the rolling physics, not a painted illusion.
  const groundGeo=new T.PlaneGeometry(6.4,28.8,40,150);groundGeo.rotateX(-Math.PI/2);const pos=groundGeo.attributes.position;const colors=[];
- for(let i=0;i<pos.count;i++){const z=pos.getZ(i),x=pos.getX(i)+center(z);pos.setX(i,x);pos.setY(i,height(x,z));const c=new T.Color('#668c54');c.lerp(new T.Color('#aac178'),Math.max(0,Math.min(1,(height(x,z)-.3)/1.7))*.45);const stripe=Math.floor((z+15)/1.2)%2;c.multiplyScalar(stripe?1.03:.94);colors.push(c.r,c.g,c.b);}
+ for(let i=0;i<pos.count;i++){const z=pos.getZ(i),x=pos.getX(i)+center(z);pos.setX(i,x);pos.setY(i,height(x,z));const c=new T.Color(info.grass);c.lerp(new T.Color('#aac178'),Math.max(0,Math.min(1,(height(x,z)-.3)/1.7))*.45);const stripe=Math.floor((z+15)/1.2)%2;c.multiplyScalar(stripe?1.03:.94);colors.push(c.r,c.g,c.b);}
  groundGeo.setAttribute('color',new T.Float32BufferAttribute(colors,3));groundGeo.computeVertexNormals();const terrain=mesh(groundGeo,new T.MeshStandardMaterial({vertexColors:true,roughness:.98}),0,0,0);terrain.receiveShadow=true;
  // Sandstone island below the undulating putting surface.
  const island=cyl(13,15,1.6,sand,0,-.6,0);island.scale.set(.55,1,1.3);
  const shoreline=cyl(15,16,.45,mat('#cdbb91'),0,-1.1,0);shoreline.scale.set(.64,1,1.25);
  for(let side=-1;side<=1;side+=2){const pts=[];for(let z=-14.3;z<=14.3;z+=.25){const x=center(z)+side*3.2;pts.push(new T.Vector3(x,height(x,z)+.12,z));}mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),115,.14,6,false),trim,0,0,0);}
  // Pond is a real hazard cutout effect, water is animated separately.
- const pond=cyl(POND.r,POND.r,.08,new T.MeshStandardMaterial({color:'#3b8d96',metalness:.35,roughness:.2}),POND.x,height(POND.x,POND.z)+.025,POND.z);pond.scale.z=1;
- const pondEdge=new T.Mesh(new T.TorusGeometry(POND.r,.06,6,28),stone);pondEdge.rotation.x=Math.PI/2;pondEdge.position.set(POND.x,height(POND.x,POND.z)+.07,POND.z);scene.add(pondEdge);
+ const pondGeo=new T.CircleGeometry(POND.r,40);pondGeo.rotateX(-Math.PI/2);const pondPos=pondGeo.attributes.position;for(let i=0;i<pondPos.count;i++){const x=POND.x+pondPos.getX(i),z=POND.z+pondPos.getZ(i);pondPos.setXYZ(i,x,height(x,z)+.035,z);}pondGeo.computeVertexNormals();const pond=mesh(pondGeo,new T.MeshStandardMaterial({color:level===1?'#4b93ae':'#3b8d96',metalness:.35,roughness:.2,side:T.DoubleSide}),0,0,0);pond.castShadow=false;
+ const edgeGeo=new T.RingGeometry(POND.r-.025,POND.r+.055,40);edgeGeo.rotateX(-Math.PI/2);const edgePos=edgeGeo.attributes.position;for(let i=0;i<edgePos.count;i++){const x=POND.x+edgePos.getX(i),z=POND.z+edgePos.getZ(i);edgePos.setXYZ(i,x,height(x,z)+.04,z);}edgeGeo.computeVertexNormals();mesh(edgeGeo,stone,0,0,0);
  for(const r of ROCKS){const rock=mesh(new T.DodecahedronGeometry(r.r,0),stone,r.x,height(r.x,r.z)+r.r*.5,r.z);rock.scale.y=.85;}
  // Recessed cup plus flag. The green stays geometry; the cup uses a dark inset marker.
  const cup=cyl(.29,.29,.025,black,CUP.x,height(CUP.x,CUP.z)+.015,CUP.z);cup.rotation.z=.02;
@@ -48,6 +49,14 @@ export function createScene(el:HTMLDivElement,onMetrics:(fps:number)=>void,onLos
  for(const [x,z,h] of [[-5,11,4.2],[8.7,12,3.9],[-5.4,3,5],[5,-3,4.5],[-5.5,-11,5.2],[4.5,-14,4.2]]){const palm=new T.Group();palm.position.set(x,.1,z);scene.add(palm);const trunk=cyl(.15,.3,h,wood,0,h/2,0,palm);trunk.rotation.z=.12;const top=new T.Group();top.position.set(-.2,h,0);palm.add(top);for(let i=0;i<7;i++){const a=i*Math.PI*2/7;const shape=new T.Shape();shape.moveTo(0,0);shape.quadraticCurveTo(.5,.4,2.4,0);shape.quadraticCurveTo(1.2,-.5,0,0);const frond=mesh(new T.ShapeGeometry(shape),(i%2?leafLight:leaf),0,0,0,top);frond.rotation.set(-.45,a,.3);}palms.push(top);}
  for(let i=0;i<24;i++){const a=i*2.4,r=24+(i%4)*3;const rock=mesh(new T.DodecahedronGeometry(2.5+(i%3),0),(i%2?farStoneA:farStoneB),Math.sin(a)*r,-.1,-15-Math.cos(a)*6);rock.scale.set(1,.8+(i%3)*.3,1);}
  const caveRock=mesh(new T.DodecahedronGeometry(4,0),stone,5,1.3,-15);caveRock.scale.set(1.5,1,1.1);const farCave=mesh(new T.CircleGeometry(1.5,18),new T.MeshBasicMaterial({color:'#283f3d',side:T.DoubleSide}),4.5,1,-11.9);farCave.scale.y=1.4;
+ if(level===1){
+  for(const side of [-1,1]){const ropePoints:T.Vector3[]=[];for(let i=0;i<17;i++){const z=-13+i*1.7,x=side*4.2,y=3.3-Math.sin(i/16*Math.PI)*.7;ropePoints.push(new T.Vector3(x,y,z));const light=sphere(.12,lampMat,x,y-.22,z);light.castShadow=false;if(i%4===0)cyl(.05,.07,3.5,wood,x,1.5,z);}mesh(new T.TubeGeometry(new T.CatmullRomCurve3(ropePoints),32,.025,4,false),wood,0,0,0);}
+  for(let i=0;i<7;i++){const boat=new T.Group();boat.position.set(8+(i%2)*2,-.2,-12+i*3.5);scene.add(boat);const hull=mesh(new T.SphereGeometry(1,8,6),i%2?red:trim,0,0,0,boat);hull.scale.set(.5,.2,1.2);box(.07,1.7,.08,wood,0,.8,0,boat);const sail=mesh(new T.PlaneGeometry(.7,1.1),cream,.35,1,0,boat);sail.rotation.y=.3;}
+ }
+ if(level===2){
+  const fort=mat('#bb956d');for(const x of [-6,6]){cyl(1.6,1.9,5,fort,x,1.4,-12);for(let i=0;i<8;i++){const a=i*Math.PI/4;box(.5,.65,.5,fort,x+Math.sin(a)*1.4,4.1,-12+Math.cos(a)*1.4);}}box(10,2.6,1.2,fort,0,1,-16);for(let i=0;i<9;i++)box(.7,.65,1.2,fort,-4+i,2.6,-16);
+  for(let i=0;i<13;i++){const coin=cyl(.16,.16,.055,trim,4.8+(i%3)*.25,.35+Math.floor(i/3)*.06,-9+Math.sin(i)*.25);coin.rotation.z=.2;}
+ }
  // Pirates react to strokes, ships bob, seabirds circle: a place rather than a board.
  const pirates:{root:T.Group;arm:T.Group;hat:T.Mesh;base:number}[]=[];
  const pirate=(x:number,z:number)=>{const root=new T.Group();root.position.set(x,Math.abs(x)>4?.12:height(x,z),z);scene.add(root);cyl(.26,.35,.85,red,0,.75,0,root);box(.52,.5,.3,black,0,.2,0,root);sphere(.28,cream,0,1.4,0,root);sphere(.065,black,-.1,1.44,.25,root);sphere(.025,black,.1,1.44,.27,root);box(.12,.07,.07,wood,0,1.28,.27,root);const hat=mesh(new T.ConeGeometry(.52,.45,3),black,0,1.79,0,root);hat.rotation.y=Math.PI/2;const arm=new T.Group();arm.position.set(-.29,1.02,0);root.add(arm);cyl(.085,.1,.65,cream,-.15,-.22,0,arm);const hook=new T.Mesh(new T.TorusGeometry(.1,.025,5,10,Math.PI*1.6),trim);hook.position.set(-.27,-.55,0);arm.add(hook);pirates.push({root,arm,hat,base:root.position.y});};
@@ -55,11 +64,11 @@ export function createScene(el:HTMLDivElement,onMetrics:(fps:number)=>void,onLos
  const treasure=new T.Group();treasure.position.set(3.9,.25,-10.8);scene.add(treasure);box(.8,.5,.5,wood,0,.25,0,treasure);box(.85,.12,.56,trim,0,.56,0,treasure);box(.15,.3,.59,trim,0,.37,0,treasure);
  const birds:T.Group[]=[];for(let i=0;i<5;i++){const bird=new T.Group();const wing=new T.BufferGeometry().setFromPoints([new T.Vector3(-.5,0,.15),new T.Vector3(0,.12,0),new T.Vector3(.5,0,.15)]);bird.add(new T.Line(wing,new T.LineBasicMaterial({color:'#fcf0d6'})));scene.add(bird);birds.push(bird);}
  // Low-cost animated ocean mesh, not an external texture or video.
- const seaGeo=new T.PlaneGeometry(180,180,40,40);seaGeo.rotateX(-Math.PI/2);const sea=mesh(seaGeo,new T.MeshStandardMaterial({color:'#278f9f',roughness:.3,metalness:.28,transparent:true,opacity:.97}),0,-1.25,0);sea.castShadow=false;sea.receiveShadow=false;
+ const seaGeo=new T.PlaneGeometry(180,180,40,40);seaGeo.rotateX(-Math.PI/2);const sea=mesh(seaGeo,new T.MeshStandardMaterial({color:info.water,roughness:.3,metalness:.28,transparent:true,opacity:.97}),0,-1.25,0);sea.castShadow=false;sea.receiveShadow=false;
  const foam=new T.Group();scene.add(foam);const foamMat=new T.MeshBasicMaterial({color:'#b6dfd4',transparent:true,opacity:.3});for(let i=0;i<35;i++){const streak=mesh(new T.PlaneGeometry(.6+(i%4)*.4,.045),foamMat,8+(i%6)*1.4,-.96,-17+Math.floor(i/6)*6,foam);streak.rotation.x=-Math.PI/2;streak.castShadow=false;}
  const sunDisc=mesh(new T.SphereGeometry(3,20,16),new T.MeshBasicMaterial({color:'#ffdfaa'}),-32,18,-55);sunDisc.castShadow=false;
  // Ball and a short in-world aim trail.
- const ball=sphere(.13,new T.MeshStandardMaterial({color:'#fff4cd',roughness:.35}),TEE.x,height(TEE.x,TEE.z)+.13,TEE.z);ball.renderOrder=20;const ballMaterial=ball.material as T.MeshStandardMaterial;const aimDots:T.Mesh[]=[];for(let i=0;i<12;i++){const dot=sphere(.035,new T.MeshBasicMaterial({color:'#ffe4a5'}),0,0,0);dot.castShadow=false;aimDots.push(dot);}
+ const ball=sphere(.13,new T.MeshStandardMaterial({color:'#fff4cd',roughness:.35}),TEE.x,height(TEE.x,TEE.z)+.13,TEE.z);ball.renderOrder=20;const ballMaterial=ball.material as T.MeshStandardMaterial;const aimDots:T.Mesh[]=[];for(let i=0;i<16;i++){const dot=sphere(.035,new T.MeshBasicMaterial({color:'#ffe4a5'}),0,0,0);dot.castShadow=false;aimDots.push(dot);}
  // Batch static scenery by material. Animation roots stay independent.
  const batch=(root:T.Object3D,skip:Set<T.Object3D>)=>{root.updateMatrixWorld(true);const inv=new T.Matrix4().copy(root.matrixWorld).invert(),groups=new Map<T.Material,T.Mesh[]>();root.traverse(o=>{if(!(o instanceof T.Mesh)||Array.isArray(o.material))return;let p:T.Object3D|null=o;while(p&&p!==root){if(skip.has(p))return;p=p.parent;}if(o.geometry.attributes.color)return;const list=groups.get(o.material)||[];list.push(o);groups.set(o.material,list);});for(const [material,list] of groups){if(list.length<2)continue;const geometries=list.map(m=>{const geo=m.geometry.clone();geo.applyMatrix4(new T.Matrix4().multiplyMatrices(inv,m.matrixWorld));if(geo.index){const flat=geo.toNonIndexed();geo.dispose();return flat;}return geo;});const merged=mergeGeometries(geometries,false);geometries.forEach(g=>g.dispose());if(!merged)continue;for(const m of list){m.removeFromParent();m.geometry.dispose();}const combined=new T.Mesh(merged,material);combined.castShadow=true;combined.receiveShadow=true;root.add(combined);}};
  leaf.side=T.DoubleSide;leafLight.side=T.DoubleSide;
