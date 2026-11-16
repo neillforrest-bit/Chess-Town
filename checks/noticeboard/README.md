@@ -1,0 +1,3 @@
+Bounded Chester Noticeboard Preview
+Four finite authored snapshot cards: verified Dinner Preview features, original arithmetic teaser, synthetic cup recap computed from simulation output, verified Movie Time Preview features. Fixed date and snapshot labels. No news API, headlines scraping, live claims, posts, comments, DMs, uploads, political content, automated moderation or public reaction counts. Local useful/less preferences do not yet personalise ordering or send telemetry. No scheduled publication. Corrections policy visible, no corrections recorded in this fixed snapshot.
+375x667 Chrome QA: all4cards/reveal65/localfeedback/finiteend/scope/no-input. Native Safari untested. Preview only.
