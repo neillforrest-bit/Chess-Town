@@ -17,7 +17,8 @@ export default function GamesHub(){
  const [town,setTown]=useState<Town|null>(null),[mode,setMode]=useState(''),[more,setMore]=useState(false),[page,setPage]=useState(0),[panel,setPanel]=useState<null|'settings'|'help'|'join'>(null),[reduce,setReduce]=useState(false),[invite,setInvite]=useState(''),[joinGame,setJoinGame]=useState('logic'),[error,setError]=useState('');
  useEffect(()=>{const sync=()=>{const t=new URLSearchParams(location.search).get('town');setTown(t&&t in towns?t as Town:null);setMore(false);setPage(0);setMode('');};sync();setReduce(localStorage.getItem('gt-reduce-motion')==='1');addEventListener('popstate',sync);return()=>removeEventListener('popstate',sync)},[]);
  const open=(t:Town|null)=>{setTown(t);setMore(false);setPage(0);setMode('');history.pushState({},'',t?`/?choose=mode&town=${t}`:'/');};
- const modes:Mode[]=town==='dinner'?dinner:town==='movie'?movies:town==='logic'?logic:GAME_OPTIONS.filter(m=>m.family===town);
+ const cup:Mode={id:'weekend-cup',title:'Weekend Cup rehearsal',description:'Watch a synthetic friends tournament run. No real players or invitations.',href:'/weekend-cup',action:'Watch the simulation',players:'Synthetic · private preview'};
+ const modes:Mode[]=town==='trivia'?[...GAME_OPTIONS.filter(m=>m.family==='trivia'),cup]:town==='dinner'?dinner:town==='movie'?movies:town==='logic'?logic:GAME_OPTIONS.filter(m=>m.family===town);
  const available=town?(more?modes.filter(m=>!primary[town].includes(m.id)):primary[town].map(id=>modes.find(m=>m.id===id)!).filter(Boolean)):[];
  const visible=available.slice(page*3,page*3+3);const selected=visible.find(m=>m.id===mode)||visible[0];
  const join=()=>{const path=guestInvitePath(invite,location.origin,joinGame as 'logic'|'trivia');if(path){location.href=path;return;}setError('Use the code from your host, or paste the full Game Town invite link.');};
