@@ -1,0 +1,355 @@
+{
+  "licence": "CC BY-SA 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "source": "https://www.tvmaze.com/api/",
+  "changes": "Selected, normalised, classified metadata snapshot; no posters or summaries.",
+  "retrievedAt": "2026-11-16",
+  "titles": [
+    {
+      "id": "tvmaze-44933",
+      "format": "series",
+      "title": "Severance",
+      "year": 2022,
+      "genres": [
+        "Drama",
+        "Science-Fiction",
+        "Mystery"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "44933",
+        "url": "https://www.tvmaze.com/shows/44933/severance",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-54198",
+      "format": "series",
+      "title": "The Bear",
+      "year": 2022,
+      "genres": [
+        "Drama",
+        "Comedy",
+        "Food"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "54198",
+        "url": "https://www.tvmaze.com/shows/54198/the-bear",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-44458",
+      "format": "series",
+      "title": "Ted Lasso",
+      "year": 2020,
+      "genres": [
+        "Drama",
+        "Comedy",
+        "Sports"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "44458",
+        "url": "https://www.tvmaze.com/shows/44458/ted-lasso",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-17861",
+      "format": "series",
+      "title": "Dark",
+      "year": 2017,
+      "genres": [
+        "Drama",
+        "Science-Fiction",
+        "Supernatural"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "17861",
+        "url": "https://www.tvmaze.com/shows/17861/dark",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-16149",
+      "format": "series",
+      "title": "Fleabag",
+      "year": 2016,
+      "genres": [
+        "Drama",
+        "Comedy"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "16149",
+        "url": "https://www.tvmaze.com/shows/16149/fleabag",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-48830",
+      "format": "series",
+      "title": "Only Murders in the Building",
+      "year": 2021,
+      "genres": [
+        "Comedy",
+        "Crime",
+        "Mystery"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "48830",
+        "url": "https://www.tvmaze.com/shows/48830/only-murders-in-the-building",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-2790",
+      "format": "series",
+      "title": "The Good Place",
+      "year": 2016,
+      "genres": [
+        "Comedy",
+        "Fantasy",
+        "Supernatural"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "2790",
+        "url": "https://www.tvmaze.com/shows/2790/the-good-place",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-45039",
+      "format": "series",
+      "title": "Slow Horses",
+      "year": 2022,
+      "genres": [
+        "Drama",
+        "Thriller",
+        "Espionage"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "45039",
+        "url": "https://www.tvmaze.com/shows/45039/slow-horses",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-3451",
+      "format": "series",
+      "title": "Detectorists",
+      "year": 2014,
+      "genres": [
+        "Comedy"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "3451",
+        "url": "https://www.tvmaze.com/shows/3451/detectorists",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-33320",
+      "format": "series",
+      "title": "Derry Girls",
+      "year": 2018,
+      "genres": [
+        "Comedy"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "33320",
+        "url": "https://www.tvmaze.com/shows/33320/derry-girls",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-23470",
+      "format": "series",
+      "title": "Succession",
+      "year": 2018,
+      "genres": [
+        "Drama",
+        "Family"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "23470",
+        "url": "https://www.tvmaze.com/shows/23470/succession",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-55350",
+      "format": "series",
+      "title": "Abbott Elementary",
+      "year": 2021,
+      "genres": [
+        "Comedy"
+      ],
+      "subtype": "series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "55350",
+        "url": "https://www.tvmaze.com/shows/55350/abbott-elementary",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-22036",
+      "format": "documentaries",
+      "title": "Planet Earth II",
+      "year": 2016,
+      "genres": [
+        "Nature"
+      ],
+      "subtype": "documentary-series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "22036",
+        "url": "https://www.tvmaze.com/shows/22036/planet-earth-ii",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-25504",
+      "format": "documentaries",
+      "title": "Blue Planet II",
+      "year": 2017,
+      "genres": [
+        "Nature"
+      ],
+      "subtype": "documentary-series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "25504",
+        "url": "https://www.tvmaze.com/shows/25504/blue-planet-ii",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-40358",
+      "format": "documentaries",
+      "title": "The Last Dance",
+      "year": 2020,
+      "genres": [
+        "Drama",
+        "Sports"
+      ],
+      "subtype": "documentary-series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "40358",
+        "url": "https://www.tvmaze.com/shows/40358/the-last-dance",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-55965",
+      "format": "documentaries",
+      "title": "The Beatles: Get Back",
+      "year": 2021,
+      "genres": [
+        "Music",
+        "History"
+      ],
+      "subtype": "documentary-series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "55965",
+        "url": "https://www.tvmaze.com/shows/55965/the-beatles-get-back",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-55536",
+      "format": "documentaries",
+      "title": "Welcome to Wrexham",
+      "year": 2022,
+      "genres": [
+        "Drama",
+        "Comedy",
+        "Sports"
+      ],
+      "subtype": "documentary-series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "55536",
+        "url": "https://www.tvmaze.com/shows/55536/welcome-to-wrexham",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    },
+    {
+      "id": "tvmaze-1128",
+      "format": "documentaries",
+      "title": "Cosmos",
+      "year": 1980,
+      "genres": [
+        "Mystery",
+        "Nature",
+        "History"
+      ],
+      "subtype": "documentary-series",
+      "source": {
+        "provider": "TVmaze",
+        "externalId": "1128",
+        "url": "https://www.tvmaze.com/shows/1128/cosmos",
+        "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": "TVmaze \u00b7 CC BY-SA 4.0",
+        "retrievedAt": "2026-11-16"
+      }
+    }
+  ]
+}

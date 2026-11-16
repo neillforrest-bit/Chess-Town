@@ -1,0 +1,504 @@
+[
+  {
+    "id": "tvmaze-44933",
+    "format": "series",
+    "title": "Severance",
+    "year": 2022,
+    "genres": [
+      "Drama",
+      "Science-Fiction",
+      "Mystery"
+    ],
+    "subtype": "series",
+    "pitch": "Your work self has a secret. Your home self cannot ask.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "44933",
+      "url": "https://www.tvmaze.com/shows/44933/severance",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "An office. Two lives. A very suspicious lift."
+  },
+  {
+    "id": "tvmaze-54198",
+    "format": "series",
+    "title": "The Bear",
+    "year": 2022,
+    "genres": [
+      "Drama",
+      "Comedy",
+      "Food"
+    ],
+    "subtype": "series",
+    "pitch": "Dinner service is a contact sport.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "54198",
+      "url": "https://www.tvmaze.com/shows/54198/the-bear",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A kitchen where the pressure is always on."
+  },
+  {
+    "id": "tvmaze-44458",
+    "format": "series",
+    "title": "Ted Lasso",
+    "year": 2020,
+    "genres": [
+      "Drama",
+      "Comedy",
+      "Sports"
+    ],
+    "subtype": "series",
+    "pitch": "An optimist walks into a football club.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "44458",
+      "url": "https://www.tvmaze.com/shows/44458/ted-lasso",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A US coach, an English club, a lot of heart."
+  },
+  {
+    "id": "tvmaze-17861",
+    "format": "series",
+    "title": "Dark",
+    "year": 2017,
+    "genres": [
+      "Drama",
+      "Science-Fiction",
+      "Supernatural"
+    ],
+    "subtype": "series",
+    "pitch": "Small town. Missing people. Bring a notebook.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "17861",
+      "url": "https://www.tvmaze.com/shows/17861/dark",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A German mystery where time refuses to behave."
+  },
+  {
+    "id": "tvmaze-16149",
+    "format": "series",
+    "title": "Fleabag",
+    "year": 2016,
+    "genres": [
+      "Drama",
+      "Comedy"
+    ],
+    "subtype": "series",
+    "pitch": "Messy life. Perfectly timed looks at the camera.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "16149",
+      "url": "https://www.tvmaze.com/shows/16149/fleabag",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A London woman lets the audience in on the joke."
+  },
+  {
+    "id": "tvmaze-48830",
+    "format": "series",
+    "title": "Only Murders in the Building",
+    "year": 2021,
+    "genres": [
+      "Comedy",
+      "Crime",
+      "Mystery"
+    ],
+    "subtype": "series",
+    "pitch": "The neighbours have a podcast. And a body.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "48830",
+      "url": "https://www.tvmaze.com/shows/48830/only-murders-in-the-building",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "Three amateur sleuths, one New York apartment building."
+  },
+  {
+    "id": "tvmaze-2790",
+    "format": "series",
+    "title": "The Good Place",
+    "year": 2016,
+    "genres": [
+      "Comedy",
+      "Fantasy",
+      "Supernatural"
+    ],
+    "subtype": "series",
+    "pitch": "The afterlife has an admin problem.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "2790",
+      "url": "https://www.tvmaze.com/shows/2790/the-good-place",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "An ethics lesson disguised as a very odd heaven."
+  },
+  {
+    "id": "tvmaze-45039",
+    "format": "series",
+    "title": "Slow Horses",
+    "year": 2022,
+    "genres": [
+      "Drama",
+      "Thriller",
+      "Espionage"
+    ],
+    "subtype": "series",
+    "pitch": "The spies nobody wanted might be the ones you need.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "45039",
+      "url": "https://www.tvmaze.com/shows/45039/slow-horses",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "MI5 misfits, grubby offices, surprisingly high stakes."
+  },
+  {
+    "id": "tvmaze-3451",
+    "format": "series",
+    "title": "Detectorists",
+    "year": 2014,
+    "genres": [
+      "Comedy"
+    ],
+    "subtype": "series",
+    "pitch": "Big skies. Small finds. Two very good friends.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "3451",
+      "url": "https://www.tvmaze.com/shows/3451/detectorists",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "Two friends with metal detectors search the countryside."
+  },
+  {
+    "id": "tvmaze-33320",
+    "format": "series",
+    "title": "Derry Girls",
+    "year": 2018,
+    "genres": [
+      "Comedy"
+    ],
+    "subtype": "series",
+    "pitch": "Growing up loudly, against a complicated backdrop.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "33320",
+      "url": "https://www.tvmaze.com/shows/33320/derry-girls",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "School friends in 1990s Northern Ireland cause chaos."
+  },
+  {
+    "id": "tvmaze-23470",
+    "format": "series",
+    "title": "Succession",
+    "year": 2018,
+    "genres": [
+      "Drama",
+      "Family"
+    ],
+    "subtype": "series",
+    "pitch": "Family dinner. Corporate warfare. Same thing.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "23470",
+      "url": "https://www.tvmaze.com/shows/23470/succession",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A media dynasty makes inheritance a blood sport."
+  },
+  {
+    "id": "tvmaze-55350",
+    "format": "series",
+    "title": "Abbott Elementary",
+    "year": 2021,
+    "genres": [
+      "Comedy"
+    ],
+    "subtype": "series",
+    "pitch": "Underfunded school. Overcommitted teachers.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "55350",
+      "url": "https://www.tvmaze.com/shows/55350/abbott-elementary",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A Philadelphia school staff keeps showing up."
+  },
+  {
+    "id": "tvmaze-22036",
+    "format": "documentaries",
+    "title": "Planet Earth II",
+    "year": 2016,
+    "genres": [
+      "Nature"
+    ],
+    "subtype": "documentary-series",
+    "pitch": "Leave the sofa. Keep the sofa. See the planet.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "22036",
+      "url": "https://www.tvmaze.com/shows/22036/planet-earth-ii",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "Wildlife from islands to cities."
+  },
+  {
+    "id": "tvmaze-25504",
+    "format": "documentaries",
+    "title": "Blue Planet II",
+    "year": 2017,
+    "genres": [
+      "Nature"
+    ],
+    "subtype": "documentary-series",
+    "pitch": "Go deep. Then a little deeper.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "25504",
+      "url": "https://www.tvmaze.com/shows/25504/blue-planet-ii",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "Explore the ocean and the life beneath its surface."
+  },
+  {
+    "id": "tvmaze-40358",
+    "format": "documentaries",
+    "title": "The Last Dance",
+    "year": 2020,
+    "genres": [
+      "Drama",
+      "Sports"
+    ],
+    "subtype": "documentary-series",
+    "pitch": "Talent wins games. What does a dynasty cost?",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "40358",
+      "url": "https://www.tvmaze.com/shows/40358/the-last-dance",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "Michael Jordan and the Chicago Bulls take centre court."
+  },
+  {
+    "id": "tvmaze-55965",
+    "format": "documentaries",
+    "title": "The Beatles: Get Back",
+    "year": 2021,
+    "genres": [
+      "Music",
+      "History"
+    ],
+    "subtype": "documentary-series",
+    "pitch": "Four musicians. One room. Watch the work happen.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "55965",
+      "url": "https://www.tvmaze.com/shows/55965/the-beatles-get-back",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A close look at the Beatles making music together."
+  },
+  {
+    "id": "tvmaze-55536",
+    "format": "documentaries",
+    "title": "Welcome to Wrexham",
+    "year": 2022,
+    "genres": [
+      "Drama",
+      "Comedy",
+      "Sports"
+    ],
+    "subtype": "documentary-series",
+    "pitch": "A football club is never only a football club.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "55536",
+      "url": "https://www.tvmaze.com/shows/55536/welcome-to-wrexham",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A Welsh club, its community and its Hollywood owners."
+  },
+  {
+    "id": "tvmaze-1128",
+    "format": "documentaries",
+    "title": "Cosmos",
+    "year": 1980,
+    "genres": [
+      "Mystery",
+      "Nature",
+      "History"
+    ],
+    "subtype": "documentary-series",
+    "pitch": "Your problems, but at a more useful scale.",
+    "source": {
+      "provider": "TVmaze",
+      "externalId": "1128",
+      "url": "https://www.tvmaze.com/shows/1128/cosmos",
+      "licenceRef": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "TVmaze · CC BY-SA 4.0",
+      "retrievedAt": "2026-11-16"
+    },
+    "clue": "A journey through science, space and time."
+  },
+  {
+    "id": "wikidata-Q58814632",
+    "format": "documentaries",
+    "title": "Free Solo",
+    "year": 2018,
+    "genres": [
+      "Adventure"
+    ],
+    "subtype": "documentary-film",
+    "source": {
+      "provider": "Wikidata",
+      "externalId": "Q58814632",
+      "url": "https://www.wikidata.org/wiki/Q58814632",
+      "licenceRef": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Wikidata · CC0",
+      "retrievedAt": "2026-11-16"
+    },
+    "pitch": "One wall. No rope. Sweaty palms from your sofa.",
+    "clue": "Alex Honnold attempts an unroped climb of El Capitan."
+  },
+  {
+    "id": "wikidata-Q99372651",
+    "format": "documentaries",
+    "title": "My Octopus Teacher",
+    "year": 2020,
+    "genres": [
+      "Nature"
+    ],
+    "subtype": "documentary-film",
+    "source": {
+      "provider": "Wikidata",
+      "externalId": "Q99372651",
+      "url": "https://www.wikidata.org/wiki/Q99372651",
+      "licenceRef": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Wikidata · CC0",
+      "retrievedAt": "2026-11-16"
+    },
+    "pitch": "An unlikely friendship, under the surface.",
+    "clue": "A filmmaker returns to a kelp forest and an octopus."
+  },
+  {
+    "id": "wikidata-Q1279290",
+    "format": "documentaries",
+    "title": "Jiro Dreams of Sushi",
+    "year": 2011,
+    "genres": [
+      "Food"
+    ],
+    "subtype": "documentary-film",
+    "source": {
+      "provider": "Wikidata",
+      "externalId": "Q1279290",
+      "url": "https://www.wikidata.org/wiki/Q1279290",
+      "licenceRef": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Wikidata · CC0",
+      "retrievedAt": "2026-11-16"
+    },
+    "pitch": "What happens when good enough never is?",
+    "clue": "A portrait of sushi chef Jiro Ono and his work."
+  },
+  {
+    "id": "wikidata-Q287708",
+    "format": "documentaries",
+    "title": "Searching for Sugar Man",
+    "year": 2012,
+    "genres": [
+      "Music"
+    ],
+    "subtype": "documentary-film",
+    "source": {
+      "provider": "Wikidata",
+      "externalId": "Q287708",
+      "url": "https://www.wikidata.org/wiki/Q287708",
+      "licenceRef": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Wikidata · CC0",
+      "retrievedAt": "2026-11-16"
+    },
+    "pitch": "A musical mystery with a remarkable trail.",
+    "clue": "Fans follow the story of musician Sixto Rodriguez."
+  },
+  {
+    "id": "wikidata-Q1417721",
+    "format": "documentaries",
+    "title": "Man on Wire",
+    "year": 2008,
+    "genres": [
+      "Adventure"
+    ],
+    "subtype": "documentary-film",
+    "source": {
+      "provider": "Wikidata",
+      "externalId": "Q1417721",
+      "url": "https://www.wikidata.org/wiki/Q1417721",
+      "licenceRef": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Wikidata · CC0",
+      "retrievedAt": "2026-11-16"
+    },
+    "pitch": "A heist film, except the prize is a walk.",
+    "clue": "Philippe Petit and an extraordinary high-wire plan."
+  },
+  {
+    "id": "wikidata-Q26824229",
+    "format": "documentaries",
+    "title": "13th",
+    "year": 2016,
+    "genres": [
+      "Society"
+    ],
+    "subtype": "documentary-film",
+    "source": {
+      "provider": "Wikidata",
+      "externalId": "Q26824229",
+      "url": "https://www.wikidata.org/wiki/Q26824229",
+      "licenceRef": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Wikidata · CC0",
+      "retrievedAt": "2026-11-16"
+    },
+    "pitch": "Press play. Keep talking afterwards.",
+    "clue": "Ava DuVernay examines race and incarceration in the US."
+  }
+]
