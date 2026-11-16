@@ -28,7 +28,7 @@ const flipRect=(r:Rect):Rect=>({...r,y:440-r.y-r.h});
 export const HOLES:Hole[]=RAW.map((h,i)=>i%2===0?h:{...h,tee:flip(h.tee),cup:flip(h.cup),walls:h.walls.map(flipRect),water:h.water.map(flipRect),sand:h.sand.map(flipRect),bumpers:h.bumpers.map(flip),gems:h.gems.map(flip),portals:h.portals?[flip(h.portals[0]),flip(h.portals[1])]:undefined,pirates:h.pirates?.map(flip),rails:h.rails?.map(r=>({a:flip(r.a),b:flip(r.b)})),slopes:h.slopes?.map(r=>({...r,y:440-r.y-r.h,dy:-r.dy}))});
 export type Player={id:string;name:string;color:string;score:number[];ball:Vec;strokes:number;done:boolean;gems:number[]};
 export type Game={version:1;rev:number;mode:'quest'|'couch'|'online';phase:'lobby'|'play'|'between'|'end';hole:number;length:number;turn:number;players:Player[];xp:number;upgrade:'guide'|'boots'|'charm'|'';story:number;note:string;lastShotAt:number;lockedUntil:number;treasure:number;bankShots:number;pars:number};
-export type Trace={points:Vec[];gems:number[];water:boolean;sunk:boolean;portals:number;wallHits:number;ball:Vec};
+export type Trace={pirateUp:boolean;points:Vec[];gems:number[];water:boolean;sunk:boolean;portals:number;wallHits:number;ball:Vec};
 export const COLORS=['#ffe59b','#89ecff','#eeabff','#ffb99e'];
 export function newGame(mode:Game['mode'],players:{id:string;name:string}[],length=9):Game{return {version:1,rev:0,mode,phase:mode==='online'?'lobby':'play',hole:0,length,turn:0,players:players.map((p,i)=>({...p,name:p.name.trim().slice(0,22)||`Player ${i+1}`,color:COLORS[i%4],score:[],ball:{...HOLES[0].tee},strokes:0,done:false,gems:[]})),xp:0,upgrade:'',story:0,note:'Welcome to Captain’s Cove. One more hole before home.',lastShotAt:0,lockedUntil:0,treasure:0,bankShots:0,pars:0};}
 export function simulate(hole:Hole,start:Vec,angle:number,power:number,boots=false,oldGems:number[]=[],pirateUp=true):Trace{
@@ -48,7 +48,7 @@ export function simulate(hole:Hole,start:Vec,angle:number,power:number,boots=fal
   const inSand=hole.sand.some(r=>x>r.x&&x<r.x+r.w&&y>r.y&&y<r.y+r.h);const friction=inSand&&!boots?.955:.9915;vx*=friction;vy*=friction;
   if(frame%3===0)points.push({x,y});if(Math.hypot(vx,vy)<.12)break;
  }
- points.push({x,y});return {points,gems,water,sunk,portals,wallHits,ball:{x,y}};
+ points.push({x,y});return {pirateUp,points,gems,water,sunk,portals,wallHits,ball:{x,y}};
 }
 export function shoot(s:Game,actor:string,angle:number,power:number,now:number):{state:Game;trace:Trace}|null{
  if(s.phase!=='play'||s.players[s.turn]?.id!==actor||now<s.lockedUntil||!Number.isFinite(angle)||!Number.isFinite(power)||power<1||power>100)return null;

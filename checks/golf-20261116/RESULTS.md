@@ -10,3 +10,5 @@ Nine pirate crazy-golf holes, alternating tee direction, real slope forces, diag
 - Fixed a real first-frame negative-time crash on some background online tabs; clamped frame progress and added a defensive ball-position fallback.
 
 Limits: casual trusted-friend rooms, not authenticated accounts or anti-cheat. Host must keep the original tab open. Saves are browser-local, not cloud backup; same browser restores the room. No public matchmaking, chat, video, simultaneous shots or native iPhone Safari certification. Gameplay makes no AI/model calls. Preview only, no production/alias promotion.
+
+Final polish checks: touch hit-testing uses the actual fitted SVG dimensions at 430px; touching never auto-fires. All nine scorecard rows reached through paging, separate treasure-map tab, modal focus trap and Escape. Pirate up/down state remains fixed to the shot that is animating, rather than switching early to the next player's obstacles.
