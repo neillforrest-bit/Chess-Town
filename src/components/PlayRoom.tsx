@@ -10,7 +10,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRoom } from '@/lib/useRoom';
 import { nextBotIntent } from '@/lib/soloBot';
 import { TROPE_NAMES, SWIPER_CAP, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent, actorHit } from '@/lib/game';
-import { HitScreen, BracketScreen, RerollScreen } from './B8Screens';
+import { HitScreen, BracketScreen, BracketMap, RerollScreen } from './B8Screens';
 import CineSyncPipeline from './CineSyncPipeline';
 import TokenHUD from './TokenHUD';
 import { ConsPicker, PivotModal, PassPips, EconomyBar, useGraveSync } from './V2Bits';
@@ -93,6 +93,7 @@ function SubDeck({ deck, mine, other, onSwipe, themName }: { deck: string[]; min
 
 export default function PlayRoom({ code,durableSeat }: { code: string;durableSeat?:MovieSeat }) {
   const sp = useSearchParams();
+  const [finalMap,setFinalMap]=useState(false);
   const pid = durableSeat?.pid || (sp.get('p') === 'B' ? 'B' : 'A') as PID;
   const name = durableSeat?.name || sp.get('n') || '';
   const solo = !durableSeat&&sp.get('solo') === '1';
@@ -389,7 +390,7 @@ export default function PlayRoom({ code,durableSeat }: { code: string;durableSea
       <div className="cs-orson">{s.b8?'KNOCKOUT CHAMPION / CONFIRM TONIGHT':'SO - WHAT ARE YOU ACTUALLY WATCHING?'}</div>
       {s.fin.verdict.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
       <p className="cs-small">{s.b8?'The final bout decided the winner. Both players confirm the champion below. Eliminated titles stay out.':"Chips won the bragging rights. The sofa is still yours - agree on tonight's film."}</p>
-      <div className="cs-watchpick-row">{card(s.fin.a)}{!s.b8&&card(s.fin.b)}</div>
+      {s.b8&&<button className="cs-btn" onClick={()=>setFinalMap(true)}>VIEW KNOCKOUT BRACKET</button>}{finalMap&&<div className="cs-sheet" role="dialog" aria-label="Completed knockout bracket"><div className="cs-sheet-in"><button className="cs-btn" onClick={()=>setFinalMap(false)}>CLOSE BRACKET</button><BracketMap s={s}/></div></div>}<div className="cs-watchpick-row">{card(s.fin.a)}{!s.b8&&card(s.fin.b)}</div>
       {mine !== undefined && theirs !== undefined && mine !== theirs && <p className="cs-small cs-gold">You're split. {BY_ID[s.winner].t} is the champion on the table - pick again together.</p>}
     </div>);
   }
