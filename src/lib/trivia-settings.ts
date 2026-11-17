@@ -1,6 +1,6 @@
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard' | 'master';
 export type TriviaDifficultySetting = 'classic' | QuestionDifficulty;
-export type TriviaSportFocus = 'open' | 'nba' | 'nfl' | 'premier-league' | 'grammar';
+export type TriviaSportFocus = 'open' | 'nba' | 'nfl' | 'premier-league' | 'grammar' | 'history';
 
 export type TriviaSettings = {
   difficulty: TriviaDifficultySetting;
@@ -19,6 +19,7 @@ export const DIFFICULTY_OPTIONS: Array<{ id: TriviaDifficultySetting; label: str
 
 export const SPORT_FOCUS_OPTIONS: Array<{ id: TriviaSportFocus; label: string; hint: string; categoryId: number | null }> = [
   { id: 'open', label: 'OPEN PUB', hint: 'Draft from every category', categoryId: null },
+  { id: 'history', label: 'HISTORY', hint: 'History main rounds; mixed flash finales and roulette', categoryId: -15 },
   { id: 'grammar', label: 'GRAMMAR', hint: 'English grammar, from foundations to advanced structures', categoryId: -14 },
   { id: 'nba', label: 'NBA', hint: 'Every round from the NBA shelf', categoryId: -11 },
   { id: 'nfl', label: 'NFL', hint: 'Every round from the NFL shelf', categoryId: -12 },
@@ -52,8 +53,8 @@ export function loadTriviaSettings(): TriviaSettings {
   const params = new URLSearchParams(window.location.search);
   let saved = DEFAULT_TRIVIA_SETTINGS;
   try { saved = normalizeTriviaSettings(JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || 'null')); } catch { /* private browsing */ }
-  if (params.get('topic') === 'grammar') {
-    const focused = normalizeTriviaSettings({ ...saved, focus: 'grammar', difficulty: params.get('difficulty') || saved.difficulty });
+  if (['grammar','history'].includes(params.get('topic') || '')) {
+    const focused = normalizeTriviaSettings({ ...saved, focus: params.get('topic'), difficulty: params.get('difficulty') || saved.difficulty });
     saveTriviaSettings(focused);
     return focused;
   }

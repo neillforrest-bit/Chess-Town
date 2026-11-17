@@ -244,6 +244,11 @@ function drawHouseMixed(count: number, exclude: Set<string>, difficulty: Difficu
 export async function fetchRoundQuestions(categoryId: number, difficulty: Difficulty, exclude: Set<string>, count = QUESTIONS_PER_ROUND): Promise<MatchQuestion[]> {
   if (categoryId < 0) {
     const drawn = drawHouseQuestions(categoryId, count, exclude, difficulty);
+    // Never swap an exhausted History decider to a different topic.
+    if(categoryId===-15){
+      if(drawn.length<count)drawn.push(...drawHouseQuestions(categoryId,count-drawn.length,new Set(),difficulty));
+      return drawn.slice(0,count);
+    }
     return drawn.length >= count ? drawn : [...drawn, ...drawHouseMixed(count - drawn.length, new Set([...exclude, ...drawn.map((q) => q.question)]), difficulty)];
   }
   const picked: MatchQuestion[] = [];

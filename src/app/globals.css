@@ -5129,3 +5129,30 @@ body .trivia-brawl-page.trivia-showtime .quiz-wildcard-page-0 .trivia-wildcard:n
 
 /* Shared paged-rule/readiness pattern, adapted from Movie Town BracketPage. */
 .game-rules{display:flex;flex-direction:column;gap:20px;min-height:0;flex:1;justify-content:center}.game-rules-count{font:10px monospace;color:#efc48b;letter-spacing:1px}.game-rules h2{font:31px/1.1 Georgia;color:#ffebc9;margin:0}.game-rules>p{font:15px/1.65 Arial;color:#cfdee1;margin:0}.game-rules-do{background:#354b57;border-left:3px solid #eec38c;padding:15px}.game-rules-do>b{font:9px monospace;color:#f5d7a8}.game-rules-do>p{font:13px/1.6 Arial;color:#e8f0eb;margin:8px 0 0}.game-rules-nav{display:flex;gap:10px;margin-top:auto;padding-top:15px}.game-rules-nav button{padding:13px 12px;border:1px solid #8a9a9d;border-radius:6px;background:#2c4658;color:#eed4aa;font:bold 10px Arial;min-height:43px}.game-rules-nav button:last-child{background:#edc48b;color:#183044;flex:1;border-color:#edc48b}.game-rules-nav button:disabled{opacity:.35}@media(max-height:760px){.game-rules{gap:17px}.game-rules h2{font-size:28px}.game-rules>p{font-size:13px}.game-rules-do{padding:13px}.game-rules-do>p{font-size:12px}}@media(max-height:650px){.game-rules{gap:14px}.game-rules h2{font-size:24px}.game-rules>p{font-size:12px;line-height:1.55}.game-rules-do{padding:11px}.game-rules-do>p{font-size:11px;line-height:1.5}.game-rules-nav button{font-size:8px;min-height:37px;padding:10px}.game-rules-count{font-size:9px}}
+
+/* History focus: keep the new setup and long questions inside the phone budget. */
+.trivia-history-source a{color:#f3d69e;text-decoration:underline}
+body .trivia-history.trivia-showtime--lobby .trivia-lobby-setup{flex:none;padding:7px;gap:5px}
+body .trivia-history.trivia-showtime--lobby .trivia-lobby-setup p{font:500 11px/1.25 system-ui,sans-serif}
+body .trivia-history.trivia-showtime--lobby>.trivia-brawl-draft{flex:1;overflow:hidden!important}
+body .trivia-history.trivia-showtime--lobby .trivia-brawl-primary{flex:none;margin:0;min-height:42px}
+body .trivia-history.trivia-showtime:has(.quiz-master)>.trivia-brawl-header{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between;min-height:32px;height:32px;margin:0;flex:none}
+body .trivia-history.trivia-showtime:has(.quiz-master)>.trivia-brawl-header>div>span{display:none}
+body .trivia-history.trivia-showtime:has(.quiz-master)>.trivia-brawl-header h1{font-size:16px!important;margin:0}
+body .trivia-history.trivia-showtime:has(.quiz-master)>.trivia-brawl-header :is(button,a){min-height:32px!important;height:32px;padding:5px 9px!important;flex:none;width:auto}
+body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-scorebug{padding:4px!important}
+body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-scorebug__side{flex-direction:row!important;gap:6px!important}
+body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-scorebug__side small{font-size:13px!important}
+body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-scorebug__side b{font-size:28px!important}
+body .trivia-history.trivia-showtime:has(.quiz-master)>.trivia-brawl-question{min-height:0!important;overflow:hidden;gap:5px!important}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-master{padding:7px;gap:7px;min-height:0;flex:0 0 auto}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-master__portrait{width:38px;flex-basis:38px}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-master__portrait svg{height:46px}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-master__question{font-size:17px!important;line-height:1.22!important}
+body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-brawl-answers{flex:1!important;min-height:110px!important;grid-template-rows:repeat(2,minmax(48px,1fr))!important}
+body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-brawl-answers button:nth-child(n){min-height:48px!important;font-size:14px!important;padding:6px!important}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-countdown{padding:3px 0 0;flex:none}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-countdown__caption{margin-bottom:3px}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-countdown__track{height:9px}
+body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-wildcards-open{min-height:36px!important;flex:none}
+@media(max-height:600px){body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-master__question{font-size:15px!important}body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-brawl-question{padding:6px!important}}

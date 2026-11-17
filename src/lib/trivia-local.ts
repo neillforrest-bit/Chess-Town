@@ -18,6 +18,7 @@ export type LocalQuestion = {
 };
 
 import { SEASON_TWO_CATEGORIES, SEASON_TWO_QUESTIONS } from './trivia-packs';
+import { HISTORY_CATEGORY_ID, HISTORY_QUESTIONS } from './trivia-history';
 import { GRAMMAR_CATEGORIES, GRAMMAR_QUESTIONS } from './trivia-grammar';
 import { SPORT_FOCUS_CATEGORIES, SPORT_FOCUS_QUESTIONS } from './trivia-sports';
 import type { QuestionDifficulty } from './trivia-settings';
@@ -30,6 +31,7 @@ export const LOCAL_CATEGORIES: LocalCategory[] = [
   ...SEASON_TWO_CATEGORIES,
   ...SPORT_FOCUS_CATEGORIES,
   ...GRAMMAR_CATEGORIES,
+  { id: HISTORY_CATEGORY_ID, name: 'History' },
 ];
 
 const BASE_QUESTIONS: Record<number, LocalQuestion[]> = {
@@ -73,6 +75,7 @@ export const LOCAL_QUESTIONS: Record<number, LocalQuestion[]> = (() => {
   for (const [id, list] of Object.entries(SEASON_TWO_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
   for (const [id, list] of Object.entries(SPORT_FOCUS_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
   for (const [id, list] of Object.entries(GRAMMAR_QUESTIONS)) merged[Number(id)] = [...list];
+  merged[HISTORY_CATEGORY_ID] = HISTORY_QUESTIONS;
   return merged;
 })();
 
@@ -84,7 +87,8 @@ export function localCategoryName(id: number): string {
 const SEEN_KEY = 'ct-trivia-seen-v1';
 export function pickLocalQuestion(categoryId: number, difficulty: QuestionDifficulty = 'medium', exclude: Set<string> = new Set()): LocalQuestion | null {
   const pack = LOCAL_QUESTIONS[categoryId] || [];
-  let eligible = pack.filter((item) => (!item.level || item.level === difficulty) && !exclude.has(item.question));
+  const shelfDifficulty = categoryId === HISTORY_CATEGORY_ID && difficulty === 'master' ? 'hard' : difficulty;
+  let eligible = pack.filter((item) => (!item.level || item.level === shelfDifficulty) && !exclude.has(item.question));
   if (categoryId === -14 && exclude.size) {
     const usedFamilies = new Set(pack.filter(item => exclude.has(item.question)).map(item => item.family));
     const freshFamilies = eligible.filter(item => !usedFamilies.has(item.family));
