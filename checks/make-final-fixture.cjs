@@ -1,0 +1,5 @@
+require('./recovered-knockout.cjs');
+const fs=require('fs'),G=require('../src/lib/game.ts'),B=require('../src/lib/b8.ts');
+let s=G.newState('QAREFINE');s.players.A={...s.players.A,name:'Forrest',joined:true};s.players.B={...s.players.B,name:'Jemma',joined:true};s.hr={wilds:false,sealed:true};s.mem.recorded=true;
+const ids=G.MOVIES.slice(40,48).map(m=>m.id);s.draft.picks={A:ids.slice(0,4),B:ids.slice(4)};s.hit={grid:ids,endsAt:0,owner:Object.fromEntries(ids.map((id,i)=>[id,i<4?'A':'B'])),weap:{A:{veto:null,shields:[],done:true},B:{veto:null,shields:[],done:true}},shieldsAllowed:{A:1,B:1},tok:{A:{},B:{}},budget:{A:100,B:100},res:{dead:[],blocked:[],mocked:null,shield:{},cut:[],until:0}};
+let now=1000;B.buildBracket(s,now);let guard=0;while(s.phase==='bracket'&&guard++<100){now+=1000000;if(s.b8.show){s.b8.ack={A:true,B:true};B.tick8(s,now);continue;}let m=s.b8.matches[s.b8.cur];B.finish(s,m,m.a,'QA deciding bout',now);B.tick8(s,now+B.R.NEXT_MS+1);}s.now=Date.now();fs.writeFileSync('/tmp/cinesync-final-fixture.json',JSON.stringify(s));
