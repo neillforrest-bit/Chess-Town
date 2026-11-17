@@ -4,9 +4,9 @@ import { rollFeline, isSpectacle, SPEC_TAG } from '@/utils/sabotageEngine';
 import { TROPE_NAMES, BY_ID, poolOf, pickWildcards, vecOf, wdist, seeded, type PID, type State, type Movie } from './game';
 
 export const R = {
-  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 6, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 40000, CALLS_MS: [9000, 9000, 10000, 11000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 14000, SEED_MS: 13000, HOLD_MS: 900000, SHOW_BLITZ: 6500, SHOW_MATCH: 9000,
+  HIT_MS: 120000, HIT_REVEAL_MS: 12000, BUDGET: 100, BONUS_TOK: 10, GRID_EACH: 6, GRID_MIN: 18, GRID_MAX: 18, BRACKET: 16, MAX_WILD_IN_BRACKET: 4, BLITZ_MS: 8000, BID_MS: 15000, CHAMP_MS: 15000, CALLS_MS: [7000, 7000, 7000, 7000], CALL_BONUS: [1, 2, 3, 5], REVEAL_MS: 2500, SEED_MS: 5000, HOLD_MS: 900000, SHOW_BLITZ: 1500, SHOW_MATCH: 2000,
   NO_REFRESH: true, RATING_W: 0.4, BOTH_BONUS: 18, RATING_BOUT: 0.12, WC_STEAL: 10, WC_MUL: 2,
-  PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 5500,
+  PURSE: 100, FREE_WEIGHT: 10, OVERDRIVE: 1, UPSET_GAP: 3, UPSET_MULT: 2, BUSTER_FINE: 10, BUSTER_MAX_MS: 14000, TRIVIA_MS: 15000, NEXT_MS: 1200,
 };
 
 export type HitWeap = { veto: number | null; shields: number[]; done: boolean };
@@ -306,7 +306,7 @@ export function rollWildcard(s: State, b: B8, m: M8): boolean {
   if (rnd() >= WC_P) return false;
   // House Rules: wildcard ENTRANTS (Genre Swap, Resurrection) only when players explicitly opted in.
   // Blind Bet never admits a title, so it rolls in strict mode too. Strict = only player-chosen titles, ever.
-  const kinds = s.hr?.wilds ? (['blind', 'swap', 'res'] as const) : (['blind'] as const);
+  const kinds = s.hr?.wilds ? (['blind', 'swap'] as const) : (['blind'] as const);
   const kind = kinds[Math.floor(rnd() * kinds.length)];
   const inPlay = new Set<number>(b.matches.flatMap((x) => [x.a, x.b]).filter((x): x is number => x !== null));
   if (kind === 'blind') {
@@ -327,13 +327,8 @@ export function rollWildcard(s: State, b: B8, m: M8): boolean {
     m.a = x.id; m.b = y.id; m.tape = ''; delete m.tape; s.pool = s.pool.map((q) => (q === oa ? x.id : q === ob ? y.id : q));
     say8(s, `GENRE SWAP. I have thrown out ${BY_ID[oa].t} and ${BY_ID[ob].t}. In their place: ${x.t} (${x.y}) against ${y.t} (${y.y}). Cult. Vintage. Unrelated. Fight.`, 'scheme'); s.log.unshift('Wildcard: GENRE SWAP'); return true;
   }
-  const live = new Set<number>(b.matches.filter((x) => x.status !== 'RESOLVED').flatMap((x) => [x.a, x.b]).filter((x): x is number => x !== null)); const out: number[] = []; for (const q of b.matches) if (q.status === 'RESOLVED' && q.winner !== null) { const l = q.winner === q.a ? q.b : q.a; if (l !== null && !live.has(l)) out.push(l); }
-  if (!out.length) { m.wc = null; return false; }
-  const back = out.sort((x, y) => BY_ID[y].r - BY_ID[x].r || x - y)[0];
-  const lowSide: 'a' | 'b' = m.seedA > m.seedB ? 'a' : 'b'; const gone = m[lowSide] as number;
-  m.was = { a: m.a, b: m.b }; m.wc = 'res'; m[lowSide] = back; if (lowSide === 'a') m.seedA = b.seed[back]; else m.seedB = b.seed[back]; delete m.tape;
-  s.pool = s.pool.map((q) => (q === gone ? back : q));
-  say8(s, `RESURRECTION. ${BY_ID[back].t} was eliminated. I have dug it up, brushed it off and put it in the ring against ${BY_ID[m.a === back ? (m.b as number) : (m.a as number)].t}. ${BY_ID[gone].t} was dead weight anyway.`, 'scheme'); s.log.unshift('Wildcard: RESURRECTION'); return true;
+  return false; // Eliminated titles never return to this knockout.
+
 }
 export function tapeIntent(s: State, it: { slot: number; line: string }) { const m = s.b8?.matches[it.slot]; if (!m || m.tape || !it.line) return; m.tape = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 240); }
 
@@ -402,12 +397,13 @@ function advance8(s: State, now: number) {
     // bracket, matchup, bracket, matchup: the full bracket returns after EVERY match (longer at the end of a round)
     b.ack = { A: false, B: false }; b.show = { until: now + (nx.round !== m.round ? R.REVEAL_MS : m.round === 1 ? R.SHOW_BLITZ : R.SHOW_MATCH), kind: 'round', round: m.round, line: introLine(s, nx)?.line }; return;
   }
-  // Final decided: Orson takes over the screen to crown it (script written server-side; winner is fixed by the bracket)
-  const w = m.winner as number; const l = w === m.a ? (m.b as number) : (m.a as number);
-  // V2 House Rule: with sealed scores the Reveal ceremony runs first - the verdict is held (judging stays
-  // false, forced keeps the bout winner) until fsettle/fskip hands it to the judge effect.
-  const held = s.hr?.sealed !== false;
-  s.tonight = null; s.phase = 'final'; s.fin = { ...s.fin, a: w, b: l, watch: {}, choice: {}, pitchEnds: now, judging: !held, judgeRequested: false, verdict: null, forced: w, rematchUsed: false, loser: null, wpid: null, tie: false };
+  // The deciding bout IS the final. Crown it directly, without a second ceremony,
+  // AI judge, re-vote or second chance for the eliminated finalist.
+  const w=m.winner as number, l=w===m.a?m.b as number:m.a as number;
+  s.phase='done'; s.winner=w; s.tonight=null;
+  s.fin={...s.fin,a:w,b:l,choice:{},pitch:{},submitted:{},watch:{},pitchEnds:null,judging:false,judgeRequested:false,verdict:{winner:w,reason:`${BY_ID[w].t} won the knockout. ${BY_ID[l].t} is eliminated.`,lines:[]},forced:w,rematchUsed:false,loser:null,wpid:null,tie:false,calls:{},revealed:true,skipped:true,scores:null,callLog:[]};
+  s.reroll={stage:'off',votes:{},used:true,to:null};
+
 }
 
 export function rerollVote(s: State, it: { pid: PID; yes: boolean }, now: number) {

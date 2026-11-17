@@ -1033,6 +1033,7 @@ export function reduce(prev: State, it: Intent): State {
     case 'fwatch': {
       if (s.phase !== 'done' || s.tonight !== null || !s.fin.verdict) break;
       const { a, b } = s.fin; if (!a || !b || (it.id !== a && it.id !== b)) break;
+      if(s.b8 && it.id!==s.winner) break; // Knockout losers cannot become tonight's pick.
       s.fin.watch[it.pid] = it.id;
       const wa = s.fin.watch.A, wb = s.fin.watch.B;
       if (wa !== undefined && wb !== undefined && wa === wb) {

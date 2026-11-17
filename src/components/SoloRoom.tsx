@@ -1,111 +1,37 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { BY_ID, buildDeck, pickWildcards, qsets, ASK_ORDER, AXQ_NAME, fitPct, type Kind } from '@/lib/game';
-import { Poster, Scores, Meter, Confetti, buzz } from '@/components/shared';
-
-type Card = { hook: string; loved: string; catch: string; providers: { region: string; names: string[] } | null; usd?: number; inTok?: number; outTok?: number };
-const GAUNTLET_S = 180; const MAX_PICKS = 4;
-const post = (body: unknown) => fetch('/api/orson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
-const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-
-export default function SoloRoom() {
-  const sp = useSearchParams();
-  const [kind, setKind] = useState<Kind>(sp.get('k') === 'series' ? 'series' : 'movie');
-  const [name, setName] = useState(sp.get('n') || '');
-  useEffect(() => { if (!name) setName(localStorage.getItem('cs-name') || ''); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const [phase, setPhase] = useState<'setup' | 'sliders' | 'play' | 'final' | 'done'>('setup');
-  const [qi, setQi] = useState(0); const [sl, setSl] = useState(5); const [ans, setAns] = useState<number[]>([5, 5, 5, 5]);
-  const [deck, setDeck] = useState<number[]>([]); const [di, setDi] = useState(0); const [picks, setPicks] = useState<number[]>([]);
-  const [adv, setAdv] = useState<{ id: number; line: string } | null>(null);
-  const [t0, setT0] = useState(0); const [left, setLeft] = useState(GAUNTLET_S); const [took, setTook] = useState(0);
-  const [orson, setOrson] = useState('I am Orson. You against me, and the clock. Choose a mood and I will argue with it.');
-  const [cost, setCost] = useState({ calls: 0, inTok: 0, outTok: 0, usd: 0 });
-  const [cards, setCards] = useState<Record<number, Card | 'wait' | 'err'>>({});
-  const [fin, setFin] = useState<{ mine: number; wild: number; win: number | null } | null>(null);
-  const target = useMemo(() => ASK_ORDER.reduce((a, i) => { a[i] = ans[i]; return a; }, [5, 5, 5, 5]), [ans]);
-  const addCost = (d: { usd?: number; inTok?: number; outTok?: number }) => setCost((c) => ({ calls: c.calls + 1, inTok: c.inTok + (d.inTok || 0), outTok: c.outTok + (d.outTok || 0), usd: c.usd + (d.usd || 0) }));
-  const loadCard = (id: number) => {
-    if (cards[id]) return; const m = BY_ID[id]; setCards((c) => ({ ...c, [id]: 'wait' }));
-    post({ type: 'card', movie: { id: m.id, t: m.t, y: m.y, g: m.g, o: m.o, c: m.c, rt: m.rt, mc: m.mc, imdb: m.imdb, r: m.r, aw: m.aw, kw: m.kw, tag: m.tag, k: m.k, sr: m.sr } })
-      .then((d: Card) => { if (d && d.hook) { addCost(d); setCards((c) => ({ ...c, [id]: d })); } else setCards((c) => ({ ...c, [id]: 'err' })); }).catch(() => setCards((c) => ({ ...c, [id]: 'err' })));
-  };
-  const cur = deck[di];
-  useEffect(() => { if (phase === 'play' && cur !== undefined) { loadCard(cur); if (deck[di + 1] !== undefined) loadCard(deck[di + 1]); } }, [phase, cur]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (phase === 'final' && fin) { loadCard(fin.mine); loadCard(fin.wild); } if (phase === 'done' && fin?.win != null) loadCard(fin.win); }, [phase, fin]); // eslint-disable-line react-hooks/exhaustive-deps
-  const toFinal = (pk: number[]) => {
-    const list = pk.length ? pk : [deck[0]]; const best = [...list].sort((a, b) => fitPct(BY_ID[b], target) - fitPct(BY_ID[a], target))[0];
-    const wild = pickWildcards(new Set([...deck, ...list]), target, 1, name + 'solo', kind)[0];
-    setTook(Math.min(GAUNTLET_S, Math.round((Date.now() - t0) / 1000))); setFin({ mine: best, wild, win: null }); setPhase('final');
-    setOrson(`Your champion is ${BY_ID[best].t}. Mine is ${BY_ID[wild].t}. One of us is about to be embarrassed.`);
-  };
-  useEffect(() => {
-    if (phase !== 'play') return;
-    const i = setInterval(() => { const l = GAUNTLET_S - Math.round((Date.now() - t0) / 1000); setLeft(Math.max(0, l)); if (l <= 0) { clearInterval(i); toFinal(picks); } }, 500);
-    return () => clearInterval(i);
-  }); // eslint-disable-line react-hooks/exhaustive-deps
-  const start = () => { localStorage.setItem('cs-name', name.trim()); setPhase('sliders'); setQi(0); setSl(5); };
-  const lockSlider = () => {
-    const axis = ASK_ORDER[qi]; const a = [...ans]; a[axis] = sl; setAns(a); buzz(14);
-    if (qi < 3) { setQi(qi + 1); setSl(5); return; }
-    const tg = ASK_ORDER.reduce((x, i) => { x[i] = a[i]; return x; }, [5, 5, 5, 5]);
-    setDeck(buildDeck(tg, name + 'solo' + Date.now(), [], { A: null, B: null }, { A: '', B: '' }, [], { A: {}, B: {} }, kind).slice(0, 40)); setDi(0); setPicks([]); setT0(Date.now()); setLeft(GAUNTLET_S); setPhase('play');
-    setOrson('Three minutes. Swipe. Every film you draft, I argue against. Stand by it or fold.');
-  };
-  const advance = (pk: number[]) => { if (pk.length >= MAX_PICKS || di + 1 >= deck.length) { toFinal(pk); return; } setDi(di + 1); };
-  const draft = () => {
-    buzz(18); const m = BY_ID[cur]; setAdv({ id: cur, line: 'Orson is sharpening his argument...' });
-    const fb = `${m.t}? Rated ${m.r.toFixed(1)} by people who had nothing better to do. Are you sure?`;
-    post({ type: 'quip', names: name || 'Player', event: `${name || 'The player'} just drafted "${m.t}" (${m.y}, ${m.g.slice(0, 3).join('/')}, rated ${m.r}). You are the DEVIL'S ADVOCATE: argue against this pick in two sharp sentences using one real fact about it, then challenge them to stand by it.`, ctx: m.o.slice(0, 220), roast: false })
-      .then((d) => { if (d.line) { addCost(d); setAdv({ id: m.id, line: d.line }); } else setAdv({ id: m.id, line: fb }); }).catch(() => setAdv({ id: m.id, line: fb }));
-  };
-  const stand = () => { if (!adv) return; const pk = [...picks, adv.id]; setPicks(pk); setAdv(null); buzz(25); advance(pk); };
-  const fold = () => { setAdv(null); advance(picks); };
-  const choose = (id: number) => {
-    if (!fin) return; buzz(30); const w = id; setFin({ ...fin, win: w }); setPhase('done');
-    setOrson(w === fin.wild ? 'You chose MY film. I have never been prouder of a human.' : 'You picked your own. Fine. I will pretend I let you.');
-  };
-  const win = fin?.win != null ? BY_ID[fin.win] : null; const wc = win ? cards[win.id] : null;
-  const summary = win ? `${name || 'I'} settled on ${win.t} in ${took >= 150 ? '3 minutes' : fmt(took)}, ${fitPct(win, target)}% aligned` : '';
-  const share = async () => { const url = location.origin + '/solo?k=' + kind; try { if (navigator.share) await navigator.share({ title: 'CineSync Solo Gauntlet', text: summary + '. Beat me:', url }); else { await navigator.clipboard.writeText(`${summary}. Beat me: ${url}`); alert('Copied to clipboard'); } } catch { /* cancelled */ } };
-
-  const head = <div className="cs-solohead"><span>CINE<b>SYNC</b> SOLO</span><span>{kind === 'series' ? 'SERIES' : 'MOVIE'}</span></div>;
-  const bar = <p className="cs-solo-orson"><em>ORSON</em> {orson}</p>;
-  const reset = () => { setPhase('setup'); setFin(null); setCards({}); setCost({ calls: 0, inTok: 0, outTok: 0, usd: 0 }); setAns([5, 5, 5, 5]); };
-
-  if (phase === 'setup') return <main className="cs-home">{head}
-    <div className="cs-logo">THE GAUNTLET</div><p className="cs-tag">You against Orson and a 3-minute clock. He argues against every pick. The last film standing faces his wildcard.</p>
-    <input className="cs-input" placeholder="Your name" maxLength={14} value={name} onChange={(e) => setName(e.target.value)} />
-    <div className="cs-kind"><button className={kind === 'movie' ? 'is-on' : ''} onClick={() => setKind('movie')}>MOVIE</button><button className={kind === 'series' ? 'is-on' : ''} onClick={() => setKind('series')}>SERIES</button></div>
-    <button className="cs-btn cs-btn--gold" onClick={start}>START THE GAUNTLET</button></main>;
-
-  if (phase === 'sliders') { const axis = ASK_ORDER[qi]; const q = qsets(kind)[0][axis]; return <main className="cs-play">{head}{bar}<section className="cs-body"><div className="cs-ask" key={qi}>
-    <div className="cs-orson">QUESTION {qi + 1} OF 4 · {AXQ_NAME[axis].toUpperCase()}</div><h2 className="cs-q">{q.q}</h2>
-    <div className="cs-slider"><div className="cs-sval">{sl}<small>{sl <= 3 ? q.lo : sl >= 7 ? q.hi : 'right in the middle'}</small></div>
-      <input type="range" min={0} max={10} step={1} value={sl} onChange={(e) => { setSl(Number(e.target.value)); buzz(6); }} aria-label={q.q} />
-      <div className="cs-ticks">{Array.from({ length: 11 }, (_, i) => <i key={i} className={i === sl ? 'is-on' : ''} />)}</div>
-      <div className="cs-sends"><span><b>0</b> {q.lo}</span><span>{q.hi} <b>10</b></span></div></div>
-    <button className="cs-btn cs-btn--gold" onClick={lockSlider}>LOCK IT IN</button></div></section></main>; }
-
-  if (phase === 'play' && cur !== undefined) { const m = BY_ID[cur]; const ci = cards[cur]; const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null;
-    const meta = m.sr ? `${m.sr.s} season${m.sr.s === 1 ? '' : 's'} · ${m.sr.e} eps · ~${m.rn} min` : m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
-    return <main className="cs-play">{head}{bar}<section className="cs-body"><div className="cs-count"><span>STOOD BY {picks.length}/{MAX_PICKS}</span><span className={'cs-timer' + (left <= 30 ? ' is-hot' : '')}>{fmt(left)}</span><span className="cs-fit">{fitPct(m, target)}% YOUR MOOD</span></div>
-      <div className="cs-cardwrap"><div className="cs-card" key={cur}>
-        <div className="cs-card-top"><Poster id={cur} big /><div className="cs-card-info"><b>{m.t}</b><span className="cs-meta">{[m.y, meta, m.k].filter(Boolean).join(' · ')}</span><span className="cs-genres">{m.g.slice(0, 3).map((g) => <i key={g}>{g}</i>)}</span>{m.c && m.c.length > 0 && <span className="cs-cast"><em>Starring</em> {m.c.slice(0, 3).join(', ')}</span>}</div></div>
-        <Scores m={m} />
-        <div className="cs-story-inline"><p className="cs-hook">{ok ? ok.hook : m.o}</p>{ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : ci === 'wait' ? <p className="cs-small">Orson is reading up on it...</p> : null}</div>
-      </div></div>
-      {adv ? <div className="cs-why-sheet"><p className="cs-solo-adv"><em>ORSON, DEVIL&apos;S ADVOCATE</em> {adv.line}</p><div className="cs-swipes"><button className="cs-btn cs-btn--no" onClick={fold}>FOLD</button><button className="cs-btn cs-btn--gold" onClick={stand}>STAND BY IT</button></div></div>
-        : <div className="cs-swipes"><button className="cs-btn cs-btn--no" onClick={() => { buzz(8); advance(picks); }}>PASS</button><button className="cs-btn cs-btn--gold" onClick={draft}>DRAFT</button></div>}
-      <Meter cost={{ ...cost }} /></section></main>; }
-
-  if (phase === 'final' && fin) return <main className="cs-play">{head}{bar}<section className="cs-body"><div className="cs-round">THE FINAL · YOUR CHAMPION VS ORSON&apos;S WILDCARD</div>
-    <div className="cs-tgrid cs-tgrid--two">{[fin.mine, fin.wild].map((id, i) => { const m = BY_ID[id]; const ci = cards[id]; const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div key={id} className={'cs-tcard' + (i === 1 ? ' is-orson' : '')}><i className="cs-who">{i === 0 ? 'YOURS' : 'ORSON'}</i><Poster id={id} /><b>{m.t}</b><span>{m.y} · {m.r.toFixed(1)}</span><p className="cs-mini">{ok ? ok.hook.slice(0, 150) + (ok.hook.length > 150 ? '...' : '') : m.o.slice(0, 120) + '...'}</p><button className="cs-btn cs-btn--gold cs-pickbtn" onClick={() => choose(id)}>THIS ONE</button></div>; })}</div>
-    <Meter cost={{ ...cost }} /></section></main>;
-
-  if (phase === 'done' && win) return <main className="cs-play">{head}{bar}<section className="cs-body"><div className="cs-done"><Confetti /><div className="cs-orson">TONIGHT YOU WATCH</div><Poster id={win.id} big cls="cs-poster--win" /><h2>{win.t}</h2>
-    {wc && wc !== 'wait' && wc !== 'err' && wc.providers && wc.providers.names.length > 0 && <p className="cs-small cs-watch"><em>WATCH ON</em> {wc.providers.names.slice(0, 4).join(' · ')} <span className="cs-jw">({wc.providers.region}) Streaming data by JustWatch</span></p>}
-    <p className="cs-verdict">{summary}.</p>
-    <div className="cs-row"><button className="cs-btn" onClick={share}>SHARE</button><button className="cs-btn cs-btn--gold" onClick={reset}>AGAIN</button></div><Meter cost={{ ...cost }} /></div></section></main>;
-  return null;
+import {useEffect,useState} from 'react';
+import {useSearchParams} from 'next/navigation';
+import {BY_ID,buildDeck,fitPct,poolOf,type Kind} from '@/lib/game';
+import styles from './solo-discovery.module.css';
+type Stage='setup'|'rules'|'discover'|'shortlist'|'bout'|'confirm'|'done';
+type Session={stage:Stage;kind:Kind;mood:string;deck:number[];at:number;kept:number[];seen:number[];round:number[];wins:number[];pair:number;roundNo:number;history:{a:number;b:number;winner:number;round:number}[];winner:number|null};
+const blank:Session={stage:'setup',kind:'movie',mood:'Anything',deck:[],at:0,kept:[],seen:[],round:[],wins:[],pair:0,roundNo:1,history:[],winner:null};
+const moods=[{name:'Anything',genres:[]},{name:'Comfort',genres:['Comedy','Romance','Family']},{name:'Gripping',genres:['Thriller','Crime','Mystery']},{name:'Wonder',genres:['Science Fiction','Fantasy','Adventure']},{name:'Documentaries',genres:['Documentary']}];
+const key='cs-guided-discovery-v1';
+const targets:Record<string,number[]>={Anything:[5,5,5,5],Comfort:[4,2,4,4],Gripping:[7,7,3,5],Wonder:[5,5,9,6],Documentaries:[4,5,1,5]};
+function valid(x:unknown):x is Session{if(!x||typeof x!=='object')return false;const s=x as Session;return ['setup','rules','discover','shortlist','bout','confirm','done'].includes(s.stage)&&['movie','series'].includes(s.kind)&&moods.some(m=>m.name===s.mood)&&['deck','kept','seen','round','wins'].every(k=>Array.isArray(s[k as keyof Session])&&(s[k as keyof Session] as number[]).every(id=>!!BY_ID[id]))&&Number.isInteger(s.at)&&s.at>=0&&Number.isInteger(s.pair)&&s.pair>=0&&Number.isInteger(s.roundNo)&&s.roundNo>0&&Array.isArray(s.history)&&(s.winner===null||!!BY_ID[s.winner]);}
+export default function SoloRoom(){
+ const sp=useSearchParams();const [s,setS]=useState<Session>({...blank,kind:sp.get('k')==='series'?'series':'movie'});const [ready,setReady]=useState(false),[rule,setRule]=useState(0),[info,setInfo]=useState(false),[reset,setReset]=useState(false),[storage,setStorage]=useState(true),[notice,setNotice]=useState('');
+ useEffect(()=>{try{const x=JSON.parse(localStorage.getItem(key)||'null');if(valid(x))setS(x);}catch{setStorage(false);}setReady(true)},[]);
+ useEffect(()=>{if(ready)try{localStorage.setItem(key,JSON.stringify(s))}catch{setStorage(false)}},[s,ready]);
+ const target=targets[s.mood];const cur=BY_ID[s.deck[s.at]];const next=()=>s.at+1<s.deck.length?'discover':'shortlist';
+ function deal(){const ids=buildDeck(target,'guided-'+Date.now(),[],undefined,undefined,[],undefined,s.kind);const g=moods.find(m=>m.name===s.mood)!.genres;const ordered=g.length?[...ids.filter(id=>BY_ID[id].g.some(x=>g.includes(x))),...ids.filter(id=>!BY_ID[id].g.some(x=>g.includes(x)))]:ids;const all=poolOf(s.kind).map(m=>m.id);setS({...s,deck:[...new Set([...ordered,...all])],at:0,kept:[],seen:[],stage:'discover'});}
+ function choose(keep:boolean,seen=false){if(!cur)return;setS({...s,kept:keep?[...s.kept,cur.id]:s.kept,seen:seen?[...s.seen,cur.id]:s.seen,at:s.at+1,stage:next()});setNotice(seen?'Marked seen for this session.':keep?'Added to your shortlist.':'Passed for this session.');}
+ function similar(){if(!cur)return;const viewed=new Set(s.deck.slice(0,s.at+1));const remaining=s.deck.filter(id=>!viewed.has(id));remaining.sort((a,b)=>BY_ID[b].g.filter(g=>cur.g.includes(g)).length-BY_ID[a].g.filter(g=>cur.g.includes(g)).length||fitPct(BY_ID[b],target)-fitPct(BY_ID[a],target));setS({...s,deck:[...s.deck.slice(0,s.at+1),...remaining]});setNotice('Fresh cards reordered by shared genres. The current title has not been kept or passed.');}
+ function showdown(){if(s.kept.length===1){setS({...s,winner:s.kept[0],stage:'confirm'});return}setS({...s,stage:'bout',round:[...s.kept],wins:[],pair:0,roundNo:1,history:[],winner:null});}
+ function bout(id:number){const a=s.round[s.pair*2],b=s.round[s.pair*2+1];const wins=[...s.wins,id];const history=b===undefined?s.history:[...s.history,{a,b,winner:id,round:s.roundNo}];if((s.pair+1)*2<s.round.length)setS({...s,wins,pair:s.pair+1,history});else if(wins.length===1)setS({...s,winner:id,stage:'confirm',history});else setS({...s,round:wins,wins:[],pair:0,roundNo:s.roundNo+1,history});}
+ const rules=[['Your evening, your pace.','Pick a mood or leave it open. Browse fresh titles one at a time. There is no clock and no four-pick cap.'],['Keep, pass, or seen it.','KEEP grows your shortlist. PASS skips a title for this session. SEEN IT skips it too. MORE LIKE THIS reorders the unseen cards by shared genres.'],['Choose when to finish.','Open YOUR SHORTLIST whenever you want. Pick directly, continue discovering, or run every kept title through a knockout showdown. Losers stay out.'],['Confirm your choice.','A shortlist or showdown winner is a suggestion until you confirm. Progress stays on this browser. Catalogue metadata is a saved snapshot, not live streaming availability. No paid AI calls.']];
+ const title=(id:number,small=false)=>{const m=BY_ID[id];return <article className={small?styles.small:styles.card}><span>{m.y} / {m.g.slice(0,3).join(' / ')}</span><h2>{m.t}</h2><p>{small?m.o.slice(0,150)+(m.o.length>150?'...':''):m.o.slice(0,380)+(m.o.length>380?'...':'')}</p><small>Saved catalogue summary. Check where to watch separately.</small></article>};
+ const history=<details className={styles.history}><summary>BRACKET / {s.history.length} DECIDED BOUTS</summary>{s.history.length?s.history.map((h,i)=><p key={i}>R{h.round}: {BY_ID[h.winner].t} beat {BY_ID[h.winner===h.a?h.b:h.a].t}</p>):<p>No bouts played yet.</p>}</details>;
+ return <main className={styles.page}><header><a href="/">‹ MOVIE TOWN</a><b>SOLO DISCOVERY</b><button onClick={()=>{setRule(0);setInfo(true)}}>RULES ?</button></header><div className={styles.host}><b>ORSON</b><p>{s.stage==='discover'?'One card at a time. Keep what interests you, then choose how to settle your evening.':s.stage==='bout'?'A real knockout. Choose one. The other leaves the tournament.':'A longer look around the shelves. No ticking clock. No forced wildcard.'}</p></div><section className={styles.body}>
+ {s.stage==='setup'&&<><span className={styles.eyebrow}>YOUR OWN GUIDED SESSION</span><h1>Find something<br/>worth the evening.</h1><label>FORMAT<select aria-label="Format" value={s.kind} onChange={e=>setS({...s,kind:e.target.value as Kind})}><option value="movie">Films</option><option value="series">Series</option></select></label><label>OPTIONAL MOOD<select aria-label="Mood" value={s.mood} onChange={e=>setS({...s,mood:e.target.value})}>{moods.filter(m=>s.kind==='movie'||m.name!=='Documentaries').map(m=><option key={m.name}>{m.name}</option>)}</select></label><p className={styles.note}>A saved catalogue, not four options. Keep as many as you like. Your original library and saved multiplayer seats stay unchanged.</p><button className={styles.primary} onClick={()=>{setRule(0);setS({...s,stage:'rules'})}}>SHOW ME HOW →</button></>}
+ {s.stage==='rules'&&<><span className={styles.eyebrow}>RULE {rule+1} / {rules.length}</span><h1>{rules[rule][0]}</h1><p>{rules[rule][1]}</p><div className={styles.row}><button disabled={!rule} onClick={()=>setRule(rule-1)}>BACK</button><button className={styles.primary} onClick={()=>rule===3?deal():setRule(rule+1)}>{rule===3?'START DISCOVERING →':'NEXT RULE →'}</button></div></>}
+ {s.stage==='discover'&&cur&&<><div className={styles.count}><span>CARD {s.at+1} / {s.deck.length}</span><button onClick={()=>setS({...s,stage:'shortlist'})}>YOUR SHORTLIST / {s.kept.length}</button></div>{title(cur.id)}<div className={styles.row}><button onClick={()=>choose(false)}>PASS</button><button className={styles.primary} onClick={()=>choose(true)}>KEEP +</button></div><div className={styles.row}><button onClick={()=>choose(false,true)}>SEEN IT</button><button onClick={similar}>MORE LIKE THIS</button></div></>}
+ {s.stage==='shortlist'&&<><h1>{s.kept.length?'Your shortlist.':'Nothing kept yet.'}</h1><p className={styles.note}>{s.at>=s.deck.length?'You reached the end of this catalogue. No title has been chosen for you.':'Keep exploring, pick a title directly, or settle every keep in a knockout.'}</p><div className={styles.list}>{s.kept.map(id=><div key={id}><button onClick={()=>setS({...s,winner:id,stage:'confirm'})}>{BY_ID[id].t}<small>{BY_ID[id].y} / PICK THIS</small></button><button aria-label={'Remove '+BY_ID[id].t} onClick={()=>setS({...s,kept:s.kept.filter(x=>x!==id)})}>×</button></div>)}</div>{s.kept.length>0&&<button className={styles.primary} onClick={showdown}>{s.kept.length===1?'REVIEW MY PICK':'START THE SHOWDOWN'} →</button>}{s.at<s.deck.length&&<button onClick={()=>setS({...s,stage:'discover'})}>KEEP DISCOVERING →</button>}<button onClick={()=>setReset(true)}>NEW SESSION</button></>}
+ {s.stage==='bout'&&<><span className={styles.eyebrow}>ROUND {s.roundNo} / BOUT {s.pair+1} OF {Math.ceil(s.round.length/2)}</span><div className={styles.bouts}>{s.round.slice(s.pair*2,s.pair*2+2).map(id=><button key={id} onClick={()=>bout(id)}>{title(id,true)}<b>{s.round.length%2&&s.pair*2===s.round.length-1?'ADVANCE WITH A BYE →':'CHOOSE THIS →'}</b></button>)}</div>{history}</>}
+ {s.stage==='confirm'&&s.winner!==null&&<><span className={styles.eyebrow}>YOUR FINAL SAY</span>{title(s.winner)}<button className={styles.primary} onClick={()=>setS({...s,stage:'done'})}>YES, THIS IS TONIGHT'S PICK →</button><button onClick={()=>setS({...s,stage:'shortlist'})}>NOT TONIGHT / RETURN TO SHORTLIST</button>{history}</>}
+ {s.stage==='done'&&s.winner!==null&&<><span className={styles.eyebrow}>CONFIRMED ON THIS BROWSER</span>{title(s.winner)}<p className={styles.note}>Your choice, not a forced wildcard. No subscription or streaming availability assumed.</p>{history}<button className={styles.primary} onClick={()=>setS({...s,stage:'shortlist'})}>BACK TO MY SHORTLIST</button><button onClick={()=>setReset(true)}>NEW SESSION</button></>}
+ </section><p className={styles.notice} role="status">{!storage?'Storage is unavailable. Progress lasts for this visit only.':notice}</p><footer><span>NO TIMER / NO PAID AI</span><button onClick={()=>setReset(true)}>RESET SESSION</button></footer>
+ {(info||reset)&&<div className={styles.overlay}><section role="dialog" aria-modal="true" aria-label={reset?'Reset this session?':'Solo discovery rules'}>{reset?<><h2>Start again?</h2><p>This clears this discovery session only. Your original library and multiplayer rooms are unchanged.</p><button onClick={()=>setReset(false)}>KEEP MY SESSION</button><button className={styles.primary} onClick={()=>{setS({...blank,kind:s.kind});setNotice('');setReset(false)}}>RESET THIS SESSION</button></>:<><span>RULE {rule+1} / 4</span><h2>{rules[rule][0]}</h2><p>{rules[rule][1]}</p><div className={styles.row}><button disabled={!rule} onClick={()=>setRule(rule-1)}>BACK</button><button onClick={()=>rule===3?setInfo(false):setRule(rule+1)}>{rule===3?'BACK TO MY SESSION':'NEXT RULE'}</button></div><button onClick={()=>setInfo(false)}>CLOSE RULES</button></>}</section></div>}
+ </main>;
 }

@@ -1,2 +1,2 @@
-import TonightRoom from '@/components/TonightRoom';
-export default function Page() { return <TonightRoom />; }
+import {redirect} from 'next/navigation';
+export default function Page(){redirect('/solo')}

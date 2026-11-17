@@ -386,10 +386,10 @@ export default function PlayRoom({ code,durableSeat }: { code: string;durableSea
         {theirs === id && mine !== id && <span className="cs-small">{s.players[opp].name} picked this</span>}
       </button>; };
     return shell(<div className="cs-done">
-      <div className="cs-orson">SO - WHAT ARE YOU ACTUALLY WATCHING?</div>
+      <div className="cs-orson">{s.b8?'KNOCKOUT CHAMPION / CONFIRM TONIGHT':'SO - WHAT ARE YOU ACTUALLY WATCHING?'}</div>
       {s.fin.verdict.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
-      <p className="cs-small">Chips won the bragging rights. The sofa is still yours - agree on tonight's film.</p>
-      <div className="cs-watchpick-row">{card(s.fin.a)}{card(s.fin.b)}</div>
+      <p className="cs-small">{s.b8?'The final bout decided the winner. Both players confirm the champion below. Eliminated titles stay out.':"Chips won the bragging rights. The sofa is still yours - agree on tonight's film."}</p>
+      <div className="cs-watchpick-row">{card(s.fin.a)}{!s.b8&&card(s.fin.b)}</div>
       {mine !== undefined && theirs !== undefined && mine !== theirs && <p className="cs-small cs-gold">You're split. {BY_ID[s.winner].t} is the champion on the table - pick again together.</p>}
     </div>);
   }
