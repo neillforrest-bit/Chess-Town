@@ -1,0 +1,442 @@
+'use client';
+import type {MovieSeat} from '@/lib/saved-movie-client';
+import SavedMovieCard from './SavedMovieCard';
+import PlayerReadiness from './PlayerReadiness';
+import { useMood } from './useMood';
+import { rrLive } from '@/lib/b8';
+import { useEffect, useRef, useState } from 'react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
+import { useRoom } from '@/lib/useRoom';
+import { nextBotIntent } from '@/lib/soloBot';
+import { TROPE_NAMES, SWIPER_CAP, BY_ID, qsets, subDeck, subOf, ASK_ORDER, AXQ_NAME, reactionFor, ROUND_LABEL, DRAFT_SIZE, RESPONSE_GATE, CLASH, AXES, fitPct, moodMatch, heatOf, TASTES, tasteHits, PASS_WHY, YES_WHY, type PID, type Intent, actorHit } from '@/lib/game';
+import { HitScreen, BracketScreen, BracketMap, RerollScreen } from './B8Screens';
+import CineSyncPipeline from './CineSyncPipeline';
+import TokenHUD from './TokenHUD';
+import { ConsPicker, PivotModal, PassPips, EconomyBar, useGraveSync } from './V2Bits';
+import { newCons, type Cons } from '@/lib/cons';
+import { setTokens } from '@/lib/tokenStore';
+import PostMortem from './PostMortem';
+import ColdOpen from './ColdOpen';
+import Reveal from './Reveal';
+import { OrsonFace, Heat, Scores, OrsonBar, Poster, secs, useNow, Meter, BUILD, Typing, Takeover, Confetti, buzz, ledgerLine, receipts, shareReceipts } from './shared';
+
+const DRUMROLL_MS = 1200;
+function hashStr(t: string) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function VibeCard({ name, n, total, onAns }: { name: string; n: number; total: number; onAns: (yes: boolean) => void }) {
+  const x = useMotionValue(0); const rot = useTransform(x, [-200, 200], [-14, 14]); const yesO = useTransform(x, [20, 120], [0, 1]); const noO = useTransform(x, [-120, -20], [1, 0]);
+  const done = useRef(false); const fire = (yes: boolean) => { if (done.current) return; done.current = true; animate(x, yes ? 500 : -500, { duration: 0.18 }); setTimeout(() => onAns(yes), 150); };
+  return <div className="cs-vsw-stage"><motion.div className="cs-vsw-card" style={{ x, rotate: rot, touchAction: 'pan-y' }} drag="x" dragSnapToOrigin dragElastic={0.9} onDragEnd={(_, i) => { if (i.offset.x > 90 || i.velocity.x > 500) fire(true); else if (i.offset.x < -90 || i.velocity.x < -500) fire(false); }}>
+    <motion.i className="cs-vsw-y" style={{ opacity: yesO }}>YES</motion.i><motion.i className="cs-vsw-n" style={{ opacity: noO }}>NO</motion.i>
+    <small>{n} / {total}</small><b>{name}</b></motion.div>
+    <div className="cs-vsw-btns"><button className="cs-vsw-no" onClick={() => fire(false)}>✕ NO</button><button className="cs-vsw-yes" onClick={() => fire(true)}>YES ✓</button></div></div>;
+}
+
+
+type CardInfo = { hook: string; loved: string; catch: string; providers: { region: string; names: string[] } | null } | 'err' | 'wait';
+function DraftTimer({ k, paused, onZero }: { k: number; paused: boolean; onZero: () => void }) {
+  const [t, setT] = useState(10); const z = useRef(onZero); z.current = onZero;
+  useEffect(() => { setT(10); }, [k]);
+  useEffect(() => { if (paused) return; const i = setInterval(() => setT((x) => { if (x <= 1) { clearInterval(i); setTimeout(() => z.current(), 0); return 0; } return x - 1; }), 1000); return () => clearInterval(i); }, [k, paused]);
+  return <span className={'cs-timer' + (t <= 3 ? ' is-hot' : '')}>{t}s</span>;
+}
+function ScrollCard({ children }: { children: React.ReactNode }) {
+  const r = useRef<HTMLDivElement>(null); const [more, setMore] = useState(false);
+  const chk = () => { const e = r.current; if (e) setMore(e.scrollHeight - e.scrollTop - e.clientHeight > 12); };
+  useEffect(() => { chk(); const i = setInterval(chk, 700); return () => clearInterval(i); }, []);
+  return <div className="cs-cardwrap"><div className="cs-card" ref={r} onScroll={chk}>{children}</div>{more && <div className="cs-more">SCROLL FOR MORE ▼</div>}</div>;
+}
+
+/** v3.4 MOOD BOARD: six tonight-moods replace the bare sliders as the first calibration screen. v = [dark/light, indie/blockbuster, brainy/brain-off] slider values. */
+const MOODS: { k: string; e: string; n: string; ex: string; v: number[] }[] = [
+  { k: 'cozy', e: '🧸', n: 'COZY & LIGHT', ex: 'Paddington 2 · Mamma Mia!', v: [88, 45, 85] },
+  { k: 'edge', e: '😰', n: 'EDGE OF YOUR SEAT', ex: 'Prisoners · Sicario', v: [30, 65, 60] },
+  { k: 'mind', e: '🌀', n: 'MIND-BENDERS', ex: 'Inception · Primer', v: [40, 30, 8] },
+  { k: 'big', e: '💥', n: 'BIG SPECTACLE', ex: 'Dune · Top Gun: Maverick', v: [62, 95, 85] },
+  { k: 'dark', e: '🕯️', n: 'DARK & DREADFUL', ex: 'Hereditary · The Witch', v: [8, 30, 40] },
+  { k: 'heart', e: '💛', n: 'HEARTSTRINGS', ex: 'Past Lives · Coco', v: [55, 25, 55] },
+];
+const CARD_CACHE = new Map<number, CardInfo>();
+
+function loadCard(id: number, send: (i: Intent) => void, bump: () => void) {
+  if (CARD_CACHE.has(id)) return; const m = BY_ID[id]; if (!m) return; CARD_CACHE.set(id, 'wait');
+  fetch('/api/orson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'card', movie: { id: m.id, t: m.t, y: m.y, g: m.g, o: m.o, c: m.c, rt: m.rt, mc: m.mc, imdb: m.imdb, r: m.r, aw: m.aw, kw: m.kw, tag: m.tag, k: m.k, sr: m.sr } }) })
+    .then((r) => r.json()).then((d) => { if (d && d.hook) { CARD_CACHE.set(id, d); if (d.usd) send({ t: 'cost', inTok: d.inTok || 0, outTok: d.outTok || 0, usd: d.usd }); } else CARD_CACHE.set(id, 'err'); bump(); })
+    .catch(() => { CARD_CACHE.set(id, 'err'); bump(); });
+}
+
+function SubCard({ name, onGo }: { name: string; onGo: (yes: boolean) => void }) {
+  const x = useMotionValue(0); const rot = useTransform(x, [-160, 160], [-12, 12]); const sub = subOf(name); const busy = useRef(false);
+  const fly = (yes: boolean) => { if (busy.current) return; busy.current = true; buzz(yes ? 16 : 8); animate(x, yes ? 460 : -460, { duration: 0.2, onComplete: () => onGo(yes) }); };
+  return <div className="cs-subwrap2">
+    <motion.div className="cs-subcard" style={{ x, rotate: rot }} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.9} onDragEnd={(_, i) => { if (i.offset.x > 90) fly(true); else if (i.offset.x < -90) fly(false); else animate(x, 0); }}>
+      <h2>{sub.n}</h2><p>{sub.tag}</p>
+    </motion.div>
+    <div className="cs-subbtns"><button className="cs-btn" onClick={() => fly(false)}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => fly(true)}>YES</button></div>
+  </div>;
+}
+
+function SubDeck({ deck, mine, other, onSwipe, themName }: { deck: string[]; mine: Record<string, boolean>; other: Record<string, boolean>; onSwipe: (n: string, yes: boolean) => void; themName: string }) {
+  const idx = Object.keys(mine).length; const name = deck[idx];
+  const locks = deck.filter((n) => mine[n] && other[n]); const [flash, setFlash] = useState(''); const seen = useRef(0);
+  useEffect(() => { if (locks.length > seen.current) { setFlash(locks[locks.length - 1]); const t = setTimeout(() => setFlash(''), 1700); seen.current = locks.length; return () => clearTimeout(t); } seen.current = locks.length; }, [locks.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!name) return null;
+  return <div className="cs-ask cs-ask--tight cs-subd">
+    <div className="cs-dots4 cs-dots10">{deck.map((n, i) => <i key={n} className={i < idx ? 'is-done' : i === idx ? 'is-now' : ''} />)}</div>
+    <div className="cs-orson">STAGE 1 · PICK YOUR SUBGENRES · {idx + 1} OF {deck.length}</div>
+    <p className="cs-aside">Swipe right for yes, left for no. If you and {themName} both swipe right, it locks.</p>
+    <SubCard key={name} name={name} onGo={(yes) => onSwipe(name, yes)} />
+    {(() => { const both = deck.filter((n) => n in mine && n in other); const agree = both.filter((n) => mine[n] === other[n]).length; const pc = both.length ? Math.round((agree / both.length) * 100) : null; return <div className="cs-board"><div className="cs-bar"><i style={{ width: `${pc ?? 0}%` }} /></div><span><b>{pc === null ? '--' : pc + '%'}</b> ALIGNED · {themName} has done {Object.keys(other).length}/{deck.length}</span><div className="cs-chips">{locks.map((n) => <i key={n} className="lk">{n}</i>)}{deck.filter((n) => n in mine && n in other && !mine[n] && !other[n]).map((n) => <i key={n} className="dead">{n}</i>)}</div></div>; })()}
+    {flash && <div className="cs-lock cs-lock--top">GENRE LOCK!<span>{flash}</span></div>}
+  </div>;
+}
+
+export default function PlayRoom({ code,durableSeat }: { code: string;durableSeat?:MovieSeat }) {
+  const sp = useSearchParams();
+  const [finalMap,setFinalMap]=useState(false);
+  const pid = durableSeat?.pid || (sp.get('p') === 'B' ? 'B' : 'A') as PID;
+  const name = durableSeat?.name || sp.get('n') || '';
+  const solo = !durableSeat&&sp.get('solo') === '1';
+  const { state: s, send, skew, online,error:saveError,pending:saving,retry:retrySave } = useRoom(code, pid, name, sp.get('k') === 'series' ? 'series' : 'movie', sp.get('gm') || undefined, solo,!!durableSeat);
+  // Solo 1v1: the host's browser plays Orson (pid B) straight from room state. Rule-based, zero AI spend.
+  const sRef = useRef(s); sRef.current = s;
+  useEffect(() => {
+    if (!solo || pid !== 'A') return;
+    let dead = false; let t: ReturnType<typeof setTimeout> | null = null;
+    const beat = () => {
+      if (dead) return;
+      const cur = sRef.current;
+      if (cur) { const it = nextBotIntent(cur); if (it) t = setTimeout(() => { if (!dead) send(it); }, 550 + Math.random() * 950); }
+    };
+    beat();
+    const iv = setInterval(beat, 3500);
+    return () => { dead = true; if (t) clearTimeout(t); clearInterval(iv); };
+  }, [solo, pid, s, send]);
+  const now = useNow(skew);
+  useEffect(() => { const n2 = sp.get('n2'); if (!durableSeat && pid === 'A' && n2) { const t = setTimeout(() => send({ t: 'preset', pid: 'B', name: n2 }), 1200); return () => clearTimeout(t); } }, [pid]); // eslint-disable-line react-hooks/exhaustive-deps
+  const other: PID = pid === 'A' ? 'B' : 'A';
+  const [copied, setCopied] = useState(false);
+  const [pitchText, setPitchText] = useState('');
+  const [tkDone, setTkDone] = useState('');
+  const [tapN, setTapN] = useState(0);
+  const [slv, setSlv] = useState<number[]>([50, 50, 50]); const [moodSel, setMoodSel] = useState<string[]>([]); const [fine, setFine] = useState(false);
+  const [swap, setSwap] = useState<number | null>(null);
+  const lastTapSend = useRef(0);
+  const tapKey = useRef('');
+  const startX = useRef<number | null>(null);
+  const [sl, setSl] = useState(5);
+  const [trSel, setTrSel] = useState<string[]>([]);
+  const [sl4, setSl4] = useState<number[]>([5, 5, 5, 5]);
+  const [dis, setDis] = useState<Record<string, boolean>>({});
+  useEffect(() => { try { const o: Record<string, boolean> = {}; ['vibe', 'draft'].forEach((k) => { if (sessionStorage.getItem(`cs-int-${code}-${k}`)) o[k] = true; }); setDis(o); } catch { /* no storage */ } }, [code]);
+  const [go, setGo] = useState(0);
+  useEffect(()=>{if(durableSeat&&s){try{if(localStorage.getItem('gt-movie-intro:'+code+':'+pid+':'+s.vibe.set))setGo(2);}catch{}}},[code,pid,!!durableSeat,s?.vibe.set]);
+  const [cd, setCd] = useState(0);
+  const [cont, setCont] = useState(false);
+  const [det, setDet] = useState<number | null>(null);
+  const [alloc, setAlloc] = useState<number[]>([0, 0, 0]);
+  const [more, setMore] = useState<number | null>(null);
+  const [, bump] = useState(0);
+  const [tg, setTg] = useState<string[]>([]);
+  const [nos, setNos] = useState<string[]>([]);
+  const [pend, setPend] = useState<boolean | null>(null);
+  const [why, setWhy] = useState<string[]>([]);
+  const [actor, setActor] = useState('');
+  const [arm, setArm] = useState('');
+  const [bp, setBp] = useState<'' | 'bullet' | 'veto'>('');
+  const [cons, setCons] = useState<Cons>(newCons());
+  useGraveSync(s, code, send as (i: Intent) => void);
+  useEffect(() => { if (s?.b8) setTokens(code, s.b8.purse); }, [s?.b8?.purse.A, s?.b8?.purse.B, code]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const mt = s && s.phase === 'bracket' ? s.br.matches[s.br.cur] : null;
+  useEffect(() => { const k = mt?.tap ? mt.id : ''; if (k !== tapKey.current) { tapKey.current = k; setTapN(0); if (k) buzz([30, 40, 30]); } }, [mt?.id, mt?.tap]);
+  useEffect(() => { if (!s || s.phase !== 'final' || !s.fin.pitchEnds) return; const t = setTimeout(() => send({ t: 'pitch', pid, text: pitchText }), 600); return () => clearTimeout(t); }, [pitchText]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (s?.phase === 'done') { const id = s.tonight !== null ? s.tonight : s.winner; if (id !== null) loadCard(id, send as (i: Intent) => void, () => bump((x) => x + 1)); } }, [s?.phase, s?.winner, s?.tonight]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (det !== null) loadCard(det, send as (i: Intent) => void, () => bump((x) => x + 1)); }, [det]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setBp(''); setAlloc([0, 0, 0]); }, [mt?.id]);
+  useEffect(() => { if (!s || s.phase !== 'draft' || s.draft.loading) return; const q = [...s.draft.inbox[pid], ...s.draft.q[pid]]; q.slice(0, 2).forEach((i) => loadCard(i, send as (i: Intent) => void, () => bump((x) => x + 1))); }, [s?.phase, s?.draft.idx?.[pid], s?.draft.loading, s?.draft.inbox?.[pid]?.[0]]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (s?.phase === 'final' && s.fin.rematchUsed) setPitchText(''); }, [s?.fin.rematchUsed, s?.phase]);
+
+  const curM = s && s.b8 && s.phase === 'bracket' ? (s.b8.matches[s.b8.cur] as unknown as { a?: number } | undefined) : undefined; const curF = curM?.a ? BY_ID[curM.a] : null;
+  useMood({ poster: curF?.p || null, genres: curF ? curF.g : s?.sab?.genre ? [s.sab.genre] : s?.cl ? s.cl : undefined, gm: s?.gm || null });
+  if (!s&&saveError) return <main className="cs-saved-entry"><h1>Your saved table has not reset.</h1><p role="alert">{saveError}</p><button onClick={retrySave}>RECONNECT</button><a href="/together">Movie Town</a></main>;
+  if (!s) return <main className="cs-play"><div className="cs-wait">{online ? 'Looking for the room...' : 'Connecting...'}</div></main>;
+  const me = s.players[pid], them = s.players[other];
+  const head = <header className="cs-head"><b>CINE<em>SYNC</em></b>{s.vibe.score !== null && s.vibe.passed && <Heat h={heatOf(s)} />}<span>{me.name} · {code}</span>{s.gm && <u className="cs-gmchip">{s.gm === 'oscar' ? '🏆 OSCAR GAUNTLET' : s.gm === 'rotten' ? '🍅 ROTTEN ROLL' : s.gm.startsWith('docs')?'DOC NIGHT': `⚔ ${(s.cl || []).join(' vs ').toUpperCase()}`}</u>}</header>;
+  const foot = <footer className="cs-foot"><Meter cost={s.cost} /><i>{BUILD}</i></footer>;
+  const stage = s.phase === 'lobby' || s.phase === 'vibe' ? 0 : s.phase === 'draft' ? 1 : s.phase === 'hitlist' || s.phase === 'bracket' ? 2 : 3;
+  const journey = <nav className="cs-journey">{['VIBE', 'DRAFT', 'BRACKET', 'WATCH'].map((x, i) => <i key={x} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''}>{i + 1} {x}</i>)}</nav>;
+  const hud = s.b8 && s.phase === 'bracket' ? <TokenHUD s={s} me={pid} /> : null;
+  const eco = s.b8 && s.phase === 'bracket' && !s.b8.show ? <EconomyBar s={s} me={pid} code={code} /> : null;
+  const shell = (body: React.ReactNode, cls = '') => <CineSyncPipeline s={s} pid={pid} code={code} now={now} send={send as (i: Intent) => void}>{durableSeat&&<div className={'cs-saved-status'+(saveError?' is-error':'')} role={saveError?'alert':'status'}>{saveError?<>{saveError} <button onClick={()=>location.reload()}>RESTORE</button></>:saving?'Saving your choice...':online?'Saved movie night · same link to return':'Reconnecting · your last confirmed table is safe'}</div>}<fieldset className="cs-saved-fieldset" disabled={!!durableSeat&&(!!saveError||saving)}>{head}{hud}{journey}<OrsonBar o={s.orson} /><section className={'cs-body ' + cls}>{body}</section>{eco}{foot}<PostMortem s={s} /></fieldset></CineSyncPipeline>;
+  const led = ledgerLine(s);
+  const sealed = s.hr?.sealed !== false && !(s.phase === 'final' && s.fin.revealed) && s.phase !== 'done';
+
+  // ---- LOBBY
+  if (s.phase === 'lobby') {
+    const link = typeof window !== 'undefined' ? durableSeat?`${location.origin}/saved-movie/${code}#invite=${durableSeat.invite||''}`:`${location.origin}/invite?gameId=${code}` : '';
+    return shell(<div className="cs-center">
+      <div className="cs-orson">ORSON · GET YOUR TABLE READY</div>
+      <PlayerReadiness s={s} ready={s.lobbyReady || { A: false, B: false }} />
+      <p className="cs-say cs-lobby-welcome">{them.joined ? `${them.name} has arrived. Splendid. Two humans, one disagreement.` : 'Welcome. I am Orson, your host. I require two humans and one disagreement.'}</p>
+      <div className="cs-code">{durableSeat?code.slice(0,4)+' '+code.slice(4,8)+' '+code.slice(8,12)+' '+code.slice(12):code}</div>
+      {!them.joined && <p className="cs-small">{durableSeat?'Send the private saved link. The four-letter join box is for older rooms.':'Give your partner this code on the join screen, or send the link.'}</p>}
+      {s.mem.last && <p className="cs-small">Last time: {s.mem.last}. I remember everything.</p>}
+      {led && <p className="cs-small cs-gold">{led}</p>}
+      {pid === 'A' && <details className="cs-lobby-settings"><summary>House rules &amp; roast settings</summary><button className={'cs-toggle' + (s.roast ? ' is-on' : '')} onClick={() => send({ t: 'roast', on: !s.roast })}>ROAST MODE · {s.roast ? 'ON' : 'OFF'}</button>
+      <div className="cs-hr"><em>HOUSE RULES</em>
+        <button className={'cs-toggle' + (s.hr?.wilds ? ' is-on' : '')} onClick={() => send({ t: 'hr', pid, wilds: !s.hr?.wilds, sealed: s.hr?.sealed !== false })}>WILDCARD ENTRANTS · {s.hr?.wilds ? 'ON' : 'STRICT'}</button>
+        <button className={'cs-toggle' + (s.hr?.sealed !== false ? ' is-on' : '')} onClick={() => send({ t: 'hr', pid, wilds: s.hr?.wilds === true, sealed: !(s.hr?.sealed !== false) })}>SEALED SCORES · {s.hr?.sealed !== false ? 'ON' : 'OFF'}</button>
+      </div></details>}
+      <button className="cs-btn" onClick={() => { const msg = `Join my CineSync movie night! Room code: ${code}\n${link}`; if (navigator.share) { navigator.share({ text: msg }).catch(() => navigator.clipboard?.writeText(msg)); } else navigator.clipboard?.writeText(msg); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'COPIED' : 'COPY INVITE LINK'}</button>
+      <button className={'cs-btn cs-btn--gold cs-lobby-ready' + (s.lobbyReady?.[pid] ? ' is-ready' : '')} aria-pressed={!!s.lobbyReady?.[pid]} onClick={() => send({ t: 'lobbyready', pid, ready: !s.lobbyReady?.[pid] })}>{s.lobbyReady?.[pid] ? "I'M READY · CHANGE TO NOT READY" : "I'M READY"}</button>
+      <p className="cs-small cs-lobby-help">{!them.joined ? 'Send the invite. Both players tap Ready to start.' : s.lobbyReady?.[pid] ? `Waiting for ${them.name} to tap Ready.` : 'Both joined. Tap Ready when you want to start.'}</p>
+      {!durableSeat&&<p className="cs-small cs-lobby-tv">TV: open <b>/tv/{code}</b></p>}{durableSeat&&<p className="cs-small">Seven-day invite. Keep this browser for your private seat. Neither name nor a URL flag can take the other seat.</p>}
+    </div>);
+  }
+
+  // ---- PHASE 1: vibe, one question at a time
+  if (s.phase === 'vibe') {
+    const mine = s.vibe.ans[pid]; const nextQ = (() => { const k = ASK_ORDER.find((i) => mine[i] === null); return k === undefined ? -1 : k; })(); const stepN = ASK_ORDER.indexOf(nextQ);
+    const fresh = s.vibe.attempts === 0 && mine.every((x) => x === null);
+    if (fresh && go < 2) return shell(go === 0 ? <div className="cs-intro">
+      <div className="cs-orson">ORSON PRESENTS</div>
+      <div className="cs-intro-face"><OrsonFace mood="smug" talking /></div>
+      <h2 className="cs-q">Welcome to CineSync. Tonight we find the one film you BOTH want to watch.</h2>
+      <p className="cs-say">Swipe a few vibes, draft your favourites in secret, then watch them fight it out in a bracket with Popcorn Tokens. One winner. I will be rude about it.</p>
+      <button className="cs-btn cs-btn--gold" onClick={() => { if(durableSeat)localStorage.setItem('gt-movie-intro:'+code+':'+pid+':'+s.vibe.set,'1');setGo(2); setCd(0); }}>LET&apos;S FIND A FILM</button>
+    </div> : <div className="cs-center cs-rsg"><div className="cs-orson">STAGE 1 · THE GATE</div><div className="cs-rsg-w" key={cd}>{['', 'READY', 'STEADY', 'GO!'][cd]}</div></div>, 'cs-body--intro');
+    // V2 COLD OPEN: five Orson-hosted beats replace the mood/swiper calibration; it emits the same
+    // sliders + tropes + taste intents, so everything downstream (discovery, draft) is unchanged.
+    if (s.co !== false && !s.vibe.tasteReady?.[pid]) return shell(<ColdOpen s={s} pid={pid} send={send as (i: Intent) => void} />);
+    // THE VIBE CHECK (v2.0): three sliders feed live TMDB discovery; the trope matrix stays as the flavour layer.
+    if (!s.vibe.sl?.[pid]) { const LB = [['Dark / Gritty', 'Light / Fun'], ['Indie / Auteur', 'Blockbuster'], ['Brain-Bending', 'Turn-Brain-Off']];
+      return shell(<div className="cs-ask cs-ask--tight"><div className="cs-orson">TONIGHT&apos;S MOOD · PICK UP TO 2</div>
+        <div className="cs-moods">{MOODS.map((mo) => { const on = moodSel.includes(mo.k); return <button key={mo.k} className={'cs-mood' + (on ? ' is-on' : '')} onClick={() => { buzz(10); const sel = on ? moodSel.filter((x) => x !== mo.k) : [...moodSel, mo.k].slice(-2); setMoodSel(sel); const ms = MOODS.filter((x) => sel.includes(x.k)); if (ms.length) setSlv([0, 1, 2].map((i) => Math.round(ms.reduce((q, x) => q + x.v[i], 0) / ms.length))); }}><i>{mo.e}</i><b>{mo.n}</b><em>{mo.ex}</em></button>; })}</div>
+        <button className="cs-fine" onClick={() => setFine(!fine)}>{fine ? 'HIDE FINE-TUNE' : 'FINE-TUNE SLIDERS'}</button>
+        {fine && LB.map((l, i) => <div key={i} className="cs-sl"><div className="cs-sl-l"><span>{l[0]}</span><span>{l[1]}</span></div><input type="range" min={0} max={100} value={slv[i]} onChange={(e) => { const v = [...slv]; v[i] = Number(e.target.value); setSlv(v); }} /><em>{slv[i]}</em></div>)}
+        <div className="cs-actor"><label>OPTIONAL · AN ACTOR OR TWO YOU BOTH RATE</label><input value={actor} onChange={(e) => setActor(e.target.value)} placeholder="e.g. Florence Pugh, Denzel" maxLength={60} /></div>
+        <ConsPicker value={cons} onChange={setCons} />
+        <button className="cs-btn cs-btn--gold" onClick={() => { buzz(14); send({ t: 'sliders', pid, v: slv, cons, actors: actor }); }}>NEXT: SWIPE YOUR VIBES</button></div>); }
+    // v2.1 VIBE SWIPER: one vibe phrase at a time; the first 3 both players swipe right on lock in instantly.
+    const mineT = s.vibe.tropes?.[pid] || null; const swm = s.vibe.sw?.[pid] || {};
+    const order = [...TROPE_NAMES].sort((x, y) => hashStr(s.code + x) - hashStr(s.code + y)).slice(0, SWIPER_CAP); const cur = order.find((x) => swm[x] === undefined);
+    if (!mineT && cur) return shell(<div className="cs-ask cs-ask--tight cs-vsw">
+      <div className="cs-orson">THE VIBE SWIPER · {s.vibe.lock.length}/3 LOCKED</div>
+      <div className="cs-vsw-lock">{[0, 1, 2].map((i) => <span key={i} className={s.vibe.lock[i] ? 'is-on' : ''}>{s.vibe.lock[i] || '?'}</span>)}</div>
+      <VibeCard key={cur} name={cur} n={Object.keys(swm).length + 1} total={order.length} onAns={(yes) => { buzz(yes ? 14 : 6); send({ t: 'vswipe', pid, name: cur, yes }); }} />
+      <p className="cs-vsw-h">Swipe right = Yes · left = No. First 3 you BOTH like lock in.</p>
+    </div>);
+    return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">{s.vibe.pend ? 'Both locked. Orson is raiding the TMDB archives for fresh titles...' : `Your three are locked. Waiting for ${them.name} to commit to theirs.`}</p><Typing text="Orson is reading over a shoulder" /></div>);
+  }
+
+  // ---- PHASE 2: draft
+  if (s.phase === 'draft') {
+    const picks = s.draft.picks[pid]; const idx = s.draft.idx[pid]; const id = s.draft.inbox[pid][0] ?? s.draft.q[pid][0];
+    if (s.draft.loading) return shell(<div className="cs-center"><div className="cs-spin" /><Typing text="Orson is writing a pitch for every film. He is dramatic about it" /></div>);
+    if (s.draft.gren.id !== null) { const gm = BY_ID[s.draft.gren.id]; const mine = s.draft.gren.votes[pid];
+      return shell(<div className="cs-gren"><div className="cs-orson">UNRESOLVED TENSION</div><p className="cs-say">I&apos;m seeing a lot of unresolved tension. Let&apos;s throw a grenade.</p>
+        <div className="cs-gren-card"><Poster id={gm.id} /><b>{gm.t}</b><span>{gm.y}{!sealed ? ` · ${gm.r.toFixed(1)}` : ''}{!sealed && gm.rt != null ? ` · RT ${gm.rt}%` : ''}</span></div>
+        {mine === undefined ? <div className="cs-row"><button className="cs-btn cs-btn--no" onClick={() => send({ t: 'grenvote', pid, yes: false })}>NOPE</button><button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'grenvote', pid, yes: true })}>I&apos;LL TAKE IT</button></div> : <p className="cs-small cs-wait">🔒 Locked in. {them.name} is still deciding<span className="cs-dots">...</span></p>}</div>); }
+    if (picks.length >= DRAFT_SIZE) return shell(<div className="cs-center"><p className="cs-say">Six drafted and locked. Your picks stay secret.</p><p className="cs-small">{s.draft.picks[other].length >= DRAFT_SIZE ? 'Both done.' : `${them.name} has ${s.draft.picks[other].length}/${DRAFT_SIZE}.`}</p></div>);
+    if (id === undefined) return shell(<div className="cs-center">Out of films.</div>);
+    const m = BY_ID[id]; const sur = s.draft.inbox[pid][0] === id ? s.draft.sur[id] : undefined;
+    const ask = (yes: boolean) => { buzz(yes ? 18 : 8); setArm(''); setWhy([]); setPend(null); send({ t: 'swipe', pid, id, yes, why: [] }); };
+    const go = (yes: boolean, w: string[] = [], to = false) => { setPend(null); setWhy([]); send({ t: 'swipe', pid, id, yes, why: w, to }); };
+    const pw = s.pw[pid]; const fit = fitPct(m, s.vibe.target || [5, 5, 5, 5]); const mm = moodMatch(m, s.vibe.tropes?.A, s.vibe.target || [5, 5, 5, 5]);
+    const critic = m.rt != null ? (m.rt >= 85 ? 'Critics raved' : m.rt >= 70 ? 'Critics liked it' : m.rt >= 50 ? 'Critics were split' : 'Critics were not kind') : m.mc != null ? (m.mc >= 70 ? 'Critics liked it' : m.mc >= 50 ? 'Critics were mixed' : 'Critics were not kind') : null;
+    const runtime = m.sr ? `${m.sr.s} season${m.sr.s === 1 ? '' : 's'} · ${m.sr.e} eps · ~${m.rn} min` : m.rn ? `${Math.floor(m.rn / 60)}h ${String(m.rn % 60).padStart(2, '0')}m` : '';
+    const vn = s.dx?.vn[pid] ?? (pw.bullet ? 1 : 0); const gt = s.dx?.gt[pid] ?? false; const golden = s.dx?.gold.A === id || s.dx?.gold.B === id;
+    const press = (kind: 'veto' | 'surprise' | 'gold') => { const key = kind + ':' + id; if (arm === key) { buzz([40, 30, 60]); setArm(''); send({ t: kind, pid, id }); } else setArm(key); };
+    if(durableSeat)return shell(<><PivotModal s={s} pid={pid} send={send as (i:Intent)=>void}/><SavedMovieCard key={id} m={m} sealed={sealed} count={picks.length} fit={mm.pct} golden={gt} vetoes={golden?0:vn} surprise={pw.surprise} armed={arm} onPower={press} onChoice={ask}/></>);
+    return shell(<div className="cs-draft"
+      onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) { startX.current = null; return; } startX.current = e.clientX; }}
+      onPointerUp={(e) => { if (startX.current === null) return; const dx = e.clientX - startX.current; startX.current = null; if (Math.abs(dx) > 70 && pend === null) ask(dx > 0); }}>
+      <PivotModal s={s} pid={pid} send={send as (i: Intent) => void} />
+      <div className="cs-count"><span>DRAFTED {picks.length}/{DRAFT_SIZE}</span><DraftTimer k={id} paused={pend !== null} onZero={() => go(false, [], true)} /><span className="cs-fit">{mm.pct}% MOOD</span></div>
+      {mm.why && <div className="cs-why"><em>WHY THIS CARD</em> {mm.why}{s.vibe.tropes?.A ? ' · locked: ' + s.vibe.tropes.A.join(', ') : ''}</div>}
+      <PassPips s={s} pid={pid} />
+      <ScrollCard key={id}>
+        {sur && <div className="cs-surprise">SURPRISE FROM {s.players[sur].name.toUpperCase()}</div>}
+        {!sur && s.draft.orson?.includes(id) && <div className="cs-surprise cs-surprise--orson">ORSON SUGGESTS · critic-endorsed fit</div>}
+        <div className="cs-card-top">
+          <Poster id={id} big />
+          <div className="cs-card-info">
+            <b>{m.t}</b>
+            <span className="cs-meta">{[m.y, runtime, m.k].filter(Boolean).join(' · ')}</span>
+            <span className="cs-genres">{m.g.slice(0, 3).map((g) => <i key={g}>{g}</i>)}{tasteHits(m, s.vibe.tastes, s.vibe.actors).slice(0, 3).map((g) => <i key={g} className="hit">{g}</i>)}</span>
+            {m.c && m.c.length > 0 && <span className="cs-cast"><em>Starring</em> {m.c.slice(0, 3).join(', ')}</span>}
+            {(() => { const ah = actorHit(m, s.vibe.actors, pid); return ah ? <span className="cs-actorhit">🎭 {ah.toUpperCase()} · YOUR PICK</span> : null; })()}
+            {m.aw && <span className="cs-award">{m.aw.replace(/\.? ?$/, '')}</span>}
+          </div>
+        </div>
+        <Scores m={m} sealed={sealed} />
+        {!sealed && critic && <p className="cs-critics"><em>CRITICS SAID</em> {critic}{m.rt != null && m.mc != null ? `, ${m.rt}% fresh, Metacritic ${m.mc}` : ''}.</p>}
+        {(() => { const ci = CARD_CACHE.get(id); const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div className="cs-story-inline">
+          <p className="cs-hook">{ok ? ok.hook : (s.draft.pitches[id] || m.o)}</p>
+          {ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : ci === 'wait' ? <p className="cs-small">Orson is reading up on it...</p> : null}
+        </div>; })()}
+      </ScrollCard>
+      {pend === null ? <>
+        <div className="cs-powers cs-powers--big">
+          <button className={'cs-pw cs-pw--gold' + (gt ? ' is-ready' : '') + (arm === 'gold:' + id ? ' is-armed' : '')} disabled={!gt} onClick={() => press('gold')}><b>{!gt ? 'TICKET SPENT' : arm === 'gold:' + id ? 'TAP TO LOCK' : 'GOLDEN TICKET'}</b><small>{gt ? 'straight into your Top 6' : 'one per player'}</small></button>
+          <button className={'cs-pw cs-pw--bullet' + (vn > 0 && !golden ? ' is-ready' : '') + (arm === 'veto:' + id ? ' is-armed' : '')} disabled={vn < 1 || golden} onClick={() => press('veto')}><b>{vn < 1 ? 'VETOES SPENT' : arm === 'veto:' + id ? 'TAP TO BURY' : 'VETO · ' + vn + ' LEFT'}</b><small>{vn > 0 ? '🪦 buried forever, for both' : 'two per player'}</small></button>
+          <button className={'cs-pw cs-pw--surprise' + (pw.surprise ? ' is-ready' : '') + (arm === 'surprise:' + id ? ' is-armed' : '')} disabled={!pw.surprise} onClick={() => press('surprise')}><b>{!pw.surprise ? 'SURPRISE SPENT' : arm === 'surprise:' + id ? 'TAP TO SEND' : 'SURPRISE ' + (them.name.split(' ')[0] || them.name).slice(0, 12).toUpperCase()}</b><small>{pw.surprise ? 'gift this to their stack' : 'one per game'}</small></button>
+        </div>
+        <div className="cs-swipes"><button className="cs-btn cs-btn--no" onClick={() => ask(false)}>PASS</button><button className="cs-btn cs-btn--gold" onClick={() => ask(true)}>DRAFT</button></div>
+      </> : <div className="cs-why-sheet">
+        <div className="cs-why-q">{pend ? 'Why this one?' : 'Why pass?'}<button onClick={() => go(pend as boolean)}>skip</button></div>
+        <div className="cs-why-chips">{(pend ? YES_WHY : PASS_WHY).map((w) => <button key={w} className={why.includes(w) ? 'is-on' : ''} onClick={() => { buzz(6); setWhy(why.includes(w) ? why.filter((x) => x !== w) : [...why, w].slice(0, 3)); }}>{w === 'Havent seen it' ? "Haven't seen it" : w}</button>)}</div>
+        <button className={'cs-btn ' + (pend ? 'cs-btn--gold' : 'cs-btn--no')} onClick={() => go(pend as boolean, why)}>{pend ? 'DRAFT IT' : 'PASS IT'}</button>
+      </div>}
+    </div>);
+  }
+
+  // ---- PHASE 3: Hit List then the 8-seed bracket
+  if (s.phase === 'hitlist') return shell(<HitScreen s={s} pid={pid} send={send} now={now} />);
+  if (s.phase === 'bracket' && s.b8) return shell(<BracketScreen s={s} pid={pid} send={send} now={now} />);
+  if (s.phase === 'bracket' && mt) {
+    // Orson's private offer comes before the first vote
+    if (s.tempt.stage === 'offer') {
+      if (s.tempt.to !== pid) return shell(<div className="cs-center"><div className="cs-orson">ORSON</div><p className="cs-say">I am whispering to {them.name}. Do not ask what about.</p><Typing text="Orson is conspiring" /></div>);
+      const cand = s.draft.picks[other].filter((x) => !s.draft.picks[pid].includes(x) && s.pool.includes(x));
+      return shell(<div className="cs-tempt">
+        <div className="cs-orson">THE TEMPTATION</div>
+        <p className="cs-aside">Psst. Between us. Strike one of {them.name}&apos;s drafted films from the night, and I slip a wildcard in. They will never know who. Tap a film.</p>
+        <div className="cs-grid5">{cand.map((id) => <button key={id} className={'cs-mini' + (swap === id ? ' is-on' : '')} onClick={() => setSwap(id)}><Poster id={id} /></button>)}</div>
+        <p className="cs-small">{swap ? `Strike ${BY_ID[swap].t}?` : 'Or decline. Orson will not be offended. He will be disappointed.'}</p>
+        <div className="cs-row"><button className="cs-btn" onClick={() => send({ t: 'tempt', pid, out: null })}>DECLINE</button><button className="cs-btn cs-btn--gold" disabled={!swap} onClick={() => { buzz(60); send({ t: 'tempt', pid, out: swap }); }}>TAKE THE DEAL</button></div>
+      </div>);
+    }
+    const label = ROUND_LABEL[s.br.round]; const n = s.br.matches.length;
+    const ids = [mt.a, mt.b, mt.c]; const mineW = mt.wg[pid]; const theirW = mt.wg[other]; const free = s.br.round === 1; const purse = s.purse?.[pid] ?? 0;
+    const draftTot = alloc.reduce((x, y) => x + y, 0);
+    const submit = () => { buzz(20); send({ t: 'wager', pid, alloc: free ? alloc : alloc }); setAlloc([0, 0, 0]); };
+    const bump3 = (i: number, d: number) => { const nx = [...alloc]; nx[i] = Math.max(0, nx[i] + d); if (nx.reduce((x, y) => x + y, 0) > purse) return; setAlloc(nx); buzz(6); };
+    const owner = (id: number | null) => (id === null ? '' : s.draft.picks.A.includes(id) && s.draft.picks.B.includes(id) ? 'BOTH' : s.draft.picks[pid].includes(id) ? 'YOURS' : s.draft.picks[other].includes(id) ? them.name.toUpperCase() : id === mt.c ? 'ORSON' : '');
+    const tot = mt.winner !== null && mt.wg.A && mt.wg.B ? [0, 1, 2].map((i) => (mt.wg.A as number[])[i] + (mt.wg.B as number[])[i]) : null;
+    const wc = mt.c !== null ? BY_ID[mt.c] : null;
+    const card = (id: number | null, i: number) => id === null ? null : (
+      <div key={id} className={'cs-tcard' + (mt.winner === id ? ' is-win' : '') + (mt.winner !== null && mt.winner !== id ? ' is-out' : '') + (i === 2 ? ' is-orson' : '')}>
+        <i className="cs-who">{owner(id) || (i === 2 ? 'ORSON' : '')}</i>
+        <button className="cs-info" onClick={() => setDet(id)}>i</button>
+        <Poster id={id} /><b>{BY_ID[id].t}</b>
+        <span>{BY_ID[id].y}</span><Scores m={BY_ID[id]} big sealed={sealed} />
+        {tot ? <em className="cs-tot">{tot[i]}</em> : mineW ? <em className="cs-tot">{free ? (mineW[i] ? 'YOU' : '') : mineW[i]}</em>
+          : free ? <button className="cs-btn cs-btn--gold cs-pickbtn" onClick={() => { buzz(15); send({ t: 'wager', pid, alloc: [0, 1, 2].map((k) => (k === i ? 1 : 0)) }); }}>PICK</button>
+          : <div className="cs-step"><button onClick={() => bump3(i, -1)}>-</button><span>{alloc[i]}</span><button onClick={() => bump3(i, 1)}>+</button></div>}
+      </div>);
+    const totSum = alloc[0] + alloc[1] + alloc[2] || 1;
+    return shell(<div className="cs-bracket cs-triple" key={mt.id}>
+      <div className="cs-round">{label}<i>{s.br.cur + 1}/{n}</i></div>
+      {s.br.round === 2 && s.br.golden && <div className="cs-golden">GOLDEN BYE · {BY_ID[s.br.golden].t}</div>}
+      <div className="cs-tgrid">{ids.map((id, i) => card(id, i))}</div>
+      {wc && mt.winner === null && <p className="cs-roast"><em>ORSON</em> {`${wc.t} is mine. You two will pretend not to want it.`}</p>}
+      {!free && mt.winner === null && !mineW && <>
+        <div className="cs-tug">{[0, 1, 2].map((i) => <i key={i} className={'cs-tug' + i} style={{ flex: Math.max(alloc[i], 0.0001) / totSum }} />)}</div>
+        <p className="cs-small cs-purse">PURSE <b>{purse - draftTot}</b> of 50 tokens left · spend {draftTot}</p>
+        <button className="cs-btn cs-btn--gold" disabled={draftTot < 1} onClick={submit}>LOCK WAGER</button>
+      </>}
+      {mt.winner === null && mineW && <p className="cs-small cs-wait">🔒 Locked in. {them.name} is still deciding<span className="cs-dots">...</span>{!free ? ` Purse left: ${purse}.` : ''}</p>}
+      {free && mt.winner === null && !mineW && <p className="cs-small">Round 1 is free. Tap PICK on the film you want most. Tokens start in round 2 ({purse} each).</p>}
+      {mt.winner !== null && <div className="cs-won">{BY_ID[mt.winner].t} advances <small>{mt.via}{mt.winner === mt.c ? ' · ORSON WINS A ROUND' : ''}</small></div>}
+      {det !== null && (() => { const dm = BY_ID[det]; const ci = CARD_CACHE.get(det); const ok = ci && ci !== 'wait' && ci !== 'err' ? ci : null; return <div className="cs-sheet" onClick={() => setDet(null)}><div className="cs-sheet-in" onClick={(e) => e.stopPropagation()}><b>{dm.t}</b><span className="cs-meta">{[dm.y, dm.k, dm.rn ? `${dm.rn} min` : ''].filter(Boolean).join(' · ')}</span>{dm.c && dm.c.length > 0 && <span className="cs-cast"><em>Starring</em> {dm.c.slice(0, 3).join(', ')}</span>}<Scores m={dm} sealed={sealed} /><p className="cs-hook">{ok ? ok.hook : dm.o}</p>{ok ? <><p><em>WHY CRITICS LOVED IT</em> {ok.loved}</p><p><em>THE CATCH</em> {ok.catch}</p>{ok.providers && ok.providers.names.length > 0 && <p><em>WATCH</em> {ok.providers.names.join(', ')}<span className="cs-jw"> Streaming data by JustWatch</span></p>}</> : <p className="cs-small">Orson is reading up on it...</p>}<button className="cs-btn cs-btn--gold" onClick={() => setDet(null)}>CLOSE</button></div></div>; })()}
+    </div>);
+  }
+
+  // ---- FINAL
+  if (s.phase === 'final') {
+    const f = s.fin; const myChoice = f.choice[pid];
+    // V2: Orson's Reveal runs before the pick whenever scores were sealed. The engine gates fchoice on it.
+    if (s.hr.sealed && !f.revealed && !f.verdict) return shell(<Reveal s={s} pid={pid} send={send as (i: Intent) => void} />);
+    // Envelopes are open: show how the calls settled while Orson writes (or the bout's held verdict lands).
+    if (f.revealed && !f.verdict && (f.callLog.length > 0 || f.skipped)) return shell(<div className="cs-center">
+      <div className="cs-orson">THE ENVELOPES</div>
+      <div className="cs-rev-log">{f.skipped ? <p className="cs-small">Ceremony skipped. Straight to the verdict.</p> : f.callLog.map((l, i) => <p key={i} className="cs-small">✉️ {l}</p>)}</div>
+      {f.scores && <div className="cs-rev-log"><p className="cs-small">🍅 {BY_ID[f.a].t} {f.scores.a.rt ?? '–'}% · {BY_ID[f.b].t} {f.scores.b.rt ?? '–'}%</p><p className="cs-small">IMDb {f.scores.a.imdb ?? '–'} · {f.scores.b.imdb ?? '–'}</p></div>}
+      <Typing text="Orson is writing the verdict" /></div>);
+    if (!f.pitchEnds) return shell(<div className="cs-bracket"><div className="cs-round">THE FINAL TWO</div>
+      <div className="cs-vs cs-titlecard">{[f.a, f.b].map((id) => <button key={id} className={'cs-match-card' + (myChoice === id ? ' is-mine' : '')} disabled={myChoice !== undefined} onClick={() => send({ t: 'fchoice', pid, id })}><Poster id={id} /><b>{BY_ID[id].t}</b><span>{BY_ID[id].y}</span></button>)}</div>
+      {(f.revealed && f.callLog.length > 0 || f.skipped) && <div className="cs-rev-log">{f.skipped ? <p className="cs-small">Ceremony skipped. Straight to the fight.</p> : f.callLog.map((l, i) => <p key={i} className="cs-small">✉️ {l}</p>)}</div>}
+      <p className="cs-small">{myChoice === undefined ? 'Pick the film you will fight for.' : `🔒 Locked in. ${them.name} is still deciding...`}</p></div>);
+    if (f.judging) return <Takeover a={f.a} b={f.b} />;
+    const left = secs(f.pitchEnds, now); const submitted = f.submitted[pid];
+    return shell(<div className="cs-pitch"><div className="cs-round">{f.rematchUsed ? 'REMATCH · SIDES SWAPPED' : 'PITCH-OFF'}<i>{left}s</i></div>
+      <p className="cs-aside">Defend <b>{BY_ID[myChoice as number]?.t}</b>. Sixty seconds. Make Orson believe.</p>
+      <textarea className="cs-text" maxLength={600} disabled={submitted} placeholder="Why this film, tonight, for the two of you?" value={pitchText} onChange={(e) => setPitchText(e.target.value)} />
+      <button className="cs-btn cs-btn--gold" disabled={submitted} onClick={() => send({ t: 'pitch', pid, text: pitchText, submit: true })}>{submitted ? 'SUBMITTED' : 'SUBMIT PITCH'}</button></div>);
+  }
+
+  // ---- DONE
+  const watchId = s.tonight !== null ? s.tonight : s.winner;
+  const w = watchId !== null ? BY_ID[watchId] : null;
+  const r = receipts(s);
+  const iLost = s.fin.loser === pid;
+  const showTk = !!(s.fin.verdict?.lines?.length) && !s.fin.tie && tkDone !== 'x';
+  if (showTk && w) return <Takeover a={s.fin.a} b={s.fin.b} lines={s.fin.verdict?.lines} winner={s.winner as number} onDone={() => setTkDone('x')} />;
+  // V2 ruling: chips crown a champion, but the two of you still choose what you actually watch. Both players must pick the same finalist; a split stays visibly unresolved.
+  if (s.fin.verdict && s.winner !== null && s.tonight === null && s.fin.a && s.fin.b) {
+    const opp: PID = pid === 'A' ? 'B' : 'A';
+    const mine = s.fin.watch?.[pid]; const theirs = s.fin.watch?.[opp];
+    const card = (id: number) => { const m = BY_ID[id];
+      return <button key={id} className={'cs-watchpick' + (mine === id ? ' cs-watchpick--mine' : '')} onClick={() => { buzz(40); send({ t: 'fwatch', pid, id }); }}>
+        <Poster id={id} />
+        <b>{m.t}</b><span className="cs-small">{m.y}</span>
+        <em className="cs-watchpick-tag">{id === s.winner ? '🏆 TOURNAMENT CHAMPION' : 'THE OTHER FINALIST'}</em>
+        {mine === id && <span className="cs-small cs-gold">YOU PICKED THIS</span>}
+        {theirs === id && mine !== id && <span className="cs-small">{s.players[opp].name} picked this</span>}
+      </button>; };
+    return shell(<div className="cs-done">
+      <div className="cs-orson">{s.b8?'KNOCKOUT CHAMPION / CONFIRM TONIGHT':'SO - WHAT ARE YOU ACTUALLY WATCHING?'}</div>
+      {s.fin.verdict.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
+      <p className="cs-small">{s.b8?'The final bout decided the winner. Both players confirm the champion below. Eliminated titles stay out.':"Chips won the bragging rights. The sofa is still yours - agree on tonight's film."}</p>
+      {s.b8&&<button className="cs-btn" onClick={()=>setFinalMap(true)}>VIEW KNOCKOUT BRACKET</button>}{finalMap&&<div className="cs-sheet" role="dialog" aria-label="Completed knockout bracket"><div className="cs-sheet-in"><button className="cs-btn" onClick={()=>setFinalMap(false)}>CLOSE BRACKET</button><BracketMap s={s}/></div></div>}<div className="cs-watchpick-row">{card(s.fin.a)}{!s.b8&&card(s.fin.b)}</div>
+      {mine !== undefined && theirs !== undefined && mine !== theirs && <p className="cs-small cs-gold">You're split. {BY_ID[s.winner].t} is the champion on the table - pick again together.</p>}
+    </div>);
+  }
+  if (rrLive(s) && w) return shell(<RerollScreen s={s} pid={pid} send={send} />);
+  return shell(<div className="cs-done">
+    <Confetti />
+    <div className="cs-orson">TONIGHT YOU WATCH</div>
+    {w && <><Poster id={w.id} big cls="cs-poster--win" /><h2>{w.t}</h2></>}
+    {s.tonight !== null && s.winner !== null && s.tonight !== s.winner && <p className="cs-small cs-gold">Tournament champion: {BY_ID[s.winner].t} - overruled for the sofa. The crown stands.</p>}
+    {w && <WhereToWatch id={w.id} tv={!!w.sr} />}
+    {s.fin.verdict?.reason && <p className="cs-verdict">{s.fin.verdict.reason}</p>}
+    {!s.fin.tie && s.fin.loser && <p className="cs-small cs-gold">{s.players[s.fin.loser].name} owes the popcorn. {led || ''}</p>}
+    <div className="cs-receipts">
+      <div><b>{r.overlap}/{DRAFT_SIZE}</b><span>drafts overlapped</span></div>
+      <div><b>{r.wildWins}/{r.wildBouts}</b><span>wildcard wins</span></div>
+      {s.b8 ? <div><b>{100 - (s.b8.purse.A ?? 0)}·{100 - (s.b8.purse.B ?? 0)}</b><span>net spent {s.players.A.name.slice(0, 5)}·{s.players.B.name.slice(0, 5)}</span></div> : <div><b>{r.cavedA}·{r.cavedB}</b><span>caved {s.players.A.name.slice(0, 5)}·{s.players.B.name.slice(0, 5)}</span></div>}
+    </div>
+    <div className="cs-row">
+      {!s.b8 && iLost && !s.fin.rematchUsed && !s.fin.tie && <button className="cs-btn cs-btn--bullet" onClick={() => { buzz(60); send({ t: 'rematch' }); }}>REMATCH</button>}
+      <button className="cs-btn" onClick={() => shareReceipts(s)}>SHARE</button>
+      <button className="cs-btn cs-btn--gold" onClick={() => send({ t: 'reset' })}>{durableSeat?((s as typeof s & {restart?:Partial<Record<PID,boolean>>}).restart?.[pid]?'REMATCH REQUESTED · WAITING':'REQUEST ANOTHER NIGHT'):'AGAIN'}</button>
+    </div>
+  </div>);
+}
+
+function TapSync({ n, send, pid }: { n: number; send: (i: { t: 'tapcount'; pid: PID; n: number }) => void; pid: PID }) {
+  useEffect(() => { const t = setTimeout(() => send({ t: 'tapcount', pid, n }), 120); return () => clearTimeout(t); }, [n]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
+
+type WatchInfo = { ok: boolean; region?: string; stream?: string[]; free?: string[]; rent?: string[]; buy?: string[] };
+const WATCH_CACHE = new Map<number, WatchInfo>();
+/** Where to watch the locked winner: TMDB providers via /api/watch (independent of the AI). */
+function WhereToWatch({ id, tv }: { id: number; tv: boolean }) {
+  const [info, setInfo] = useState<WatchInfo | null>(WATCH_CACHE.get(id) || null);
+  useEffect(() => {
+    if (WATCH_CACHE.has(id)) return; let live = true;
+    fetch('/api/watch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: tv ? id - 10000000 : id, tv }) })
+      .then((r) => r.json()).then((d: WatchInfo) => { WATCH_CACHE.set(id, d); if (live) setInfo(d); }).catch(() => { if (live) setInfo({ ok: false }); });
+    return () => { live = false; };
+  }, [id, tv]);
+  if (!info) return <p className="cs-small cs-watch"><em>WHERE TO WATCH</em> checking...</p>;
+  if (!info.ok) return <p className="cs-small cs-watch"><em>WHERE TO WATCH</em> streaming data unavailable right now</p>;
+  const rows: [string, string[] | undefined][] = [['STREAM', info.stream], ['FREE', info.free], ['RENT', info.rent], ['BUY', info.buy]];
+  const shown = rows.filter(([, v]) => v && v.length);
+  if (!shown.length) return <p className="cs-small cs-watch"><em>WHERE TO WATCH</em> no streaming listing found in {info.region}</p>;
+  return <div className="cs-watch cs-watch--box"><em>WHERE TO WATCH · {info.region}</em>{shown.slice(0, 3).map(([k, v]) => <p key={k}><b>{k}</b> {(v as string[]).join(' · ')}</p>)}<span className="cs-jw">Streaming data by JustWatch via TMDB</span></div>;
+}

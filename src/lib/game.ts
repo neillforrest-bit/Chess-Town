@@ -1,0 +1,1063 @@
+// CINESYNC game engine: a pure reducer. The host phone runs it; everyone else sends intents.
+import { wcPick, wcUse, startHit, hitIntent, resolveHit, wagerIntent, bidIntent, lockBid, triviaTap, bustIntent, bustDone, ackIntent, tapeIntent, champIntent, callIntent, rerollVote, nukeTropes, nukeUlt, nukePick, tick8, type Hit, type B8, type Reroll, type Ult } from './b8';
+import { CAT_WILDS } from '@/utils/catWilds';
+import { sabIntent, newSab, genreDeck, wheelIntent } from '@/utils/sabotageEngine';
+export const SWIPER_CAP = 12;
+export const DECK_LEAD = 16; // first cards stay in alignment order: the locked vibes visibly shape the opening of the draft
+import { type Cons, type Pass, type Sup, mergeCons, cleanCons, consOk, validateBatch, suppressKey, supHit, supLabel, decadeOf, PIVOT_N } from '@/lib/cons';
+import catalog from '@/data/catalog.json';
+import seriesCat from '@/data/series.json';
+
+export type PID = 'A' | 'B';
+export type Mood = 'idle' | 'smug' | 'shock' | 'glee' | 'scheme' | 'sad';
+export type Movie = { id: number; t: string; y: number; r: number; g: string[]; o: string; p: string; w: boolean; pop: number; c?: string[]; k?: string; rn?: number; tag?: string; im?: string; kw?: string[]; sr?: { s: number; e: number; st: string; net: string; last: number }; rt?: number | null; mc?: number | null; imdb?: number | null; tmdb?: number | null; aw?: string };
+export type Kind = 'movie' | 'series';
+export const MOVIES: Movie[] = (catalog as { movies: Movie[] }).movies.filter((m) => m.y >= 1990);
+export const SERIES: Movie[] = (seriesCat as { shows: Movie[] }).shows;
+export type GM = 'oscar' | 'rotten' | 'clash' | 'docs' | 'docs_tc' | 'docs_crazy' | 'docs_power' | 'docs_nature' | 'docs_music';
+export const CLASHES: [string, string][] = [['Drama', 'Horror'], ['Comedy', 'Thriller'], ['Romance', 'Science Fiction'], ['Animation', 'Crime'], ['Drama', 'Thriller'], ['Fantasy', 'War']];
+/** Oscar wins parsed from the OMDb-style awards text ("Won 6 Oscars. 51 wins..."). */
+export const oscarWins = (m: Movie): number => { const x = /Won (\d+) Oscar/i.exec(m.aw || ''); return x ? Number(x[1]) : 0; };
+export const totalWins = (m: Movie): number => { const x = /(\d+) wins?/i.exec(m.aw || ''); return x ? Number(x[1]) : 0; };
+export const isHeavy = (m: Movie): boolean => oscarWins(m) >= 1 || totalWins(m) >= 40;
+export const isRotten = (m: Movie): boolean => m.rt != null && m.rt < 60;
+const gmOk = (m: Movie, gm?: GM, cl?: [string, string]): boolean => gm === 'oscar' ? isHeavy(m) : gm === 'rotten' ? isRotten(m) : gm === 'clash' && cl ? m.g.includes(cl[0]) || m.g.includes(cl[1]) : gm === 'docs' ? m.g.includes('Documentary') : gm && gm.startsWith('docs_') ? (m.kw || []).includes('doccat:' + gm.slice(5)) : true;
+export const poolOf = (k: Kind | undefined, gm?: GM, cl?: [string, string]): Movie[] => {
+  if (k === 'series') return SERIES;
+  if (!gm) return MOVIES;
+  const f = MOVIES.filter((m) => gmOk(m, gm, cl));
+  if (gm.startsWith('docs')) return f.length >= 10 ? f : MOVIES.filter((m) => m.g.includes('Documentary'));
+  return f.length >= 45 ? f : MOVIES;
+};
+export const BY_ID: Record<number, Movie> = Object.fromEntries([...MOVIES, ...SERIES, ...CAT_WILDS].map((m) => [m.id, m]));
+/** v2.0 live-TMDB films live in state.extra; every process registers them into BY_ID before use. */
+export const registerExtra = (ms: Movie[] | undefined) => { for (const m of ms || []) if (!BY_ID[m.id]) BY_ID[m.id] = m; };
+/** Ids that ship in the bundle. registerExtra mutates BY_ID per server instance, so BY_ID membership alone can't tell a catalogue film from another room's extra. */
+export const BASE_IDS: Set<number> = new Set(Object.keys(BY_ID).map(Number));
+export const poster = (m: Movie, size = 'w342') => `https://image.tmdb.org/t/p/${size}${m.p}`;
+
+export const RESPONSE_GATE = 0.7;
+/** THE VIBE MATRIX: 24 hyper-specific tropes. Each partner picks exactly 3; the six picks are the search query.
+ *  axes = [pacing, weight, reality, runtime] contribution to the shared target; tastes = TASTES tags that bias the deck. */
+export const TROPE_MATRIX: { n: string; ax: number[]; tastes: string[] }[] = [
+  { n: 'Neon-Soaked Nights', ax: [7, 5, 4, 4], tastes: ['Crime', 'Sci-fi', 'Thriller'] },
+  { n: 'Brainless Action', ax: [9, 2, 7, 4], tastes: ['Action', 'Comedy'] },
+  { n: 'Pitch-Black Satire', ax: [5, 6, 3, 4], tastes: ['Comedy', 'Crime'] },
+  { n: 'Claustrophobic Tension', ax: [6, 7, 3, 3], tastes: ['Thriller', 'Horror'] },
+  { n: 'Mind-Bending Twists', ax: [6, 6, 6, 5], tastes: ['Sci-fi', 'Mystery', 'Thriller'] },
+  { n: 'Heist Chemistry', ax: [7, 3, 3, 5], tastes: ['Crime', 'Action', 'Comedy'] },
+  { n: 'Slow-Burn Dread', ax: [2, 8, 4, 5], tastes: ['Horror', 'Mystery', 'Thriller'] },
+  { n: 'Found-Family Warmth', ax: [4, 4, 5, 5], tastes: ['Comedy', 'Drama', 'Animation'] },
+  { n: 'Revenge Spiral', ax: [7, 7, 3, 5], tastes: ['Action', 'Crime', 'Thriller'] },
+  { n: 'Time-Loop Chaos', ax: [6, 4, 8, 3], tastes: ['Sci-fi', 'Comedy'] },
+  { n: 'Unreliable Narrator', ax: [5, 7, 4, 5], tastes: ['Mystery', 'Thriller', 'Drama'] },
+  { n: 'Road-Trip Mayhem', ax: [6, 3, 3, 4], tastes: ['Comedy', 'Action'] },
+  { n: 'Underdog Triumph', ax: [6, 4, 3, 5], tastes: ['Sports', 'Drama', 'Real events'] },
+  { n: 'Cosmic Awe', ax: [4, 6, 9, 7], tastes: ['Sci-fi', 'Fantasy'] },
+  { n: 'Small-Town Secrets', ax: [3, 7, 3, 5], tastes: ['Mystery', 'Crime', 'Drama'] },
+  { n: 'Doomed Romance', ax: [3, 8, 4, 5], tastes: ['Romance', 'Drama'] },
+  { n: 'Pressure-Cooker Room', ax: [5, 6, 3, 3], tastes: ['Thriller', 'Drama'] },
+  { n: 'Cult-Classic Weirdness', ax: [5, 5, 7, 4], tastes: ['Artsy', 'Comedy', 'Horror'] },
+  { n: 'Feel-Good Comfort', ax: [4, 2, 4, 4], tastes: ['Comedy', 'Romance', 'Musical'] },
+  { n: 'Ensemble Whodunnit', ax: [4, 5, 3, 5], tastes: ['Mystery', 'Crime', 'Comedy'] },
+  { n: 'Dystopian Rebellion', ax: [7, 7, 8, 6], tastes: ['Sci-fi', 'Action'] },
+  { n: 'Gonzo Action Spectacle', ax: [9, 3, 6, 5], tastes: ['Action', 'Superhero'] },
+  { n: 'Gothic Atmosphere', ax: [3, 7, 7, 5], tastes: ['Horror', 'Fantasy', 'Artsy'] },
+  { n: 'Con-Artist Cleverness', ax: [6, 3, 3, 5], tastes: ['Crime', 'Comedy', 'Thriller'] },
+  { n: 'Coming-of-Age Ache', ax: [3, 6, 3, 4], tastes: ['Drama', 'Romance'] },
+  { n: 'Moral Dilemma', ax: [4, 8, 3, 6], tastes: ['Drama', 'War', 'Real events'] },
+];
+export const TROPE_NAMES = TROPE_MATRIX.map((t) => t.n);
+export const CLASH = 5; // an axis gap this big fails the gate on its own
+export const TASTES = ['Action', 'Comedy', 'Drama', 'Horror', 'Thriller', 'Romance', 'Sci-fi', 'Fantasy', 'Animation', 'Crime', 'Mystery', 'War', 'Western', 'Musical', 'Superhero', 'Documentary', 'Sports', 'Real events', 'Pure fiction', 'Artsy', 'Award winner'] as const;
+const GENRE_OF: Record<string, string> = { 'Sci-fi': 'Science Fiction', Musical: 'Music' };
+export type Prof = { streak: number; g: Record<string, number>; c: Record<string, number>; ax: number[]; n: number; yes: number; notes: string[] };
+export const newProf = (): Prof => ({ streak: 0, g: {}, c: {}, ax: [0, 0, 0, 0], n: 0, yes: 0, notes: [] });
+export const PASS_WHY = ['Seen it', 'Too dark', 'Too light', 'Not my genre', 'Dislike the cast', 'Not in the mood', 'Too long'] as const;
+export const YES_WHY = ['Love the genre', 'Great cast', 'Great reviews', 'Right mood', 'Havent seen it'] as const;
+export const AXES = ['Pacing', 'Weight', 'Reality', 'Runtime'] as const;
+export const TAP_MS = 10000;
+export const PITCH_MS = 60000;
+export const NEXT_MS = 2200;
+export const DRAFT_SIZE = 6;
+export const POOL_SIZE = 30;
+
+// ---------- Phase 1: vibe questions (two sets, so a retry is a genuinely new conversation)
+export type Question = { q: string; lo: string; hi: string };
+// Four sliders per set (0-10): energy, darkness, fantasy-vs-real, scale. Last set is the lightning set.
+export const QUESTION_SETS: Question[][] = [
+  [
+    { q: 'Tonight, how much focus can you spare?', lo: 'Scroll My Phone', hi: '100% Focus Required' },
+    { q: 'What do you want the film to do to you?', lo: 'Make Me Laugh', hi: 'Keep Me Up At Night' },
+    { q: 'Where should it take you?', lo: 'Real World', hi: 'Total Escapism' },
+    { q: 'What kind of tension?', lo: 'Non-Stop Explosions', hi: 'Slow-Burn Tension' },
+  ],
+  [
+    { q: 'Pillow-fort or full attention?', lo: 'Half-watch, half-snack', hi: 'Phones in the bin' },
+    { q: 'Cosy or chilling?', lo: 'Blanket and a smile', hi: 'Lights on afterwards' },
+    { q: 'Believable or bonkers?', lo: 'Could happen to us', hi: 'Could never happen' },
+    { q: 'Sprint or marathon?', lo: 'Quick hit', hi: 'Slow-burn epic' },
+  ],
+  [
+    { q: 'Popcorn or puzzle?', lo: 'Popcorn', hi: 'Puzzle' },
+    { q: 'Giggles or goosebumps?', lo: 'Giggles', hi: 'Goosebumps' },
+    { q: 'Based on fact or total fiction?', lo: 'Based on fact', hi: 'Total fiction' },
+    { q: 'Short and sweet or an event?', lo: 'Short and sweet', hi: 'An event' },
+  ],
+  [
+    { q: 'Easy ride or plot maze?', lo: 'Easy ride', hi: 'Plot maze' },
+    { q: 'Light-hearted or tense?', lo: 'Light-hearted', hi: 'Tense and grim' },
+    { q: 'Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
+    { q: 'How much time have we got?', lo: 'Under 100 min', hi: 'Over 150 min' },
+  ],
+  [
+    { q: 'Pay attention or half-watch?', lo: 'Half-watch', hi: 'Full attention' },
+    { q: 'Cosy or dark?', lo: 'Cosy', hi: 'Dark' },
+    { q: 'This world or another?', lo: 'This world', hi: 'Another world' },
+    { q: 'Runtime appetite?', lo: 'Brief', hi: 'Epic' },
+  ],
+  [
+    { q: 'LIGHTNING. Popcorn or puzzle?', lo: 'Popcorn', hi: 'Puzzle' },
+    { q: 'LIGHTNING. Comedy or horror?', lo: 'Comedy', hi: 'Horror' },
+    { q: 'LIGHTNING. Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
+    { q: 'LIGHTNING. Short or epic?', lo: 'Short', hi: 'Epic' },
+  ],
+];
+export const SERIES_SETS: Question[][] = [
+  [
+    { q: 'How much plot can your brain take?', lo: 'Easy to follow', hi: 'Twisty, keep notes' },
+    { q: 'How heavy should it feel?', lo: 'Lighthearted / comedy', hi: 'Grim / horror' },
+    { q: 'How true to life?', lo: 'Real world', hi: 'Invented worlds' },
+    { q: 'How big a commitment?', lo: 'One short season', hi: 'Many seasons, long episodes' },
+  ],
+  [
+    { q: 'Binge or one-a-night?', lo: 'One a night, savour', hi: 'Cliffhanger binge' },
+    { q: 'Cosy or chilling?', lo: 'Blanket and a smile', hi: 'Lights on afterwards' },
+    { q: 'Believable or bonkers?', lo: 'Could happen to us', hi: 'Could never happen' },
+    { q: 'How many episodes deep?', lo: 'A handful', hi: 'Fifty plus' },
+  ],
+  [
+    { q: 'Slow-burn or edge-of-seat?', lo: 'Slow-burn', hi: 'Edge of seat' },
+    { q: 'Giggles or goosebumps?', lo: 'Giggles', hi: 'Goosebumps' },
+    { q: 'Based on fact or total fiction?', lo: 'Based on fact', hi: 'Total fiction' },
+    { q: 'Episode length?', lo: '20-minute episodes', hi: 'Hour-long episodes' },
+  ],
+  [
+    { q: 'Easy ride or plot maze?', lo: 'Easy ride', hi: 'Plot maze' },
+    { q: 'Cosy or dark?', lo: 'Cosy', hi: 'Dark' },
+    { q: 'This world or another?', lo: 'This world', hi: 'Another world' },
+    { q: 'Seasons we can face?', lo: '1 season', hi: '6+ seasons' },
+  ],
+  [
+    { q: 'LIGHTNING. Slow-burn or binge?', lo: 'Slow-burn', hi: 'Binge' },
+    { q: 'LIGHTNING. Comedy or horror?', lo: 'Comedy', hi: 'Horror' },
+    { q: 'LIGHTNING. Fact or fiction?', lo: 'Fact', hi: 'Fiction' },
+    { q: 'LIGHTNING. Short run or long run?', lo: 'Short run', hi: 'Long run' },
+  ],
+];
+export const qsets = (k?: Kind): Question[][] => (k === 'series' ? SERIES_SETS : QUESTION_SETS);
+// ask order is broad to narrow: genre fork first (comedy/horror), then fact/fiction, then energy, then scale. Axis indices stay [energy, dark, fantasy, scale].
+export const ASK_ORDER = [2, 1, 0, 3];
+export const AXQ_NAME = ['Pacing', 'Emotional weight', 'Reality', 'Runtime'];
+export const ORSON_REACTIONS = ['Noted. I will not judge. Out loud.', 'Interesting. Your partner will find that very interesting.', 'Bold. Locking it in.', 'Sure. Cinema forgives all.', 'A strong choice. Or a cry for help.', 'I have seen worse. Not often.'];
+export const ROAST_REACTIONS = ['Ah. A person of questionable taste.', 'Your partner will hear about this.', 'I have filed that under "concerning".', 'Brave, in the way a bin fire is brave.', 'Truly the choice of someone who has stopped trying.', 'I expected less, and still I am let down.'];
+export const reactionFor = (roast: boolean, seed: number) => { const l = roast ? ROAST_REACTIONS : ORSON_REACTIONS; return l[Math.abs(seed) % l.length]; };
+
+// ---------- Subgenre swipe deck (V2). Matches use genre + keywords + era.
+export type Sub = { n: string; tag: string; m: (m: Movie) => boolean };
+const kwOf = (m: Movie) => (m.kw || []).join('|').toLowerCase();
+export const SUBS: Sub[] = [
+  { n: '90s Neo-Noir', tag: 'Rain, shadows, bad decisions', m: (m) => (m.g.includes('Crime') || m.g.includes('Mystery') || m.g.includes('Thriller')) && (/noir/.test(kwOf(m)) || (m.y >= 1990 && m.y <= 2002 && m.g.includes('Crime'))) },
+  { n: 'Psychological Thriller', tag: 'Is it real? Is it her? Is it you?', m: (m) => m.g.includes('Thriller') && /psychological|mind|paranoia|obsession|twist/.test(kwOf(m)) },
+  { n: 'Heist & Con Capers', tag: 'A plan. A crew. It goes sideways.', m: (m) => /heist|con artist|robbery|casino|bank robbery|thief/.test(kwOf(m)) },
+  { n: 'Space Odysseys', tag: 'Silence, stars and big questions', m: (m) => m.g.includes('Science Fiction') && /space|astronaut|outer space|alien|spacecraft/.test(kwOf(m)) },
+  { n: 'Rom-Com Comfort', tag: 'You know how it ends. You still want it', m: (m) => m.g.includes('Romance') && m.g.includes('Comedy') },
+  { n: 'Slow-Burn Drama', tag: 'Quiet, patient, devastating', m: (m) => m.g.includes('Drama') && ((m.rn || 0) >= 125 || /slow burn/.test(kwOf(m))) && !m.g.includes('Action') },
+  { n: 'Creature & Scare Night', tag: 'Hide behind a cushion', m: (m) => m.g.includes('Horror') },
+  { n: 'True Stories', tag: 'It actually happened', m: (m) => m.g.includes('History') || m.g.includes('Documentary') || /true story|biography|true crime|real person/.test(kwOf(m)) },
+  { n: 'Mind-Benders', tag: 'Rewind and argue about it', m: (m) => /time travel|dream|alternate reality|simulation|memory|parallel|twist|loop/.test(kwOf(m)) },
+  { n: 'Buddy & Ensemble Comedy', tag: 'Great company, terrible decisions', m: (m) => m.g.includes('Comedy') && /buddy|friendship|ensemble|road trip|best friend|group/.test(kwOf(m)) },
+  { n: 'War & Epic History', tag: 'Sweeping, serious, big sound', m: (m) => m.g.includes('War') || (m.g.includes('History') && (m.rn || 0) >= 130) },
+  { n: 'Superhero Spectacle', tag: 'Capes, quips, city-sized explosions', m: (m) => /superhero|super power/.test(kwOf(m)) },
+  { n: 'Animated Adventures', tag: 'Not just for kids. Honest', m: (m) => m.g.includes('Animation') },
+  { n: 'Crime Sagas', tag: 'Family, loyalty, a body in the boot', m: (m) => m.g.includes('Crime') && m.g.includes('Drama') },
+  { n: 'Fantasy Quests', tag: 'Swords, spells, a long walk', m: (m) => m.g.includes('Fantasy') },
+  { n: 'Underdog & Sports', tag: 'Nobody believes. Then they do', m: (m) => /sport|boxing|underdog|football|baseball|racing|basketball/.test(kwOf(m)) },
+  { n: 'Coming-of-Age', tag: 'Awkward, tender, true', m: (m) => /coming of age|teenager|high school|growing up/.test(kwOf(m)) },
+  { n: 'Survival & Disaster', tag: 'Stay alive. Barely', m: (m) => /survival|disaster|stranded|apocalypse|post-apocalyptic/.test(kwOf(m)) },
+  { n: 'Dark Comedy', tag: 'You laugh, then wonder why', m: (m) => m.g.includes('Comedy') && (m.g.includes('Crime') || /dark comedy|satire|black comedy/.test(kwOf(m))) },
+  { n: 'Whodunits & Mysteries', tag: 'Everyone is lying', m: (m) => m.g.includes('Mystery') },
+  { n: 'Action Blockbusters', tag: 'Turn it up, switch off', m: (m) => m.g.includes('Action') && !m.g.includes('Science Fiction') },
+  { n: 'Feel-Good Family', tag: 'Warm, easy, everyone in', m: (m) => m.g.includes('Family') || (m.g.includes('Comedy') && m.g.includes('Adventure')) },
+];
+const kwS = (m: Movie) => (m.kw || []).join('|').toLowerCase() + ' ' + m.o.toLowerCase();
+export const SSUBS: Sub[] = [
+  { n: 'Prestige Crime', tag: 'Slow, brilliant, morally grey', m: (m) => m.g.includes('Crime') && m.g.includes('Drama') },
+  { n: 'Sitcom Comfort', tag: 'Short episodes. Easy company', m: (m) => m.g.includes('Comedy') && (m.rn || 30) <= 35 },
+  { n: 'One-and-Done Limited Series', tag: 'One season. A proper ending', m: (m) => (m.sr?.s || 9) === 1 },
+  { n: 'Sci-Fi Epics', tag: 'Big ideas, bigger stakes', m: (m) => m.g.includes('Science Fiction') },
+  { n: 'Fantasy Worlds', tag: 'Dragons, magic, long summers', m: (m) => m.g.includes('Fantasy') },
+  { n: 'Anime & Animation', tag: 'Drawn, not lesser', m: (m) => m.g.includes('Animation') },
+  { n: 'Mystery Boxes', tag: 'Answers? Not before episode six', m: (m) => m.g.includes('Mystery') },
+  { n: 'Dark & Disturbing', tag: 'You will not sleep after', m: (m) => /serial killer|murder|psycholog|disturb|cult|horror|dark/.test(kwS(m)) || m.g.includes('Horror') },
+  { n: 'Workplace & Procedural', tag: 'Hospitals, courtrooms, cases of the week', m: (m) => /hospital|doctor|lawyer|police|detective|office|courtroom|medical|investigat/.test(kwS(m)) },
+  { n: 'Superhero & Comic Worlds', tag: 'Capes on a TV budget. Often better', m: (m) => /superhero|comic|super power|marvel|dc comics/.test(kwS(m)) },
+  { n: 'Teen & Coming-of-Age', tag: 'Awkward, tender, loud', m: (m) => /teen|high school|coming of age|teenager/.test(kwS(m)) },
+  { n: 'Long-Runners (5+ seasons)', tag: 'A commitment. A relationship', m: (m) => (m.sr?.s || 0) >= 5 },
+  { n: 'Period & History', tag: 'Costumes, candles, scheming', m: (m) => m.g.includes('History') || /period drama|world war|historical|1[0-9]{3}s|king|queen|victorian/.test(kwS(m)) },
+  { n: 'Action & Adventure Serials', tag: 'Chase scenes with a season arc', m: (m) => m.g.includes('Action') },
+  { n: 'Dramedy', tag: 'Funny until it really isn\'t', m: (m) => m.g.includes('Comedy') && m.g.includes('Drama') },
+  { n: 'Spy & Political Thrillers', tag: 'Everyone has an agenda', m: (m) => /spy|espionage|politic|conspiracy|government|president|cia|intelligence/.test(kwS(m)) },
+  { n: 'Family & Feel-Good', tag: 'Warm enough for everyone', m: (m) => m.g.includes('Family') || /feel good|heartwarming|family/.test(kwS(m)) },
+];
+const subList = (k?: Kind) => (k === 'series' ? SSUBS : SUBS);
+const subCount = (s: Sub, k?: Kind) => poolOf(k).filter(s.m).length;
+export const subDeck = (code: string, kind?: Kind): string[] => shuffled(subList(kind).filter((s) => subCount(s, kind) >= 8).map((s) => s.n), code, 'subs').slice(0, 20);
+export const subOf = (n: string) => [...SUBS, ...SSUBS].find((s) => s.n === n)!;
+export const subHits = (m: Movie, names: string[]) => names.filter((n) => { const s = [...SUBS, ...SSUBS].find((x) => x.n === n); return s ? s.m(m) : false; });
+
+// genre -> [energy, dark, fantasy, scale], each 0-10
+const GV: Record<string, number[]> = {
+  Action: [3, 5, 4.5, 8], Adventure: [4, 3, 7, 8], Animation: [3, 1.5, 8.5, 5.5], Comedy: [2, 0.5, 1.5, 3.5], Crime: [6, 7.5, 1.5, 4],
+  Documentary: [6, 4.5, 0, 1.5], Drama: [6, 7, 0.5, 1.5], Family: [2, 1, 6, 4], Fantasy: [5, 3, 9, 7.5], History: [6, 7, 0.5, 4.5], Horror: [4, 9, 4.5, 3.5],
+  Music: [2.5, 2.5, 1.5, 4], Mystery: [8, 7, 1.5, 2.5], Romance: [2, 1.5, 1, 2.5], 'Science Fiction': [7, 6, 9, 8.5], Thriller: [6, 7.5, 1.5, 4], War: [5.5, 9, 0.5, 7.5], Western: [4, 6, 0.5, 4.5],
+};
+const DARK_KW = ['murder', 'serial killer', 'revenge', 'survival', 'dystopia', 'psychological', 'gore', 'slasher', 'haunted', 'torture', 'kidnapping', 'death', 'violence', 'drug', 'crime boss', 'hitman', 'noir', 'neo-noir', 'cult', 'demon', 'possession', 'war', 'terror', 'psychopath', 'loss of loved one', 'found footage', 'gangster', 'heist'];
+const LIGHT_KW = ['musical', 'friendship', 'coming of age', 'cartoon', 'anthropomorphism', 'feel good', 'romantic comedy', 'holiday', 'christmas', 'talking animal', 'family'];
+const FANTASY_KW = ['superhero', 'magic', 'witch', 'alien', 'super power', 'anthropomorphism', 'dragon', 'supernatural', 'wizard', 'monster', 'mutant', 'time travel', 'other dimension', 'space', 'talking animal', 'vampire', 'ghost', 'robot'];
+const REAL_KW = ['based on true story', 'biography', 'true crime', 'based on a true story', 'docudrama', 'real person'];
+const EPIC_KW = ['superhero', 'marvel cinematic universe (mcu)', 'space opera', 'battle', 'epic', 'apocalypse', 'world war ii', 'war'];
+const CERT_DARK: Record<string, number> = { 'NC-17': 2, R: 1.3, 'TV-MA': 1.3, 'PG-13': 0, 'TV-14': 0, PG: -1.4, 'TV-PG': -1.4, G: -2.8 };
+export function tagsOf(m: Movie): string[] {
+  const kw = (m.kw || []).map((k) => k.toLowerCase()).join('|'); const t: string[] = [];
+  const real = m.g.includes('Documentary') || m.g.includes('History') || /true story|biography|true crime|real person|based on a true/.test(kw);
+  t.push(real ? 'Real events' : 'Pure fiction');
+  for (const g of TASTES) { const gg = GENRE_OF[g] || g; if (m.g.includes(gg)) t.push(g); }
+  if (/superhero|super power/.test(kw)) t.push('Superhero'); if (/musical/.test(kw) && !t.includes('Musical')) t.push('Musical');
+  if (m.g.includes('Documentary')) t.push('Documentary');
+  if (/sport|boxing|basketball|football|baseball|soccer|racing|olympic|wrestling|tennis|golf|hockey|formula one/.test(kw) || /sport/i.test(m.o)) t.push('Sports');
+  if (/surreal|art house|auteur|independent film|experimental|avant|existential|neo-noir|slow burn/.test(kw) || (m.pop < 40 && m.r >= 7.6 && m.g.includes('Drama'))) t.push('Artsy');
+  if (/won \d+ oscar|won an oscar|oscars?\b/i.test(m.aw || '') && /won|nominated/i.test(m.aw || '')) t.push('Award winner');
+  return t;
+}
+export const actorList = (raw: string) => raw.toLowerCase().split(/,| and /).map((x) => x.trim()).filter((x) => x.length > 2).slice(0, 2);
+
+export function tasteHits(m: Movie, t: { A: string[] | null; B: string[] | null }, actors: { A: string; B: string }): string[] {
+  const mine = tagsOf(m); const out: string[] = [];
+  for (const tag of mine) if ((t.A || []).includes(tag) || (t.B || []).includes(tag)) { if (tag !== 'Pure fiction' && tag !== 'Real events') out.push(tag); else if ((t.A || []).includes(tag) !== (t.B || []).includes(tag) || true) out.push(tag); }
+  for (const p of ['A', 'B'] as const) { for (const a of actorList(actors[p])) { const hit = (m.c || []).find((c) => c.toLowerCase().includes(a)); if (hit) out.push('Stars ' + hit); } }
+  return Array.from(new Set(out));
+}
+/** Exact cast member matching one player's typed actor (case-insensitive substring, first hit). */
+export const actorHit = (m: Movie, actors: { A: string; B: string } | undefined, pid: PID): string | null => {
+  if (!actors) return null;
+  for (const a of actorList(actors[pid] || '')) { const hit = (m.c || []).find((c) => c.toLowerCase().includes(a)); if (hit) return hit; }
+  return null;
+};
+const tasteBonus = (m: Movie, t: { A: string[] | null; B: string[] | null }, actors: { A: string; B: string }) => {
+  const tags = tagsOf(m); let b = 0;
+  for (const tag of tags) { const a = (t.A || []).includes(tag), c = (t.B || []).includes(tag); b += a && c ? 1.8 : a || c ? 0.7 : 0; }
+  const wantReal = [(t.A || []).includes('Real events'), (t.B || []).includes('Real events')], wantFic = [(t.A || []).includes('Pure fiction'), (t.B || []).includes('Pure fiction')];
+  if (tags.includes('Real events') && wantFic[0] && wantFic[1]) b -= 2; if (tags.includes('Pure fiction') && wantReal[0] && wantReal[1]) b -= 2;
+  for (const p of ['A', 'B'] as const) { for (const a of actorList(actors[p])) if ((m.c || []).some((c) => c.toLowerCase().includes(a))) b += 2.2; }
+  return b;
+};
+const clamp = (x: number) => Math.max(0, Math.min(10, x));
+const vcache = new Map<number, number[]>();
+export const vecOf = (m: Movie): number[] => {
+  const hit = vcache.get(m.id); if (hit) return hit;
+  const vs = m.g.map((g) => GV[g]).filter(Boolean);
+  const base = vs.length ? [0, 1, 2, 3].map((i) => vs.reduce((s, v) => s + v[i], 0) / vs.length) : [5, 5, 5, 5];
+  const kw = (m.kw || []).map((k) => k.toLowerCase()); const has = (l: string[]) => kw.filter((k) => l.some((x) => k.includes(x))).length;
+  base[1] += (CERT_DARK[m.k || ''] ?? 0) + Math.min(2, has(DARK_KW) * 0.7) - Math.min(2, has(LIGHT_KW) * 0.7);
+  base[2] += Math.min(2.5, has(FANTASY_KW) * 0.9) - Math.min(3, has(REAL_KW) * 1.5);
+  base[3] = m.sr ? clamp((((m.rn || 45) - 20) / 4 + ((m.sr.s || 1) - 1) * 1.4) / 2) : m.rn ? clamp((m.rn - 85) / 6.5) : 4.5;
+  base[0] += Math.min(1.5, has(['twist', 'mind', 'conspiracy', 'dream', 'time travel', 'puzzle', 'complex', 'nonlinear', 'psychological', 'mystery']) * 0.6) - Math.min(1, has(['slapstick', 'buddy', 'road trip', 'action hero', 'car chase']) * 0.5);
+  const v = base.map(clamp); vcache.set(m.id, v); return v;
+};
+const dist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + (x - b[i]) ** 2, 0));
+const KID = ['Animation', 'Family'];
+// Hard exclusions: films that contradict the shared vibe outright, no matter how well rated.
+export function excluded(m: Movie, t: number[], nos: string[] = []): boolean {
+  if (nos.length) { const tg = tagsOf(m); if (nos.some((n) => tg.includes(n))) return true; }
+  const kid = m.g.some((g) => KID.includes(g)) || ['G', 'TV-Y', 'TV-G'].includes(m.k || '');
+  const toon = m.g.includes('Animation') || (m.kw || []).some((k) => /anthropomorphism|talking animal|cartoon|3d animation/i.test(k));
+  const rk = m.k || '';
+  if (t[1] >= 6 && (kid || ['PG', 'G', 'TV-PG'].includes(rk))) return true;
+  if (t[2] <= 4 && toon) return true;
+  if (t[2] <= 3 && (m.kw || []).some((k) => /superhero|super power|talking animal/.test(k.toLowerCase()))) return true;
+  if (t[1] <= 3 && (m.g.includes('Horror') || ['R', 'NC-17', 'TV-MA'].includes(rk))) return true;
+  if (t[0] >= 7 && vecOf(m)[0] < 4.5) return true;
+  if (t[0] <= 3 && vecOf(m)[0] > 8) return true;
+  if (t[3] >= 7 && vecOf(m)[3] < 3) return true;
+  return false;
+}
+// 0-100: how well a film fits the shared vibe (for the card)
+/** Honest mood match for one card: how well the film's genre tags and feel line up with the locked tropes. Returns the real percentage and the reason (best trope plus the tags that matched). */
+export function moodMatch(m: Movie, tropes: string[] | null | undefined, target: number[]): { pct: number; why: string } {
+  const axis = fitPct(m, target); const tags = tagsOf(m);
+  const names = (tropes || []).filter(Boolean); if (!names.length) return { pct: axis, why: '' };
+  let best = { n: '', hit: [] as string[], sc: -1 };
+  for (const n of names) { const tr = TROPE_MATRIX.find((x) => x.n === n); if (!tr) continue; const hit = tr.tastes.filter((x) => tags.includes(x)); const sc = hit.length / Math.min(2, tr.tastes.length); if (sc > best.sc) best = { n, hit, sc }; }
+  const tagFit = Math.min(1, Math.max(0, best.sc));
+  const pct = Math.max(5, Math.min(99, Math.round(tagFit * 60 + axis * 0.4)));
+  return { pct, why: best.sc > 0 ? best.n + ' · ' + best.hit.slice(0, 2).join('/') : 'weak match: ' + (tags.slice(0, 2).join('/') || 'mixed') };
+}
+const franchiseKey = (m: Movie) => m.t.toLowerCase().replace(/[:\-–].*$/, '').replace(/\b(part|chapter|vol\.?|volume)\b.*$/, '').replace(/\b([ivx]{1,4}|\d+)\b\s*$/, '').replace(/[^a-z0-9 ]/g, '').trim();
+export const fitPct = (m: Movie, t: number[]) => Math.max(0, Math.min(99, Math.round(100 - dist(vecOf(m), t) * 3.6)));
+export const W = [1.15, 1.15, 1, 0.8];
+export const wdist = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, x, i) => s + W[i] * (x - b[i]) ** 2, 0));
+
+export function learnScore(m: Movie, base: number[], pr: Prof, nos: string[]): number {
+  const t = base.map((x, i) => clamp(x + pr.ax[i]));
+  let sc = wdist(vecOf(m), t) - 0.6 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.012;
+  for (const g of m.g) sc -= 0.9 * Math.max(-3, Math.min(3, pr.g[g] || 0));
+  for (const c of (m.c || []).slice(0, 3)) sc -= 0.8 * Math.max(-3, Math.min(3, pr.c[c] || 0));
+  sc -= 0.7 * Math.max(-3, Math.min(3, pr.g['E' + Math.floor(m.y / 10) * 10] || 0));
+  for (const k of (m.kw || []).slice(0, 4)) sc -= 0.35 * Math.max(-3, Math.min(3, pr.g['K:' + k.toLowerCase()] || 0));
+  if (excluded(m, t, nos)) sc += 6;
+  return sc;
+}
+export function learnFrom(pr: Prof, m: Movie, yes: boolean, why: string[]) {
+  pr.n++; if (yes) { pr.yes++; pr.streak = 0; } else pr.streak++;
+  const dg = (g: string, v: number) => { pr.g[g] = (pr.g[g] || 0) + v; };
+  const dc = (v: number) => (m.c || []).slice(0, 3).forEach((c) => { pr.c[c] = (pr.c[c] || 0) + v; });
+  const v = vecOf(m);
+  for (const g of m.g) dg(g, yes ? 0.7 : -0.5);
+  // implicit learning (no menus): drift toward what they take, push away from what they pass; pacing + runtime learn fastest
+  for (const i of [0, 1, 2, 3]) pr.ax[i] += (v[i] - 5) * (yes ? 0.05 : -0.04) * (i === 0 || i === 3 ? 2.5 : 1);
+  const era = 'E' + Math.floor(m.y / 10) * 10; pr.g[era] = (pr.g[era] || 0) + (yes ? 0.6 : -0.45);
+  for (const k of (m.kw || []).slice(0, 4)) { const kk = 'K:' + k.toLowerCase(); pr.g[kk] = (pr.g[kk] || 0) + (yes ? 0.35 : -0.3); }
+  for (const w of why) {
+    if (w === 'Not my genre') m.g.forEach((g) => dg(g, -1.8)); else if (w === 'Love the genre') m.g.forEach((g) => dg(g, 1.6));
+    else if (w === 'Dislike the cast') dc(-2); else if (w === 'Great cast') dc(1.5);
+    else if (w === 'Too dark') pr.ax[1] -= 1.6; else if (w === 'Too light') pr.ax[1] += 1.6;
+    else if (w === 'Not in the mood') for (let i = 0; i < 4; i++) pr.ax[i] += (5 - v[i]) * 0.12;
+    else if (w === 'Right mood') for (let i = 0; i < 4; i++) pr.ax[i] += (v[i] - 5) * 0.2;
+    else if (w === 'Too long') pr.ax[3] -= 0.8;
+    else if (w === 'Great reviews') pr.ax[0] += 0;
+  }
+  pr.ax = pr.ax.map((x) => Math.max(-4, Math.min(4, x)));
+}
+const REACT: Record<string, [string, string, Mood]> = {
+  'Seen it': ['Seen it. Struck from the record. I will not insult you with repeats.', '🙄', 'smug'],
+  'Too dark': ['Too dark. Noted. Fewer things that go bump, more things that go ha.', '🕯️', 'sad'],
+  'Too light': ['Too light. You want teeth. I am sharpening the deck.', '🦷', 'scheme'],
+  'Not my genre': ['Wrong genre. I am pulling that whole neighbourhood out of the deck.', '🚫', 'shock'],
+  'Dislike the cast': ['The cast offends you. They are on a list now. A short, sad list.', '😬', 'scheme'],
+  'Not in the mood': ['Not in the mood. I am re-tuning the whole room to match.', '🎛️', 'idle'],
+  'Too long': ['Too long. Respect your evening. Shorter things coming.', '⏱️', 'smug'],
+  'Love the genre': ['More of that genre, coming up. I am practically a sommelier.', '😍', 'glee'],
+  'Great cast': ['A cast you adore. I am digging for their cousins.', '🤩', 'glee'],
+  'Great reviews': ['The critics persuaded you. Rare. Frame it.', '🏆', 'glee'],
+  'Right mood': ['Right mood. Locking onto that frequency.', '🎯', 'smug'],
+  'Havent seen it': ['Fresh territory. My favourite kind.', '🍿', 'glee'],
+};
+export function swipeLine(pr: Prof, m: Movie, yes: boolean, why: string[], seed: number): { line: string; mood: Mood; emo: string } {
+  if (why.length) { const r = REACT[why[0]] || REACT['Right mood']; return { line: r[0], mood: r[2], emo: r[1] }; }
+  if (!yes && pr.streak >= 3) return { line: `${pr.streak} passes in a row. Tell me why on the next one. Seen it? Too dark? I can fix this, but only if you talk.`, mood: 'shock', emo: '🤨' };
+  if (yes) { const L = ['Drafted. Bold. I will pretend I approve.', `${m.t}. A choice. Noted in the file.`, 'Into the vault it goes.']; return { line: L[seed % L.length], mood: 'smug', emo: '😏' }; }
+  const L = ['Next. The film will survive.', 'Brutal. I respect it.', 'Gone. Not even a goodbye.']; return { line: L[seed % L.length], mood: 'idle', emo: '🎬' };
+}
+// ---------- state
+export type SabKey = 'veto' | 'block' | 'roulette' | 'orson';
+export type Wheel = { stage: 'spin' | 'judge' | 'done'; by: PID; turn: PID; opts: string[]; spun: { A?: boolean; B?: boolean }; vetoed: { A?: boolean; B?: boolean }; idx: number | null; cand: string | null; at: number; n: number; final: string | null; orson: boolean; line: string };
+export type Sab = { A: Record<SabKey, boolean>; B: Record<SabKey, boolean>; genre: string | null; log: string[]; wheel?: Wheel | null };
+export type Matchup = { id: string; a: number; b: number; c: number | null; wg: { A?: number[]; B?: number[] }; votes: { A?: number; B?: number }; tap: { until: number; A: number; B: number } | null; winner: number | null; via: string | null; nextAt: number | null };
+/** CineSync v2.0 draft extras: consecutive-pass tracking, suppression, 10-pass modal, fresh pivot batches, Golden Ticket + Veto allowances. */
+export type Fresh = { at: number; fb: string[]; avoid: string[]; done?: boolean };
+export type DX = { passes: { A: Pass[]; B: Pass[] }; sup: { A: Sup[]; B: Sup[] }; modal: { A: boolean; B: boolean }; fresh: { A?: Fresh; B?: Fresh }; gt: { A: boolean; B: boolean }; vn: { A: number; B: number }; gold: { A?: number; B?: number }; piv: { A: number; B: number } };
+export const VETO_PER = 2; export const GOLD_PER = 1;
+export const newDx = (): DX => ({ passes: { A: [], B: [] }, sup: { A: [], B: [] }, modal: { A: false, B: false }, fresh: {}, gt: { A: true, B: true }, vn: { A: VETO_PER, B: VETO_PER }, gold: {}, piv: { A: 0, B: 0 } });
+export type State = {
+  code: string; kind: Kind; gm?: GM; cl?: [string, string]; v: number; now: number;
+  phase: 'lobby' | 'vibe' | 'draft' | 'hitlist' | 'bracket' | 'final' | 'done';
+  players: { A: { name: string; joined: boolean }; B: { name: string; joined: boolean } };
+  lobbyReady?: { A: boolean; B: boolean };
+  /** Solo 1v1: B is Orson, driven client-side by the host (soloBot). */ solo?: boolean;
+  vibe: { sw: { A: Record<string, boolean>; B: Record<string, boolean> }; lock: string[]; sl: { A: number[] | null; B: number[] | null }; disc: 'off' | 'req' | 'done'; pend: boolean; tropes?: { A: string[] | null; B: string[] | null }; subs: { A: Record<string, boolean> | null; B: Record<string, boolean> | null }; tastes: { A: string[] | null; B: string[] | null }; nos: { A: string[]; B: string[] }; actors: { A: string; B: string }; set: number; sets: number[]; ans: { A: (number | null)[]; B: (number | null)[] }; score: number | null; passed: boolean; attempts: number; target: number[] | null; doneAt: number | null; tasteReady?: { A: boolean; B: boolean } };
+  draft: { gren: { used: boolean; id: number | null; votes: { A?: boolean; B?: boolean } }; deck: number[]; orson: number[]; pitches: Record<number, string>; picks: { A: number[]; B: number[] }; idx: { A: number; B: number }; loading: boolean; requested: boolean; inbox: { A: number[]; B: number[] }; sur: Record<number, PID>; q: { A: number[]; B: number[] }; learn: { A: Prof; B: Prof } };
+  pw: { A: { bullet: boolean; veto: boolean; surprise: boolean }; B: { bullet: boolean; veto: boolean; surprise: boolean } };
+  vetoed: number[];
+  /** v2.0 gap-fill: merged strict calibration, per-player toggles, permanent graveyard (device-synced) and draft extras. */
+  cons?: Cons; consP?: { A?: Cons; B?: Cons }; grave?: number[]; dx?: DX;
+  pool: number[];
+  purse: { A: number; B: number };
+  br: { round: 1 | 2 | 3 | 4; matches: Matchup[]; cur: number; golden: number | null; bullets: { A: boolean; B: boolean }; winners: number[] };
+  fin: { a: number; b: number; choice: { A?: number; B?: number }; pitchEnds: number | null; pitch: { A?: string; B?: string }; submitted: { A?: boolean; B?: boolean }; judging: boolean; judgeRequested: boolean; verdict: { winner: number; reason: string; lines?: string[] } | null; forced?: number; rematchUsed: boolean; loser: PID | null; wpid: PID | null; tie: boolean;
+    /** Orson's Reveal: sealed-score calls at the final two. cr/au = the film id each player backs to score higher with critics (RT Tomatometer) / audiences (IMDb). scores = the settled live lookups. */ calls: { A?: { cr: number; au: number }; B?: { cr: number; au: number } }; revealed: boolean; skipped: boolean; watch: { A?: number; B?: number }; scores: { a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | null; callLog: string[] };
+  winner: number | null;
+  /** V2: tonight's actual viewing, confirmed by BOTH players after the verdict. Never set by chips, bids or the judge. */
+  tonight: number | null;
+  inter: Record<string, string>; asym: { A: string; B: string } | null;
+  extra: Movie[]; boost: number[]; reviews: Record<number, { a: string; q: string; r: number | null }>;
+  roast: boolean;
+  mem: { nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean; recorded: boolean };
+  tempt: { to: PID; stage: 'off' | 'offer' | 'done'; accepted: boolean; out: number | null; inn: number | null };
+  stats: { caved: { A: number; B: number }; wildWins: number; wildBouts: number };
+  cost: { calls: number; inTok: number; outTok: number; usd: number };
+  fx: { seen: string[] };
+  hit: Hit | null; b8: B8 | null; reroll: Reroll; b8Bonus: { A: number; B: number }; taste: string | null; seenBan: number[]; seenLoaded: boolean;
+  /** V2 Cold Open calibration beats. Default on; only old persisted rooms lack it. */
+  co?: boolean;
+  /** House Rules. wilds: opt-in wildcard entrants (GENRE SWAP / Resurrection / bust replacements). STRICT by default: only player-chosen titles enter the bracket. sealed: hide RT/IMDb until the final (Reveal). */ hr: { wilds: boolean; sealed: boolean };
+  orson: { line: string; mood: Mood; n: number; emo?: string };
+  sab?: Sab;
+  log: string[];
+};
+export const ROUND_LABEL: Record<number, string> = { 1: 'ROUND 1 · 30 to 15', 2: 'ROUND 2 · 15 to 8 · GOLDEN BYE', 3: 'ROUND 3 · 8 to 4', 4: 'SEMIS · 4 to 2' };
+
+const seededInt = (code: string, n: number) => Math.floor(seeded(code, 'clash')() * n);
+export const newState = (code: string): State => ({
+  code, kind: 'movie', v: 0, now: Date.now(), phase: 'lobby',
+  players: { A: { name: 'Player 1', joined: false }, B: { name: 'Player 2', joined: false } }, lobbyReady: { A: false, B: false },
+  vibe: { sw: { A: {}, B: {} }, lock: [], sl: { A: null, B: null }, disc: 'off', pend: false, tropes: { A: null, B: null }, subs: { A: null, B: null }, tastes: { A: null, B: null }, nos: { A: [], B: [] }, actors: { A: '', B: '' }, set: 0, sets: [0, 0, 0, 0], ans: { A: [null, null, null, null], B: [null, null, null, null] }, score: null, passed: false, attempts: 0, target: null, doneAt: null },
+  draft: { gren: { used: false, id: null, votes: {} }, deck: [], orson: [], pitches: {}, picks: { A: [], B: [] }, idx: { A: 0, B: 0 }, loading: false, requested: false, inbox: { A: [], B: [] }, sur: {}, q: { A: [], B: [] }, learn: { A: newProf(), B: newProf() } },
+  pw: { A: { bullet: true, veto: true, surprise: true }, B: { bullet: true, veto: true, surprise: true } }, vetoed: [],
+  purse: { A: 50, B: 50 }, pool: [], br: { round: 1, matches: [], cur: 0, golden: null, bullets: { A: true, B: true }, winners: [] },
+  fin: { a: 0, b: 0, choice: {}, pitchEnds: null, pitch: {}, submitted: {}, judging: false, judgeRequested: false, verdict: null, rematchUsed: false, loser: null, wpid: null, tie: false, calls: {}, revealed: false, skipped: false, scores: null, callLog: [], watch: {} },
+  winner: null, inter: {}, asym: null, extra: [], boost: [], reviews: {}, roast: false,
+  mem: { nights: 0, ledger: { A: 0, B: 0 }, last: null, durable: false, recorded: false },
+  tempt: { to: 'A', stage: 'off', accepted: false, out: null, inn: null },
+  stats: { caved: { A: 0, B: 0 }, wildWins: 0, wildBouts: 0},
+  tonight: null,
+  cost: { calls: 0, inTok: 0, outTok: 0, usd: 0 }, fx: { seen: [] }, sab: newSab(), hit: null, b8: null, reroll: { stage: 'off', votes: {}, used: false, to: null }, b8Bonus: { A: 0, B: 0 }, taste: null, seenBan: [], seenLoaded: false, hr: { wilds: false, sealed: true }, orson: { line: 'Welcome. I am Orson. I have hosted worse couples. Not many, but some.', mood: 'idle', n: 0 }, log: [],
+});
+
+// seeded shuffle so every client sees the same order
+export function seeded(code: string, salt: string) {
+  let h = 2166136261; for (const c of code + salt) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 100000) / 100000; };
+}
+export function shuffled<T>(arr: T[], code: string, salt: string): T[] {
+  const rnd = seeded(code, salt); const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+export function alignment(a: (number | null)[], b: (number | null)[]): number {
+  let s = 0, mx = 0; for (let i = 0; i < 4; i++) { const d = Math.abs((a[i] ?? 0) - (b[i] ?? 0)); s += 1 - d / 10; mx = Math.max(mx, d); }
+  s /= 4; return mx >= CLASH ? Math.min(s, RESPONSE_GATE - 0.01) : s;
+}
+// axes to re-ask after a miss: the clashing ones (gap >= 4), at least the two widest
+export function clashAxes(a: (number | null)[], b: (number | null)[]): number[] {
+  const d = [0, 1, 2, 3].map((i) => ({ i, d: Math.abs((a[i] ?? 0) - (b[i] ?? 0)) })).sort((x, y) => y.d - x.d);
+  const out = d.filter((x) => x.d >= 4).map((x) => x.i); for (const x of d) { if (out.length >= 2) break; if (!out.includes(x.i)) out.push(x.i); }
+  return out.sort();
+}
+/** Seen-together titles are banned from the deck, but never so many that the deck runs dry: drop the OLDEST bans first until 150 candidates remain. */
+export function relaxBan(ban: number[], kind: Kind): number[] {
+  const base = poolOf(kind).filter((m) => !m.w); const inPool = new Set(base.map((m) => m.id));
+  let b = ban.filter((x) => inPool.has(x));
+  while (b.length && base.length - b.length < 150) b = b.slice(1);
+  return b;
+}
+/** Shared alignment score (lower = better fit): sliders vector + locked-vibe tag overlap + tastes/actors + quality.
+ * Batch 7: this also ORDERS the deck - before, the final shuffle buried the alignment, which is why
+ * the selection phase never reflected it (his sister's run). */
+export function alignKey(m: Movie, target: number[], taste: { A: string[] | null; B: string[] | null }, actors: { A: string; B: string }, jit: number): number {
+  const wantTags = Array.from(new Set([...(taste.A || []), ...(taste.B || [])]));
+  const tropeHits = tagsOf(m).filter((x) => wantTags.includes(x)).length;
+  return jit + wdist(vecOf(m), target) - 1.15 * tropeHits - 0.15 * (m.r - 6.5) - ((m.rt ?? 60) - 60) * 0.004 - 2 * tasteBonus(m, taste, actors);
+}
+
+export function buildDeck(target: number[], code: string, banned: number[] = [], taste: { A: string[] | null; B: string[] | null } = { A: null, B: null }, actors: { A: string; B: string } = { A: '', B: '' }, nos: string[] = [], subs: { A: Record<string, boolean>; B: Record<string, boolean> } = { A: {}, B: {} }, kind: Kind = 'movie', gm?: GM, cl?: [string, string]): number[] {
+  const lockedN = Object.keys(subs.A).filter((k) => subs.A[k] && subs.B[k]); const oneN = Object.keys(subs.A).filter((k) => subs.A[k] !== subs.B[k] && (subs.A[k] || subs.B[k])); const noN = Object.keys(subs.A).filter((k) => subs.A[k] === false && subs.B[k] === false);
+  const subBonus = (m: Movie) => subHits(m, lockedN).length * 2.4 + subHits(m, oneN).length * 0.7 - subHits(m, noN).length * 1.4;
+  const ok = poolOf(kind, gm, cl).filter((m) => !m.w && !banned.includes(m.id));
+  const jr = seeded(code, 'variety');
+  const jit: Record<number, number> = {}; for (const m of poolOf(kind)) jit[m.id] = (jr() - 0.5) * 1.8; // per-night randomness: different titles surface each room
+  const score = (m: Movie) => alignKey(m, target, taste, actors, jit[m.id] || 0) - subBonus(m);
+  const wantTags = Array.from(new Set([...(taste.A || []), ...(taste.B || [])])); const onVibe = (m: Movie) => !wantTags.length || tagsOf(m).some((x) => wantTags.includes(x));
+  let good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 6.2 && onVibe(m)).sort((x, y) => score(x) - score(y)); if (good.length < 40) good = ok.filter((m) => !excluded(m, target, nos) && m.r >= 5.8 && onVibe(m)).sort((x, y) => score(x) - score(y));
+  const rest = ok.filter((m) => !good.includes(m) && !excluded(m, target, nos)).sort((x, y) => score(x) - score(y));
+  const seenF = new Set<string>(); const pool = [...good, ...rest]; const lead: Movie[] = [], later: Movie[] = []; for (const m of pool) { const k = franchiseKey(m); if (!seenF.has(k) || k.length < 3) { seenF.add(k); lead.push(m); } else later.push(m); }
+  const ids = [...lead, ...later].slice(0, 150).map((m) => m.id);
+  if (ids.length < 30) for (const m of ok.sort((x, y) => score(x) - score(y))) { if (ids.length >= 40) break; if (!ids.includes(m.id)) ids.push(m.id); }
+  if (gm === 'clash' && cl) { const A = ids.filter((i) => BY_ID[i].g.includes(cl[0])), B = ids.filter((i) => !BY_ID[i].g.includes(cl[0])); const o: number[] = []; for (let i = 0; i < Math.max(A.length, B.length); i++) { if (A[i] !== undefined) o.push(A[i]); if (B[i] !== undefined) o.push(B[i]); } return o; }
+  return [...ids.slice(0, DECK_LEAD), ...shuffled(ids.slice(DECK_LEAD), code, 'deck')];
+}
+export function pickWildcards(exclude: Set<number>, target: number[], n: number, code: string, kind: Kind = 'movie', gm?: GM, cl?: [string, string]): number[] {
+  const wild = poolOf(kind, gm, cl).filter((m) => m.w && !exclude.has(m.id) && !excluded(m, target)).sort((a, b) => b.r - a.r || a.id - b.id);
+  const top = wild.slice(0, Math.max(n * 3, 30)).map((m) => ({ id: m.id, s: dist(vecOf(m), target) * 0.15 - (BY_ID[m.id].r - 7.5) }));
+  top.sort((x, y) => x.s - y.s);
+  const out = top.slice(0, n).map((x) => x.id);
+  if (out.length < n) for (const m of poolOf(kind, gm, cl)) { if (out.length >= n) break; if (!exclude.has(m.id) && !out.includes(m.id)) out.push(m.id); }
+  return out;
+}
+export function fallbackPitch(id: number): string {
+  const m = BY_ID[id]; const first = m.o.split(/(?<=[.!?])\s/)[0] || m.o;
+  return first.length > 150 ? first.slice(0, 147) + '...' : first;
+}
+
+const mk = (id: string, a: number, b: number): Matchup => ({ id, a, b, c: null, wg: {}, votes: {}, tap: null, winner: null, via: null, nextAt: null });
+const higher = (a: number, b: number) => (BY_ID[a].r > BY_ID[b].r || (BY_ID[a].r === BY_ID[b].r && a < b) ? a : b);
+
+function pairUp(ids: number[], round: number): Matchup[] {
+  const out: Matchup[] = []; for (let i = 0; i + 1 < ids.length; i += 2) out.push(mk(`r${round}m${i / 2}`, ids[i], ids[i + 1])); return out;
+}
+
+function startRound(s: State, round: 1 | 2 | 3 | 4, ids: number[]) {
+  let list = ids; let golden: number | null = null;
+  if (round === 2) { golden = [...ids].sort((a, b) => (higher(a, b) === a ? -1 : 1))[0]; list = ids.filter((x) => x !== golden); }
+  s.br = { round, matches: pairUp(shuffled(list, s.code, 'r' + round), round), cur: 0, golden, bullets: round === 3 ? { A: true, B: true } : s.br.bullets, winners: golden ? [golden] : [] };
+  { const used = new Set<number>([...s.pool, ...s.vetoed, ...ids]); const ws = pickWildcards(used, s.vibe.target || [5, 5, 5, 5], s.br.matches.length + 2, s.code + 'c' + round, s.kind, s.gm, s.cl); s.br.matches.forEach((m, i) => { m.c = ws[i] ?? null; }); }
+  if (golden) s.log.unshift(`Golden Bye: ${BY_ID[golden].t} is the top rated film and walks through.`);
+}
+
+function finishMatch(s: State, mt: Matchup, winner: number, via: string, now: number) {
+  mt.winner = winner; mt.via = via; mt.nextAt = now + NEXT_MS; mt.tap = null;
+  if (mt.votes.A !== undefined && mt.votes.B !== undefined && mt.votes.A !== mt.votes.B) { const loserPid: PID = mt.votes.A === winner ? 'B' : 'A'; s.stats.caved[loserPid]++; }
+  if (BY_ID[mt.a].w || BY_ID[mt.b].w) { s.stats.wildBouts++; if (BY_ID[winner].w) s.stats.wildWins++; }
+  s.log.unshift(`${BY_ID[winner].t} beats ${BY_ID[winner === mt.a ? mt.b : mt.a].t} (${via}).`);
+}
+
+function advance(s: State, now: number) {
+  const br = s.br; const mt = br.matches[br.cur];
+  if (!mt || mt.winner === null) return;
+  br.winners.push(mt.winner);
+  if (br.cur + 1 < br.matches.length) { br.cur++; return; }
+  const w = br.winners;
+  if (br.round === 1) startRound(s, 2, w);
+  else if (br.round === 2) startRound(s, 3, w);
+  else if (br.round === 3) startRound(s, 4, w);
+  else {
+    s.tonight = null; s.phase = 'final'; s.fin = { ...s.fin, a: w[0], b: w[1], watch: {} };
+  }
+  void now;
+}
+
+export type Intent =
+  | { t: 'lobbyready'; pid: PID; ready: boolean }
+  | { t: 'pivot'; pid: PID; fb: string[] } | { t: 'fresh'; pid: PID; at: number; movies: Movie[] } | { t: 'gold'; pid: PID; id: number } | { t: 'grave'; ids: number[] }
+  | { t: 'wcpick'; pid: PID; k: 'spy' | 'mul' | 'thief' } | { t: 'wcuse'; pid: PID; k: 'spy' | 'mul' | 'thief' }
+  | { t: 'inter'; key: string; line: string } | { t: 'asym'; a: string; b: string } | { t: 'mortem'; slot: number; line: string }
+  | { t: 'vswipe'; pid: PID; name: string; yes: boolean } | { t: 'reviews'; map: Record<number, { a: string; q: string; r: number | null }> }
+  | { t: 'sliders'; pid: PID; v: number[]; cons?: Partial<Cons>; actors?: string } | { t: 'extras'; movies: Movie[] } | { t: 'cryptic'; slot: number; a: string; b: string } | { t: 'preset'; pid: PID; name: string }
+  | { t: 'join'; pid: PID; name?: string; kind?: Kind; gm?: string; solo?: boolean } | { t: 'ans'; pid: PID; q: number; val: number } | { t: 'retry' } | { t: 'begin' }
+  | { t: 'seenload'; ids: number[] } | { t: 'pitches'; map: Record<number, string> } | { t: 'draftreq' } | { t: 'swipe'; pid: PID; id: number; yes: boolean; why?: string[]; to?: boolean }
+  | { t: 'vote'; pid: PID; pick: number } | { t: 'tapcount'; pid: PID; n: number } | { t: 'bullet'; pid: PID; id: number }
+  | { t: 'fchoice'; pid: PID; id: number } | { t: 'pitch'; pid: PID; text: string; submit?: boolean }
+  | { t: 'verdict'; winner: number; reason: string; lines?: string[] } | { t: 'judgereq' } | { t: 'cost'; inTok: number; outTok: number; usd: number }
+  | { t: 'roast'; on: boolean } | { t: 'mem'; nights: number; ledger: { A: number; B: number }; last: string | null; durable: boolean } | { t: 'recorded' }
+  | { t: 'tempt'; pid: PID; out: number | null } | { t: 'rematch' } | { t: 'sab'; pid: PID; kind: SabKey; winner?: number; genre?: string; dead?: number } | { t: 'wheel'; pid: PID; act: 'start' | 'spin' | 'veto' | 'accept' }
+  | { t: 'taste'; pid: PID; tags: string[]; nos?: string[]; actor: string } | { t: 'quip'; line: string; mood: Mood; emo?: string } | { t: 'veto'; pid: PID; id: number } | { t: 'surprise'; pid: PID; id: number } | { t: 'bveto'; pid: PID; id: number }
+  | { t: 'tropes'; pid: PID; picks: string[] } | { t: 'bid'; pid: PID; id: number; add: number } | { t: 'lockbid'; pid: PID } | { t: 'nuketropes'; pid: PID; tropes: string[] } | { t: 'nukeult'; ult: Ult } | { t: 'nukepick'; pid: PID; which: 'titan' | 'gem' | 'keep' } | { t: 'wager'; pid: PID; alloc: number[] } | { t: 'subs'; pid: PID; map: Record<string, boolean> } | { t: 'tick'; now: number } | { t: 'grenvote'; pid: PID; yes: boolean } | { t: 'hit'; pid: PID; veto?: number | null; shield?: number | null; done?: boolean; tok?: { id: number; amt: number } } | { t: 'w8'; pid: PID; id: number; tok: number } | { t: 'ttap'; pid: PID; i: number } | { t: 'bust'; pid: PID; id: number } | { t: 'bustdone'; roast: string } | { t: 'ack'; pid: PID } | { t: 'tape'; slot: number; line: string } | { t: 'champ'; pid: PID; id: number } | { t: 'call'; pid: PID; slot: number; id: number } | { t: 'rr'; pid: PID; yes: boolean } | { t: 'tasteroast'; line: string } | { t: 'hr'; pid: PID; wilds?: boolean; sealed?: boolean } | { t: 'fcall'; pid: PID; cr: number; au: number } | { t: 'fskip'; pid: PID } | { t: 'fsettle'; a: { rt: number | null; imdb: number | null }; b: { rt: number | null; imdb: number | null } } | { t: 'fwatch'; pid: PID; id: number } | { t: 'reset' };
+
+// Orson's Devil's Advocate Pause: when the two taste profiles diverge hard, throw a polarising wildcard at both players. Once per draft.
+function cosProf(a: Prof, b: Prof): number {
+  const keys = Array.from(new Set([...Object.keys(a.g), ...Object.keys(a.c), ...Object.keys(b.g), ...Object.keys(b.c)]));
+  let d = 0, x = 0, y = 0;
+  for (const k of keys) { const u = (a.g[k] || 0) + (a.c[k] || 0), v = (b.g[k] || 0) + (b.c[k] || 0); d += u * v; x += u * u; y += v * v; }
+  return x && y ? d / Math.sqrt(x * y) : 1;
+}
+export const GREN_MIN_SWIPES = 6; export const GREN_SIM = 0.2;
+function maybeGrenade(s: State) {
+  const g = s.draft.gren; if (g.used || g.id !== null || s.phase !== 'draft') return;
+  const A = s.draft.learn.A, B = s.draft.learn.B; if (A.n < GREN_MIN_SWIPES || B.n < GREN_MIN_SWIPES) return;
+  if (cosProf(A, B) >= GREN_SIM) return;
+  const taken = new Set([...s.draft.deck, ...s.draft.picks.A, ...s.draft.picks.B, ...s.vetoed]);
+  const t = s.vibe.target || [5, 5, 5, 5];
+  const cand = poolOf(s.kind, s.gm, s.cl).filter((m) => !taken.has(m.id) && m.r >= 7).map((m) => ({ m, sc: m.r + wdist(vecOf(m), t) * 0.4 })).sort((a, b) => b.sc - a.sc || a.m.id - b.m.id)[0];
+  if (!cand) return;
+  g.used = true; g.id = cand.m.id; g.votes = {};
+}
+
+function maybeLock(s: State) {
+  if (s.draft.picks.A.length >= DRAFT_SIZE && s.draft.picks.B.length >= DRAFT_SIZE) startHit(s, s.now);
+}
+
+// Gate streamlined: no swipe deck step. The draft starts the moment both partners have locked their taste map.
+function startDraft(s: State) {
+  if (s.phase !== 'vibe' || !s.vibe.passed || !s.vibe.tastes.A || !s.vibe.tastes.B) return;
+  s.phase = 'draft'; s.draft.loading = true;
+  const tgt = s.vibe.target as number[]; const tst = { A: s.vibe.tastes.A, B: s.vibe.tastes.B };
+  const merged = Array.from(new Set([...buildDeck(tgt, s.code, relaxBan(s.seenBan || [], s.kind), tst, s.vibe.actors, Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])), { A: s.vibe.subs.A || {}, B: s.vibe.subs.B || {} }, s.kind, s.gm, s.cl), ...s.extra.map((m) => m.id), ...s.boost]));
+  const jr = seeded(s.code, 'variety'); const jit: Record<number, number> = {}; for (const m of poolOf(s.kind)) jit[m.id] = (jr() - 0.5) * 1.8;
+  const key = (id: number) => (BY_ID[id] ? alignKey(BY_ID[id], tgt, tst, s.vibe.actors, jit[id] || 0) : 99);
+  const ranked = merged.filter((id) => BY_ID[id]).sort((a, b) => key(a) - key(b));
+  s.draft.deck = [...ranked.slice(0, DECK_LEAD), ...shuffled(ranked.slice(DECK_LEAD), s.code, 'deck2')];
+  if (s.sab?.genre) { s.draft.deck = genreDeck(s, s.sab.genre); s.draft.orson = []; }
+  else {
+    // Orson's suggestions live ONLY in the selection phase now: ~4 critic-endorsed fits, tagged, spread through the opening of the deck.
+    const inDeck = new Set(s.draft.deck.slice(0, 40)); const ban2 = relaxBan(s.seenBan || [], s.kind);
+    const cands = poolOf(s.kind, s.gm, s.cl).filter((m) => !ban2.includes(m.id) && !inDeck.has(m.id) && m.r >= 7.0).sort((a, b) => key(a.id) - key(b.id));
+    const oPick = cands.slice(0, 12).sort((a, b) => (b.rt ?? b.r * 10) - (a.rt ?? a.r * 10)).slice(0, 4).map((m) => m.id);
+    oPick.forEach((id, i) => { s.draft.deck = s.draft.deck.filter((x) => x !== id); s.draft.deck.splice(Math.min([0, 2, 5, 8][i], s.draft.deck.length), 0, id); });
+    s.draft.orson = oPick;
+    if (oPick.length) s.log.unshift(`Orson slipped ${oPick.length} suggestions into the deck. They fight only if you draft them.`);
+  }
+  s.draft.deck = enforceDeck(s, s.draft.deck);
+  s.draft.q = { A: [...s.draft.deck], B: [...s.draft.deck] };
+}
+/** Strict enforcement + validation layer for every deck: hard genre/runtime/era rules and the permanent Graveyard. Never serves a film that breaks the rules; if the strict pool runs thin (<24) runtime/era relax first and the log says so, genre rules never relax. */
+export function enforceDeck(s: State, ids: number[]): number[] {
+  const dead = new Set(s.grave || []); const live = ids.filter((i) => BY_ID[i] && !dead.has(i));
+  let out = validateBatch(live.map((i) => BY_ID[i]), s.cons).ok.map((m) => m.id);
+  if (out.length < 24 && s.cons && (s.cons.rt !== 'any' || s.cons.era !== 'any')) {
+    const pool = poolOf(s.kind, s.gm, s.cl).filter((m) => !m.w && !dead.has(m.id)); const strict = validateBatch(pool, s.cons).ok.map((m) => m.id);
+    out = Array.from(new Set([...out, ...strict])).slice(0, 150);
+    if (out.length < 24) { const loose = { ...s.cons, rt: 'any' as const, era: 'any' as const }; out = validateBatch(live.map((i) => BY_ID[i]), loose).ok.map((m) => m.id); s.log.unshift('Runtime and era rules were too tight for tonight\'s pool, so they were relaxed. Genre rules stayed strict.'); (s.cons as Cons & { relaxed?: boolean }).relaxed = true; }
+  }
+  return out;
+}
+
+/** Average of both players' vibe sliders (0 Dark..100 Light, 0 Indie..100 Blockbuster, 0 Brain-bending..100 Brain-off). */
+export const slAvg = (s: State): number[] | null => { const a = s.vibe.sl?.A, b = s.vibe.sl?.B; return a && b ? [0, 1, 2].map((i) => Math.round((a[i] + b[i]) / 2)) : null; };
+/** Both players' 3 vibes are settled (picked, or mutually swiped): build the target vector, blend the sliders, then wait for TMDB discovery if it is still out. */
+function lockTropes(s: State, now: number) {
+  const tr = s.vibe.tropes; if (!tr || !tr.A || !tr.B) return;
+  const all = [...tr.A, ...tr.B].map((n) => TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]);
+  s.vibe.target = [0, 1, 2, 3].map((i) => all.reduce((a, x) => a + x.ax[i], 0) / all.length);
+  const tasteOf = (names: string[]) => Array.from(new Set(names.flatMap((n) => (TROPE_MATRIX.find((x) => x.n === n) as (typeof TROPE_MATRIX)[number]).tastes)));
+  s.vibe.tastes = { A: tasteOf(tr.A), B: tasteOf(tr.B) }; s.vibe.nos = { A: [], B: [] }; s.vibe.subs = { A: {}, B: {} };
+  const sl = slAvg(s); if (sl) { s.vibe.target = [Math.max(0, Math.min(10, s.vibe.target[0] * 0.5 + (10 - sl[2] / 10) * 0.5)), Math.max(0, Math.min(10, s.vibe.target[1] * 0.5 + (10 - sl[0] / 10) * 0.5)), s.vibe.target[2], s.vibe.target[3]]; }
+  s.vibe.passed = true; s.vibe.doneAt = now;
+  // Cold Open rooms set their three tropes directly (swiper lock stays empty): the explicit 'taste' intent starts the draft.
+  if (s.vibe.lock.length === 0) return;
+  if (s.vibe.disc === 'req') { s.vibe.pend = true; s.orson = { ...s.orson, line: 'Your vibes are locked. I am sending a runner to the TMDB archives. Do not touch anything.', mood: 'scheme', n: s.orson.n + 1 }; return; }
+  startDraft(s);
+}
+/** Drop film ids that no client can resolve (not in the bundle, not in this room's extras). Heals rooms poisoned by cross-room BY_ID pollution. */
+export function sanitizeIds(s: State): void {
+  const ok = new Set<number>((s.extra || []).map((m) => m.id)); const good = (i: number) => BASE_IDS.has(i) || ok.has(i);
+  if (s.boost) s.boost = s.boost.filter(good);
+  const d = s.draft; if (!d) return;
+  if (d.deck) d.deck = d.deck.filter(good);
+  for (const p of ['A', 'B'] as const) { if (d.q?.[p]) d.q[p] = d.q[p].filter(good); if (d.inbox?.[p]) d.inbox[p] = d.inbox[p].filter(good); if (d.picks?.[p]) d.picks[p] = d.picks[p].filter(good); }
+}
+/** 3.1 Dynamic injection: track consecutive passes per player; three in a row sharing a genre and decade ("90s Action") benches that sub-genre for the next 12 swipes. */
+function trackPass(s: State, pid: PID, id: number, yes: boolean) {
+  const dx = s.dx!; const m = BY_ID[id];
+  if (yes) { dx.passes[pid] = []; return; }
+  dx.passes[pid] = [...dx.passes[pid], { id, g: m.g, d: decadeOf(m.y) }].slice(-12);
+  const n = s.draft.learn[pid].n; const k = suppressKey(dx.passes[pid]);
+  if (k && !dx.sup[pid].some((x) => x.k === k && x.until > n)) {
+    dx.sup[pid] = [...dx.sup[pid].filter((x) => x.until > n), { k, until: n + 12 }];
+    s.orson = { line: `Three ${supLabel(k)} passes in a row. Message received. I am benching ${supLabel(k)} for ${s.players[pid].name} for a while.`, mood: 'shock', n: s.orson.n + 1, emo: '🤨' };
+    s.log.unshift(`${s.players[pid].name} passed three ${supLabel(k)} in a row: suppressed for the next batch.`);
+  }
+  if (dx.passes[pid].length >= PIVOT_N) { dx.modal[pid] = true; s.orson = { line: `${PIVOT_N} passes in a row. We are missing the mark. Tell me what you want more or less of.`, mood: 'shock', n: s.orson.n + 1, emo: '🫠' }; }
+}
+/** Suppressed sub-genres drop to the back of the queue (not deleted, so a thin deck still finishes). */
+function benchSuppressed(s: State, pid: PID, ids: number[]): number[] {
+  const sup = s.dx?.sup[pid]; if (!sup || !sup.length) return ids; const n = s.draft.learn[pid].n;
+  const hit = (i: number) => !!BY_ID[i] && supHit(BY_ID[i], sup, n);
+  return [...ids.filter((i) => !hit(i)), ...ids.filter(hit)];
+}
+/** 3.2 The 10-pass pivot: the checklist answers re-steer the queue instantly and ask for a fresh TMDB batch. */
+function pivotIntent(s: State, it: { pid: PID; fb: string[] }, now: number) {
+  const dx = s.dx!; const pid = it.pid; if (s.phase !== 'draft' || !dx.modal[pid]) return;
+  const fb = Array.from(new Set((it.fb || []).filter((x) => (PIVOT_OPTS_LIST as readonly string[]).includes(x))));
+  const pr = s.draft.learn[pid]; const rec = dx.passes[pid].slice(-PIVOT_N); const n = pr.n;
+  const tally = (f: (p: Pass) => string[]) => { const c: Record<string, number> = {}; for (const p of rec) for (const k of f(p)) c[k] = (c[k] || 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1]); };
+  const topG = tally((p) => p.g.slice(0, 2))[0]?.[0]; const topD = Number(tally((p) => [String(p.d)])[0]?.[0]);
+  const keys: string[] = [];
+  if (fb.includes('Seen too many of these') && topG) keys.push(`${topG}|${topD}`);
+  if (fb.includes('Need a different decade') && topD) keys.push(`*|${topD}`);
+  if (fb.includes('Switch primary genre') && topG) keys.push(`${topG}|*`);
+  if (fb.includes('Too heavy / serious')) { pr.ax[1] = Math.max(-6, pr.ax[1] - 3); for (const g of ['Drama', 'War', 'Crime']) pr.g[g] = (pr.g[g] || 0) - 1.5; }
+  if (!fb.length) { if (topG) keys.push(`${topG}|${topD}`); }
+  dx.sup[pid] = [...dx.sup[pid].filter((x) => x.until > n), ...keys.map((k) => ({ k, until: n + 20 }))];
+  const q = s.draft.q[pid]; const base = s.vibe.target || [5, 5, 5, 5]; const nos = Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])); const rnd = seeded(s.code, 'pv' + pid + n);
+  s.draft.q[pid] = benchSuppressed(s, pid, q.map((id) => ({ id, sc: learnScore(BY_ID[id], base, pr, nos) + rnd() * 0.4 })).sort((a, b) => a.sc - b.sc).map((x) => x.id));
+  dx.passes[pid] = []; dx.modal[pid] = false; dx.piv[pid]++;
+  dx.fresh[pid] = { at: now, fb, avoid: keys, done: false };
+  s.orson = { line: fb.length ? `Understood. ${fb.join(', ').toLowerCase()}. Pulling a fresh batch from the archives.` : 'No notes? Brave. Shaking the deck and fetching a fresh batch.', mood: 'scheme', n: s.orson.n + 1 };
+  s.log.unshift(`${s.players[pid].name} hit 10 passes and pivoted (${fb.join(', ') || 'no notes'}).`);
+}
+const PIVOT_OPTS_LIST = ['Seen too many of these', 'Too heavy / serious', 'Need a different decade', 'Switch primary genre'] as const;
+/** The server's fresh pivoted batch lands at the front of that player's queue, validated against the strict rules and the Graveyard. */
+function freshIntent(s: State, it: { pid: PID; at: number; movies: Movie[] }) {
+  const f = s.dx?.fresh[it.pid]; if (!f || f.done || f.at !== it.at) return; f.done = true;
+  const dead = new Set([...(s.grave || []), ...(s.seenBan || []), ...s.draft.picks.A, ...s.draft.picks.B]); const n = s.draft.learn[it.pid].n;
+  const docOnly = !!(s.gm && s.gm.startsWith('docs')); // doc nights stay pure even through the pivot tap
+  const fit = validateBatch((it.movies || []).filter((m) => m && m.id && m.p && m.o && (!docOnly || m.g.includes('Documentary')) && !dead.has(m.id) && !supHit(m, s.dx!.sup[it.pid], n)), s.cons).ok.slice(0, 14);
+  const have = new Set([...s.draft.q.A, ...s.draft.q.B, ...s.extra.map((m) => m.id)]);
+  const add = fit.filter((m) => !BASE_IDS.has(m.id) && !have.has(m.id)); s.extra = [...s.extra, ...add].slice(-120); registerExtra(add);
+  const ids = fit.map((m) => m.id).filter((i) => BY_ID[i] && !s.draft.q[it.pid].includes(i) && !s.draft.picks[it.pid].includes(i));
+  s.draft.q[it.pid] = [...ids, ...s.draft.q[it.pid]]; s.draft.deck = Array.from(new Set([...s.draft.deck, ...ids]));
+  s.log.unshift(`Fresh batch for ${s.players[it.pid].name}: ${ids.length} new titles at the front of the deck.`);
+}
+export function reduce(prev: State, it: Intent): State {
+  const s: State = JSON.parse(JSON.stringify(prev)); s.v++;
+  if (!s.extra) s.extra = []; if (!s.boost) s.boost = []; if (!s.reviews) s.reviews = {}; if (!s.inter) s.inter = {}; if (s.asym === undefined) s.asym = null; if (!s.vibe.sw) s.vibe.sw = { A: {}, B: {} }; if (!s.vibe.lock) s.vibe.lock = []; if (!s.vibe.sl) s.vibe.sl = { A: null, B: null }; if (!s.vibe.disc) s.vibe.disc = 'off'; registerExtra(s.extra); sanitizeIds(s);
+  if (!s.dx) s.dx = newDx(); if (!s.grave) s.grave = []; if (!s.hr) s.hr = { wilds: false, sealed: true };
+  const now = (it as { now?: number }).now ?? Date.now(); s.now = now;
+  switch (it.t) {
+    case 'join': {
+      s.players[it.pid] = { name: (it.name || s.players[it.pid].name).slice(0, 14), joined: true };
+      if (it.solo && it.pid === 'A') { s.solo = true; if (!s.players.B.joined) s.players.B = { name: 'ORSON', joined: true }; }
+      if (it.pid === 'A' && it.kind && s.phase === 'lobby') { s.kind = it.kind === 'series' ? 'series' : 'movie'; const g = it.gm; s.gm = s.kind === 'movie' && (g === 'oscar' || g === 'rotten' || g === 'clash' || (typeof g === 'string' && g.startsWith('docs'))) ? g as GM : undefined; s.cl = s.gm === 'clash' ? CLASHES[seededInt(s.code, CLASHES.length)] : undefined; }
+      if (s.solo && s.players.A.joined && s.players.B.joined && s.phase === 'lobby') s.phase = 'vibe';
+      break;
+    }
+    case 'lobbyready': {
+      if (s.phase !== 'lobby' || !s.players[it.pid].joined || s.solo) break;
+      if (!s.lobbyReady) s.lobbyReady = { A: false, B: false };
+      s.lobbyReady[it.pid] = it.ready === true;
+      if (s.players.A.joined && s.players.B.joined && s.lobbyReady.A && s.lobbyReady.B) s.phase = 'vibe';
+      break;
+    }
+    case 'ans': {
+      if (s.phase !== 'vibe' || s.vibe.passed) break;
+      s.vibe.ans[it.pid][it.q] = Math.max(0, Math.min(10, Math.round(it.val)));
+      const A = s.vibe.ans.A, B = s.vibe.ans.B;
+      if (A.every((x) => x !== null) && B.every((x) => x !== null)) {
+        s.vibe.score = alignment(A, B); s.vibe.doneAt = now;
+        s.vibe.attempts++;
+        if (s.vibe.score >= RESPONSE_GATE) { s.vibe.passed = true; s.vibe.tastes = { A: [], B: [] }; s.vibe.target = [0, 1, 2, 3].map((i) => (((A[i] as number) + (B[i] as number)) / 2)); }
+      }
+      break;
+    }
+    case 'retry': {
+      if (s.phase !== 'vibe' || s.vibe.passed || s.vibe.score === null) break;
+      const axes = clashAxes(s.vibe.ans.A, s.vibe.ans.B);
+      s.vibe.set = (s.vibe.set + 1) % (QUESTION_SETS.length - 1);
+      for (const i of axes) { s.vibe.sets[i] = s.vibe.set; s.vibe.ans.A[i] = null; s.vibe.ans.B[i] = null; }
+      s.vibe.score = null; s.vibe.doneAt = null; break;
+    }
+    case 'subs': { if (s.phase === 'vibe' && s.vibe.passed) s.vibe.subs[it.pid] = it.map; break; }
+    case 'begin': { startDraft(s); break; }
+    case 'tropes': {
+      if (s.phase !== 'vibe' || s.vibe.passed) break;
+      const picks = Array.from(new Set(it.picks.filter((x) => TROPE_NAMES.includes(x)))).slice(0, 3); if (picks.length !== 3) break;
+      s.vibe.tropes = { ...(s.vibe.tropes || { A: null, B: null }), [it.pid]: picks };
+      lockTropes(s, now); break;
+    }
+    case 'vswipe': {
+      const v = s.vibe; if (s.phase !== 'vibe' || v.passed || v.lock.length >= 3 || !(TROPE_NAMES as readonly string[]).includes(it.name) || v.sw[it.pid][it.name] !== undefined) break;
+      v.sw[it.pid][it.name] = !!it.yes;
+      if (v.sw.A[it.name] && v.sw.B[it.name] && !v.lock.includes(it.name)) { v.lock.push(it.name); s.orson = { ...s.orson, line: `Both of you said yes to ${it.name}. Locked. ${v.lock.length}/3.`, mood: 'smug', n: s.orson.n + 1 }; }
+      const dn = (q: PID) => Object.keys(v.sw[q]).length >= SWIPER_CAP;
+      if (v.lock.length < 3 && dn('A') && dn('B')) { // ran out of cards: pad with what either liked
+        for (const n of [...TROPE_NAMES.filter((x) => v.sw.A[x] || v.sw.B[x]), ...TROPE_NAMES]) { if (v.lock.length >= 3) break; if (!v.lock.includes(n)) v.lock.push(n); } }
+      if (v.lock.length >= 3) { const picks = v.lock.slice(0, 3); v.tropes = { A: v.tropes?.A || picks, B: v.tropes?.B || picks }; lockTropes(s, now); }
+      break;
+    }
+    case 'inter': { if (!s.inter[it.key] && it.line) s.inter[it.key] = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 300); break; }
+    case 'asym': { if (!s.asym && (it.a || it.b)) s.asym = { A: String(it.a || '').slice(0, 300), B: String(it.b || '').slice(0, 300) }; break; }
+    case 'mortem': { const m = s.b8?.matches[it.slot]; if (m && !m.mortem && it.line) m.mortem = String(it.line).replace(/\s+/g, ' ').trim().slice(0, 200); break; }
+    case 'reviews': { s.reviews = { ...s.reviews, ...it.map }; break; }
+    case 'preset': { if (!s.players[it.pid].joined && it.name) s.players[it.pid].name = it.name.slice(0, 14); break; }
+    case 'sliders': {
+      if (s.phase !== 'vibe' || s.vibe.sl[it.pid]) break;
+      s.vibe.sl[it.pid] = [0, 1, 2].map((i) => Math.max(0, Math.min(100, Math.round(Number(it.v?.[i] ?? 50)))));
+      if (typeof it.actors === 'string') s.vibe.actors[it.pid] = it.actors.slice(0, 60);
+      s.consP = { ...(s.consP || {}), [it.pid]: cleanCons(it.cons) }; s.cons = mergeCons(s.consP.A, s.consP.B);
+      { const c = s.consP[it.pid]; const xs = c ? c.xg : []; if (xs && xs.length) { const ln = `${s.players[it.pid].name} ruled out ${xs.join(', ')} for the room. Both of you play by it.`; s.orson = { line: ln, mood: 'smug', n: s.orson.n + 1 }; s.log.unshift(ln); } }
+      // Doc nights run pure-catalogue: TMDB discovery would inject fiction, and the doc pool needs no top-up.
+      if (s.vibe.sl.A && s.vibe.sl.B && s.vibe.disc === 'off' && !(s.gm && s.gm.startsWith('docs'))) s.vibe.disc = 'req';
+      break;
+    }
+    case 'extras': {
+      if (s.vibe.disc !== 'req') break;
+      const seen = new Set<number>([...(s.seenBan || []), ...(s.grave || [])]); const all = validateBatch((it.movies || []).filter((m) => m && m.id && m.p && !seen.has(m.id)), s.cons).ok;
+      const ms = all.filter((m) => !BASE_IDS.has(m.id)).slice(0, 30); s.boost = all.filter((m) => BASE_IDS.has(m.id) && !BY_ID[m.id].w).map((m) => m.id).slice(0, 24);
+      s.extra = ms; registerExtra(ms); s.vibe.disc = 'done';
+      s.log.unshift(`TMDB discovery: ${ms.length} new + ${s.boost.length} catalogue titles pulled to the front of tonight's deck`);
+      if (s.vibe.pend) { s.vibe.pend = false; startDraft(s); }
+      break;
+    }
+    case 'cryptic': { const m = s.b8?.matches[it.slot]; if (m && m.wc === 'blind' && m.status !== 'RESOLVED' && it.a && it.b) m.cry = { a: String(it.a).slice(0, 160), b: String(it.b).slice(0, 160), ai: true }; break; }
+    case 'draftreq': s.draft.requested = true; break;
+    case 'pitches': s.draft.pitches = { ...s.draft.pitches, ...it.map }; s.draft.loading = false; break;
+    case 'hit': hitIntent(s, it, now); break;
+    case 'w8': wagerIntent(s, it, now); break;
+    case 'bid': bidIntent(s, it, now); break;
+    case 'lockbid': lockBid(s, it, now); break;
+    case 'ttap': triviaTap(s, it, now); break;
+    case 'bust': bustIntent(s, it, now); break;
+    case 'ack': ackIntent(s, it); break;
+    case 'tape': tapeIntent(s, it); break;
+    case 'champ': champIntent(s, it); break;
+    case 'call': callIntent(s, it); break;
+    case 'bustdone': bustDone(s, it.roast, now); break;
+    case 'rr': rerollVote(s, it, now); break;
+    case 'nuketropes': nukeTropes(s, it, now); break;
+    case 'nukeult': nukeUlt(s, it); break;
+    case 'nukepick': nukePick(s, it); break;
+    case 'tasteroast': s.taste = it.line; break;
+    case 'grenvote': {
+      const g = s.draft.gren; if (s.phase !== 'draft' || g.id === null || g.votes[it.pid] !== undefined) break;
+      g.votes[it.pid] = it.yes;
+      if (g.votes.A !== undefined && g.votes.B !== undefined) {
+        for (const p of ['A', 'B'] as PID[]) if (g.votes[p] && s.draft.picks[p].length < DRAFT_SIZE && !s.draft.picks[p].includes(g.id)) s.draft.picks[p].push(g.id);
+        s.log.unshift(`Grenade: ${BY_ID[g.id].t}. ${g.votes.A && g.votes.B ? 'You both took it, somehow.' : g.votes.A || g.votes.B ? 'One of you took it.' : 'Neither of you wanted it.'}`);
+        g.id = null; maybeLock(s);
+      }
+      break;
+    }
+    case 'swipe': {
+      if (s.phase !== 'draft' || s.draft.loading || s.draft.gren.id !== null || s.dx.modal[it.pid]) break;
+      const picks = s.draft.picks[it.pid];
+      if (picks.length >= DRAFT_SIZE) break;
+      const ib = s.draft.inbox[it.pid]; const q = s.draft.q[it.pid];
+      if (ib.length) { if (ib[0] !== it.id) break; ib.shift(); }
+      else { if (q[0] !== it.id) break; q.shift(); }
+      if (it.yes && !picks.includes(it.id)) picks.push(it.id);
+      if (!it.to) learnFrom(s.draft.learn[it.pid], BY_ID[it.id], it.yes, (it.why || []).slice(0, 3));
+      { const r = swipeLine(s.draft.learn[it.pid], BY_ID[it.id], it.yes, (it.why || []).slice(0, 3), s.draft.learn[it.pid].n); s.orson = { line: r.line, mood: r.mood, n: s.orson.n + 1, emo: r.emo }; }
+      if (!it.to) trackPass(s, it.pid, it.id, it.yes);
+      // re-rank what is left for this player using what they have taught us
+      { const base = s.vibe.target || [5, 5, 5, 5]; const nos = Array.from(new Set([...s.vibe.nos.A, ...s.vibe.nos.B])); const pr = s.draft.learn[it.pid];
+        const rnd = seeded(s.code, 'rr' + it.pid + pr.n);
+        const reranked = benchSuppressed(s, it.pid, q.map((id) => ({ id, sc: learnScore(BY_ID[id], base, pr, nos) + rnd() * 0.25 })).sort((a, b) => a.sc - b.sc).map((x) => x.id));
+        // Orson's tagged suggestions keep their promised spots: the learn re-rank must not bury them
+        const osp = s.draft.orson.filter((x) => reranked.includes(x));
+        s.draft.q[it.pid] = reranked.filter((x) => !osp.includes(x));
+        osp.forEach((id, i) => s.draft.q[it.pid].splice(Math.min([0, 2, 5, 8][i] ?? 8, s.draft.q[it.pid].length), 0, id)); }
+      // deck exhausted without 10: fill with the best unpicked cards
+      if (picks.length < DRAFT_SIZE && !ib.length && s.draft.q[it.pid].length === 0) {
+        for (const id of s.draft.deck) { if (picks.length >= DRAFT_SIZE) break; if (!picks.includes(id)) picks.push(id); }
+      }
+      maybeLock(s); maybeGrenade(s);
+      break;
+    }
+    case 'veto': {
+      // v2.0 Veto: 2 per player. Buries the film in the permanent Graveyard (all future sessions on these devices) and removes it from this draft for both players.
+      if (s.phase !== 'draft' || s.draft.loading || s.dx.vn[it.pid] <= 0 || s.draft.picks[it.pid].length >= DRAFT_SIZE || s.dx.modal[it.pid]) break;
+      const cur = s.draft.inbox[it.pid][0] ?? s.draft.q[it.pid][0]; if (cur !== it.id) break;
+      if (s.dx.gold.A === it.id || s.dx.gold.B === it.id) { s.log.unshift(`${BY_ID[it.id].t} holds a Golden Ticket. It cannot be vetoed.`); break; }
+      s.dx.vn[it.pid]--; s.pw[it.pid].bullet = s.dx.vn[it.pid] > 0; if (!s.vetoed.includes(it.id)) s.vetoed.push(it.id); if (!s.grave!.includes(it.id)) s.grave!.push(it.id);
+      for (const p of ['A', 'B'] as PID[]) {
+        s.draft.picks[p] = s.draft.picks[p].filter((x) => x !== it.id); s.draft.inbox[p] = s.draft.inbox[p].filter((x) => x !== it.id); s.draft.q[p] = s.draft.q[p].filter((x) => x !== it.id);
+      }
+      s.draft.deck = s.draft.deck.filter((x) => x !== it.id);
+      s.orson = { line: `${BY_ID[it.id].t} goes to the Graveyard. Permanently. ${s.players[it.pid].name} has ${s.dx.vn[it.pid]} veto${s.dx.vn[it.pid] === 1 ? '' : 'es'} left.`, mood: 'glee', n: s.orson.n + 1 };
+      s.log.unshift(`${s.players[it.pid].name} vetoed ${BY_ID[it.id].t}: buried in the Graveyard for good.`);
+      break;
+    }
+    case 'gold': {
+      // v2.0 Golden Ticket (draft): 1 per player. The current film goes straight into your Top 10, no pool to survive.
+      if (s.phase !== 'draft' || s.draft.loading || !s.dx.gt[it.pid] || s.dx.modal[it.pid] || s.draft.gren.id !== null) break;
+      const picks = s.draft.picks[it.pid]; if (picks.length >= DRAFT_SIZE) break;
+      const ib = s.draft.inbox[it.pid]; const cur = ib[0] ?? s.draft.q[it.pid][0]; if (cur !== it.id) break;
+      s.dx.gt[it.pid] = false; s.dx.gold[it.pid] = it.id;
+      if (ib.length) ib.shift(); else s.draft.q[it.pid].shift();
+      if (!picks.includes(it.id)) picks.push(it.id);
+      learnFrom(s.draft.learn[it.pid], BY_ID[it.id], true, []); s.dx.passes[it.pid] = [];
+      s.orson = { line: `${s.players[it.pid].name} cashed the Golden Ticket on ${BY_ID[it.id].t}. It skips the queue and sits in the Top 10. Locked.`, mood: 'smug', n: s.orson.n + 1 };
+      s.log.unshift(`${s.players[it.pid].name} used the Golden Ticket.`);
+      maybeLock(s); maybeGrenade(s);
+      break;
+    }
+    case 'grave': {
+      // a device's saved Graveyard joins the room before the draft starts, so buried films never return
+      const ids = (it.ids || []).filter((x) => Number.isInteger(x)).slice(0, 400); const g = new Set(s.grave); for (const x of ids) g.add(x); s.grave = Array.from(g);
+      for (const x of ids) if (!s.vetoed.includes(x)) s.vetoed.push(x);
+      break;
+    }
+    case 'pivot': pivotIntent(s, it, now); break;
+    case 'wcpick': wcPick(s, it); break;
+    case 'wcuse': wcUse(s, it, now); break;
+    case 'fresh': freshIntent(s, it); break;
+    case 'surprise': {
+      if (s.phase !== 'draft' || s.draft.loading || !s.pw[it.pid].surprise) break;
+      const picks = s.draft.picks[it.pid]; if (picks.length >= DRAFT_SIZE) break;
+      const ib = s.draft.inbox[it.pid]; const cur = ib[0] ?? s.draft.q[it.pid][0]; if (cur !== it.id) break;
+      s.pw[it.pid].surprise = false;
+      if (ib.length) ib.shift(); else s.draft.q[it.pid].shift();
+      if (!picks.includes(it.id)) picks.push(it.id);
+      const o: PID = it.pid === 'A' ? 'B' : 'A';
+      if (s.draft.picks[o].length < DRAFT_SIZE && !s.draft.picks[o].includes(it.id)) { s.draft.q[o] = s.draft.q[o].filter((x) => x !== it.id); s.draft.inbox[o].push(it.id); s.draft.sur[it.id] = it.pid; }
+      s.log.unshift(`${s.players[it.pid].name} played a Surprise on ${s.players[o].name}.`);
+      maybeLock(s);
+      break;
+    }
+    case 'sab': sabIntent(s, it, now); break;
+    case 'wheel': wheelIntent(s, it, now); break;
+    case 'bveto': {
+      const mt = s.br.matches[s.br.cur];
+      if (s.phase !== 'bracket' || !mt || mt.winner !== null || mt.tap || s.tempt.stage === 'offer' || !s.pw[it.pid].veto) break;
+      if (it.id !== mt.a && it.id !== mt.b) break;
+      const t = s.vibe.target || [5, 5, 5, 5];
+      const inn = poolOf(s.kind, s.gm, s.cl).filter((m) => m.w && !s.pool.includes(m.id) && !s.vetoed.includes(m.id) && !excluded(m, t)).sort((a, b) => b.r - a.r || a.id - b.id)[0]; if (!inn) break;
+      s.pw[it.pid].veto = false; s.vetoed.push(it.id);
+      s.pool = s.pool.map((x) => (x === it.id ? inn.id : x)); if (mt.a === it.id) mt.a = inn.id; else mt.b = inn.id; mt.votes = {};
+      s.log.unshift(`${s.players[it.pid].name} used a Veto: ${BY_ID[it.id].t} is out, a mystery wildcard takes its seat.`);
+      break;
+    }
+    case 'wager': {
+      const mt = s.br.matches[s.br.cur]; if (s.phase !== 'bracket' || !mt || mt.winner !== null || s.tempt.stage === 'offer' || mt.wg[it.pid]) break;
+      const al = (it.alloc || []).slice(0, 3).map((x) => Math.max(0, Math.floor(Number(x) || 0))); while (al.length < 3) al.push(0);
+      if (mt.c === null) al[2] = 0; const sum = al[0] + al[1] + al[2];
+      if (s.br.round === 1) { if (sum !== 1) break; } else { if (sum < 1 || sum > s.purse[it.pid]) break; s.purse[it.pid] -= sum; }
+      mt.wg[it.pid] = al;
+      const wa = mt.wg.A, wb = mt.wg.B;
+      if (wa && wb) {
+        const ids = [mt.a, mt.b, mt.c]; const tot = [0, 1, 2].map((i) => wa[i] + wb[i]); const mx = Math.max(...tot);
+        const top = [0, 1, 2].filter((i) => tot[i] === mx && ids[i] !== null);
+        const pick = top.length === 1 ? top[0] : top.filter((i) => i < 2).sort((x, y) => (BY_ID[ids[x] as number].r === BY_ID[ids[y] as number].r ? 0 : BY_ID[ids[x] as number].r > BY_ID[ids[y] as number].r ? -1 : 1))[0] ?? top[0];
+        finishMatch(s, mt, ids[pick] as number, `${tot[pick]} tokens${top.length > 1 ? ', tie broken by rating' : ''}`, now);
+        if (ids[pick] === mt.c) s.stats.wildWins++;
+      }
+      break;
+    }
+    case 'vote': {
+      const mt = s.br.matches[s.br.cur]; if (s.phase !== 'bracket' || !mt || mt.winner !== null || mt.tap || s.tempt.stage === 'offer') break;
+      if (it.pick !== mt.a && it.pick !== mt.b) break;
+      mt.votes[it.pid] = it.pick;
+      if (mt.votes.A !== undefined && mt.votes.B !== undefined) {
+        if (mt.votes.A === mt.votes.B) finishMatch(s, mt, mt.votes.A, 'you both agreed', now);
+        else mt.tap = { until: now + TAP_MS, A: 0, B: 0 };
+      }
+      break;
+    }
+    case 'tapcount': { const mt = s.br.matches[s.br.cur]; if (mt?.tap) mt.tap[it.pid] = Math.max(mt.tap[it.pid], it.n); break; }
+    case 'bullet': {
+      const mt = s.br.matches[s.br.cur];
+      if (s.phase !== 'bracket' || !mt || mt.winner !== null || mt.tap || s.tempt.stage === 'offer' || !s.pw[it.pid].bullet) break;
+      if (it.id !== mt.a && it.id !== mt.b) break;
+      s.pw[it.pid].bullet = false;
+      finishMatch(s, mt, it.id === mt.a ? mt.b : mt.a, `${s.players[it.pid].name} fired a Silver Bullet at ${BY_ID[it.id].t}`, now);
+      break;
+    }
+    case 'fcall': {
+      if (s.phase !== 'final' || s.hr.sealed === false || s.fin.revealed || s.fin.verdict) break;
+      const { a, b } = s.fin; if (!a || !b) break;
+      if ((it.cr !== a && it.cr !== b) || (it.au !== a && it.au !== b)) break;
+      if (s.fin.calls[it.pid]) break;
+      s.fin.calls[it.pid] = { cr: it.cr, au: it.au };
+      s.log.unshift(`${s.players[it.pid].name} has made their calls. Envelopes at the ready.`);
+      break;
+    }
+    case 'fskip': {
+      if (s.phase !== 'final' || s.fin.revealed || s.fin.verdict) break;
+      s.fin.revealed = true; s.fin.skipped = true;
+      if (s.b8 && s.fin.forced !== undefined && !s.fin.verdict) s.fin.judging = true; // b8: the held verdict now goes to the judge
+      s.log.unshift(`${s.players[it.pid].name} skipped the Reveal. Straight to the pitch.`);
+      s.orson = { line: 'No ceremony? Fine. Some people skip to the last page of books too.', mood: 'smug', n: s.orson.n + 1 };
+      break;
+    }
+    case 'fsettle': {
+      if (s.phase !== 'final' || s.hr.sealed === false || s.fin.revealed || s.fin.verdict) break;
+      if (!s.fin.calls.A || !s.fin.calls.B) break;
+      const clean = (x: { rt: number | null; imdb: number | null }) => ({ rt: typeof x?.rt === 'number' && x.rt >= 0 && x.rt <= 100 ? Math.round(x.rt) : null, imdb: typeof x?.imdb === 'number' && x.imdb >= 0 && x.imdb <= 10 ? Math.round(x.imdb * 10) / 10 : null });
+      const sa = clean(it.a), sb = clean(it.b);
+      s.fin.scores = { a: sa, b: sb }; s.fin.revealed = true; s.fin.callLog = [];
+      if (s.b8 && s.fin.forced !== undefined && !s.fin.verdict) s.fin.judging = true; // b8: calls settled, crown the bout winner
+      const STAKE = 10;
+      const settle = (label: string, av: number | null, bv: number | null, pick: (c: { cr: number; au: number }) => number) => {
+        if (av === null || bv === null) { s.fin.callLog.push(`${label}: a comparable score is missing, so that call is void. No chips move - nobody wins by a missing number.`); return; }
+        if (av === bv) { s.fin.callLog.push(`${label}: dead level at ${av}. A push - chips back, honour intact.`); return; }
+        const winnerId = av > bv ? s.fin.a : s.fin.b; let anyWin = false;
+        for (const p of ['A', 'B'] as PID[]) {
+          const c = s.fin.calls[p]; if (!c) continue;
+          const won = pick(c) === winnerId;
+          s.purse[p] = Math.max(0, s.purse[p] + (won ? STAKE : -STAKE));
+          if (won) { anyWin = true; s.fin.callLog.push(`${label}: ${s.players[p].name} called it and takes ${STAKE} chips.`); }
+        }
+        if (!anyWin) s.fin.callLog.push(`${label}: ${av} vs ${bv} - nobody called it. ${STAKE} chips each, gone.`);
+      };
+      settle('CRITICS (Tomatometer)', sa.rt, sb.rt, (c) => c.cr);
+      settle('AUDIENCES (IMDb)', sa.imdb, sb.imdb, (c) => c.au);
+      s.log.unshift('The Reveal: envelopes opened, calls settled.');
+      s.orson = { line: 'The envelopes are open. Some of you knew your films. Some of you knew only bravado.', mood: 'smug', n: s.orson.n + 1 };
+      break;
+    }
+    case 'fchoice': {
+      if (s.phase !== 'final') break;
+      if (s.hr.sealed !== false && !s.fin.revealed) break; // the Reveal (or a skip) comes before the pick
+      s.fin.choice[it.pid] = it.id;
+      const { A, B } = s.fin.choice;
+      if (A !== undefined && B !== undefined) {
+        if (A === B) { s.fin.verdict = { winner: A, reason: 'You both picked the same film. No pitch needed. Orson is almost disappointed.' }; s.winner = A; s.fin.tie = true; s.phase = 'done'; }
+        else { s.fin.pitchEnds = now; s.fin.judging = true; }
+      }
+      break;
+    }
+    case 'pitch': { if (s.phase !== 'final' || s.fin.verdict) break; s.fin.pitch[it.pid] = it.text.slice(0, 600); if (it.submit) s.fin.submitted[it.pid] = true; break; }
+    case 'judgereq': s.fin.judgeRequested = true; break;
+    case 'verdict': {
+      s.fin.verdict = { winner: it.winner, reason: it.reason, lines: it.lines }; s.fin.judging = false; s.winner = it.winner; s.phase = 'done';
+      const wp: PID = s.b8 ? (s.b8.backed.A >= s.b8.backed.B ? 'A' : 'B') : s.fin.choice.A === it.winner ? 'A' : 'B'; s.fin.wpid = wp; s.fin.loser = wp === 'A' ? 'B' : 'A'; s.fin.tie = false; s.mem.recorded = false;
+      if (s.b8 && !s.reroll.used) s.reroll = { stage: 'ask', votes: {}, used: false, to: null };
+      break;
+    }
+    case 'hr': {
+      if (s.phase !== 'lobby' || it.pid !== 'A') break;
+      s.hr = { wilds: it.wilds === true, sealed: it.sealed !== false };
+      s.lobbyReady = { A: false, B: false };
+      const ln = `House Rules set: wildcard surprise entrants ${s.hr.wilds ? 'ON - entrants arrive only via an explicit offer you can refuse' : 'OFF - only films you picked can enter the bracket'}; scores ${s.hr.sealed ? 'sealed until the final' : 'on show'}.`;
+      s.log.unshift(ln); s.orson = { line: s.hr.wilds ? 'House Rules: my wildcards are in play. Doors will be offered, never forced.' : 'House Rules: strict bracket. Only films you two picked can fight. As it should be.', mood: 'idle', n: s.orson.n + 1 };
+      break;
+    }
+    case 'roast': s.roast = it.on; break;
+    case 'mem': { s.mem = { ...s.mem, nights: it.nights, ledger: it.ledger, last: it.last, durable: it.durable }; if (s.phase === 'lobby' || (s.phase === 'vibe' && s.vibe.attempts === 0)) s.vibe.set = it.nights % (QUESTION_SETS.length - 1); s.vibe.sets = [s.vibe.set, s.vibe.set, s.vibe.set, s.vibe.set]; break; }
+    case 'seenload': if (!s.seenLoaded) { s.seenBan = (it.ids || []).filter((x) => Number.isFinite(x)); s.seenLoaded = true; } break;
+    case 'recorded': s.mem.recorded = true; break;
+    case 'tempt': {
+      if (s.phase !== 'bracket' || s.tempt.stage !== 'offer' || it.pid !== s.tempt.to) break;
+      const other: PID = it.pid === 'A' ? 'B' : 'A';
+      if (it.out === null || !s.draft.picks[other].includes(it.out) || s.draft.picks[it.pid].includes(it.out) || !s.pool.includes(it.out)) { s.tempt.stage = 'done'; s.log.unshift('Orson made a private offer. It was declined.'); break; }
+      const inn = poolOf(s.kind, s.gm, s.cl).filter((m) => m.w && !s.pool.includes(m.id) && !excluded(m, s.vibe.target || [5, 5, 5, 5])).sort((a, b) => b.r - a.r || a.id - b.id)[0];
+      if (!inn) { s.tempt.stage = 'done'; break; }
+      s.pool = s.pool.map((x) => (x === it.out ? inn.id : x));
+      s.br.matches.forEach((m) => { if (m.winner === null) { if (m.a === it.out) m.a = inn.id; if (m.b === it.out) m.b = inn.id; } });
+      s.tempt = { ...s.tempt, stage: 'done', accepted: true, out: it.out, inn: inn.id };
+      s.log.unshift(`${s.players[it.pid].name} took Orson's offer: ${BY_ID[it.out].t} is out, a wildcard is in.`);
+      break;
+    }
+    case 'rematch': {
+      if (s.phase !== 'done' || !s.fin.loser || s.fin.rematchUsed || s.fin.tie) break;
+      const cA = s.fin.choice.A, cB = s.fin.choice.B;
+      s.fin = { ...s.fin, choice: { A: cB, B: cA }, pitch: {}, submitted: {}, verdict: null, judging: false, judgeRequested: false, pitchEnds: now, rematchUsed: true, loser: null, wpid: null, watch: {} };
+      s.winner = null; s.tonight = null; s.phase = 'final'; s.mem.recorded = false;
+      break;
+    }
+    case 'taste': if (s.phase === 'vibe' && s.vibe.passed) {
+      s.vibe.tastes[it.pid] = it.tags.filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.nos[it.pid] = (it.nos || []).filter((x) => (TASTES as readonly string[]).includes(x)); s.vibe.actors[it.pid] = it.actor.slice(0, 30);
+      s.vibe.tasteReady = { ...(s.vibe.tasteReady || { A: false, B: false }), [it.pid]: true };
+      if (!s.vibe.tasteReady.A || !s.vibe.tasteReady.B) break;
+      if (s.vibe.disc === 'req') { s.vibe.pend = true; s.orson = { ...s.orson, line: 'Your vibes are locked. I am sending a runner to the TMDB archives. Do not touch anything.', mood: 'scheme', n: s.orson.n + 1 }; break; }
+      startDraft(s);
+    } break;
+    case 'quip': s.orson = { line: it.line.slice(0, 200), mood: it.mood, n: s.orson.n + 1, emo: it.emo }; break;
+    case 'cost': s.cost = { calls: s.cost.calls + 1, inTok: s.cost.inTok + it.inTok, outTok: s.cost.outTok + it.outTok, usd: s.cost.usd + it.usd }; break;
+    case 'tick': {
+      if (s.phase === 'hitlist' || s.b8) { tick8(s, now); break; }
+      const mt = s.br.matches[s.br.cur];
+      if (s.phase === 'bracket' && mt) {
+        if (mt.tap && now >= mt.tap.until) {
+          const { A, B } = mt.tap; const pa = mt.votes.A as number, pb = mt.votes.B as number;
+          if (A === B) finishMatch(s, mt, higher(pa, pb), 'tap-battle tied, higher rated film wins', now);
+          else finishMatch(s, mt, A > B ? pa : pb, `tap-battle ${Math.max(A, B)} to ${Math.min(A, B)}`, now);
+        } else if (mt.winner !== null && mt.nextAt && now >= mt.nextAt) advance(s, now);
+      }
+      if (s.phase === 'final' && s.fin.pitchEnds && !s.fin.verdict && !s.fin.judging) {
+        if (now >= s.fin.pitchEnds || (s.fin.submitted.A && s.fin.submitted.B)) s.fin.judging = true;
+      }
+      break;
+    }
+    case 'fwatch': {
+      if (s.phase !== 'done' || s.tonight !== null || !s.fin.verdict) break;
+      const { a, b } = s.fin; if (!a || !b || (it.id !== a && it.id !== b)) break;
+      if(s.b8 && it.id!==s.winner) break; // Knockout losers cannot become tonight's pick.
+      s.fin.watch[it.pid] = it.id;
+      const wa = s.fin.watch.A, wb = s.fin.watch.B;
+      if (wa !== undefined && wb !== undefined && wa === wb) {
+        s.tonight = wa;
+        const champ = s.winner;
+        s.log.unshift(wa === champ ? `Tonight's watch confirmed: ${BY_ID[wa].t}. The champion is accepted.` : `Tonight's watch confirmed: ${BY_ID[wa].t} - you two overruled the bracket. ${champ !== null && BY_ID[champ] ? BY_ID[champ].t + ' keeps the crown.' : ''}`);
+        s.orson = { line: wa === champ ? 'The champion is accepted. Sensible. I had money on it.' : 'Overruled! The bracket is furious. I am oddly proud.', mood: 'idle', n: s.orson.n + 1 };
+      } else if (wa !== undefined && wb !== undefined) {
+        s.orson = { line: `You want ${BY_ID[wa].t}, they want ${BY_ID[wb].t}. The champion ${BY_ID[s.winner as number]?.t} is on the table. Sort it out.`, mood: 'shock', n: s.orson.n + 1 };
+      }
+      break;
+    }
+    case 'reset': return { ...newState(s.code), kind: s.kind, gm: s.gm, cl: s.cl, co: s.co !== false, v: s.v + 1, players: s.players, solo: s.solo, phase: (s.solo && s.players.A.joined && s.players.B.joined ? 'vibe' : 'lobby') as State['phase'], roast: s.roast, cost: s.cost, hr: s.hr, orson: s.orson, mem: { ...s.mem, recorded: false }, b8Bonus: s.b8Bonus, vibe: { ...newState(s.code).vibe, set: (s.vibe.set + 1) % (QUESTION_SETS.length - 1), sets: Array(4).fill((s.vibe.set + 1) % (QUESTION_SETS.length - 1)) } };
+  }
+  return s;
+}
+
+// Theatrical heat 0-100: starts at the gate, rises as you agree in the bracket. Never shows per-axis numbers.
+export function heatOf(s: State): number {
+  if (s.vibe.score === null) return 0;
+  const base = s.vibe.score * 55;
+  const res = s.br.matches.filter((m) => m.winner !== null);
+  let agreed = 0, tot = 0; void res;
+  if (s.phase === 'bracket' || s.phase === 'final' || s.phase === 'done') { const all = s.log.filter((l) => l.includes('(you both agreed)')).length; agreed = all; tot = Math.max(8, s.log.filter((l) => / beats /.test(l)).length); }
+  return Math.min(100, Math.round(base + (s.phase === 'draft' ? 6 : 8) + (agreed / Math.max(1, tot)) * 37));
+}
+export const heatLabel = (h: number) => (h >= 88 ? 'BLAZING' : h >= 72 ? 'HOT' : h >= 55 ? 'WARM' : h >= 35 ? 'COOL' : 'COLD');

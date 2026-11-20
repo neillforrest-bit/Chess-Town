@@ -1,0 +1,1 @@
+import MovieWheelLegacy from '@/components/MovieWheelLegacy';export default function Page(){return <MovieWheelLegacy/>}

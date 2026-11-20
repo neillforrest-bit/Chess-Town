@@ -1,0 +1,47 @@
+import { chromium } from 'playwright';
+import { createHash, randomBytes } from 'node:crypto';
+import fs from 'node:fs';
+const BASE = 'https://movietime-tv.vercel.app';
+const hash = (x) => createHash('sha256').update(x).digest('hex');
+const hex = (n) => Array.from(randomBytes(n), (x) => x.toString(16).padStart(2, '0')).join('');
+const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split('\n').filter((l) => l.includes('=')).map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).replace(/^"|"$/g, '')]; }));
+const SH = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY, 'content-type': 'application/json' };
+const SURL = env.NEXT_PUBLIC_SUPABASE_URL.replace(/"/g, '');
+const code = Array.from(randomBytes(8), (x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
+const t0 = hex(32), t1 = hex(32), inv = hex(32);
+const seat = (tok, name) => ({ hash: hash(tok), name, spent: 0, double: false, side: 0, locked: false, pulls: 0 });
+const state = { flow: 'movie-duo-v1', v: 1, round: 0, expires: Date.now() + 7 * 86400000, inviteHash: hash(inv), receipts: [], seats: [seat(t0, 'Jemma'), seat(t1, 'Neillo')], mode: null, phase: 'lobby', genres: ['Any'], picks: [[], []], genreLocked: [], mood: '', shelf: [], extras: [], ops: [{}, {}], swipeDone: [], sync: 0, overlaps: [], loners: [[], []], wilds: [], finalists: [], revealAck: [], queue: [], pair: [], stage: 0, advanced: [], history: [], tie: [], tieSpun: false, winner: null, confirmed: [], pairs: null, line: 'test' };
+const H = { 'content-type': 'application/json', origin: BASE };
+const post = (body, tok) => fetch(`${BASE}/api/duo/${code}`, { method: 'POST', headers: { ...H, 'x-wheel-seat': tok }, body: JSON.stringify({ round: 0, actionId: hex(16), ...body }) }).then(async (r) => ({ s: r.status, j: await r.json() }));
+await fetch(SURL + '/rest/v1/find_rooms', { method: 'POST', headers: SH, body: JSON.stringify({ code, state }) });
+let r = await post({ type: 'start' }, t0);
+r = await post({ type: 'chooseMode', mode: 'pairs', round: r.j.round }, t0);
+const round = r.j.round;
+const g = (await post({ type: 'pairFindActors', q: 'Hugh Grant', round }, t0)).j.results[0];
+await post({ type: 'pairActor', personId: g.id, personName: g.name, round }, t0);
+const f = (await post({ type: 'pairFindActors', q: 'Ben Foster', round }, t1)).j.results[0];
+await post({ type: 'pairActor', personId: f.id, personName: f.name, round }, t1);
+
+const browser = await chromium.launch();
+// Jemma's phone: actors screen with both locked (contrast check)
+const jem = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
+await jem.goto(BASE + '/duo#room=' + code);
+await jem.evaluate(([c, tok, i]) => localStorage.setItem('movietime-duo:' + c, JSON.stringify({ token: tok, invite: i })), [code, t0, inv]);
+await jem.reload();
+await jem.waitForFunction(() => /Hugh Grant/.test(document.body.innerText), null, { timeout: 25000 });
+await jem.waitForTimeout(900);
+await jem.screenshot({ path: 'shots/h16-actors-contrast.png' });
+// deal, then phone deal card + TV deal screen
+r = await post({ type: 'pairDeal', round }, t0);
+console.log('deal:', r.s, r.j.phase);
+await jem.waitForFunction(() => /CARD 1\//.test(document.body.innerText), null, { timeout: 25000 });
+await jem.waitForTimeout(1200);
+await jem.screenshot({ path: 'shots/h17-deal-card.png' });
+const tv = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
+await tv.goto(BASE + '/tv/duo/' + code);
+await tv.waitForFunction(() => /HOLDS THE CARD|CARD 1\//.test(document.body.innerText), null, { timeout: 25000 });
+await tv.waitForTimeout(1000);
+await tv.screenshot({ path: 'shots/h18-tv-deal.png' });
+console.log('tv names bright check shot saved');
+await browser.close();
+await fetch(SURL + '/rest/v1/find_rooms?code=eq.' + code, { method: 'DELETE', headers: SH }).then((x) => console.log('cleanup', x.status));

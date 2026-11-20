@@ -1,0 +1,62 @@
+.page{height:100dvh;width:100vw;overflow:hidden;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 0%,#52209b,#1b0830 80%);color:#fff3c7;font:2vmin/1.4 ManropeGT,system-ui,sans-serif;padding:2.4vmin 3.2vmin;box-sizing:border-box}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:2vmin;font-size:2vmin;letter-spacing:.35vmin;text-transform:uppercase;color:#d9ee9c;font-weight:800}
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;gap:1.8vmin;text-align:center}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:2vmin;font-size:1.8vmin;color:#e0d1eb}
+.code{font-size:15vmin;font-weight:800;letter-spacing:2vmin;color:#f8d368;line-height:1;text-indent:2vmin}
+.huge{font-size:5.4vmin;font-weight:800;letter-spacing:-.2vmin;margin:0;max-width:90%}
+.say{font-size:2.5vmin;color:#d9ee9c;max-width:82%;margin:0;font-style:italic}
+.sub{font-size:2.2vmin;color:#e0d1eb;margin:0;max-width:82%}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:1.6vmin;width:min(82%,130vmin)}
+.opt{border:.3vmin solid #b699e1;border-radius:1.4vmin;background:#4b2580;padding:1.8vmin 2vmin;font-size:2.3vmin;font-weight:700;text-align:left}
+.opt b{color:#f8d368;margin-right:1vmin}
+.opt.right{background:#d9ee9c;color:#271045;border-color:#d9ee9c}
+.opt.right b{color:#271045}
+.vs{display:flex;gap:4vmin;align-items:stretch;justify-content:center}
+.film{display:flex;flex-direction:column;gap:.8vmin;align-items:center;justify-content:flex-end;max-width:34vmin}
+.film img{height:36vmin;border-radius:1.2vmin;box-shadow:0 1vmin 4vmin #0009}
+.film b{font-size:2.6vmin;line-height:1.15}
+.film span{font-size:1.9vmin;color:#e0d1eb}
+.vsMark{align-self:center;font-size:5vmin;font-weight:800;color:#f8d368}
+.tugWrap{width:min(76%,115vmin)}
+.tugNums{display:flex;justify-content:space-between;font-size:2.8vmin;color:#f8d368;font-weight:800}
+.tug{height:2.4vmin;position:relative;background:linear-gradient(to right,#c9a6ff 0 49.5%,#fff3c7 49.5% 50.5%,#d9ee9c 50.5%);border:.35vmin solid #fff3c7;border-radius:2vmin;margin:1.2vmin 0}
+.tug i{position:absolute;top:-.7vmin;width:1vmin;height:3.8vmin;border-radius:.6vmin;background:#ffb73c;border:.3vmin solid #301348;transition:left .35s;transform:translateX(-50%)}
+.timer{font-size:13vmin;font-weight:800;font-variant-numeric:tabular-nums;color:#f8e899;line-height:1}
+.timer.hot{color:#ff6175}
+.timer.warm{color:#ffad42}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:2vmin;width:min(88%,160vmin)}
+.mini{background:#24103f;border:.25vmin solid #b9a1d7;border-radius:1.2vmin;padding:1.2vmin;display:flex;flex-direction:column;gap:.5vmin;align-items:center}
+.mini img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:.8vmin}
+.mini b{font-size:1.9vmin;line-height:1.15}
+.mini span{font-size:1.4vmin;color:#d9ee9c;letter-spacing:.15vmin;font-weight:800}
+.bars{display:flex;flex-direction:column;gap:1.6vmin;width:min(60%,80vmin)}
+.barRow{display:flex;align-items:center;gap:1.6vmin;font-size:2.2vmin}
+.barRow>span{width:14vmin;text-align:right}
+.bar{flex:1;height:1.8vmin;background:#44236b;border-radius:1vmin;overflow:hidden}
+.bar i{display:block;height:100%;background:#d9ee9c;transition:width .3s}
+.seats{display:flex;gap:3vmin}
+.seat{border:.3vmin dashed #cbae74;border-radius:1.4vmin;padding:1.4vmin 3vmin;font-size:2.2vmin;background:#211032;color:#e0d1eb}
+.seat b{color:#fff3c7;font-size:3.4vmin;display:block;text-shadow:0 0 1.2vmin rgba(0,0,0,.55)}
+.seat.here{border-color:#d9ee9c;border-style:solid}
+.qrBg{background:#f8edff;padding:1.6vmin;border-radius:1.6vmin;line-height:0}
+.steps{text-align:left;font-size:2.1vmin;max-width:78%;margin:0;padding-left:3vmin;color:#f3e9ff}
+.steps li{margin:.8vmin 0}
+.tag{font-size:1.7vmin;color:#d9ee9c;letter-spacing:.3vmin;font-weight:800;text-transform:uppercase}
+.syncNum{font-size:20vmin;font-weight:800;color:#f8d368;line-height:1}
+@media(prefers-reduced-motion:reduce){.tug i,.bar i{transition:none}}
+
+/* Star Pairs reveal: ten cards on one projector screen */
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:1.2vmin;width:min(94%,160vmin)}
+.grid5 .mini{padding:.8vmin;gap:.35vmin}
+.grid5 .mini img{height:24vmin;width:auto;max-width:100%}
+.grid5 .mini b{font-size:1.5vmin}
+.grid5 .mini span{font-size:1.15vmin;letter-spacing:.08vmin}
+.syncNumSm{font-size:9vmin;font-weight:800;color:#f8d368;line-height:1}
+
+/* Star Match: the shared face-down grid, one row of twelve */
+.mGrid{display:grid;grid-template-columns:repeat(12,1fr);gap:1.1vmin;width:min(97%,180vmin)}
+.mCard{aspect-ratio:2/3;border-radius:1vmin;display:grid;place-items:center;border:.3vmin solid #b699e1;background:#3a1a66;font-size:4vmin;color:#f8d368;position:relative;overflow:hidden}
+.mCard img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mSc{position:absolute;left:0;right:0;bottom:0;background:#140725d9;font-size:1.3vmin;padding:.4vmin .5vmin;color:#d9ee9c;font-weight:800;text-align:center;line-height:1.2}
+.mBurn{border-color:#5b3a8f;background:#24103f;color:#7a5aa8}
+.mLock{border-color:#f8d368}

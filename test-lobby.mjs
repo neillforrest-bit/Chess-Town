@@ -1,0 +1,17 @@
+import { chromium } from 'playwright';
+const BASE = 'https://movietime-tv.vercel.app';
+const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (x) => x.toString(16).padStart(2, '0')).join('');
+const code = Array.from(crypto.getRandomValues(new Uint8Array(8)), (x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
+const t1 = hex(32), inv = hex(32);
+const r = await fetch(BASE + '/api/duo/' + code, { method: 'POST', headers: { 'content-type': 'application/json', 'x-wheel-seat': t1, origin: BASE }, body: JSON.stringify({ type: 'create', name: 'Neill', invite: inv, round: 0, actionId: hex(16) }) });
+console.log('create', r.ok, code);
+const browser = await chromium.launch();
+const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
+await phone.goto(BASE + '/duo#room=' + code);
+await phone.evaluate(([c, tok, i]) => localStorage.setItem('movietime-duo:' + c, JSON.stringify({ token: tok, invite: i })), [code, t1, inv]);
+await phone.reload();
+await phone.waitForFunction(() => document.body.innerText.includes('players in the lobby'), null, { timeout: 25000 });
+await new Promise((r2) => setTimeout(r2, 800));
+await phone.screenshot({ path: '/home/sandbox/movie-time/shots/h06-phone-lobby-code.png' });
+console.log('code visible:', await phone.evaluate(() => document.body.innerText.includes('ROOM CODE FOR THE TV')));
+await browser.close();

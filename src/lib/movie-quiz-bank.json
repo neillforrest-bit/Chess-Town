@@ -1,0 +1,212 @@
+[
+  {
+    "id": 1,
+    "kind": "Oscar spotlight",
+    "question": "Which film took Best Picture at the 2024 Oscars?",
+    "options": [
+      "Barbie",
+      "Oppenheimer",
+      "Poor Things",
+      "The Holdovers"
+    ],
+    "answer": 1,
+    "explanation": "Oppenheimer won Best Picture at the 96th Oscars.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2024",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 2,
+    "kind": "Oscar spotlight",
+    "question": "Who won the leading-actor Oscar for Oppenheimer?",
+    "options": [
+      "Cillian Murphy",
+      "Robert Downey Jr.",
+      "Matt Damon",
+      "Emily Blunt"
+    ],
+    "answer": 0,
+    "explanation": "Cillian Murphy won Actor in a Leading Role.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2024",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 3,
+    "kind": "Oscar spotlight",
+    "question": "Emma Stone won her Poor Things Oscar in which category?",
+    "options": [
+      "Supporting Actress",
+      "Leading Actress",
+      "Original Screenplay",
+      "Costume Design"
+    ],
+    "answer": 1,
+    "explanation": "Emma Stone won Actress in a Leading Role for Poor Things.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2024",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 4,
+    "kind": "Oscar spotlight",
+    "question": "Which Barbie song won the original-song Oscar?",
+    "options": [
+      "I'm Just Ken",
+      "Dance the Night",
+      "What Was I Made For?",
+      "Barbie World"
+    ],
+    "answer": 2,
+    "explanation": "What Was I Made For? won for Billie Eilish and Finneas O'Connell.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2024",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 5,
+    "kind": "Oscar spotlight",
+    "question": "Which film won Best Picture over 1917 and Joker at the 2020 Oscars?",
+    "options": [
+      "Parasite",
+      "The Irishman",
+      "Ford v Ferrari",
+      "Jojo Rabbit"
+    ],
+    "answer": 0,
+    "explanation": "Parasite won Best Picture at the 92nd Oscars.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2020",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 6,
+    "kind": "Oscar spotlight",
+    "question": "Joaquin Phoenix won the leading-actor Oscar for which film?",
+    "options": [
+      "Her",
+      "Walk the Line",
+      "Gladiator",
+      "Joker"
+    ],
+    "answer": 3,
+    "explanation": "Joaquin Phoenix won Actor in a Leading Role for Joker.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2020",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 7,
+    "kind": "Oscar spotlight",
+    "question": "Which animated film won the Oscar over Klaus and Missing Link in 2020?",
+    "options": [
+      "Frozen II",
+      "Toy Story 4",
+      "Onward",
+      "Soul"
+    ],
+    "answer": 1,
+    "explanation": "Toy Story 4 won Animated Feature Film at the 92nd Oscars.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2020",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 8,
+    "kind": "Oscar spotlight",
+    "question": "Which actor won a supporting Oscar for Once upon a Time...in Hollywood?",
+    "options": [
+      "Leonardo DiCaprio",
+      "Brad Pitt",
+      "Al Pacino",
+      "Tom Hanks"
+    ],
+    "answer": 1,
+    "explanation": "Brad Pitt won Actor in a Supporting Role.",
+    "source": "https://www.oscars.org/oscars/ceremonies/2020",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 9,
+    "kind": "Name that actor",
+    "question": "Who plays Neo in The Matrix?",
+    "options": [
+      "Keanu Reeves",
+      "Will Smith",
+      "Nicolas Cage",
+      "Tom Cruise"
+    ],
+    "answer": 0,
+    "explanation": "Keanu Reeves plays Neo in The Matrix.",
+    "source": "https://api.themoviedb.org/3/movie/603",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 10,
+    "kind": "Name that actor",
+    "question": "Who plays Lieutenant Dan in Forrest Gump?",
+    "options": [
+      "Bill Paxton",
+      "Gary Sinise",
+      "Tom Hanks",
+      "Kevin Bacon"
+    ],
+    "answer": 1,
+    "explanation": "Gary Sinise plays Lieutenant Dan in Forrest Gump.",
+    "source": "https://api.themoviedb.org/3/movie/13",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 11,
+    "kind": "Name that actor",
+    "question": "Who plays the Joker in The Dark Knight?",
+    "options": [
+      "Heath Ledger",
+      "Joaquin Phoenix",
+      "Jared Leto",
+      "Christian Bale"
+    ],
+    "answer": 0,
+    "explanation": "Heath Ledger plays the Joker in The Dark Knight.",
+    "source": "https://api.themoviedb.org/3/movie/155",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 12,
+    "kind": "Name that actor",
+    "question": "Who plays Tyler Durden in Fight Club?",
+    "options": [
+      "Jared Leto",
+      "Brad Pitt",
+      "Edward Norton",
+      "Matt Damon"
+    ],
+    "answer": 1,
+    "explanation": "Brad Pitt plays Tyler Durden in Fight Club.",
+    "source": "https://api.themoviedb.org/3/movie/550",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 13,
+    "kind": "Name that actor",
+    "question": "Who plays Mia Wallace in Pulp Fiction?",
+    "options": [
+      "Julia Roberts",
+      "Uma Thurman",
+      "Meg Ryan",
+      "Sharon Stone"
+    ],
+    "answer": 1,
+    "explanation": "Uma Thurman plays Mia Wallace in Pulp Fiction.",
+    "source": "https://api.themoviedb.org/3/movie/680",
+    "checked": "2026-11-19"
+  },
+  {
+    "id": 14,
+    "kind": "Name that actor",
+    "question": "Who plays Red in The Shawshank Redemption?",
+    "options": [
+      "Morgan Freeman",
+      "Samuel L. Jackson",
+      "Tim Robbins",
+      "Denzel Washington"
+    ],
+    "answer": 0,
+    "explanation": "Morgan Freeman plays Red in The Shawshank Redemption.",
+    "source": "https://api.themoviedb.org/3/movie/278",
+    "checked": "2026-11-19"
+  }
+]
