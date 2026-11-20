@@ -3,6 +3,7 @@ import {durableGameSession} from '@/lib/durable-game-session';
 import {hasHostIdentity} from '@/lib/durable-invites';
 import {createLogicChannel} from '@/games/logic/channel';
 import { versionLink } from '@/lib/version-link';
+import { playSfx } from '@/lib/sounds';
 import { saveCheckpoint, loadCheckpoint, hasCheckpoint } from '@/lib/match-checkpoint';
 
 import { useEffect, useRef, useState } from 'react';
@@ -726,6 +727,7 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
   useEffect(() => {
     if (!room || room.phase !== 'reveal' || !room.result) return;
     const rr = room.result;
+    playSfx((player === 'p1' ? rr.p1Correct : rr.p2Correct) ? 'good' : 'bad');
     const outcome = rr.p1Correct && rr.p2Correct ? 'bothRight' : !rr.p1Correct && !rr.p2Correct ? 'bothWrong' : 'oneRight';
     const who = rr.p1Correct && !rr.p2Correct ? `${room.names.p1} takes it.` : rr.p2Correct && !rr.p1Correct ? `${room.names.p2} takes it.` : '';
     const extras = [rr.double ? 'That one poured double.' : '', rr.stolenFrom ? 'A point changed pockets.' : '', rr.p1StreakBonus || rr.p2StreakBonus ? 'Somebody is on a roll.' : ''].filter(Boolean).join(' ');
@@ -882,9 +884,9 @@ function BrawlGame({ matchId: initialMatch, role }: { matchId: string; role: Pla
         </>;
       })()}
     </section>
-    : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>{room.settings.focus === 'open' ? 'Mixed quiz. Both drafts are ready.' : `${sportFocusLabel(room.settings.focus)}. Your home court.`}</h2><p className="trivia-start-summary">{room.settings.focus === 'open' ? 'Three category picks each. Main rounds mix both selections. Power rounds pay double.' : `Every main question is ${sportFocusLabel(room.settings.focus)} at ${difficultyLabel(room.settings.difficulty)} heat.`} Five rounds of five questions. A flash mini-game after each. Flash and roulette surprises can use other topics.</p><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : `Waiting for ${room.names.p1} to start.`) : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => void patchRoom({ start: true })}>START THE BRAWL</button>}</section>
+    : room.phase === 'intro' ? <section className="trivia-brawl-question"><h2>{room.settings.focus === 'open' ? 'Mixed quiz. Both drafts are ready.' : `${sportFocusLabel(room.settings.focus)}. Your home court.`}</h2><p className="trivia-start-summary">{room.settings.focus === 'open' ? 'Three category picks each. Main rounds mix both selections. Power rounds pay double.' : `Every main question is ${sportFocusLabel(room.settings.focus)} at ${difficultyLabel(room.settings.difficulty)} heat.`} Five rounds of five questions. A flash mini-game after each. Flash and roulette surprises can use other topics.</p><p>{room.roundMeta?.[0]?.ready ? (player === 'p1' ? 'The house is ready. Start when Chester finishes his warning.' : `Waiting for ${room.names.p1} to start.`) : 'Chester is scribbling the opening round on beer mats...'}</p>{player === 'p1' && <button className="trivia-brawl-primary" disabled={!room.roundMeta?.[0]?.ready} onClick={() => { playSfx('start'); void patchRoom({ start: true }); }}>START THE BRAWL</button>}</section>
     : room.phase === 'finished' ? <section className="trivia-brawl-question"><h2>{room.score.p1} - {room.score.p2}</h2><p>{room.score.p1 === room.score.p2 ? 'A dead heat. Chester demands a rematch - the pub insists.' : `${room.score.p1 > room.score.p2 ? room.names.p1 : room.names.p2} wins the tab. Chester raises a glass to you both.`}</p>{(series.p1 + series.p2 + series.draws) > 0 && <p className="trivia-series">SERIES · {room.names.p1} {series.p1} - {series.p2} {room.names.p2}{series.draws ? ` (${series.draws} draw${series.draws > 1 ? 's' : ''})` : ''}</p>}<button className="trivia-brawl-primary" onClick={() => void patchRoom({ rematch: true })}>REMATCH - SAME PUB, NEW QUESTIONS</button></section>
-    : <QuizGamePanel popup={room.phase==='flash'||room.phase==='flashReveal'} title="FLASH FINALE · SHARED TABLE" score={room.names.p1+' '+room.score.p1+' : '+room.score.p2+' '+room.names.p2} className={`trivia-brawl-question${room.phase === 'flash' || room.phase === 'flashReveal' ? ' trivia-flash-shell' : ''}`}>
+    : <QuizGamePanel key={`${room.round}-${room.qIndex}`} popup={room.phase==='flash'||room.phase==='flashReveal'} title="FLASH FINALE · SHARED TABLE" score={room.names.p1+' '+room.score.p1+' : '+room.score.p2+' '+room.names.p2} className={`trivia-brawl-question trivia-q-pop${room.phase === 'flash' || room.phase === 'flashReveal' ? ' trivia-flash-shell' : ''}`}>
       {room.phase !== 'flash' && room.phase !== 'flashReveal' && room.phase !== 'banter' && <>
         <MatchBadges difficulty={room.lastCall ? undefined : room.roundMeta?.[room.round]?.difficulty} isDouble={room.isDoubleQuestion} powerForMe={room.powerRoundFor.includes(player)} streak={room.streak[player]} lastCall={room.lastCall} roulette={Boolean(room.currentQuestion?.roulette)} />
         <span>{room.currentQuestion?.category}</span>
@@ -1002,6 +1004,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     try {
       const first = await fetchSoloQuestion(rounds[0], settings.difficulty, 0);
       setQuestion(first);
+      playSfx('start');
       setLocked(null);
       setPhase('question');
       setHostLine(`Round 1 of 5 - ${first.category} at ${difficultyLabel(settings.difficulty)} heat. ${categoryQuip(first.category, 0)}`);
@@ -1017,6 +1020,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     if (soloTimer.expired()) option = QUESTION_TIMEOUT_ANSWER;
     setLocked(option);
     const youRight = option === question.correctAnswer;
+    playSfx(youRight ? 'good' : 'bad');
     const chesterRight = question.chesterCorrect;
     setScore((current) => ({ you: current.you + (youRight ? 1 : 0), chester: current.chester + (chesterRight ? 1 : 0) }));
     const pool = youRight ? SOLO_LINES.correct : SOLO_LINES.wrong;
@@ -1029,6 +1033,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
     const nextRound = round + 1;
     if (nextRound >= 5) {
       const final = { you: score.you, chester: score.chester };
+      playSfx(final.you >= final.chester ? 'win' : 'bad');
       const record: SoloScore = { date: new Date().toISOString().slice(0, 10), you: final.you, chester: final.chester };
       try { window.localStorage.setItem(SOLO_SCORES_KEY, JSON.stringify([record, ...loadSoloScores()].slice(0, 20))); } catch { /* private browsing */ }
       setHostLine(final.you > final.chester ? SOLO_LINES.win : final.you < final.chester ? SOLO_LINES.lose : SOLO_LINES.draw);
@@ -1056,7 +1061,7 @@ function SoloBrawl({ onExit, road = false }: { onExit: () => void; road?: boolea
       {focusedDraft(settings) ? <p className="trivia-setup__locked">Single topic: {sportFocusLabel(settings.focus)} · {difficultyLabel(settings.difficulty)} heat.</p> : categories.length ? <div className="trivia-brawl-categories">{categories.map((category) => <button key={category.id} onClick={() => toggle(category.id)} aria-pressed={picked.includes(category.id)}>{category.name}</button>)}</div> : <p>Loading the pub ledger...</p>}
       <button className="trivia-brawl-primary" disabled={!focusedDraft(settings) && picked.length !== 3} onClick={() => void startGame()}>{focusedDraft(settings) ? `START ${sportFocusLabel(settings.focus)} · ${difficultyLabel(settings.difficulty)}` : `BELLYS UP - START (${picked.length}/3)`}</button>
     </section>}
-    {(phase === 'question' || phase === 'reveal') && question && <section className="trivia-brawl-question"><span>{question.category}</span><QuizMaster question={question.question} />
+    {(phase === 'question' || phase === 'reveal') && question && <section key={question.question} className="trivia-brawl-question trivia-q-pop"><span>{question.category}</span><QuizMaster question={question.question} />
       
       {phase === 'reveal' && locked === QUESTION_TIMEOUT_ANSWER && <p role="status">Time&apos;s up. No answer locked.</p>}
       <div className="trivia-brawl-answers">{question.answers.map((option) => <button key={option} onClick={() => answerSolo(option)} disabled={phase === 'reveal' || soloTimer.left === 0} className={option === locked ? 'is-selected' : ''} aria-pressed={option === locked}>{phase === 'reveal' && option === question.correctAnswer ? `${option} ✓` : phase === 'reveal' && option === locked ? `${option} ✗` : option}</button>)}</div>{phase === 'question' && <TriviaQuestionClock seconds={soloTimer.left} duration={mainQuestionSeconds(question.category)} />}
@@ -1152,6 +1157,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     if (applied.state.phase === 'reveal') {
       const rr = applied.state.result;
       if (!rr) return;
+      playSfx((who === 'p1' ? rr.p1Correct : rr.p2Correct) ? 'good' : 'bad');
       if (rr.onTheHouse) setPpBannerWatch(`house-${applied.state.round}-${applied.state.qIndex}:${ON_THE_HOUSE_LINES[0]}`);
       const outcome = rr.p1Correct && rr.p2Correct ? 'bothRight' : !rr.p1Correct && !rr.p2Correct ? 'bothWrong' : 'oneRight';
       const whoTook = rr.p1Correct && !rr.p2Correct ? `${nameA} takes it.` : rr.p2Correct && !rr.p1Correct ? `${nameB} takes it.` : '';
@@ -1177,6 +1183,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     const nextState = advanced.state;
     commitMatch(nextState);
     if (nextState.phase === 'finished') {
+      playSfx('win');
       setSeries((cur) => nextState.score.p1 === nextState.score.p2 ? { ...cur, draws: cur.draws + 1 } : nextState.score.p1 > nextState.score.p2 ? { ...cur, a: cur.a + 1 } : { ...cur, b: cur.b + 1 });
       setHostLine(nextState.score.p1 === nextState.score.p2 ? 'A dead heat! The pub insists on a rematch.' : `${nextState.score.p1 > nextState.score.p2 ? nameA : nameB} wins the tab. Chester raises a glass to you both.`);
       setPhase('finished');
@@ -1302,7 +1309,7 @@ function PassAndPlay({ onExit }: { onExit: () => void }) {
     {phase === 'draftB' && <section className="trivia-brawl-draft"><h2>{nameB}: {focusedDraft(settings) ? `confirm ${sportFocusLabel(settings.focus)}` : 'choose 3 categories'}</h2>{focusedDraft(settings) ? <p className="trivia-setup__locked">Single topic: {sportFocusLabel(settings.focus)} · {difficultyLabel(settings.difficulty)} heat.</p> : <>{catGrid('b')}{powerPicker('b')}</>}
       <button className="trivia-brawl-primary" disabled={!focusedDraft(settings) && picks.b.length !== 3} onClick={() => void buildGame()}>{focusedDraft(settings) ? `START ${sportFocusLabel(settings.focus)} · ${difficultyLabel(settings.difficulty)}` : `BELLYS UP - START (${picks.b.length}/3)`}</button></section>}
     {phase === 'building' && <section className="trivia-brawl-question"><h2>Pulling the pints...</h2><p>Hand-written shelves are instant. Online categories take a few seconds each - later rounds pour while you play.</p></section>}
-    {(phase === 'askA' || phase === 'askB') && match && q && <section className="trivia-brawl-question">
+    {(phase === 'askA' || phase === 'askB') && match && q && <section key={`${phase}-${match.round}-${match.qIndex}`} className="trivia-brawl-question trivia-q-pop">
       <MatchBadges difficulty={match.lastCall ? undefined : match.rounds[match.round]?.difficulty} isDouble={match.doubleQuestions.includes(`${match.round}:${match.qIndex}`)} powerForMe={match.power[activePlayer] === match.rounds[match.round]?.categoryId} streak={match.streak[activePlayer]} lastCall={match.lastCall} roulette={Boolean(activeView?.roulette)} />
       <span>{q.category} · {answeringName} to answer</span><QuizMaster question={view.question} />
       

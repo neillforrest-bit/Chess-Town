@@ -5156,3 +5156,8 @@ body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-countdown__caption{
 body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-countdown__track{height:9px}
 body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-wildcards-open{min-height:36px!important;flex:none}
 @media(max-height:600px){body .trivia-history.trivia-showtime:has(.quiz-master) .quiz-master__question{font-size:15px!important}body .trivia-history.trivia-showtime:has(.quiz-master) .trivia-brawl-question{padding:6px!important}}
+
+/* Stats-lab reissue polish (20 Nov 2026): gentle pop when a new question card mounts. Reuses the existing synth SFX (src/lib/sounds.ts) - no new assets. */
+@keyframes trivia-q-in { 0% { transform: translateY(10px) scale(.985); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.trivia-brawl-question.trivia-q-pop { animation: trivia-q-in .45s ease both; }
+@media (prefers-reduced-motion: reduce) { .trivia-brawl-question.trivia-q-pop { animation: none; } }
