@@ -6,7 +6,7 @@ const COL=['#804dc3','#44207a','#9466ca','#52209b'];
 /** The Ticket Cup genre wheel: numbered segments, one long dramatic spin.
   * The server owns the landed index; every phone animates to the same target.
   * The wheel only ever shows genres still in play - passed or kept genres are pruned. */
-export default function GenreWheel({opts,idx,at,n,now}:{opts:string[];idx:number|null;at:number;n:number;now:number}){
+export default function GenreWheel({opts,idx,at,n,now,onSpin}:{opts:string[];idx:number|null;at:number;n:number;now:number;onSpin?:()=>void}){
  const N=Math.max(opts.length,1),seg=360/N,C=150,R=140;
  const[rot,setRot]=useState(0),lastN=useRef(-1);
  const spinning=idx!==null&&now<at+GENRE_SPIN_MS;
@@ -18,5 +18,5 @@ export default function GenreWheel({opts,idx,at,n,now}:{opts:string[];idx:number
  <svg viewBox='0 0 300 300' className={s.gwheelSvg} style={{transform:`rotate(${rot}deg)`,transition:spinning?`transform ${Math.max(500,at+GENRE_SPIN_MS-now)}ms cubic-bezier(.12,.7,.08,1)`:'none'}}>
  <circle cx={C} cy={C} r={R+6} fill='#2d0f55' stroke='#c9a6ff' strokeWidth='5'/>
  {opts.map((g,i)=><g key={g}><path d={pts(i)} fill={COL[i%4]} stroke='#2d0f55' strokeWidth='1.5'/><g transform={`rotate(${(i+0.5)*seg} ${C} ${C})`}><text x={C} y={C-R+28} textAnchor='middle' fontSize={N>12?14:20} fontWeight='800' fill='#fff3c7'>{i+1}</text></g></g>)}
- </svg><span className={s.gwheelHub}>SPIN</span></div>
+ </svg>{onSpin?<button type='button' className={s.gwheelHub} onClick={onSpin} aria-label='Spin the genre wheel'>SPIN</button>:<span className={s.gwheelHub}>SPIN</span>}</div>
 }

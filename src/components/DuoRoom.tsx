@@ -571,7 +571,7 @@ export default function DuoRoom() {
       <Link href="/duo" className={s.primary} onClick={() => { try { const c = creds.current; if (c) { creds.current = null; history.replaceState({}, '', '/duo'); localStorage.removeItem('movietime-duo:' + c.code); } } catch { /* ignore */ } setRoom(null); }}>Start another duo night →</Link>
     </section>}
 
-    {error && <p role="alert" className={s.error}>{error}</p>}
+    {error && <p role="alert" className={s.error}>{error}</p>}{busy && <p role="status" className={s.note}>Saving your move…</p>}
     {room && <footer><span>You are {room.you >= 0 ? room.seats[room.you].name : 'a guest'} · private browser seat</span><span>NO PAID AI · ORSON ON RULES</span></footer>}
     {help && pair.length > 0 && <div className={s.modal}><section>
       {pair.map((m) => <div key={m.id} style={{ marginBottom: 12 }}><h2>{m.t}</h2><p>{m.y} · {m.g.join(', ')} · TMDB {m.r.toFixed(1)}</p><p>{m.o}</p></div>)}

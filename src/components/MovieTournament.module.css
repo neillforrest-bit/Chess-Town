@@ -14,7 +14,7 @@
 .gwheelPtr{position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:2;color:#d9ee9c;font-size:30px;filter:drop-shadow(0 3px 2px #1a073d)}
 .gwheelPtrSpin{position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:2;color:#d9ee9c;font-size:30px;filter:drop-shadow(0 3px 2px #1a073d);animation:gwiggle .3s ease-in-out infinite}
 @keyframes gwiggle{0%,100%{transform:translateX(-50%) rotate(-9deg)}50%{transform:translateX(-50%) rotate(9deg)}}
-.gwheelHub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 9px;border-radius:50%;background:#fff3c7;color:#2d0f55;font-size:13px;font-weight:800;border:3px solid #44207a;pointer-events:none}
+.gwheelHub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 9px;border-radius:50%;background:#fff3c7;color:#2d0f55;font-size:13px;font-weight:800;border:3px solid #44207a;pointer-events:none}button.gwheelHub{pointer-events:auto;cursor:pointer;width:auto;min-height:0;display:inline-flex;align-items:center;justify-content:center;font-family:ManropeGT,system-ui,sans-serif}button.gwheelHub:active{scale:.94}
 .keepRow{display:flex;gap:8px;margin:8px 0}
 .keepRow>div{flex:1;border:1px solid #c9a6ff;border-radius:12px;padding:8px;background:#291243}
 .keepRow>div[data-you='true']{border-color:#d9ee9c}
