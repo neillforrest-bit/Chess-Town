@@ -22,6 +22,7 @@ import { HISTORY_CATEGORY_ID, HISTORY_QUESTIONS } from './trivia-history';
 import { GRAMMAR_CATEGORIES, GRAMMAR_QUESTIONS } from './trivia-grammar';
 import { SPORT_FOCUS_CATEGORIES, SPORT_FOCUS_QUESTIONS } from './trivia-sports';
 import { STATS_CATEGORIES, STATS_QUESTIONS } from './trivia-stats';
+import { BOSTON_BIG3_CATEGORIES, BOSTON_BIG3_QUESTIONS } from './trivia-boston-big3';
 import type { QuestionDifficulty } from './trivia-settings';
 
 export const LOCAL_CATEGORIES: LocalCategory[] = [
@@ -32,6 +33,7 @@ export const LOCAL_CATEGORIES: LocalCategory[] = [
   ...SEASON_TWO_CATEGORIES,
   ...SPORT_FOCUS_CATEGORIES,
   ...STATS_CATEGORIES,
+  ...BOSTON_BIG3_CATEGORIES,
   ...GRAMMAR_CATEGORIES,
   { id: HISTORY_CATEGORY_ID, name: 'History' },
 ];
@@ -77,6 +79,7 @@ export const LOCAL_QUESTIONS: Record<number, LocalQuestion[]> = (() => {
   for (const [id, list] of Object.entries(SEASON_TWO_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
   for (const [id, list] of Object.entries(SPORT_FOCUS_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
   for (const [id, list] of Object.entries(STATS_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
+  for (const [id, list] of Object.entries(BOSTON_BIG3_QUESTIONS)) merged[Number(id)] = [...(merged[Number(id)] || []), ...list];
   for (const [id, list] of Object.entries(GRAMMAR_QUESTIONS)) merged[Number(id)] = [...list];
   merged[HISTORY_CATEGORY_ID] = HISTORY_QUESTIONS;
   return merged;
@@ -129,6 +132,7 @@ const CATEGORY_QUIPS: Array<[RegExp, string]> = [
   [/blighty|british/i, 'Local knowledge. Passport stamps optional, confidence mandatory.'],
   [/sport|nba|nfl|premier league|football|basketball/i, 'Elbows warmed up - this one separates the players from the watchers.'],
   [/tennis|stats/i, 'Numbers round. Every answer is in the record books - Chester checked them twice.'],
+  [/celtics|patriots|big 3/i, 'Banners, rings and Grand Slams. Chester has painted his face green for this one.'],
   [/science|nature/i, 'Lab coats on. Guessing technically counts as an experiment.'],
   [/history/i, 'Dust off the past - it is about to be graded.'],
   [/geography/i, 'Pack a bag. We are going somewhere neither of you has been.'],

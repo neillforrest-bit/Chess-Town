@@ -99,3 +99,61 @@ Notes:
   5 hard), all three topics mixed by the random draw. Flash finales and
   Chester's roulette stay mixed-topic by design (the lobby says so) - main
   rounds are 100% this shelf.
+
+# Boston & Big 3 shelf (add-on, 20 Nov 2026)
+
+Brief (Forrest, 20 Nov ~05:29): new topic filter for Celtics (NBA), Patriots
+(NFL) and Nadal/Federer/Djokovic trivia, hard level, everything since 2000.
+Every question in src/lib/trivia-boston-big3.ts was verified against the source
+listed below on 20 Nov 2026, before deploy. No unchecked items shipped.
+
+## Celtics
+
+| # | Question (short) | Answer | Source |
+|---|---|---|---|
+| 1 | 2024 Finals opponent, record 18th title | Dallas Mavericks | https://en.wikipedia.org/wiki/2024_NBA_Finals |
+| 2 | 2008 Finals MVP | Paul Pierce | https://en.wikipedia.org/wiki/2008_NBA_Finals |
+| 3 | 2024 Finals MVP | Jaylen Brown | https://en.wikipedia.org/wiki/2024_NBA_Finals |
+| 4 | Third 2008 "Big Three" member, traded from Minnesota | Kevin Garnett | https://en.wikipedia.org/wiki/Kevin_Garnett |
+| 5 | DPOY 2022, first guard since Payton (1996) | Marcus Smart | https://en.wikipedia.org/wiki/Marcus_Smart |
+| 6 | 60 points, 32-point comeback vs Spurs, 2021 | Jayson Tatum | https://en.wikipedia.org/wiki/Jayson_Tatum |
+| 7 | 2008 Finals opponent for banner 17 | Los Angeles Lakers | https://en.wikipedia.org/wiki/2008_NBA_Finals |
+| 8 | 53 points vs Wizards, 2017 playoffs | Isaiah Thomas | https://en.wikipedia.org/wiki/Isaiah_Thomas_(basketball) |
+| 9 | First Eastern Conference Finals MVP, 2022 | Jayson Tatum | https://en.wikipedia.org/wiki/Jayson_Tatum |
+| 10 | 8th seed that beat Celtics in 2023 ECF | Miami Heat | https://en.wikipedia.org/wiki/Jayson_Tatum |
+| 11 | 2007 5th pick traded to Seattle for Ray Allen | Jeff Green | https://en.wikipedia.org/wiki/Jeff_Green_(basketball) |
+| 12 | Youngest title coach since Bill Russell | Joe Mazzulla | https://en.wikipedia.org/wiki/Joe_Mazzulla |
+
+## Patriots
+
+| # | Question (short) | Answer | Source |
+|---|---|---|---|
+| 1 | Blew 28-3 lead in Super Bowl LI | Atlanta Falcons | https://en.wikipedia.org/wiki/Super_Bowl_LI |
+| 2 | Goal-line INT to win Super Bowl XLIX | Malcolm Butler | https://en.wikipedia.org/wiki/Super_Bowl_XLIX |
+| 3 | Helmet catch, Super Bowl XLII | David Tyree | https://en.wikipedia.org/wiki/Super_Bowl_XLII |
+| 4 | Super Bowl LIII MVP | Julian Edelman | https://en.wikipedia.org/wiki/Julian_Edelman |
+| 5 | Overtime winning TD, Super Bowl LI | James White | https://en.wikipedia.org/wiki/James_White_(running_back) |
+| 6 | Brady picked 199th overall, 2000 | The sixth round | https://en.wikipedia.org/wiki/Tom_Brady |
+| 7 | Tuck Rule game opponent, Jan 2002 | Oakland Raiders | https://en.wikipedia.org/wiki/Tuck_Rule_Game |
+| 8 | Last-second SB-winning kicks, XXXVI and XXXVIII | Adam Vinatieri | https://en.wikipedia.org/wiki/Adam_Vinatieri |
+| 9 | Single-season TD catch record, 16-0 season 2007 | Randy Moss | https://en.wikipedia.org/wiki/Randy_Moss |
+| 10 | First SB win over "Greatest Show on Turf" | St. Louis Rams | https://en.wikipedia.org/wiki/Super_Bowl_XXXVI |
+| 11 | Defensive Player of the Year 2019 | Stephon Gilmore | https://en.wikipedia.org/wiki/Stephon_Gilmore |
+| 12 | Resigned after one day as head coach, Jan 2000 | New York Jets | https://en.wikipedia.org/wiki/Bill_Belichick |
+
+## Big 3 tennis
+
+| # | Question (short) | Answer | Source |
+|---|---|---|---|
+| 1 | Most Australian Open titles, record ten | Novak Djokovic | https://en.wikipedia.org/wiki/Novak_Djokovic |
+| 2 | Won 2008 Wimbledon final vs Federer | Rafael Nadal | https://en.wikipedia.org/wiki/2008_Wimbledon_Championships_%E2%80%93_Men%27s_singles_final |
+| 3 | Longest slam final, 5h53, 2012 Australian Open | Novak Djokovic | https://en.wikipedia.org/wiki/2012_Australian_Open_%E2%80%93_Men%27s_singles_final |
+| 4 | Olympic singles gold, Paris 2024 | Novak Djokovic | https://en.wikipedia.org/wiki/Novak_Djokovic |
+| 5 | Two championship points on serve, lost 2019 Wimbledon final | Roger Federer | https://en.wikipedia.org/wiki/2019_Wimbledon_Championships_%E2%80%93_Men%27s_singles_final |
+| 6 | Nadal's first French Open defeat, 2009 | Robin Söderling | https://en.wikipedia.org/wiki/Rafael_Nadal |
+| 7 | 2009 French Open completed career Grand Slam | Roger Federer | https://en.wikipedia.org/wiki/2009_French_Open_%E2%80%93_Men%27s_singles |
+| 8 | Five consecutive Wimbledon titles, 2003-2007 | Roger Federer | https://en.wikipedia.org/wiki/Roger_Federer |
+| 9 | Beat Nadal in 5 sets, 2017 Australian Open | Roger Federer | https://en.wikipedia.org/wiki/Roger_Federer |
+| 10 | Only player to beat Nadal twice at the French Open | Novak Djokovic | https://en.wikipedia.org/wiki/2021_French_Open_%E2%80%93_Men%27s_singles |
+| 11 | Final match: doubles with Nadal, 2022 Laver Cup | Roger Federer | https://en.wikipedia.org/wiki/2022_Laver_Cup |
+| 12 | Nadal's 2005 French Open final opponent | Mariano Puerta | https://en.wikipedia.org/wiki/2005_French_Open_%E2%80%93_Men%27s_singles |
